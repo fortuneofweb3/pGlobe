@@ -12,7 +12,8 @@ let client: MongoClient | null = null;
 let db: Db | null = null;
 
 // MongoDB connection string
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://fortuneze0_db_user:ZKcIkgnaWjkNhGV8@pglobe.6wjzs7f.mongodb.net/?retryWrites=true&w=majority';
+// IMPORTANT: On Vercel, MONGODB_URI must be set in Environment Variables
+const MONGODB_URI = process.env.MONGODB_URI;
 
 // Extract database name from URI if present, otherwise use default or env var
 function getDbName(): string {
@@ -59,7 +60,9 @@ async function getClient(retries: number = 3): Promise<MongoClient> {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       if (!MONGODB_URI) {
-        throw new Error('MONGODB_URI is not defined');
+        const errorMsg = 'MONGODB_URI is not defined. Please set it in Vercel Environment Variables.';
+        console.error('[MongoDB] ❌', errorMsg);
+        throw new Error(errorMsg);
       }
       
       // Add connection timeout options (optimized for faster reads)

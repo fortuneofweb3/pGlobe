@@ -137,10 +137,13 @@ export function NodesProvider({ children }: { children: ReactNode }) {
             currentNetwork: data.currentNetwork,
           });
         } else {
-          setError(data.error || 'Failed to fetch nodes');
+          const errorMsg = data.error || 'Failed to fetch nodes';
+          console.error('[NodesContext] API returned error:', errorMsg);
+          setError(errorMsg);
         }
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'An error occurred';
+        console.error('[NodesContext] Fetch error:', errorMsg, err);
         
         // Only set error if we don't have cached data
         const cached = loadCache();
@@ -201,15 +204,23 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       // Trigger refresh in background (don't wait for response)
       // Use a small delay to not block initial render
       setTimeout(() => {
+        console.log('[NodesContext] Triggering server-side refresh...');
         fetch('/api/refresh-nodes', { method: 'GET' })
-          .then(() => {
-            localStorage.setItem('lastServerRefresh', now.toString());
+          .then(async (res) => {
+            const data = await res.json();
+            if (res.ok) {
+              console.log('[NodesContext] ✅ Server refresh successful');
+              localStorage.setItem('lastServerRefresh', now.toString());
+            } else {
+              console.error('[NodesContext] ❌ Server refresh failed:', data.error || res.statusText);
+            }
           })
           .catch((err) => {
-            // Silently fail - not critical
-            console.debug('[NodesContext] Server refresh failed:', err);
+            console.error('[NodesContext] ❌ Server refresh request failed:', err);
           });
       }, 500); // Small delay to let UI render first
+    } else {
+      console.log('[NodesContext] Skipping server refresh (refreshed recently)');
     }
   }, [refreshNodes, loadCache]);
 
