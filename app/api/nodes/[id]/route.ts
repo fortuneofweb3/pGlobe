@@ -4,6 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { getNodeByPubkey } from '@/lib/server/mongodb-nodes';
+import { PNode } from '@/lib/types/pnode';
 
 export async function GET(
   request: Request,
