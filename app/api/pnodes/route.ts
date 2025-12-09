@@ -24,24 +24,43 @@ export async function GET(request: Request) {
           // Fast path - just get from MongoDB
           try {
             console.log('[API] Fetching nodes from MongoDB (fast path)...');
+            console.log('[API] MongoDB URI set:', !!process.env.MONGODB_URI);
+            console.log('[API] Environment:', {
+              vercel: !!process.env.VERCEL,
+              vercelEnv: process.env.VERCEL_ENV,
+              nodeEnv: process.env.NODE_ENV,
+            });
+            
             nodes = await getAllNodes();
-            console.log(`[API] Retrieved ${nodes.length} nodes from MongoDB`);
+            console.log(`[API] ✅ Retrieved ${nodes.length} nodes from MongoDB`);
+            
             // If getAllNodes returns empty array, it might be a connection issue or empty DB
             if (nodes.length === 0) {
-              console.warn('[API] ⚠️ getAllNodes returned empty array - MongoDB might be empty or connection issue');
-              console.warn('[API] MongoDB URI set:', !!process.env.MONGODB_URI);
-              // On Vercel, if DB is empty, trigger a refresh in the background (don't wait)
-              if (process.env.VERCEL || process.env.VERCEL_ENV) {
-                console.log('[API] Triggering background refresh (MongoDB appears empty)...');
-                // Fire and forget - call performRefresh directly (don't block the response)
-                performRefresh().catch(err => {
-                  console.error('[API] Background refresh failed:', err);
+              console.warn('[API] ⚠️ MongoDB returned empty array - checking if DB needs initial population...');
+              
+              // Check if this is a fresh deployment (no data yet)
+              // Trigger a refresh to populate MongoDB
+              console.log('[API] Triggering initial refresh to populate MongoDB...');
+              performRefresh()
+                .then(() => {
+                  console.log('[API] ✅ Initial refresh completed - MongoDB should now have data');
+                })
+                .catch(err => {
+                  console.error('[API] ❌ Initial refresh failed:', err?.message || err);
+                  console.error('[API] Refresh error stack:', err?.stack);
                 });
-              }
             }
           } catch (dbError: any) {
             console.error('[API] ❌ MongoDB error in getAllNodes:', dbError?.message || dbError);
+            console.error('[API] Error type:', dbError?.name);
+            console.error('[API] Error code:', dbError?.code);
             console.error('[API] Stack:', dbError?.stack);
+            
+            // If connection error, try to trigger refresh anyway (might help)
+            if (dbError?.message?.includes('MONGODB_URI') || dbError?.message?.includes('not defined')) {
+              console.error('[API] 💡 MONGODB_URI not set in Vercel Environment Variables!');
+            }
+            
             // Return empty array instead of crashing
             nodes = [];
           }

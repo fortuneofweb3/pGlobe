@@ -65,14 +65,19 @@ async function getClient(retries: number = 3): Promise<MongoClient> {
         throw new Error(errorMsg);
       }
       
-      // Add connection timeout options (optimized for faster reads)
+      // Connection options optimized for Vercel serverless functions
+      // Serverless functions are stateless, so we need different pooling strategy
+      const isVercel = !!process.env.VERCEL || !!process.env.VERCEL_ENV;
       const clientOptions = {
-        serverSelectionTimeoutMS: 5000, // 5 second timeout (reduced from 10s)
-        connectTimeoutMS: 5000, // 5 second connect timeout
-        socketTimeoutMS: 20000, // 20 second socket timeout
-        maxPoolSize: 10, // Connection pool size
-        minPoolSize: 2, // Minimum connections to keep alive
-        maxIdleTimeMS: 30000, // Close connections after 30s of inactivity
+        serverSelectionTimeoutMS: isVercel ? 10000 : 5000, // Longer timeout for Vercel (cold starts)
+        connectTimeoutMS: isVercel ? 10000 : 5000,
+        socketTimeoutMS: 30000, // 30 second socket timeout
+        // For serverless: smaller pool, no min connections (functions are ephemeral)
+        maxPoolSize: isVercel ? 1 : 10, // Single connection per function instance
+        minPoolSize: 0, // No persistent connections in serverless
+        maxIdleTimeMS: 0, // Don't keep idle connections in serverless
+        // Important for Vercel: allow connections from any IP (serverless IPs are dynamic)
+        // Make sure MongoDB Atlas Network Access allows 0.0.0.0/0 or Vercel IPs
       };
       
       client = new MongoClient(MONGODB_URI, clientOptions);
@@ -142,7 +147,7 @@ async function getDb(): Promise<Db> {
 /**
  * Get nodes collection
  */
-async function getNodesCollection(): Promise<Collection> {
+export async function getNodesCollection(): Promise<Collection> {
   const database = await getDb();
   return database.collection('nodes');
 }
@@ -313,7 +318,7 @@ function nodeToDocument(node: PNode): NodeDocument {
 /**
  * Convert MongoDB document to PNode
  */
-function documentToNode(doc: NodeDocument): PNode {
+export function documentToNode(doc: NodeDocument): PNode {
   const node: PNode = {
     id: doc._id?.toString() || '',
     pubkey: doc.pubkey || doc.publicKey || '',
@@ -660,9 +665,20 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
  */
 export async function getAllNodes(): Promise<PNode[]> {
   try {
+    console.log('[MongoDB] getAllNodes: Starting...');
+    console.log('[MongoDB] MONGODB_URI set:', !!MONGODB_URI);
+    console.log('[MongoDB] DB_NAME:', DB_NAME);
+    
     // Ensure connection is alive (with faster timeout for reads)
-    await getClient();
+    const client = await getClient();
+    console.log('[MongoDB] Client connected');
+    
     const collection = await getNodesCollection();
+    console.log('[MongoDB] Collection retrieved');
+    
+    // Count documents first to see if collection has data
+    const count = await collection.countDocuments({});
+    console.log(`[MongoDB] Collection has ${count} documents`);
     
     // Optimize query: use projection to only fetch needed fields, limit batch size, and use cursor
     // Note: We actually need all fields, but we can optimize the query execution
@@ -670,6 +686,8 @@ export async function getAllNodes(): Promise<PNode[]> {
       .find({})
       .sort({ updatedAt: -1 }) // Most recently updated first (helps with caching)
       .toArray();
+    
+    console.log(`[MongoDB] Retrieved ${docs.length} documents from collection`);
     
     // Filter out nodes without valid pubkeys
     const nodes = docs
@@ -679,11 +697,19 @@ export async function getAllNodes(): Promise<PNode[]> {
         return isValidPubkey(pubkey);
       });
     
+    console.log(`[MongoDB] ✅ Returning ${nodes.length} nodes (after pubkey validation)`);
     return nodes;
   } catch (error: any) {
-    console.error('[MongoDB] Error fetching nodes:', error?.message || error);
+    console.error('[MongoDB] ❌ Error fetching nodes:', error?.message || error);
+    console.error('[MongoDB] Error type:', error?.name);
+    console.error('[MongoDB] Error code:', error?.code);
+    console.error('[MongoDB] Stack:', error?.stack);
+    
     // Reset connection on error so it reconnects next time
-    if (error?.message?.includes('Topology is closed') || error?.message?.includes('connection')) {
+    if (error?.message?.includes('Topology is closed') || 
+        error?.message?.includes('connection') ||
+        error?.message?.includes('MONGODB_URI')) {
+      console.log('[MongoDB] Resetting connection state...');
       client = null;
       db = null;
     }

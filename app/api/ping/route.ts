@@ -5,7 +5,7 @@
 import { NextResponse } from 'next/server';
 import http from 'http';
 
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
   const ip = searchParams.get('ip');
   const port = searchParams.get('port') || '6000';
@@ -17,11 +17,18 @@ export async function GET(request: Request) {
     );
   }
 
-  // Real-time latency - fetch on-demand
-    const startTime = Date.now();
+  // Real-time latency - fetch on-demand with optimized timeout
+  const startTime = Date.now();
+  const timeout = 2000; // 2 second timeout for faster response
     
   try {
     return new Promise<NextResponse>((resolve) => {
+      const requestBody = JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'get-version',
+        id: 1,
+      });
+      
       const options = {
         hostname: ip,
         port: parseInt(port),
@@ -29,30 +36,29 @@ export async function GET(request: Request) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'get-version',
-          id: 1,
-            params: [],
-          })),
+          'Content-Length': Buffer.byteLength(requestBody),
         },
-        timeout: 3000,
+        timeout,
       };
 
-      const req = http.request(options, () => {
+      const req = http.request(options, (res) => {
+        // Success - calculate latency
         const latency = Date.now() - startTime;
-        resolve(NextResponse.json({
-          latency,
-          status: 'online',
-        }));
+        res.on('data', () => {}); // Consume response
+        res.on('end', () => {
+          resolve(NextResponse.json({
+            latency,
+            status: 'online',
+          }));
         });
+      });
 
-      req.on('error', () => {
+      req.on('error', (err) => {
         resolve(NextResponse.json({
           latency: null,
           status: 'offline',
           error: 'Connection failed',
-        }));
+        }, { status: 200 })); // Return 200 to avoid client errors
       });
 
       req.on('timeout', () => {
@@ -61,23 +67,19 @@ export async function GET(request: Request) {
           latency: null,
           status: 'offline',
           error: 'Timeout',
-        }));
+        }, { status: 200 }));
       });
 
-      req.write(JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'get-version',
-        id: 1,
-        params: [],
-      }));
+      req.setTimeout(timeout);
+      req.write(requestBody);
       req.end();
     });
   } catch (error: any) {
     return NextResponse.json({
-        latency: null,
-        status: 'offline',
+      latency: null,
+      status: 'offline',
       error: error?.message || 'Ping failed',
-    });
+    }, { status: 200 });
   }
 }
 

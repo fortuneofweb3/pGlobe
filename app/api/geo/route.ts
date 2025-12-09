@@ -4,7 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { batchFetchLocations, getCachedLocation } from '@/lib/server/location-cache';
-import { upsertNodes, getAllNodes } from '@/lib/server/mongodb-nodes';
+import { upsertNodes, getNodesCollection, documentToNode } from '@/lib/server/mongodb-nodes';
 import { PNode } from '@/lib/types/pnode';
 
 export async function GET(request: Request) {
@@ -25,25 +25,31 @@ export async function GET(request: Request) {
       return NextResponse.json(cachedGeo);
     }
     
-    // Check MongoDB for node with this IP (skip if slow - use external API instead)
-    // We'll try a quick lookup but won't block if it's slow
+    // Check MongoDB for node with this IP (optimized direct query - much faster than getAllNodes)
     let nodeWithIP: PNode | undefined;
     try {
-      // Use a shorter timeout for geo lookups - don't block the main data flow
-      const nodesPromise = getAllNodes();
-      const timeoutPromise = new Promise<PNode[]>((_, reject) => 
+      // Direct MongoDB query by IP - much faster than fetching all nodes
+      const collection = await getNodesCollection();
+      const timeoutPromise = new Promise<any>((_, reject) => 
         setTimeout(() => reject(new Error('MongoDB query timeout')), 2000)
       );
       
-      const nodes = await Promise.race([nodesPromise, timeoutPromise]);
-      
-      nodeWithIP = nodes.find(n => {
-        const nodeIp = n.address?.split(':')[0];
-        return nodeIp === ip;
+      const docPromise = collection.findOne({ 
+        $or: [
+          { ipAddress: ip },
+          { address: { $regex: `^${ip}:` } }
+        ]
       });
+      
+      const doc = await Promise.race([docPromise, timeoutPromise]);
+      
+      if (doc) {
+        nodeWithIP = documentToNode(doc as any);
+      }
     } catch (err: any) {
       // MongoDB query timed out or failed - skip and use external API
       // This is fine - we'll fetch from ip-api.com instead
+      console.debug(`[Geo API] MongoDB lookup for ${ip} failed:`, err.message);
     }
     
     if (nodeWithIP?.locationData?.lat && nodeWithIP?.locationData?.lon) {
