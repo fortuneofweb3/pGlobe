@@ -1,0 +1,61 @@
+name: Refresh Nodes Background Task
+
+on:
+  schedule:
+    # Run every minute
+    - cron: '*/1 * * * *'
+  workflow_dispatch: # Allow manual trigger from GitHub Actions UI
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: Call Refresh API
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          VERCEL_URL: ${{ secrets.VERCEL_URL }}
+        run: |
+          # Use VERCEL_URL if set, otherwise construct from repo name
+          if [ -z "$VERCEL_URL" ]; then
+            # Try to get URL from Vercel API or use a default pattern
+            echo "⚠️  VERCEL_URL secret not set. Using default pattern."
+            echo "Please set VERCEL_URL secret to your Vercel deployment URL"
+            echo "Format: https://your-project.vercel.app"
+            exit 1
+          fi
+          
+          # Ensure URL doesn't have trailing slash
+          VERCEL_URL=$(echo "$VERCEL_URL" | sed 's|/$||')
+          
+          if [ -z "$CRON_SECRET" ]; then
+            echo "⚠️  CRON_SECRET not set. Making request without auth (less secure)."
+            RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "${VERCEL_URL}/api/cron/refresh-nodes" || echo "000")
+          else
+            RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "${VERCEL_URL}/api/cron/refresh-nodes" \
+              -H "Authorization: Bearer ${CRON_SECRET}" || echo "000")
+          fi
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          echo "Response Code: $HTTP_CODE"
+          echo "Response Body: $BODY"
+          
+          if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
+            echo "✅ Background refresh completed successfully"
+            exit 0
+          elif [ "$HTTP_CODE" -eq 401 ]; then
+            echo "❌ Unauthorized - Check CRON_SECRET matches Vercel environment variable"
+            exit 1
+          elif [ "$HTTP_CODE" -eq 000 ]; then
+            echo "❌ Failed to connect to Vercel URL"
+            exit 1
+          else
+            echo "⚠️  Refresh completed with status $HTTP_CODE"
+            echo "$BODY"
+            # Don't fail on non-200, as the refresh might have partially succeeded
+            exit 0
+          fi
+

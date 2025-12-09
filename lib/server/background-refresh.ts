@@ -15,8 +15,9 @@ let isRunning = false;
 
 /**
  * Perform a single refresh cycle
+ * Exported for use in Vercel Cron Jobs
  */
-async function performRefresh(): Promise<void> {
+export async function performRefresh(): Promise<void> {
   if (isRunning) return;
 
   isRunning = true;
