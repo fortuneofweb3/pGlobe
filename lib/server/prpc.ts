@@ -404,7 +404,7 @@ async function fetchPodsWithStatsFromEndpoint(endpoint: string): Promise<PNode[]
   // Map to PNode format with stats included
   // Filter out nodes without valid pubkeys
   return pods
-    .map((pod: any, index: number) => {
+    .map((pod: any, index: number): PNode | null => {
     const address = pod.address || '';
     const pubkey = pod.pubkey || pod.publicKey || '';
       
@@ -421,8 +421,8 @@ async function fetchPodsWithStatsFromEndpoint(endpoint: string): Promise<PNode[]
 
     // Extract stats from v0.7.0+ response format
     // Handle both snake_case and camelCase field names
-    const storageUsed = pod.storage_used ?? pod.storageUsed ?? null;
-    const storageCommitted = pod.storage_committed ?? pod.storageCommitted ?? null;
+    const storageUsed = pod.storage_used ?? pod.storageUsed ?? undefined;
+    const storageCommitted = pod.storage_committed ?? pod.storageCommitted ?? undefined;
     
     const enrichedNode: PNode = {
       id: address || pubkey || `unknown-${index}`,
@@ -437,9 +437,9 @@ async function fetchPodsWithStatsFromEndpoint(endpoint: string): Promise<PNode[]
       storageUsed: storageUsed,
       storageCommitted: storageCommitted,
       storageCapacity: storageCommitted || null, // Use storage_committed as capacity
-      storageUsagePercent: pod.storage_usage_percent ?? pod.storageUsagePercent ?? null,
-      isPublic: pod.is_public ?? pod.isPublic ?? null,
-      rpcPort: pod.rpc_port ?? pod.rpcPort ?? null,
+      storageUsagePercent: pod.storage_usage_percent ?? pod.storageUsagePercent ?? undefined,
+      isPublic: pod.is_public ?? pod.isPublic ?? undefined,
+      rpcPort: pod.rpc_port ?? pod.rpcPort ?? undefined,
       _raw: pod,
       _source: 'gossip-with-stats',
     };
@@ -498,7 +498,7 @@ async function fetchPodsFromEndpoint(endpoint: string): Promise<PNode[]> {
   // Map to PNode format
   // Filter out nodes without valid pubkeys
   return pods
-    .map((pod: any, index: number) => {
+    .map((pod: any, index: number): PNode | null => {
     const address = pod.address || '';
     const pubkey = pod.pubkey || pod.publicKey || '';
       
@@ -819,9 +819,9 @@ export async function fetchNodeStats(node: PNode): Promise<PNode> {
 
   let enrichedNode = { ...node };
 
-  // Only set latency if we got a successful response
-  // If call failed/timeout, latency is null (offline/unreachable)
-  enrichedNode.latency = latency;
+          // Only set latency if we got a successful response
+          // If call failed/timeout, latency is null (offline/unreachable)
+          enrichedNode.latency = latency ?? undefined;
 
   // Process version (already fetched for latency measurement)
   if (versionResult?.version) {
@@ -840,20 +840,20 @@ export async function fetchNodeStats(node: PNode): Promise<PNode> {
       uptime: uptimeSeconds,
       uptimePercent: undefined, // API doesn't provide this
       // System metrics
-      cpuPercent: stats.cpu_percent ?? null,
-      ramUsed: stats.ram_used ?? null,
-      ramTotal: stats.ram_total ?? null,
+      cpuPercent: stats.cpu_percent ?? undefined,
+      ramUsed: stats.ram_used ?? undefined,
+      ramTotal: stats.ram_total ?? undefined,
       // Network metrics - include ALL fields, even if 0
-      packetsReceived: stats.packets_received ?? null,
-      packetsSent: stats.packets_sent ?? null,
-      activeStreams: stats.active_streams ?? null,
+      packetsReceived: stats.packets_received ?? undefined,
+      packetsSent: stats.packets_sent ?? undefined,
+      activeStreams: stats.active_streams ?? undefined,
       // Storage: API only provides file_size (used), NOT capacity!
       // Preserve storageCapacity from get-pods-with-stats if it exists
-      storageUsed: fileSize > 0 ? fileSize : (enrichedNode.storageUsed || null),
-      storageCapacity: enrichedNode.storageCapacity || enrichedNode.storageCommitted || null, // Use committed as capacity if available
-      totalPages: stats.total_pages ?? null,
+      storageUsed: fileSize > 0 ? fileSize : (enrichedNode.storageUsed || undefined),
+      storageCapacity: enrichedNode.storageCapacity || enrichedNode.storageCommitted || undefined, // Use committed as capacity if available
+      totalPages: stats.total_pages ?? undefined,
       // Data operations
-      dataOperationsHandled: stats.data_operations_handled ?? null,
+      dataOperationsHandled: stats.data_operations_handled ?? undefined,
       // Status - if we got stats, node is online
       status: 'online',
     };
@@ -1036,7 +1036,7 @@ async function enrichNodesWithStats(nodesMap: Map<string, PNode>): Promise<PNode
     let successCount = 0;
     for (let j = 0; j < results.length; j++) {
       if (results[j].status === 'fulfilled') {
-        const enrichedNode = results[j].value;
+        const enrichedNode = (results[j] as PromiseFulfilledResult<PNode>).value;
         const key = getNodeKey(enrichedNode);
         if (key) {
           // Always update with latency (even if other stats didn't change)
@@ -1147,21 +1147,21 @@ async function enrichFromKnownPublicEndpoints(nodesMap: Map<string, PNode>): Pro
         lastSeen: existingNode?.lastSeen || Date.now(),
         // Uptime in SECONDS (from flat API response)
         uptime: uptime,
-        uptimePercent: null, // API doesn't provide this
+      uptimePercent: undefined, // API doesn't provide this
         // System metrics (from flat API response) - include even if 0
-        cpuPercent: stats.cpu_percent ?? null,
-        ramUsed: stats.ram_used ?? null,
-        ramTotal: stats.ram_total ?? null,
+        cpuPercent: stats.cpu_percent ?? undefined,
+        ramUsed: stats.ram_used ?? undefined,
+        ramTotal: stats.ram_total ?? undefined,
         // Storage: API only provides file_size (used), NOT capacity!
         // Preserve storageCapacity from get-pods-with-stats if it exists
         storageUsed: fileSize > 0 ? fileSize : null,
-        storageCapacity: existingNode?.storageCapacity || existingNode?.storageCommitted || null, // Use committed as capacity if available
+        storageCapacity: existingNode?.storageCapacity || existingNode?.storageCommitted || undefined, // Use committed as capacity if available
         // Network metrics - include ALL fields, even if 0
-        packetsReceived: stats.packets_received ?? null,
-        packetsSent: stats.packets_sent ?? null,
-        activeStreams: stats.active_streams ?? null,
-        totalPages: stats.total_pages ?? null,
-        dataOperationsHandled: stats.data_operations_handled ?? null,
+        packetsReceived: stats.packets_received ?? undefined,
+        packetsSent: stats.packets_sent ?? undefined,
+        activeStreams: stats.active_streams ?? undefined,
+        totalPages: stats.total_pages ?? undefined,
+        dataOperationsHandled: stats.data_operations_handled ?? undefined,
         latency: latency,
         rpcPort: workingPort || existingNode?.rpcPort || 6000, // Store the working port
         _source: 'public-prpc',

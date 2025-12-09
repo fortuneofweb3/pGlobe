@@ -274,7 +274,6 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
                 labelResolution={2}
                 labelAltitude={0.01}
                 labelTypeFace="Arial, sans-serif"
-                labelWeight="bold"
                 labelIncludeDot={true}
                 labelDotOrientation={() => 'right'}
                 labelLabel={(d: any) => d.text}
@@ -291,7 +290,6 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
                 animateIn={true}
                 enablePointerInteraction={true}
                 showAtmosphere={false}
-                cameraDistance={cameraDistance}
                 onGlobeReady={() => {
                   if (globeEl.current) {
                     globeEl.current.pointOfView({ lat: 0, lng: 0, altitude: 2.5 });

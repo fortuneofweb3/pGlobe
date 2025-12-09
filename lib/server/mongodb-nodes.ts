@@ -632,7 +632,7 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
       // Now mark all other nodes as seenInGossip: false
       if (seenNodeIds.size > 0) {
         const markNotSeenResult = await collection.updateMany(
-          { _id: { $nin: Array.from(seenNodeIds) } },
+          { _id: { $nin: Array.from(seenNodeIds) as any } },
           { $set: { seenInGossip: false, updatedAt: now } }
         );
         if (markNotSeenResult.modifiedCount > 0) {
@@ -714,7 +714,7 @@ export async function cleanupInvalidNodes(): Promise<number> {
     
     // Delete invalid nodes
     const result = await collection.deleteMany({
-      _id: { $in: invalidNodeIds }
+      _id: { $in: invalidNodeIds as any }
     });
     
     console.log(`[MongoDB] 🧹 Cleaned up ${result.deletedCount} nodes with invalid pubkeys`);

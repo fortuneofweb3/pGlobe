@@ -153,23 +153,23 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <p className="text-xs font-mono text-foreground truncate">{displayPubkey}</p>
-                  <button
-                    onClick={async () => {
+              <button
+                onClick={async () => {
                       if (pubkey) {
-                        await navigator.clipboard.writeText(pubkey);
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 2000);
-                      }
-                    }}
+                    await navigator.clipboard.writeText(pubkey);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }
+                }}
                     className="p-1 hover:bg-foreground/10 rounded transition-colors flex-shrink-0"
                     title="Copy"
-                  >
-                    {copied ? (
+              >
+                {copied ? (
                       <Check className="w-3.5 h-3.5 text-green-400" />
-                    ) : (
+                ) : (
                       <Copy className="w-3.5 h-3.5 text-foreground/60" />
-                    )}
-                  </button>
+                )}
+              </button>
                 </div>
                 {node.lastSeen && (
                   <p className="text-xs text-foreground/50 whitespace-nowrap">
@@ -224,7 +224,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                 <div className="flex items-center gap-2 mb-3">
                   <HardDrive className="w-4 h-4 text-[#FFD700]" />
                   <h3 className="text-sm font-semibold">Storage & Memory</h3>
-                </div>
+                  </div>
                 <div className="space-y-3">
                   {node.storageCapacity ? (
                     <div>
@@ -267,7 +267,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     </div>
                   ) : null}
                 </div>
-              </div>
+            </div>
 
               {/* Network */}
               <div className="bg-card/40 border border-border/60 rounded-lg p-4">
@@ -305,10 +305,10 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     </div>
                   )}
                 </div>
+                </div>
               </div>
-            </div>
 
-            {/* Location & Details */}
+              {/* Location & Details */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               <div className="bg-card/40 border border-border/60 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-3">

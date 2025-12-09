@@ -180,7 +180,13 @@ class PersistentCache {
    * Always returns data if available (even stale), along with freshness status
    */
   getNodes(network: string): { nodes: PNode[]; isFresh: boolean; isStale: boolean } | null {
-    return this.get<PNode[]>('nodes', network);
+    const result = this.get<PNode[]>('nodes', network);
+    if (!result) return null;
+    return {
+      nodes: result.data,
+      isFresh: result.isFresh,
+      isStale: result.isStale,
+    };
   }
 
   /**
@@ -193,7 +199,7 @@ class PersistentCache {
   /**
    * Get network stats from cache
    */
-  getStats(network: string): { data: NetworkStats; isFresh: boolean; isStale: boolean } | null {
+  getStats(network: string) {
     return this.get<NetworkStats>('stats', network);
   }
 
@@ -221,7 +227,7 @@ class PersistentCache {
   /**
    * Get cache statistics
    */
-  getStats(): { entries: number; networks: string[]; oldestMinutes: number } {
+  getCacheStats(): { entries: number; networks: string[]; oldestMinutes: number } {
     const networks = new Set<string>();
     let oldest = Date.now();
 

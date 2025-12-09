@@ -1177,9 +1177,9 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
     const displayLon = feature?.geometry?.coordinates?.[0] ?? selectedNode.locationData.lon;
     const displayLat = feature?.geometry?.coordinates?.[1] ?? selectedNode.locationData.lat;
 
-    // Constants
-    const popupWidth = 280;
-    const popupHeight = 160;
+    // Constants (increased by 20%)
+    const popupWidth = 336; // 280 * 1.2
+    const popupHeight = 192; // 160 * 1.2
     const margin = 20;
 
     // Continuous 60 FPS animation loop
@@ -2383,8 +2383,8 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
         
         const { nodePos } = popupPosition;
         const { lineEnd } = popupPosition.popupPos;
-        const popupWidth = 280;
-        const popupHeight = 160;
+        const popupWidth = 336; // 280 * 1.2
+        const popupHeight = 192; // 160 * 1.2
         
         // Always use current animated position from refs (animation loop is source of truth)
         // React state is only used for initial render, refs control everything else
@@ -2435,8 +2435,8 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
                 y={popupY}
                 width={popupWidth}
                 height={popupHeight}
-                rx="16"
-                ry="16"
+                rx="18"
+                ry="18"
                 fill="none"
                 stroke={statusColor}
                 strokeWidth="2"
@@ -2460,7 +2460,7 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
                 width: `${popupWidth - 2}px`,
                 height: `${popupHeight - 2}px`,
                 backgroundColor: 'rgba(20, 24, 32, 0.95)',
-                borderRadius: '15px',
+                borderRadius: '18px', // 15 * 1.2
                 zIndex: 5, // In front of SVG connector line
                 pointerEvents: 'auto',
                 animation: 'bubbleIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards',
@@ -2470,19 +2470,19 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
                 backfaceVisibility: 'hidden',
               }}
             >
-              <div className="p-3 h-full flex flex-col justify-between">
+              <div className="p-4 h-full flex flex-col justify-between">
                 {/* Public ID */}
                 <div>
-                  <div className="text-[9px] text-muted-foreground/60 uppercase tracking-wider mb-0.5">Public ID</div>
-                  <p className="text-[11px] font-mono text-foreground/90 leading-snug break-all">
+                  <div className="text-[11px] text-muted-foreground/60 uppercase tracking-wider mb-1">Public ID</div>
+                  <p className="text-[13px] font-mono text-foreground/90 leading-snug break-all">
                     {selectedNode.pubkey || selectedNode.publicKey || selectedNode.id}
                   </p>
                 </div>
                 
                 {/* Location */}
                 <div>
-                  <div className="text-[9px] text-muted-foreground/60 uppercase tracking-wider mb-0.5">Location</div>
-                  <p className="text-[13px] text-foreground font-medium">
+                  <div className="text-[11px] text-muted-foreground/60 uppercase tracking-wider mb-1">Location</div>
+                  <p className="text-[16px] text-foreground font-medium">
                     {selectedNode.locationData?.city 
                       ? `${selectedNode.locationData.city}, ${selectedNode.locationData.country}`
                       : selectedNode.locationData?.country || 'Unknown'}
@@ -2492,14 +2492,14 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
                 {/* IP Address */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-[9px] text-muted-foreground/60 uppercase tracking-wider mb-0.5">IP Address</div>
-                    <p className="text-[12px] font-mono text-foreground/80">
+                    <div className="text-[11px] text-muted-foreground/60 uppercase tracking-wider mb-1">IP Address</div>
+                    <p className="text-[14px] font-mono text-foreground/80">
                       {selectedNode.address?.split(':')[0] || 'N/A'}
                     </p>
                   </div>
                   <span 
-                    className="w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: statusColor, boxShadow: `0 0 6px ${statusColor}` }}
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: statusColor, boxShadow: `0 0 7px ${statusColor}` }}
                   />
                 </div>
               </div>

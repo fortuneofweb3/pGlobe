@@ -1,16 +1,16 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PNode } from '@/lib/types/pnode';
 import PNodeTable from '@/components/PNodeTable';
 import Header from '@/components/Header';
 import NodeDetailsModal from '@/components/NodeDetailsModal';
 import { useNodes } from '@/lib/context/NodesContext';
-import { Filter, ChevronDown } from 'lucide-react';
+import { Filter, ChevronDown, RefreshCw } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 
-export default function NodesPage() {
+function NodesPageContent() {
   const searchParams = useSearchParams();
   // Use shared nodes data from context (fetched once, updated passively)
   const { nodes, loading, error, lastUpdate, selectedNetwork, setSelectedNetwork, availableNetworks, currentNetwork, refreshNodes } = useNodes();
@@ -252,5 +252,20 @@ export default function NodesPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function NodesPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black text-foreground flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-[#FFD700]" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    }>
+      <NodesPageContent />
+    </Suspense>
   );
 }

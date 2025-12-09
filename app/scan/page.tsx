@@ -97,22 +97,22 @@ export default function ScanPage() {
     
     // Use setTimeout to ensure UI updates immediately
     setTimeout(async () => {
-      try {
-        const userIp = await getUserIp();
-        if (userIp) {
-          setScanIp(userIp);
+    try {
+      const userIp = await getUserIp();
+      if (userIp) {
+        setScanIp(userIp);
           // Small delay to ensure state update, then scan
           setTimeout(() => {
             handleScanWithIp(userIp);
           }, 10);
-        } else {
-          setScanError('Failed to detect your IP address');
-          setScanning(false);
-        }
-      } catch (err: any) {
-        setScanError(err.message || 'Failed to detect your IP address');
+      } else {
+        setScanError('Failed to detect your IP address');
         setScanning(false);
       }
+    } catch (err: any) {
+      setScanError(err.message || 'Failed to detect your IP address');
+      setScanning(false);
+    }
     }, 0);
   };
 
@@ -453,7 +453,7 @@ export default function ScanPage() {
                     className="px-4 py-2 bg-[#FFD700]/20 hover:bg-[#FFD700]/30 text-[#FFD700] rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[80px]"
                   >
                     {scanning ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                        <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <>
                         <Search className="w-4 h-4" />

@@ -187,7 +187,7 @@ async function performRefresh(): Promise<void> {
         // Update nodesWithValidPubkeys with re-enriched data
         for (let j = 0; j < results.length; j++) {
           if (results[j].status === 'fulfilled') {
-            const enriched = results[j].value;
+            const enriched = (results[j] as PromiseFulfilledResult<PNode>).value;
             const originalNode = batch[j];
             
             // Check if we got new data
