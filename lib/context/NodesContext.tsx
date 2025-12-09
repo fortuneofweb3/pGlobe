@@ -97,7 +97,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         let response: Response;
         try {
           const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-          const timeoutId = controller ? setTimeout(() => controller.abort(), 3000) : null; // 3 second timeout (faster)
+          const timeoutId = controller ? setTimeout(() => controller.abort(), 10000) : null; // 10 second timeout (MongoDB might be slow on first connection)
           
           response = await fetch(url, {
             ...(controller ? { signal: controller.signal } : {}),
