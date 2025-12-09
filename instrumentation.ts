@@ -15,12 +15,12 @@ export async function register() {
       console.error('[Instrumentation] Failed to create indexes:', error);
     }
     
-    // Note: Background refresh is handled by client-side triggers
-    // On Vercel Hobby plan, we use client-side code to trigger /api/refresh-nodes when users visit
-    // This keeps MongoDB updated without needing Vercel Pro or external cron services
-    // For local development, you can manually trigger it or use a different approach
-    if (process.env.VERCEL) {
-      console.log('[Instrumentation] Running on Vercel - background refresh handled by Cron Jobs');
+    // Background refresh strategy:
+    // - LOCAL: Use setInterval (runs every 1 min automatically)
+    // - VERCEL: Client-side triggers /api/refresh-nodes when users visit (no setInterval - serverless can't run it)
+    if (process.env.VERCEL || process.env.VERCEL_ENV) {
+      console.log('[Instrumentation] Running on Vercel - background refresh handled by client-side triggers');
+      console.log('[Instrumentation] VERCEL_ENV:', process.env.VERCEL_ENV);
     } else {
       // For local development, start the interval-based refresh
       const { startBackgroundRefresh } = await import('./lib/server/background-refresh');

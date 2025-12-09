@@ -25,10 +25,17 @@ export async function GET(request: Request) {
             console.log('[API] Fetching nodes from MongoDB (fast path)...');
             nodes = await getAllNodes();
             console.log(`[API] Retrieved ${nodes.length} nodes from MongoDB`);
-            // If getAllNodes returns empty array, it might be a connection issue
+            // If getAllNodes returns empty array, it might be a connection issue or empty DB
             if (nodes.length === 0) {
               console.warn('[API] ⚠️ getAllNodes returned empty array - MongoDB might be empty or connection issue');
               console.warn('[API] MongoDB URI set:', !!process.env.MONGODB_URI);
+              // On Vercel, if DB is empty, trigger a refresh in the background (don't wait)
+              if (process.env.VERCEL || process.env.VERCEL_ENV) {
+                console.log('[API] Triggering background refresh (MongoDB appears empty)...');
+                // Fire and forget - don't block the response
+                fetch(`${process.env.VERCEL_URL || 'http://localhost:3000'}/api/refresh-nodes`, { method: 'GET' })
+                  .catch(err => console.error('[API] Background refresh trigger failed:', err));
+              }
             }
           } catch (dbError: any) {
             console.error('[API] ❌ MongoDB error in getAllNodes:', dbError?.message || dbError);

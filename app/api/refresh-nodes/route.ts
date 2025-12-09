@@ -16,43 +16,49 @@ import { NextResponse } from 'next/server';
 import { performRefresh } from '@/lib/server/background-refresh';
 
 export async function GET(request: Request) {
-  // Verify this is an authorized cron request
   // For external cron services, use CRON_SECRET env var for security
+  // For client-side calls (Vercel Hobby), allow without auth
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
   
-  // If CRON_SECRET is set, require authentication
-  // This prevents unauthorized access to the refresh endpoint
+  // If CRON_SECRET is set, require authentication (for external cron services)
+  // If not set, allow client-side calls (for Vercel Hobby plan)
   if (cronSecret) {
     if (authHeader !== `Bearer ${cronSecret}`) {
+      console.warn('[Refresh] Unauthorized request - missing or invalid CRON_SECRET');
       return NextResponse.json(
         { error: 'Unauthorized - Invalid or missing CRON_SECRET' },
         { status: 401 }
       );
     }
-  } else {
-    // If no CRON_SECRET is set, log a warning but allow the request
-    // This is useful for testing, but should be secured in production
-    console.warn('[Cron] WARNING: CRON_SECRET not set - endpoint is publicly accessible');
   }
 
   try {
-    console.log('[Cron] Starting background refresh...');
+    console.log('[Refresh] Starting background refresh...');
+    console.log('[Refresh] Environment:', {
+      vercel: !!process.env.VERCEL,
+      vercelEnv: process.env.VERCEL_ENV,
+      hasMongoUri: !!process.env.MONGODB_URI,
+      nodeEnv: process.env.NODE_ENV,
+    });
     
     // Call the exported refresh function
     await performRefresh();
     
+    console.log('[Refresh] ✅ Background refresh completed successfully');
     return NextResponse.json({
       success: true,
       message: 'Background refresh completed',
       timestamp: new Date().toISOString(),
     });
   } catch (error: any) {
-    console.error('[Cron] Error during background refresh:', error);
+    console.error('[Refresh] ❌ Error during background refresh:', error);
+    console.error('[Refresh] Error stack:', error?.stack);
     return NextResponse.json(
       {
         success: false,
         error: error?.message || 'Background refresh failed',
+        stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined,
         timestamp: new Date().toISOString(),
       },
       { status: 500 }
