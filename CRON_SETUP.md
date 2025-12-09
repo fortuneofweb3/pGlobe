@@ -24,7 +24,7 @@ See `.github/workflows/README.md` for detailed setup instructions.
 2. Sign up for a free account
 3. Create a new cron job:
    - **Title**: pGlobe Background Refresh
-   - **URL**: `https://your-domain.vercel.app/api/cron/refresh-nodes`
+   - **URL**: `https://your-domain.vercel.app/api/refresh-nodes`
    - **Schedule**: Every minute (`*/1 * * * *`)
    - **Request Method**: GET
    - **Request Headers**: 
@@ -36,7 +36,7 @@ See `.github/workflows/README.md` for detailed setup instructions.
 1. Go to https://www.easycron.com/
 2. Sign up for free account
 3. Create cron job:
-   - **URL**: `https://your-domain.vercel.app/api/cron/refresh-nodes`
+   - **URL**: `https://your-domain.vercel.app/api/refresh-nodes`
    - **Schedule**: Every 1 minute
    - **HTTP Method**: GET
    - **HTTP Headers**: `Authorization: Bearer YOUR_CRON_SECRET`
@@ -85,7 +85,7 @@ You can test the endpoint manually:
 
 ```bash
 # Without secret (if not set)
-curl https://your-domain.vercel.app/api/cron/refresh-nodes
+curl https://your-domain.vercel.app/api/refresh-nodes
 
 # With secret
 curl -H "Authorization: Bearer YOUR_CRON_SECRET" \
@@ -96,7 +96,7 @@ curl -H "Authorization: Bearer YOUR_CRON_SECRET" \
 
 If you don't want to set up external cron, you can:
 
-1. **Manual trigger**: Visit `/api/cron/refresh-nodes` in browser or use curl
+1. **Manual trigger**: Visit `/api/refresh-nodes` in browser or use curl
 2. **On page load**: Add a client-side trigger (not recommended for production)
 3. **Use existing `/api/sync-nodes` endpoint**: Call it manually when needed
 

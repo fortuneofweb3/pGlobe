@@ -28,7 +28,7 @@ Since GitHub Actions setup is complex, here are **much simpler** options:
 1. Go to https://cron-job.org/en/
 2. Sign up (free)
 3. Click "Create cronjob"
-4. Paste your URL: `https://your-domain.vercel.app/api/cron/refresh-nodes`
+4. Paste your URL: `https://your-domain.vercel.app/api/refresh-nodes`
 5. Set schedule: Every 1 minute
 6. Click "Create"
 
@@ -51,7 +51,7 @@ Since GitHub Actions setup is complex, here are **much simpler** options:
 **How it works**: Refresh only when you manually trigger it or when users visit.
 
 **Implementation**: 
-- Keep the `/api/cron/refresh-nodes` endpoint
+- Keep the `/api/refresh-nodes` endpoint
 - Call it manually when needed
 - Or trigger it on first page load (if not refreshed recently)
 

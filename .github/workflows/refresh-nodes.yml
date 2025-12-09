@@ -31,9 +31,9 @@ jobs:
           
           if [ -z "$CRON_SECRET" ]; then
             echo "⚠️  CRON_SECRET not set. Making request without auth (less secure)."
-            RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "${VERCEL_URL}/api/cron/refresh-nodes" || echo "000")
+            RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "${VERCEL_URL}/api/refresh-nodes" || echo "000")
           else
-            RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "${VERCEL_URL}/api/cron/refresh-nodes" \
+            RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "${VERCEL_URL}/api/refresh-nodes" \
               -H "Authorization: Bearer ${CRON_SECRET}" || echo "000")
           fi
           

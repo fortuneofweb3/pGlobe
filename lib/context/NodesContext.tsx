@@ -201,7 +201,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       // Trigger refresh in background (don't wait for response)
       // Use a small delay to not block initial render
       setTimeout(() => {
-        fetch('/api/cron/refresh-nodes', { method: 'GET' })
+        fetch('/api/refresh-nodes', { method: 'GET' })
           .then(() => {
             localStorage.setItem('lastServerRefresh', now.toString());
           })

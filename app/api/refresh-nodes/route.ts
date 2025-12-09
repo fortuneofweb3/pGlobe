@@ -1,9 +1,13 @@
 /**
- * External Cron Job endpoint for background node refresh
- * Runs every minute to keep MongoDB updated with latest gossip data
+ * Background refresh endpoint for node data
  * 
- * For Vercel Hobby plan: Use external cron service (cron-job.org, EasyCron, etc.)
- * See CRON_SETUP.md for setup instructions
+ * This is a regular API endpoint (NOT a cron job) that can be called:
+ * 1. By client-side code when users visit (automatic)
+ * 2. By external cron services if desired (optional)
+ * 3. Manually via browser/curl
+ * 
+ * For Vercel Hobby plan: Client-side triggers work automatically.
+ * For guaranteed updates: Use external cron service (see CRON_SETUP.md)
  * 
  * This endpoint performs the same refresh logic as the background-refresh.ts module
  */
