@@ -37,7 +37,7 @@ export default function SearchBar({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onFocus={onFocus}
-          className="w-full pl-10 pr-10 py-2.5 bg-card/50 border border-border/60 rounded-lg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-border transition-all"
+          className="w-full pl-10 pr-10 py-2 sm:py-2.5 text-sm sm:text-base bg-card/50 border border-border/60 rounded-lg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-border transition-all"
         />
         {showClearButton && value && (
           <button

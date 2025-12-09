@@ -140,39 +140,42 @@ function NodesPageContent() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden">
-        <div className="h-full w-full p-6">
+        <div className="h-full w-full p-3 sm:p-6">
           <div className="h-full flex flex-col">
             {/* Search and Filters Bar */}
-            <div className="mb-6 space-y-4">
-              <div className="flex flex-wrap gap-3 items-center">
-                {/* Search Bar */}
+            <div className="mb-4 sm:mb-6 space-y-3 sm:space-y-4">
+              {/* Search Bar - Full width on mobile */}
+              <div className="w-full">
                 <SearchBar
                   value={searchQuery}
                   onChange={setSearchQuery}
                     placeholder="Search by IP, public key, or location..."
-                  className="flex-1 min-w-[250px]"
+                  className="w-full"
                   />
+              </div>
 
+              {/* Filters - Side by side on mobile */}
+              <div className="flex flex-row flex-wrap gap-2 sm:gap-3 items-center">
                 {/* Status Filter Dropdown */}
-                <div className="relative">
+                <div className="relative flex-1 min-w-[100px] sm:w-auto sm:flex-none">
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="appearance-none pl-4 pr-10 py-2.5 bg-card/50 border border-border/60 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-border transition-all cursor-pointer"
+                    className="w-full appearance-none pl-3 sm:pl-4 pr-8 sm:pr-10 py-2 sm:py-2.5 bg-card/50 border border-border/60 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-border transition-all cursor-pointer text-xs sm:text-sm"
                   >
                     <option value="all">All ({statusCounts.all})</option>
                     <option value="online">Online ({statusCounts.online})</option>
                     <option value="offline">Offline ({statusCounts.offline})</option>
                   </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-foreground/40 pointer-events-none" />
+                  <ChevronDown className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-foreground/40 pointer-events-none" />
                 </div>
 
                 {/* Version Filter Dropdown */}
-                <div className="relative">
+                <div className="relative flex-1 min-w-[100px] sm:w-auto sm:flex-none">
                   <select
                     value={versionFilter}
                     onChange={(e) => setVersionFilter(e.target.value)}
-                    className="appearance-none pl-4 pr-10 py-2.5 bg-card/50 border border-border/60 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-border transition-all cursor-pointer"
+                    className="w-full appearance-none pl-3 sm:pl-4 pr-8 sm:pr-10 py-2 sm:py-2.5 bg-card/50 border border-border/60 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-border transition-all cursor-pointer text-xs sm:text-sm"
                   >
                     <option value="all">All Versions</option>
                     {versions.map((v) => (
@@ -181,11 +184,11 @@ function NodesPageContent() {
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-foreground/40 pointer-events-none" />
+                  <ChevronDown className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-foreground/40 pointer-events-none" />
                 </div>
 
                 {/* Sort Dropdown */}
-                <div className="relative">
+                <div className="relative flex-1 min-w-[120px] sm:w-auto sm:flex-none">
                   <select
                     value={`${sortBy}-${sortOrder}`}
                     onChange={(e) => {
@@ -193,7 +196,7 @@ function NodesPageContent() {
                       setSortBy(field);
                       setSortOrder(order as 'asc' | 'desc');
                     }}
-                    className="appearance-none pl-4 pr-10 py-2.5 bg-card/50 border border-border/60 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-border transition-all cursor-pointer"
+                    className="w-full appearance-none pl-3 sm:pl-4 pr-8 sm:pr-10 py-2 sm:py-2.5 bg-card/50 border border-border/60 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-border transition-all cursor-pointer text-xs sm:text-sm"
                   >
                     <option value="reputation-desc">Reputation (High to Low)</option>
                     <option value="reputation-asc">Reputation (Low to High)</option>
@@ -202,13 +205,13 @@ function NodesPageContent() {
                     <option value="storageUsed-desc">Storage (High to Low)</option>
                     <option value="storageUsed-asc">Storage (Low to High)</option>
                   </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-foreground/40 pointer-events-none" />
+                  <ChevronDown className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-foreground/40 pointer-events-none" />
                 </div>
               </div>
               
               {/* Results count */}
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <div className="text-xs sm:text-sm text-muted-foreground">
                   Showing <span className="text-foreground font-medium">{filteredAndSortedNodes.length}</span> of <span className="text-foreground font-medium">{nodes.length}</span> nodes
                 </div>
                 {statusFilter !== 'all' && (

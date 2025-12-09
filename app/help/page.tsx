@@ -20,15 +20,15 @@ export default function HelpPage() {
         showNetworkSelector={false}
       />
 
-      <main className="max-w-4xl mx-auto px-6 py-12">
-        <h1 className="text-3xl font-bold text-[#FFD700] mb-8">pGlobe Help & Documentation</h1>
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
+        <h1 className="text-2xl sm:text-3xl font-bold text-[#FFD700] mb-6 sm:mb-8">pGlobe Help & Documentation</h1>
 
         {/* What is pGlobe */}
-        <section className="mb-12">
-          <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+        <section className="mb-8 sm:mb-12">
+          <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
             <span className="text-[#00FF88]">●</span> What is pGlobe?
           </h2>
-          <div className="bg-muted/30 rounded-lg p-6 space-y-4">
+          <div className="bg-muted/30 rounded-lg p-4 sm:p-6 space-y-3 sm:space-y-4">
             <p className="text-foreground/80">
               pGlobe is a real-time analytics dashboard for the <strong className="text-[#FFD700]">Xandeum pNode network</strong>. 
               It provides visibility into the decentralized storage layer that powers Solana dApps with scalable, 

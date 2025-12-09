@@ -95,9 +95,9 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
         onClick={onClose}
       />
       
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 pointer-events-none">
         <div
-          className="bg-black border border-[#FFD700]/20 rounded-xl shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col pointer-events-auto"
+          className="bg-black border-0 sm:border border-[#FFD700]/20 rounded-none sm:rounded-xl shadow-2xl w-full h-full sm:w-full sm:max-w-4xl sm:max-h-[85vh] overflow-hidden flex flex-col pointer-events-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Compact Header */}
@@ -147,7 +147,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
             {/* Node Identifier - Compact */}
             <div className="bg-card/30 border border-border/40 rounded-lg p-3">
               <div className="flex items-center justify-between gap-3">
@@ -180,7 +180,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
             </div>
 
             {/* Main Stats - Compact Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
               <div className="bg-card/40 border border-border/60 rounded-lg p-3">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <Clock className="w-3.5 h-3.5 text-[#FFD700]" />

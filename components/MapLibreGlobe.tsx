@@ -6,7 +6,7 @@ import { Map as MapGL, Marker, Source, Layer, MapRef } from 'react-map-gl/maplib
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { PNode } from '@/lib/types/pnode';
-import { ZoomIn, ZoomOut, RotateCcw, Globe, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Globe, ChevronLeft, ChevronRight, MapPin, Info } from 'lucide-react';
 
 interface MapLibreGlobeProps {
   nodes: PNode[];
@@ -87,6 +87,44 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
   const isInitialLoadRef = useRef(true); // Track if this is the initial load
   const [popupPosition, setPopupPosition] = useState<{ nodePos: { x: number; y: number } | null; popupPos: { x: number; y: number; lineEnd: { x: number; y: number } } | null }>({ nodePos: null, popupPos: null });
   const nodeClickHandledRef = useRef(false);
+  const [legendOpen, setLegendOpen] = useState(false); // Mobile legend open state
+  const legendRef = useRef<HTMLDivElement>(null); // Ref for legend container
+  
+  // Calculate initial zoom based on screen size to ensure full globe is visible
+  const calculateInitialZoom = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return centerLocation ? 4 : 2.2; // Default for SSR
+    }
+    
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    
+    // Base zoom values
+    const baseZoom = centerLocation ? 4 : 2.2;
+    
+    // Calculate zoom adjustment based on screen dimensions
+    // Smaller screens need more zoom out to see full globe
+    // Use the smaller dimension (width or height) as the limiting factor
+    const minDimension = Math.min(width, height);
+    
+    // For very small screens (< 400px), zoom out more
+    // For medium screens (400-768px), moderate zoom out
+    // For larger screens (>= 768px), use base zoom
+    let zoomAdjustment = 0;
+    if (minDimension < 400) {
+      // Very small screens: zoom out significantly
+      zoomAdjustment = -0.7;
+    } else if (minDimension < 600) {
+      // Small screens: zoom out moderately
+      zoomAdjustment = -0.5;
+    } else if (minDimension < 768) {
+      // Medium screens: slight zoom out
+      zoomAdjustment = -0.3;
+    }
+    // Large screens (>= 768px): no adjustment
+    
+    return Math.max(1.0, baseZoom + zoomAdjustment); // Ensure minimum zoom of 1.0
+  }, [centerLocation]);
   const rotationAnimationRef = useRef<number | null>(null);
   const isProgrammaticRotationRef = useRef(false); // Track if rotation is from our code (not user)
   const popupAnimationRef = useRef<number | null>(null);
@@ -856,6 +894,27 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
     return Math.max(2.0, Math.min(3.2, zoom));
   }, []);
 
+  // Handle clicks outside legend to close it on mobile
+  useEffect(() => {
+    if (!legendOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (legendRef.current && !legendRef.current.contains(event.target as Node)) {
+        setLegendOpen(false);
+      }
+    };
+
+    // Add event listener with a small delay to avoid immediate closure
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [legendOpen]);
+
   // Auto-rotation logic - starts immediately when globe loads, stops on user interaction or node navigation
   useEffect(() => {
     console.log('[Globe Rotation] Effect triggered:', {
@@ -1181,6 +1240,13 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
     const popupWidth = 336; // 280 * 1.2
     const popupHeight = 192; // 160 * 1.2
     const margin = 20;
+    
+    // Mobile detection and offsets
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    // Search bar is at top-4 (16px) + search bar height (~50px) + some padding = ~80px
+    const mobileTopOffset = isMobile ? 80 : 0;
+    // Bottom controls (navigation + zoom) are at bottom-4 (16px) + control height (~60px) + some padding = ~100px
+    const mobileBottomOffset = isMobile ? 100 : 0;
 
     // Continuous 60 FPS animation loop
     const animate = () => {
@@ -1196,6 +1262,11 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
       const containerTop = containerRect.top;
       const containerWidth = containerRect.width;
       const containerHeight = containerRect.height;
+      
+      // Re-check mobile on each frame (in case window was resized)
+      const currentIsMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const currentMobileTopOffset = currentIsMobile ? 80 : 0;
+      const currentMobileBottomOffset = currentIsMobile ? 100 : 0;
 
       const nodeRelativeX = nodePos.x - containerLeft;
       const isNodeOnRight = nodeRelativeX > containerWidth / 2;
@@ -1208,12 +1279,14 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
 
       if (isNodeOnRight) {
         targetPopupX = containerLeft + margin;
-        targetPopupY = containerTop + containerHeight - popupHeight - margin;
+        // Add mobile offset to prevent covering bottom controls
+        targetPopupY = containerTop + containerHeight - popupHeight - margin - currentMobileBottomOffset;
         lineEndX = popupWidth / 2;
         lineEndY = 0;
       } else {
         targetPopupX = containerLeft + containerWidth - popupWidth - margin;
-        targetPopupY = containerTop + margin;
+        // Add mobile offset to prevent covering search bar
+        targetPopupY = containerTop + margin + currentMobileTopOffset;
         lineEndX = popupWidth / 2;
         lineEndY = popupHeight;
       }
@@ -1319,17 +1392,24 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
         const nodeRelativeX = initialNodePos.x - initialContainerRect.left;
         const isNodeOnRight = nodeRelativeX > initialContainerRect.width / 2;
         
+        // Check mobile for initial positioning
+        const initialIsMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+        const initialMobileTopOffset = initialIsMobile ? 80 : 0;
+        const initialMobileBottomOffset = initialIsMobile ? 100 : 0;
+        
         let popupX: number;
         let popupY: number;
         let lineEndY: number;
         
         if (isNodeOnRight) {
           popupX = initialContainerRect.left + margin;
-          popupY = initialContainerRect.top + initialContainerRect.height - popupHeight - margin;
+          // Add mobile offset to prevent covering bottom controls
+          popupY = initialContainerRect.top + initialContainerRect.height - popupHeight - margin - initialMobileBottomOffset;
           lineEndY = 0;
         } else {
           popupX = initialContainerRect.left + initialContainerRect.width - popupWidth - margin;
-          popupY = initialContainerRect.top + margin;
+          // Add mobile offset to prevent covering search bar
+          popupY = initialContainerRect.top + margin + initialMobileTopOffset;
           lineEndY = popupHeight;
         }
 
@@ -1719,7 +1799,8 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
         initialViewState={{
           longitude: centerLocation?.lon ?? 0,
           latitude: centerLocation?.lat ?? 0,
-          zoom: centerLocation ? 4 : 2.2, // Zoom in if centering on location
+          // Calculate zoom dynamically based on screen size to ensure full globe is visible
+          zoom: calculateInitialZoom(),
           pitch: 0,
           bearing: 0,
         }}
@@ -2565,46 +2646,68 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
         </div>
       )}
 
-      {/* Legend */}
+      {/* Legend - Mobile button and desktop always visible */}
       {isLoaded && (
-        <div className="absolute top-4 left-4 bg-card border border-border rounded p-3 z-10 shadow-lg max-w-[200px]">
-          <div className="text-body-small font-semibold mb-2">Node Status</div>
-          <div className="flex flex-col gap-1.5">
-            <div 
-              className="flex items-center gap-2 group relative"
-              title="Seen in gossip network within last 5 minutes"
-            >
-              <div
-                className="w-3 h-3 rounded-full border border-black"
-                style={{ backgroundColor: statusColors.online }}
-              />
-              <span className="text-body-small">Online</span>
+        <>
+          {/* Mobile: Toggle button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setLegendOpen(!legendOpen);
+            }}
+            className="md:hidden absolute top-20 left-4 z-10 p-2 bg-card border border-border rounded shadow-lg hover:bg-muted transition-colors"
+            title="Node Status Legend"
+            aria-label="Toggle node status legend"
+          >
+            <Info className="w-5 h-5 text-foreground" />
+          </button>
+
+          {/* Legend content - visible on mobile when open, always visible on desktop */}
+          <div
+            ref={legendRef}
+            onClick={(e) => e.stopPropagation()}
+            className={`absolute top-20 left-4 md:top-4 md:left-4 bg-card border border-border rounded p-3 z-10 shadow-lg max-w-[200px] ${
+              legendOpen || (typeof window !== 'undefined' && window.innerWidth >= 768) ? 'block' : 'hidden'
+            }`}
+          >
+              <div className="text-body-small font-semibold mb-2">Node Status</div>
+              <div className="flex flex-col gap-1.5">
+                <div 
+                  className="flex items-center gap-2 group relative"
+                  title="Seen in gossip network within last 5 minutes"
+                >
+                  <div
+                    className="w-3 h-3 rounded-full border border-black"
+                    style={{ backgroundColor: statusColors.online }}
+                  />
+                  <span className="text-body-small">Online</span>
+                </div>
+                <div 
+                  className="flex items-center gap-2 group relative"
+                  title="Seen within last hour, still synchronizing with network"
+                >
+                  <div
+                    className="w-3 h-3 rounded-full border border-black"
+                    style={{ backgroundColor: statusColors.syncing }}
+                  />
+                  <span className="text-body-small">Syncing</span>
+                </div>
+                <div 
+                  className="flex items-center gap-2 group relative"
+                  title="Not seen in gossip network for over an hour"
+                >
+                  <div
+                    className="w-3 h-3 rounded-full border border-black"
+                    style={{ backgroundColor: statusColors.offline }}
+                  />
+                  <span className="text-body-small">Offline</span>
+                </div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-border text-body-small text-muted-foreground">
+                {nodesWithLocation.length} nodes visible
+              </div>
             </div>
-            <div 
-              className="flex items-center gap-2 group relative"
-              title="Seen within last hour, still synchronizing with network"
-            >
-              <div
-                className="w-3 h-3 rounded-full border border-black"
-                style={{ backgroundColor: statusColors.syncing }}
-              />
-              <span className="text-body-small">Syncing</span>
-            </div>
-            <div 
-              className="flex items-center gap-2 group relative"
-              title="Not seen in gossip network for over an hour"
-            >
-              <div
-                className="w-3 h-3 rounded-full border border-black"
-                style={{ backgroundColor: statusColors.offline }}
-              />
-              <span className="text-body-small">Offline</span>
-            </div>
-          </div>
-          <div className="mt-3 pt-3 border-t border-border text-body-small text-muted-foreground">
-            {nodesWithLocation.length} nodes visible
-          </div>
-        </div>
+        </>
       )}
 
       {!isLoaded && (

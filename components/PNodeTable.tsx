@@ -221,16 +221,17 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
     <div className="flex flex-col h-full bg-card/30 border border-border/60 rounded-lg overflow-hidden">
       {/* Info Banner */}
       {statsWithData.total > 0 && (
-        <div className="px-4 py-2 bg-muted/20 border-b border-border/60 text-xs text-muted-foreground">
+        <div className="px-3 sm:px-4 py-2 bg-muted/20 border-b border-border/60 text-xs text-muted-foreground">
           <span className="font-medium text-foreground/60">Note: </span>
-          Most operators keep pRPC private for security. Stats shown: {statsWithData.withUptime} uptime, {statsWithData.withStorage} storage, {statsWithData.withCPU} CPU, {statsWithData.withLatency} latency (of {statsWithData.total} total nodes)
+          <span className="hidden sm:inline">Most operators keep pRPC private for security. Stats shown: {statsWithData.withUptime} uptime, {statsWithData.withStorage} storage, {statsWithData.withCPU} CPU, {statsWithData.withLatency} latency (of {statsWithData.total} total nodes)</span>
+          <span className="sm:hidden">Limited stats: {statsWithData.withUptime} uptime, {statsWithData.withStorage} storage, {statsWithData.withCPU} CPU, {statsWithData.withLatency} latency</span>
         </div>
       )}
       
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Fixed Header */}
         <div className="overflow-x-auto border-b border-border/60 flex-shrink-0 bg-muted/40">
-          <table className="min-w-full">
+          <table className="min-w-full" style={{ minWidth: '800px' }}>
             <colgroup>
               <col className="w-[12%]" />
               <col className="w-[15%]" />
@@ -245,37 +246,37 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
             </colgroup>
             <thead>
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   IP Address
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   Public Key
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                <th className="px-2 sm:px-4 py-3 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   Registered
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   Uptime
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   Storage
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   Location
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   Last Seen
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                <th className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   Latency
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   CPU
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                <th className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   Balance
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   Version
                 </th>
               </tr>
@@ -285,7 +286,7 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
         
         {/* Scrollable Body */}
         <div className="overflow-x-auto overflow-y-auto flex-1">
-          <table className="min-w-full">
+          <table className="min-w-full" style={{ minWidth: '800px' }}>
             <colgroup>
               <col className="w-[11%]" />
               <col className="w-[14%]" />
@@ -323,7 +324,7 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
                         duplicate ? 'bg-warning/5 border-l-2 border-warning' : ''
                       }`}
                     >
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
                         <a
                           href={`/?node=${encodeURIComponent(node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '')}`}
                           onClick={(e) => {
@@ -336,9 +337,9 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
                           {formatNodeId(node.id, node.address)}
                         </a>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-mono text-foreground/70">
+                          <span className="text-xs sm:text-sm font-mono text-foreground/70">
                             {formatPublicKey(node.pubkey || node.publicKey) || renderEmptyCell('Public key not available')}
                           </span>
                           {duplicate && (
@@ -351,7 +352,7 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-center">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-center">
                         {(() => {
                           const balance = balances[node.id] !== undefined ? balances[node.id] : node.balance;
                           const isRegistered = balance !== undefined && balance !== null && balance > 0;
@@ -366,12 +367,12 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
                           );
                         })()}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="text-sm text-foreground/80">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                        <span className="text-xs sm:text-sm text-foreground/80">
                           {formatUptime(node.uptime) || renderEmptyCell()}
                         </span>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
                         {(() => {
                           const capacity = node.storageCapacity || node.storageCommitted;
                           const used = node.storageUsed;
@@ -380,7 +381,7 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
                           
                           if (hasUsed || hasCapacity) {
                             return (
-                              <span className="text-sm text-foreground/80">
+                              <span className="text-xs sm:text-sm text-foreground/80">
                                 {hasUsed ? formatBytes(used) : '—'} / {hasCapacity ? formatBytes(capacity) : '—'}
                               </span>
                             );
@@ -388,17 +389,17 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
                           return renderEmptyCell();
                         })()}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="text-sm text-foreground/80">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                        <span className="text-xs sm:text-sm text-foreground/80">
                           {node.location || renderEmptyCell()}
                         </span>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="text-sm text-foreground/80">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                        <span className="text-xs sm:text-sm text-foreground/80">
                           {formatLastSeen(node.lastSeen) || renderEmptyCell('Last seen time not available')}
                         </span>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-right">
                         {(() => {
                           // Don't show latency for nodes not seen in gossip (offline)
                           if (node.seenInGossip === false) {
@@ -420,7 +421,7 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
                             const latency = pingResult.latency;
                             const color = getLatencyColor(latency);
                             return (
-                              <span className={`text-sm font-mono font-medium ${color}`}>
+                              <span className={`text-xs sm:text-sm font-mono font-medium ${color}`}>
                                 {formatLatency(latency)}
                               </span>
                             );
@@ -429,7 +430,7 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
                           if (node.latency !== undefined) {
                             const color = getLatencyColor(node.latency);
                             return (
-                              <span className={`text-sm font-mono font-medium ${color}`}>
+                              <span className={`text-xs sm:text-sm font-mono font-medium ${color}`}>
                                 {formatLatency(node.latency)}
                               </span>
                             );
@@ -438,14 +439,14 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
                           return renderEmptyCell();
                         })()}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="text-sm text-foreground/80">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                        <span className="text-xs sm:text-sm text-foreground/80">
                           {node.cpuPercent !== undefined && node.cpuPercent !== null 
                             ? `${node.cpuPercent.toFixed(1)}%`
                             : renderEmptyCell()}
                         </span>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-right">
                         {(() => {
                           const balance = balances[node.id] !== undefined ? balances[node.id] : node.balance;
                           const isFetching = fetchingBalances.has(node.id);
@@ -462,7 +463,7 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
                             return (
                               <BalanceDisplay 
                                 balance={balance} 
-                                className="text-sm font-mono text-foreground/80"
+                                className="text-xs sm:text-sm font-mono text-foreground/80"
                               />
                             );
                           }
@@ -470,7 +471,7 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
                           return renderEmptyCell();
                         })()}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
                         <span className="text-xs text-foreground/70">
                           {node.version || renderEmptyCell()}
                         </span>

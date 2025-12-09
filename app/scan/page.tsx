@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { PNode } from '@/lib/types/pnode';
 import MapLibreGlobe from '@/components/MapLibreGlobe';
 import Header from '@/components/Header';
-import { Search, MapPin, Navigation2, Loader2 } from 'lucide-react';
+import { Search, MapPin, Navigation2, Loader2, X } from 'lucide-react';
 import { enrichNodesWithGeo } from '@/lib/utils/geo';
 import { useNodes } from '@/lib/context/NodesContext';
 
@@ -397,6 +397,8 @@ export default function ScanPage() {
     }
   };
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
       <Header 
@@ -413,16 +415,33 @@ export default function ScanPage() {
         }}
       />
       
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Mobile Sidebar Overlay */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/80 z-40 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
         {/* Left Sidebar - Scan Controls */}
-        <aside className="w-80 flex-shrink-0 bg-black/90 backdrop-blur-md border-r border-[#FFD700]/20 overflow-y-auto z-40">
-          <div className="p-6 space-y-6">
+        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative w-80 flex-shrink-0 bg-black/90 backdrop-blur-md border-r border-[#FFD700]/20 overflow-y-auto z-50 md:z-40 h-full transition-transform duration-300`}>
+          <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             <div>
-              <h2 className="text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
-                <Search className="w-5 h-5 text-foreground/40" />
-                Node Scanner
-              </h2>
-              <p className="text-sm text-muted-foreground">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-base sm:text-lg font-semibold text-foreground flex items-center gap-2">
+                  <Search className="w-4 h-4 sm:w-5 sm:h-5 text-foreground/40" />
+                  Node Scanner
+                </h2>
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="md:hidden p-1 text-foreground/60 hover:text-foreground"
+                  aria-label="Close sidebar"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 Find the closest nodes to any IP address
               </p>
             </div>
@@ -430,7 +449,7 @@ export default function ScanPage() {
             {/* IP Input */}
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-foreground/70 mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-foreground/70 mb-2">
                   IP Address
                 </label>
                 <div className="flex gap-2">
@@ -444,20 +463,20 @@ export default function ScanPage() {
                       }
                     }}
                     placeholder="e.g., 8.8.8.8"
-                    className="flex-1 px-3 py-2 bg-muted/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50"
+                    className="flex-1 px-3 py-2 text-sm bg-muted/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50"
                     disabled={scanning}
                   />
                   <button
                     onClick={handleScan}
                     disabled={scanning}
-                    className="px-4 py-2 bg-[#FFD700]/20 hover:bg-[#FFD700]/30 text-[#FFD700] rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[80px]"
+                    className="px-3 sm:px-4 py-2 bg-[#FFD700]/20 hover:bg-[#FFD700]/30 text-[#FFD700] rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 sm:gap-2 min-w-[70px] sm:min-w-[80px] text-xs sm:text-sm"
                   >
                     {scanning ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <>
-                        <Search className="w-4 h-4" />
-                        Scan
+                        <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">Scan</span>
                       </>
                     )}
                   </button>
@@ -467,9 +486,9 @@ export default function ScanPage() {
               <button
                 onClick={handleAutoDetect}
                 disabled={scanning}
-                className="w-full px-3 py-2 text-sm bg-muted/50 hover:bg-muted/70 text-foreground rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full px-3 py-2 text-xs sm:text-sm bg-muted/50 hover:bg-muted/70 text-foreground rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                <Navigation2 className="w-4 h-4" />
+                <Navigation2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 Use My IP Address
               </button>
             </div>
@@ -502,7 +521,7 @@ export default function ScanPage() {
             {/* Results with Toggle */}
             {(closestNodes.length > 0 || nodesByLatency.length > 0) && (
               <div>
-                <h3 className="text-sm font-semibold text-foreground mb-3">
+                <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-3">
                   Top 20 Nodes
                 </h3>
                 
@@ -663,6 +682,17 @@ export default function ScanPage() {
 
         {/* Main Content - Globe */}
         <main className="flex-1 relative overflow-hidden">
+          {/* Mobile Sidebar Toggle Button */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="md:hidden absolute top-4 left-4 z-50 p-2 bg-black/90 backdrop-blur-md border border-[#FFD700]/20 rounded-lg text-[#FFD700] hover:bg-[#FFD700]/10 transition-colors"
+            aria-label="Toggle sidebar"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+
           {loading || geoEnriching ? (
             <div className="absolute inset-0 flex items-center justify-center">
               <Loader2 className="w-8 h-8 animate-spin text-foreground/40" />

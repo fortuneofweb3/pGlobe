@@ -133,45 +133,45 @@ export default function AnalyticsPage() {
       />
 
       <main className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
           {/* Hero */}
-          <div className="bg-card/40 border border-border/60 rounded-2xl p-5 shadow-lg shadow-black/20">
+          <div className="bg-card/40 border border-border/60 rounded-2xl p-4 sm:p-5 shadow-lg shadow-black/20">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
                   <BarChart3 className="w-4 h-4 text-foreground/40" />
                   Network Analytics
                 </div>
-                <h1 className="text-2xl font-bold leading-tight">Health, performance, and capacity at a glance</h1>
-                <p className="text-sm text-foreground/70">
+                <h1 className="text-xl sm:text-2xl font-bold leading-tight">Health, performance, and capacity at a glance</h1>
+                <p className="text-xs sm:text-sm text-foreground/70">
                   Real-time view of pNode availability, storage footprint, and version rollout.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-3">
-                <div className="px-4 py-2 rounded-xl bg-[#00FF88]/10 border border-[#00FF88]/30 text-sm font-semibold text-[#00FF88]">
+              <div className="flex flex-wrap gap-2 sm:gap-3">
+                <div className="px-3 sm:px-4 py-2 rounded-xl bg-[#00FF88]/10 border border-[#00FF88]/30 text-xs sm:text-sm font-semibold text-[#00FF88]">
                   {nodes.length} nodes tracked
                 </div>
-                <div className="px-4 py-2 rounded-xl bg-muted/30 border border-border text-sm font-mono text-foreground/80">
+                <div className="px-3 sm:px-4 py-2 rounded-xl bg-muted/30 border border-border text-xs sm:text-sm font-mono text-foreground/80">
                   {lastUpdate ? `Last update ${lastUpdate.toLocaleTimeString()}` : 'Updating...'}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={exportToCSV}
                     disabled={nodes.length === 0}
-                    className="px-3 py-1.5 text-sm bg-muted/40 hover:bg-muted/60 text-foreground rounded-lg border border-border/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm bg-muted/40 hover:bg-muted/60 text-foreground rounded-lg border border-border/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-2"
                     title="Export as CSV"
                   >
-                    <FileSpreadsheet className="w-4 h-4" />
-                    CSV
+                    <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">CSV</span>
                   </button>
                   <button
                     onClick={exportToJSON}
                     disabled={nodes.length === 0}
-                    className="px-3 py-1.5 text-sm bg-muted/40 hover:bg-muted/60 text-foreground rounded-lg border border-border/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm bg-muted/40 hover:bg-muted/60 text-foreground rounded-lg border border-border/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-2"
                     title="Export as JSON"
                   >
-                    <FileJson className="w-4 h-4" />
-                    JSON
+                    <FileJson className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">JSON</span>
                   </button>
                 </div>
               </div>
@@ -186,33 +186,33 @@ export default function AnalyticsPage() {
           )}
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-card/50 border border-border rounded-xl p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Nodes</span>
                 <Server className="w-4 h-4 text-foreground/40" />
               </div>
-              <div className="text-2xl font-bold text-foreground">{stats.totalNodes}</div>
+              <div className="text-xl sm:text-2xl font-bold text-foreground">{stats.totalNodes}</div>
               <p className="text-xs text-muted-foreground mt-1">Across all discovered networks</p>
             </div>
 
-            <div className="bg-card/50 border border-border rounded-xl p-4">
+            <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Online</span>
                 <Activity className="w-4 h-4 text-foreground/40" />
               </div>
-              <div className="text-2xl font-bold text-foreground">{stats.onlineNodes}</div>
+              <div className="text-xl sm:text-2xl font-bold text-foreground">{stats.onlineNodes}</div>
               <div className="text-xs text-foreground/50 mt-1">
                 {stats.totalNodes > 0 ? Math.round((stats.onlineNodes / stats.totalNodes) * 100) : 0}% of network
               </div>
             </div>
 
-            <div className="bg-card/50 border border-border rounded-xl p-4">
+            <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Storage</span>
                 <HardDrive className="w-4 h-4 text-foreground/40" />
               </div>
-              <div className="text-2xl font-bold text-foreground">
+              <div className="text-xl sm:text-2xl font-bold text-foreground">
                 {stats.totalStorage > 0 ? formatStorageBytes(stats.totalStorage) : 'N/A'}
               </div>
               <div className="text-xs text-foreground/50 mt-1">
@@ -220,12 +220,12 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            <div className="bg-card/50 border border-border rounded-xl p-4">
+            <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Avg Uptime</span>
                 <TrendingUp className="w-4 h-4 text-foreground/40" />
               </div>
-              <div className="text-2xl font-bold text-foreground">
+              <div className="text-xl sm:text-2xl font-bold text-foreground">
                 {stats.avgUptime > 0 
                   ? `${Math.floor(stats.avgUptime / 86400)}d ${Math.floor((stats.avgUptime % 86400) / 3600)}h`
                   : 'N/A'}
@@ -237,23 +237,23 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Main Grid Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Left Column - Health Score & Version Distribution */}
-            <div className="lg:col-span-1 space-y-6">
-              <div className="bg-card/50 border border-border rounded-xl p-6">
+            <div className="lg:col-span-1 space-y-4 sm:space-y-6">
+              <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
                 <NetworkHealthScoreDetailed nodes={nodes} />
               </div>
 
-              <div className="bg-card/50 border border-border rounded-xl p-6">
+              <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
                 <VersionDistribution nodes={nodes} />
               </div>
 
-              <div className="bg-card/50 border border-border rounded-xl p-6">
+              <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
                 <h3 className="text-sm font-semibold text-foreground/60 mb-4 uppercase tracking-wide">Top Nodes</h3>
                 <NodeRankings nodes={nodes} />
               </div>
 
-              <div className="bg-card/50 border border-border rounded-xl p-6">
+              <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <button
                     onClick={() => setActiveTab('insights')}
@@ -287,50 +287,50 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Right Column - Charts */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-card/50 border border-border rounded-xl p-6">
-                <div className="flex items-center gap-2 mb-6">
-                  <Activity className="w-5 h-5 text-foreground/40" />
-                  <h2 className="text-lg font-semibold text-foreground">Network Health Over Time</h2>
+            <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+              <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
+                <div className="flex items-center gap-2 mb-4 sm:mb-6">
+                  <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-foreground/40" />
+                  <h2 className="text-base sm:text-lg font-semibold text-foreground">Network Health Over Time</h2>
                 </div>
                 <NetworkHealthChart nodes={nodes} />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-card/50 border border-border rounded-xl p-6">
-                  <div className="flex items-center gap-2 mb-6">
-                    <HardDrive className="w-5 h-5 text-foreground/40" />
-                    <h2 className="text-lg font-semibold text-foreground">Storage Distribution</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
+                  <div className="flex items-center gap-2 mb-4 sm:mb-6">
+                    <HardDrive className="w-4 h-4 sm:w-5 sm:h-5 text-foreground/40" />
+                    <h2 className="text-base sm:text-lg font-semibold text-foreground">Storage Distribution</h2>
                   </div>
                   <StorageDistributionChart nodes={nodes} />
                 </div>
 
-                <div className="bg-card/50 border border-border rounded-xl p-6">
-                  <div className="flex items-center gap-2 mb-6">
-                    <TrendingUp className="w-5 h-5 text-foreground/40" />
-                    <h2 className="text-lg font-semibold text-foreground">Uptime Trend</h2>
+                <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
+                  <div className="flex items-center gap-2 mb-4 sm:mb-6">
+                    <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-foreground/40" />
+                    <h2 className="text-base sm:text-lg font-semibold text-foreground">Uptime Trend</h2>
                   </div>
                   <UptimeTrendChart nodes={nodes} historicalData={historicalData} />
                 </div>
               </div>
 
               {/* Developer-Focused Analytics */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-card/50 border border-border rounded-xl p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
                   <LatencyDistribution nodes={nodes} />
                 </div>
 
-                <div className="bg-card/50 border border-border rounded-xl p-6">
+                <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
                   <ResourceUtilization nodes={nodes} />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-card/50 border border-border rounded-xl p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
                   <GeographicPerformance nodes={nodes} />
                 </div>
 
-                <div className="bg-card/50 border border-border rounded-xl p-6">
+                <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
                   <NetworkReliability nodes={nodes} />
                 </div>
               </div>

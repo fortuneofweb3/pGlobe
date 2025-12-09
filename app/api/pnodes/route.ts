@@ -59,9 +59,11 @@ export async function GET(request: Request) {
             // If connection error, try to trigger refresh anyway (might help)
             if (dbError?.message?.includes('MONGODB_URI') || dbError?.message?.includes('not defined')) {
               console.error('[API] 💡 MONGODB_URI not set in Vercel Environment Variables!');
+              console.error('[API] Please set MONGODB_URI in Vercel project settings > Environment Variables');
             }
             
-            // Return empty array instead of crashing
+            // Return empty array instead of crashing - but log the error clearly
+            console.error('[API] Returning empty array due to MongoDB error');
             nodes = [];
           }
         } else {
@@ -153,15 +155,21 @@ export async function GET(request: Request) {
       nodes = getMockPNodes();
     }
 
+    // Always return nodes array (even if empty) - never return undefined
+    const response = {
+      nodes: nodes || [],
+      totalNodes: nodes?.length || 0,
+      timestamp: Date.now(),
+    };
+    
+    console.log(`[API] Returning response with ${response.nodes.length} nodes`);
+    
     // Add cache headers for faster subsequent loads
-    return NextResponse.json(
-      { nodes },
-      {
-        headers: {
-          'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
-        },
-      }
-    );
+    return NextResponse.json(response, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+      },
+    });
   } catch (error: any) {
     console.error('[API] Fatal error:', error?.message || error);
     

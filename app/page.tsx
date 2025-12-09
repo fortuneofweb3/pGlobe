@@ -316,6 +316,8 @@ function HomeContent() {
     setTimeout(() => setNavigateToNodeId(null), 100);
   }, []);
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
     <div className="fixed inset-0 w-full h-full flex flex-col" style={{ backgroundColor: '#000000' }}>
       {/* Header - Fixed at top */}
@@ -334,55 +336,76 @@ function HomeContent() {
       />
 
       {/* Main Content Area - Header, Sidebars, and Map */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Mobile Sidebar Overlay */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/80 z-40 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
         {/* Left Sidebar */}
-        <aside className="w-80 flex-shrink-0 bg-black/90 backdrop-blur-md border-r border-[#FFD700]/20 overflow-y-auto z-40">
-          <div className="p-6 space-y-6">
+        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative w-80 flex-shrink-0 bg-black/90 backdrop-blur-md border-r border-[#FFD700]/20 overflow-y-auto z-50 md:z-40 h-full transition-transform duration-300`}>
+          <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+            {/* Mobile close button */}
+            <div className="flex items-center justify-between mb-2 md:hidden">
+              <h2 className="text-sm font-semibold text-foreground/60 uppercase tracking-wide">Network Stats</h2>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="p-1 text-foreground/60 hover:text-foreground"
+                aria-label="Close sidebar"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
             <div>
-              <h2 className="text-xs font-semibold text-foreground/60 mb-4 uppercase tracking-wide">Network Stats</h2>
-              <div className="space-y-3">
+              <h2 className="text-xs font-semibold text-foreground/60 mb-3 sm:mb-4 uppercase tracking-wide hidden md:block">Network Stats</h2>
+              <div className="space-y-2 sm:space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-foreground/70">Total Nodes</span>
-                  <span className="text-sm font-semibold text-foreground">{stats.totalNodes}</span>
+                  <span className="text-xs sm:text-sm text-foreground/70">Total Nodes</span>
+                  <span className="text-xs sm:text-sm font-semibold text-foreground">{stats.totalNodes}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-foreground/70 flex items-center gap-1.5">
+                  <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5">
                     Online
                     <InfoTooltip content="Seen in gossip network within last 5 minutes" />
                   </span>
-                  <span className="text-sm font-semibold text-[#00FF88]">{stats.onlineNodes}</span>
+                  <span className="text-xs sm:text-sm font-semibold text-[#00FF88]">{stats.onlineNodes}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-foreground/70 flex items-center gap-1.5">
+                  <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5">
                     Syncing
                     <InfoTooltip content="Seen within last hour, still synchronizing with network" />
                   </span>
-                  <span className="text-sm font-semibold text-[#FFD700]">
+                  <span className="text-xs sm:text-sm font-semibold text-[#FFD700]">
                     {nodes.filter(n => n.status === 'syncing').length}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-foreground/70 flex items-center gap-1.5">
+                  <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5">
                     Offline
                     <InfoTooltip content="Not seen in gossip network for over an hour" />
                   </span>
-                  <span className="text-sm font-semibold text-red-400">
+                  <span className="text-xs sm:text-sm font-semibold text-red-400">
                     {nodes.filter(n => n.status === 'offline').length}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="pt-6 border-t border-border">
-              <div className="flex items-center justify-between mb-4">
+            <div className="pt-4 sm:pt-6 border-t border-border">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Performance</h2>
                 <InfoTooltip content="Stats from nodes with public pRPC only (~10 of 135 nodes). Most operators keep pRPC private (localhost-only) for security.">
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground hidden sm:inline">
                     {nodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent > 0).length}/{nodes.length} reporting
                   </span>
                 </InfoTooltip>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 <MetricRow
                   label="Avg Uptime"
                   value={stats.avgUptime > 0 ? formatUptimeDuration(stats.avgUptime) : 'N/A'}
@@ -407,19 +430,19 @@ function HomeContent() {
             </div>
           </div>
 
-            <div className="pt-6 border-t border-border">
-              <div className="flex items-center justify-between mb-4">
+            <div className="pt-4 sm:pt-6 border-t border-border">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Storage</h2>
                 {stats.usedStorage === 0 && (
                   <InfoTooltip content="Storage data requires nodes with public pRPC. Most nodes keep pRPC private for security.">
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                       <Info className="w-3 h-3 text-foreground/40" />
-                      Limited
+                      <span className="hidden sm:inline">Limited</span>
                     </span>
                   </InfoTooltip>
                 )}
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 <MetricRow
                   label="Total Used"
                   value={formatStorageBytes(stats.usedStorage)}
@@ -444,16 +467,16 @@ function HomeContent() {
                   </div>
 
             {/* Network Activity Section */}
-            <div className="pt-6 border-t border-border">
-              <div className="flex items-center justify-between mb-4">
+            <div className="pt-4 sm:pt-6 border-t border-border">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Network Activity</h2>
                 <InfoTooltip content="From nodes with public pRPC only. Most nodes keep pRPC private.">
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground hidden sm:inline">
                     {nodes.filter(n => n.packetsReceived !== undefined && n.packetsReceived > 0).length}/{nodes.length}
                   </span>
                 </InfoTooltip>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 <MetricRow
                   label="Active Streams"
                   value={stats.totalActiveStreams > 0 ? stats.totalActiveStreams.toLocaleString() : 'N/A'}
@@ -477,10 +500,21 @@ function HomeContent() {
 
         {/* Center - Map */}
         <main className="flex-1 relative overflow-hidden">
+          {/* Mobile Sidebar Toggle Button */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="md:hidden absolute top-4 left-4 z-50 p-2 bg-black/90 backdrop-blur-md border border-[#FFD700]/20 rounded-lg text-[#FFD700] hover:bg-[#FFD700]/10 transition-colors"
+            aria-label="Toggle sidebar"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+
           {/* Search Bar - Top of Globe */}
           <div 
             ref={searchContainerRef}
-            className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md"
+            className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4 md:px-0"
           >
             <SearchBar
               value={globeSearchQuery}
@@ -499,7 +533,7 @@ function HomeContent() {
             >
               {/* Search Results Dropdown */}
               {showSearchResults && globeSearchQuery.trim() && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-black/95 backdrop-blur-md border border-[#FFD700]/20 rounded-lg shadow-xl max-h-96 overflow-y-auto z-50">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-black/95 backdrop-blur-md border border-[#FFD700]/20 rounded-lg shadow-xl max-h-64 sm:max-h-96 overflow-y-auto z-50">
                   {globeSearchResults.length === 0 ? (
                     <div className="p-4 text-sm text-muted-foreground text-center">
                       No nodes found
@@ -509,12 +543,15 @@ function HomeContent() {
                       {globeSearchResults.map((node) => (
                         <button
                           key={node.id}
-                          onClick={() => handleNodeSelect(node)}
-                          className="w-full px-4 py-3 text-left hover:bg-muted/30 transition-colors border-b border-border/20 last:border-b-0"
+                          onClick={() => {
+                            handleNodeSelect(node);
+                            setSidebarOpen(false);
+                          }}
+                          className="w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-muted/30 transition-colors border-b border-border/20 last:border-b-0"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm font-mono text-foreground truncate">
+                              <div className="text-xs sm:text-sm font-mono text-foreground truncate">
                                 {node.pubkey || node.publicKey || node.id}
                               </div>
                               {node.address && (
@@ -531,7 +568,7 @@ function HomeContent() {
                             </div>
                             <div className="flex-shrink-0">
                               <span
-                                className={`text-xs px-2 py-1 rounded ${
+                                className={`text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded ${
                                   node.status === 'online'
                                     ? 'bg-green-500/20 text-green-400'
                                     : node.status === 'syncing'
