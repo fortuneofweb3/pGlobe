@@ -20,17 +20,15 @@ export async function GET(request: Request) {
         // FAST PATH: If refresh=false, just return from MongoDB immediately
         // Background task handles all the gossip fetching and enrichment
         if (!refresh) {
-          console.log('[API] Fetching nodes from MongoDB (fast path)...');
+          // Fast path - just get from MongoDB (no logging to reduce overhead)
           try {
             nodes = await getAllNodes();
-            console.log(`[API] Retrieved ${nodes.length} nodes from MongoDB`);
             // If getAllNodes returns empty array, it might be a connection issue
             if (nodes.length === 0) {
               console.warn('[API] getAllNodes returned empty array - MongoDB might be empty or connection issue');
             }
           } catch (dbError: any) {
             console.error('[API] MongoDB error in getAllNodes:', dbError?.message || dbError);
-            console.error('[API] Stack:', dbError?.stack);
             // Return empty array instead of crashing
             nodes = [];
           }

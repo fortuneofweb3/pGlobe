@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { PNode } from '@/lib/types/pnode';
 import { NetworkConfig } from '@/lib/server/network-config';
 
@@ -26,6 +26,10 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   const [selectedNetwork, setSelectedNetwork] = useState<string>('devnet1');
   const [availableNetworks, setAvailableNetworks] = useState<NetworkConfig[]>([]);
   const [currentNetwork, setCurrentNetwork] = useState<NetworkConfig | null>(null);
+  
+  // Request deduplication - prevent multiple simultaneous requests
+  const fetchingRef = useRef(false);
+  const fetchPromiseRef = useRef<Promise<void> | null>(null);
 
   const cacheKey = (network: string) => `nodesCache:${network || 'default'}`;
 
@@ -73,85 +77,101 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   );
 
   const refreshNodes = useCallback(async () => {
-    try {
-      const params = new URLSearchParams();
-      if (selectedNetwork) {
-        params.set('network', selectedNetwork);
-      }
-      // Don't pass refresh=true - just get from MongoDB (fast path)
-      const url = `/api/pnodes?${params.toString()}`;
-
-      // Use fetch with timeout to prevent hanging
-      let response: Response;
-      try {
-        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-        const timeoutId = controller ? setTimeout(() => controller.abort(), 5000) : null; // 5 second timeout
-        
-        response = await fetch(url, {
-          ...(controller ? { signal: controller.signal } : {}),
-          cache: 'no-store', // Always get fresh data
-        });
-        
-        if (timeoutId) clearTimeout(timeoutId);
-      } catch (err: any) {
-        if (err?.name === 'AbortError') {
-          throw new Error('Request timeout - data fetch took too long');
-        }
-        throw err;
-      }
-      
-      const data = await response.json();
-
-      if (data.nodes && Array.isArray(data.nodes)) {
-        setNodes(data.nodes);
-        setLastUpdate(new Date());
-        setError(null);
-
-        // Update network info
-        if (data.networks && Array.isArray(data.networks)) {
-          setAvailableNetworks(data.networks);
-        }
-        if (data.currentNetwork) {
-          setCurrentNetwork(data.currentNetwork);
-          setSelectedNetwork(data.currentNetwork.id);
-        }
-
-        // cache successful fetch
-        saveCache({
-          nodes: data.nodes,
-          lastUpdate: new Date(),
-          availableNetworks: data.networks,
-          currentNetwork: data.currentNetwork,
-        });
-      } else {
-        setError(data.error || 'Failed to fetch nodes');
-      }
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'An error occurred';
-      
-      // Only set error if we don't have cached data
-      const cached = loadCache();
-      if (!cached?.nodes) {
-        setError(errorMsg);
-      }
-
-      // fallback to cached data if available
-      if (cached?.nodes) {
-        setNodes(cached.nodes);
-        setLastUpdate(cached.lastUpdate ? new Date(cached.lastUpdate) : null);
-        if (cached.availableNetworks) setAvailableNetworks(cached.availableNetworks);
-        if (cached.currentNetwork) setCurrentNetwork(cached.currentNetwork);
-      }
-    } finally {
-      setLoading(false);
+    // Request deduplication - if already fetching, return the existing promise
+    if (fetchingRef.current && fetchPromiseRef.current) {
+      return fetchPromiseRef.current;
     }
-  }, [selectedNetwork, loadCache, saveCache]);
+
+    fetchingRef.current = true;
+    
+    const fetchPromise = (async () => {
+      try {
+        const params = new URLSearchParams();
+        if (selectedNetwork) {
+          params.set('network', selectedNetwork);
+        }
+        // Don't pass refresh=true - just get from MongoDB (fast path)
+        const url = `/api/pnodes?${params.toString()}`;
+
+        // Use fetch with shorter timeout for faster failure
+        let response: Response;
+        try {
+          const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+          const timeoutId = controller ? setTimeout(() => controller.abort(), 3000) : null; // 3 second timeout (faster)
+          
+          response = await fetch(url, {
+            ...(controller ? { signal: controller.signal } : {}),
+            cache: 'no-store', // Always get fresh data
+          });
+          
+          if (timeoutId) clearTimeout(timeoutId);
+        } catch (err: any) {
+          if (err?.name === 'AbortError') {
+            throw new Error('Request timeout - data fetch took too long');
+          }
+          throw err;
+        }
+        
+        const data = await response.json();
+
+        if (data.nodes && Array.isArray(data.nodes)) {
+          // Update UI immediately with new data
+          setNodes(data.nodes);
+          setLastUpdate(new Date());
+          setError(null);
+
+          // Update network info
+          if (data.networks && Array.isArray(data.networks)) {
+            setAvailableNetworks(data.networks);
+          }
+          if (data.currentNetwork) {
+            setCurrentNetwork(data.currentNetwork);
+            setSelectedNetwork(data.currentNetwork.id);
+          }
+
+          // Cache successful fetch (async, don't block)
+          saveCache({
+            nodes: data.nodes,
+            lastUpdate: new Date(),
+            availableNetworks: data.networks,
+            currentNetwork: data.currentNetwork,
+          });
+        } else {
+          setError(data.error || 'Failed to fetch nodes');
+        }
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'An error occurred';
+        
+        // Only set error if we don't have cached data
+        const cached = loadCache();
+        if (!cached?.nodes) {
+          setError(errorMsg);
+        }
+
+        // Fallback to cached data if available (don't overwrite if we already have nodes)
+        if (cached?.nodes && nodes.length === 0) {
+          setNodes(cached.nodes);
+          setLastUpdate(cached.lastUpdate ? new Date(cached.lastUpdate) : null);
+          if (cached.availableNetworks) setAvailableNetworks(cached.availableNetworks);
+          if (cached.currentNetwork) setCurrentNetwork(cached.currentNetwork);
+        }
+      } finally {
+        fetchingRef.current = false;
+        fetchPromiseRef.current = null;
+        setLoading(false);
+      }
+    })();
+
+    fetchPromiseRef.current = fetchPromise;
+    return fetchPromise;
+  }, [selectedNetwork, loadCache, saveCache, nodes.length]);
 
   // Initial fetch - load from cache instantly, then fetch in background
   useEffect(() => {
-    // hydrate from cache first so UI has data immediately (no loading state)
+    // Hydrate from cache FIRST - show existing data immediately (no loading state)
     const cached = loadCache();
-    if (cached?.nodes) {
+    if (cached?.nodes && cached.nodes.length > 0) {
+      // Show cached data immediately - UI updates instantly
       setNodes(cached.nodes);
       setLastUpdate(cached.lastUpdate ? new Date(cached.lastUpdate) : null);
       if (cached.availableNetworks) setAvailableNetworks(cached.availableNetworks);
@@ -159,23 +179,51 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         setCurrentNetwork(cached.currentNetwork);
         setSelectedNetwork(cached.currentNetwork.id);
       }
-      setLoading(false); // Set loading to false immediately so UI renders
+      setLoading(false); // Set loading to false immediately so UI renders with cached data
     } else {
       // Only show loading if no cache available
       setLoading(true);
     }
     
-    // Fetch fresh data in background (non-blocking)
-    refreshNodes();
+    // Fetch fresh data in background (non-blocking) - will update UI when ready
+    // Use requestAnimationFrame to ensure UI renders cached data first
+    requestAnimationFrame(() => {
+      refreshNodes();
+    });
+    
+    // Trigger server-side refresh if it hasn't been refreshed in the last minute
+    // This keeps MongoDB updated even without external cron
+    const lastRefreshTime = localStorage.getItem('lastServerRefresh');
+    const now = Date.now();
+    const oneMinuteAgo = now - 60 * 1000;
+    
+    if (!lastRefreshTime || parseInt(lastRefreshTime) < oneMinuteAgo) {
+      // Trigger refresh in background (don't wait for response)
+      // Use a small delay to not block initial render
+      setTimeout(() => {
+        fetch('/api/cron/refresh-nodes', { method: 'GET' })
+          .then(() => {
+            localStorage.setItem('lastServerRefresh', now.toString());
+          })
+          .catch((err) => {
+            // Silently fail - not critical
+            console.debug('[NodesContext] Server refresh failed:', err);
+          });
+      }, 500); // Small delay to let UI render first
+    }
   }, [refreshNodes, loadCache]);
 
   // Passive polling: Fetch fresh data from MongoDB every minute (matches background refresh interval)
+  // Only poll if we have nodes (don't poll if initial load failed)
   useEffect(() => {
+    if (nodes.length === 0) return; // Don't poll if no nodes loaded
+    
     const interval = setInterval(() => {
+      // Fetch in background - UI already has data, this just updates it
       refreshNodes();
     }, 60 * 1000); // 1 minute
     return () => clearInterval(interval);
-  }, [refreshNodes]);
+  }, [refreshNodes, nodes.length]);
 
   // Refresh when network changes
   useEffect(() => {

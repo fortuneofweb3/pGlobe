@@ -12,11 +12,15 @@ This workflow automatically refreshes your node data every minute using GitHub A
 
 ### 2. Set Up GitHub Secrets
 
-1. Go to your GitHub repository
-2. Navigate to **Settings** → **Secrets and variables** → **Actions**
-3. Click **New repository secret**
+**Step-by-step:**
 
-Add these secrets:
+1. Go to your GitHub repository: `https://github.com/fortuneofweb3/pGlobe` (or your repo URL)
+2. Click on the **Settings** tab (top menu, next to "Insights")
+3. In the left sidebar, scroll down and click **Secrets and variables**
+4. Click **Actions** (should be selected by default)
+5. Click the green **New repository secret** button
+
+**Add these secrets one by one:**
 
 #### Required:
 - **Name**: `VERCEL_URL`
