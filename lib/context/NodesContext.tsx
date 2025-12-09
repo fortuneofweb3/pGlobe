@@ -79,10 +79,12 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   const refreshNodes = useCallback(async () => {
     // Request deduplication - if already fetching, return the existing promise
     if (fetchingRef.current && fetchPromiseRef.current) {
+      console.log('[NodesContext] Already fetching, returning existing promise');
       return fetchPromiseRef.current;
     }
 
     fetchingRef.current = true;
+    console.log('[NodesContext] Starting fetch...');
     
     const fetchPromise = (async () => {
       try {
@@ -92,6 +94,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         }
         // Don't pass refresh=true - just get from MongoDB (fast path)
         const url = `/api/pnodes?${params.toString()}`;
+        console.log('[NodesContext] Fetching from:', url);
 
         // Use fetch with shorter timeout for faster failure
         let response: Response;
@@ -99,12 +102,14 @@ export function NodesProvider({ children }: { children: ReactNode }) {
           const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
           const timeoutId = controller ? setTimeout(() => controller.abort(), 10000) : null; // 10 second timeout (MongoDB might be slow on first connection)
           
+          console.log('[NodesContext] Making fetch request...');
           response = await fetch(url, {
             ...(controller ? { signal: controller.signal } : {}),
             cache: 'no-store', // Always get fresh data
           });
           
           if (timeoutId) clearTimeout(timeoutId);
+          console.log('[NodesContext] Fetch response status:', response.status);
         } catch (err: any) {
           if (err?.name === 'AbortError') {
             throw new Error('Request timeout - data fetch took too long');
@@ -113,8 +118,10 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         }
         
         const data = await response.json();
+        console.log('[NodesContext] Received data, nodes count:', data.nodes?.length || 0);
 
         if (data.nodes && Array.isArray(data.nodes)) {
+          console.log('[NodesContext] ✅ Setting nodes:', data.nodes.length);
           // Update UI immediately with new data
           setNodes(data.nodes);
           setLastUpdate(new Date());
@@ -190,9 +197,14 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     
     // STEP 1: Fetch from MongoDB FIRST (fast, non-blocking)
     // This ensures we show data immediately, even if refresh is slow
-    requestAnimationFrame(() => {
-      refreshNodes(); // This fetches from MongoDB (fast path)
-    });
+    console.log('[NodesContext] Initial mount - starting data fetch...');
+    // Use setTimeout instead of requestAnimationFrame to ensure it runs
+    setTimeout(() => {
+      console.log('[NodesContext] Calling refreshNodes()...');
+      refreshNodes().catch(err => {
+        console.error('[NodesContext] Initial refreshNodes failed:', err);
+      });
+    }, 100); // Small delay to ensure component is mounted
     
     // STEP 2: Trigger server-side refresh AFTER fetching MongoDB data
     // This keeps MongoDB updated in the background
@@ -204,8 +216,17 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       // Wait a bit longer to ensure MongoDB fetch completes first
       setTimeout(() => {
         console.log('[NodesContext] Triggering background refresh...');
-        fetch('/api/refresh-nodes', { method: 'GET' })
+        
+        // Add timeout to prevent hanging
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+        
+        fetch('/api/refresh-nodes', { 
+          method: 'GET',
+          signal: controller.signal,
+        })
           .then(async (res) => {
+            clearTimeout(timeoutId);
             const data = await res.json();
             if (res.ok) {
               console.log('[NodesContext] ✅ Background refresh successful');
@@ -217,7 +238,12 @@ export function NodesProvider({ children }: { children: ReactNode }) {
             }
           })
           .catch((err) => {
-            console.error('[NodesContext] ❌ Background refresh request failed:', err);
+            clearTimeout(timeoutId);
+            if (err.name === 'AbortError') {
+              console.warn('[NodesContext] ⚠️ Background refresh timed out (this is OK, it continues in background)');
+            } else {
+              console.error('[NodesContext] ❌ Background refresh request failed:', err);
+            }
           });
       }, 2000); // Wait 2s to let MongoDB fetch complete first
     } else {

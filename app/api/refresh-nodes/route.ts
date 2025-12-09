@@ -49,13 +49,20 @@ export async function GET(request: Request) {
       nodeEnv: process.env.NODE_ENV,
     });
     
-    // Call the exported refresh function
-    await performRefresh();
+    // Return immediately and run refresh in background (non-blocking)
+    // This prevents the client from hanging
+    performRefresh()
+      .then(() => {
+        console.log('[Refresh] ✅ Background refresh completed successfully');
+      })
+      .catch((err) => {
+        console.error('[Refresh] ❌ Background refresh failed:', err);
+      });
     
-    console.log('[Refresh] ✅ Background refresh completed successfully');
+    // Return immediately - don't wait for refresh to complete
     return NextResponse.json({
       success: true,
-      message: 'Background refresh completed',
+      message: 'Background refresh started',
       timestamp: new Date().toISOString(),
     });
   } catch (error: any) {
