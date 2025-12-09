@@ -1,0 +1,102 @@
+'use client';
+
+import { useMemo } from 'react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { PNode } from '@/lib/types/pnode';
+
+interface NetworkHealthChartProps {
+  nodes: PNode[];
+}
+
+const COLORS = {
+  online: '#3F8277',
+  offline: '#ED1C24',
+  syncing: '#FFD700',
+};
+
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0];
+    return (
+      <div className="bg-black/95 backdrop-blur-md border border-[#FFD700]/30 rounded-lg p-3 shadow-xl">
+        <p className="text-sm font-semibold text-foreground mb-1">{data.name}</p>
+        <p className="text-xs text-foreground/80">
+          <span className="font-mono font-semibold">{data.value}</span> nodes
+        </p>
+        <p className="text-xs text-foreground/60 mt-1">
+          {((data.payload.percent || 0) * 100).toFixed(1)}% of network
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
+const CustomLegend = (props: any) => {
+  const { payload } = props;
+  return (
+    <div className="flex items-center justify-center gap-6 mt-4">
+      {payload.map((entry: any, index: number) => (
+        <div key={index} className="flex items-center gap-2">
+          <div
+            className="w-3 h-3 rounded-full"
+            style={{ backgroundColor: entry.color }}
+          />
+          <span className="text-xs text-foreground/80">{entry.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export default function NetworkHealthChart({ nodes }: NetworkHealthChartProps) {
+  const data = useMemo(() => {
+    const statusCounts = nodes.reduce(
+      (acc, node) => {
+        const status = node.status || 'offline';
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+
+    return [
+      { name: 'Online', value: statusCounts.online || 0, color: COLORS.online },
+      { name: 'Offline', value: statusCounts.offline || 0, color: COLORS.offline },
+      { name: 'Syncing', value: statusCounts.syncing || 0, color: COLORS.syncing },
+    ].filter((item) => item.value > 0);
+  }, [nodes]);
+
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+
+  return (
+    <div>
+      {total > 0 ? (
+        <ResponsiveContainer width="100%" height={300}>
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+              outerRadius={100}
+              fill="#8884d8"
+              dataKey="value"
+            >
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
+              ))}
+            </Pie>
+            <Tooltip content={<CustomTooltip />} />
+            <Legend content={<CustomLegend />} />
+          </PieChart>
+        </ResponsiveContainer>
+      ) : (
+        <div className="flex items-center justify-center h-[300px] text-foreground/50">
+          <p className="text-sm">No data available</p>
+        </div>
+      )}
+    </div>
+  );
+}

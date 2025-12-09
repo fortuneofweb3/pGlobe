@@ -1,0 +1,120 @@
+'use client';
+
+import { PNode } from '@/lib/types/pnode';
+import { useMemo } from 'react';
+import { Info } from 'lucide-react';
+import { calculateNetworkHealth } from '@/lib/utils/network-health';
+
+interface NetworkHealthScoreDetailedProps {
+  nodes: PNode[];
+}
+
+export default function NetworkHealthScoreDetailed({ nodes }: NetworkHealthScoreDetailedProps) {
+  const healthMetrics = useMemo(() => calculateNetworkHealth(nodes), [nodes]);
+
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'text-[#00FF88]';
+    if (score >= 60) return 'text-[#FFD700]';
+    return 'text-red-400';
+  };
+
+  const getBarColor = (score: number) => {
+    if (score >= 80) return 'bg-[#00FF88]';
+    if (score >= 60) return 'bg-[#FFD700]';
+    return 'bg-red-400';
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Overall Score - Large Display */}
+      <div className="text-center py-6 border-b border-border">
+        <div className="text-5xl font-bold mb-2">
+          <span className={getScoreColor(healthMetrics.overall)}>{healthMetrics.overall}</span>
+        </div>
+        <div className="text-sm text-muted-foreground">
+          Network Health Score
+        </div>
+        <div className="text-xs text-muted-foreground/70 mt-1">
+          = (100×40%) + (80×35%) + (70×25%)
+        </div>
+      </div>
+
+      {/* Score Breakdown Bars */}
+      <div className="space-y-4">
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-foreground">Availability</span>
+              <button className="text-muted-foreground hover:text-foreground transition-colors" title="Percentage of nodes currently online">
+                <Info className="w-3 h-3" />
+              </button>
+            </div>
+            <span className={`text-sm font-bold ${getScoreColor(healthMetrics.availability)}`}>
+              {healthMetrics.availability}%
+            </span>
+          </div>
+          <div className="w-full bg-muted/30 rounded-full h-2">
+            <div
+              className={`h-2 rounded-full transition-all duration-500 ${getBarColor(healthMetrics.availability)}`}
+              style={{ width: `${healthMetrics.availability}%` }}
+            />
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {nodes.filter(n => n.status === 'online').length} / {nodes.length} nodes online
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-foreground">Version Health</span>
+              <button className="text-muted-foreground hover:text-foreground transition-colors" title="Percentage of nodes on the latest version">
+                <Info className="w-3 h-3" />
+              </button>
+            </div>
+            <span className={`text-sm font-bold ${getScoreColor(healthMetrics.versionHealth)}`}>
+              {healthMetrics.versionHealth}%
+            </span>
+          </div>
+          <div className="w-full bg-muted/30 rounded-full h-2">
+            <div
+              className={`h-2 rounded-full transition-all duration-500 ${getBarColor(healthMetrics.versionHealth)}`}
+              style={{ width: `${healthMetrics.versionHealth}%` }}
+            />
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {nodes.filter(n => {
+              const latest = nodes.map(n => n.version).filter(v => v).sort().reverse()[0];
+              return n.version === latest;
+            }).length} nodes on latest version
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-foreground">Distribution</span>
+              <button className="text-muted-foreground hover:text-foreground transition-colors" title="Geographic diversity of the network">
+                <Info className="w-3 h-3" />
+              </button>
+            </div>
+            <span className={`text-sm font-bold ${getScoreColor(healthMetrics.distribution)}`}>
+              {healthMetrics.distribution}%
+            </span>
+          </div>
+          <div className="w-full bg-muted/30 rounded-full h-2">
+            <div
+              className={`h-2 rounded-full transition-all duration-500 ${getBarColor(healthMetrics.distribution)}`}
+              style={{ width: `${healthMetrics.distribution}%` }}
+            />
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {healthMetrics.countries} countries, {healthMetrics.cities} cities
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
