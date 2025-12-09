@@ -5,6 +5,7 @@ import { getNetworkConfig } from '@/lib/server/network-config';
 import { upsertNodes, getAllNodes, getNodeByPubkey } from '@/lib/server/mongodb-nodes';
 import { batchFetchLocations } from '@/lib/server/location-cache';
 import { fetchBalanceForPubkey } from '@/lib/server/balance-cache';
+import { performRefresh } from '@/lib/server/background-refresh';
 
 export async function GET(request: Request) {
   try {
@@ -32,9 +33,10 @@ export async function GET(request: Request) {
               // On Vercel, if DB is empty, trigger a refresh in the background (don't wait)
               if (process.env.VERCEL || process.env.VERCEL_ENV) {
                 console.log('[API] Triggering background refresh (MongoDB appears empty)...');
-                // Fire and forget - don't block the response
-                fetch(`${process.env.VERCEL_URL || 'http://localhost:3000'}/api/refresh-nodes`, { method: 'GET' })
-                  .catch(err => console.error('[API] Background refresh trigger failed:', err));
+                // Fire and forget - call performRefresh directly (don't block the response)
+                performRefresh().catch(err => {
+                  console.error('[API] Background refresh failed:', err);
+                });
               }
             }
           } catch (dbError: any) {
