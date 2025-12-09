@@ -188,39 +188,40 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       setLoading(true);
     }
     
-    // Fetch fresh data in background (non-blocking) - will update UI when ready
-    // Use requestAnimationFrame to ensure UI renders cached data first
+    // STEP 1: Fetch from MongoDB FIRST (fast, non-blocking)
+    // This ensures we show data immediately, even if refresh is slow
     requestAnimationFrame(() => {
-      refreshNodes();
+      refreshNodes(); // This fetches from MongoDB (fast path)
     });
     
-    // Trigger server-side refresh if it hasn't been refreshed in the last minute
-    // This keeps MongoDB updated even without external cron
+    // STEP 2: Trigger server-side refresh AFTER fetching MongoDB data
+    // This keeps MongoDB updated in the background
     const lastRefreshTime = localStorage.getItem('lastServerRefresh');
     const now = Date.now();
     const oneMinuteAgo = now - 60 * 1000;
     
     if (!lastRefreshTime || parseInt(lastRefreshTime) < oneMinuteAgo) {
-      // Trigger refresh in background (don't wait for response)
-      // Use a small delay to not block initial render
+      // Wait a bit longer to ensure MongoDB fetch completes first
       setTimeout(() => {
-        console.log('[NodesContext] Triggering server-side refresh...');
+        console.log('[NodesContext] Triggering background refresh...');
         fetch('/api/refresh-nodes', { method: 'GET' })
           .then(async (res) => {
             const data = await res.json();
             if (res.ok) {
-              console.log('[NodesContext] ✅ Server refresh successful');
+              console.log('[NodesContext] ✅ Background refresh successful');
               localStorage.setItem('lastServerRefresh', now.toString());
+              // After refresh completes, fetch fresh data from MongoDB
+              refreshNodes();
             } else {
-              console.error('[NodesContext] ❌ Server refresh failed:', data.error || res.statusText);
+              console.error('[NodesContext] ❌ Background refresh failed:', data.error || res.statusText);
             }
           })
           .catch((err) => {
-            console.error('[NodesContext] ❌ Server refresh request failed:', err);
+            console.error('[NodesContext] ❌ Background refresh request failed:', err);
           });
-      }, 500); // Small delay to let UI render first
+      }, 2000); // Wait 2s to let MongoDB fetch complete first
     } else {
-      console.log('[NodesContext] Skipping server refresh (refreshed recently)');
+      console.log('[NodesContext] Skipping background refresh (refreshed recently)');
     }
   }, [refreshNodes, loadCache]);
 

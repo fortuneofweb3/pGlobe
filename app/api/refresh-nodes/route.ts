@@ -16,16 +16,23 @@ import { NextResponse } from 'next/server';
 import { performRefresh } from '@/lib/server/background-refresh';
 
 export async function GET(request: Request) {
-  // For external cron services, use CRON_SECRET env var for security
-  // For client-side calls (Vercel Hobby), allow without auth
+  // Allow client-side calls from same origin (browser requests)
+  // Only require auth for external cron services (they send Authorization header)
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
+  const referer = request.headers.get('referer');
+  const origin = request.headers.get('origin');
   
-  // If CRON_SECRET is set, require authentication (for external cron services)
-  // If not set, allow client-side calls (for Vercel Hobby plan)
-  if (cronSecret) {
+  // Check if this is a client-side call (from browser) vs external cron service
+  const isClientSideCall = !authHeader && (referer || origin);
+  
+  // If CRON_SECRET is set AND this is NOT a client-side call, require auth
+  // This allows:
+  // - Client-side calls from browser (no auth needed)
+  // - External cron services (must provide CRON_SECRET)
+  if (cronSecret && !isClientSideCall) {
     if (authHeader !== `Bearer ${cronSecret}`) {
-      console.warn('[Refresh] Unauthorized request - missing or invalid CRON_SECRET');
+      console.warn('[Refresh] Unauthorized external request - missing or invalid CRON_SECRET');
       return NextResponse.json(
         { error: 'Unauthorized - Invalid or missing CRON_SECRET' },
         { status: 401 }
