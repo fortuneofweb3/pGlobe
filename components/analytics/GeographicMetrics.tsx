@@ -6,6 +6,26 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 
 import { Globe, ChevronDown } from 'lucide-react';
 import { formatStorageBytes } from '@/lib/utils/storage';
 
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const entry = payload[0].payload;
+    return (
+      <div className="bg-black/95 backdrop-blur-md border border-white/10 rounded-lg p-3 shadow-xl">
+        <p className="text-sm font-semibold text-[#E5E7EB] mb-2">{`Country: ${entry.fullCountry || label}`}</p>
+        <div className="space-y-1">
+          <p className="text-xs text-[#E5E7EB]">
+            <span className="font-mono font-semibold">{entry.value.toFixed(1)}{entry.unit}</span>
+          </p>
+          <p className="text-xs text-[#9CA3AF]">
+            {entry.label}
+          </p>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 interface GeographicMetricsProps {
   nodes: PNode[];
 }
@@ -252,21 +272,7 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
               stroke="#6B7280"
               opacity={0.6}
             />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: '8px',
-              }}
-              formatter={(value: number, name: string, props: any) => {
-                const entry = props.payload;
-                return [
-                  `${value.toFixed(1)}${entry.unit}`,
-                  metricOptions.find(m => m.value === selectedMetric)?.label || 'Value'
-                ];
-              }}
-              labelFormatter={(label) => `Country: ${label}`}
-            />
+            <Tooltip content={<CustomTooltip />} />
             <Bar 
               dataKey="value" 
               radius={[0, 4, 4, 0]}

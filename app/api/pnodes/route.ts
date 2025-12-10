@@ -1,177 +1,82 @@
+/**
+ * API endpoint for nodes - Proxies to Render backend
+ * 
+ * Render backend handles:
+ * - Reading from MongoDB
+ * - Triggering refresh if needed
+ */
+
 import { NextResponse } from 'next/server';
-import { fetchPNodesFromGossip, getMockPNodes } from '@/lib/server/prpc';
-import { PNode } from '@/lib/types/pnode';
-import { getNetworkConfig } from '@/lib/server/network-config';
-import { upsertNodes, getAllNodes, getNodeByPubkey } from '@/lib/server/mongodb-nodes';
-import { batchFetchLocations } from '@/lib/server/location-cache';
-import { fetchBalanceForPubkey } from '@/lib/server/balance-cache';
-import { performRefresh } from '@/lib/server/background-refresh';
+
+const RENDER_API_URL = process.env.RENDER_API_URL || process.env.NEXT_PUBLIC_RENDER_API_URL;
+const API_SECRET = process.env.API_SECRET;
 
 export async function GET(request: Request) {
+  if (!RENDER_API_URL) {
+    return NextResponse.json(
+      {
+        error: 'Render API URL not configured',
+        nodes: [],
+        totalNodes: 0,
+        timestamp: Date.now(),
+      },
+      { status: 500 }
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const networkId = searchParams.get('network');
-    const useMock = searchParams.get('mock') === 'true';
-    const refresh = searchParams.get('refresh') === 'true'; // Force refresh from gossip
-
-    let nodes: PNode[];
-
-    if (!useMock) {
-      try {
-        // FAST PATH: If refresh=false, just return from MongoDB immediately
-        // Background task handles all the gossip fetching and enrichment
-        if (!refresh) {
-          // Fast path - just get from MongoDB
-          try {
-            console.log('[API] Fetching nodes from MongoDB (fast path)...');
-            console.log('[API] MongoDB URI set:', !!process.env.MONGODB_URI);
-            console.log('[API] Environment:', {
-              vercel: !!process.env.VERCEL,
-              vercelEnv: process.env.VERCEL_ENV,
-              nodeEnv: process.env.NODE_ENV,
-            });
-            
-            nodes = await getAllNodes();
-            console.log(`[API] ✅ Retrieved ${nodes.length} nodes from MongoDB`);
-            
-            // If getAllNodes returns empty array, it might be a connection issue or empty DB
-            if (nodes.length === 0) {
-              console.warn('[API] ⚠️ MongoDB returned empty array - checking if DB needs initial population...');
-              
-              // Check if this is a fresh deployment (no data yet)
-              // Trigger a refresh to populate MongoDB
-              console.log('[API] Triggering initial refresh to populate MongoDB...');
-              performRefresh()
-                .then(() => {
-                  console.log('[API] ✅ Initial refresh completed - MongoDB should now have data');
-                })
-                .catch(err => {
-                  console.error('[API] ❌ Initial refresh failed:', err?.message || err);
-                  console.error('[API] Refresh error stack:', err?.stack);
-                });
-            }
-          } catch (dbError: any) {
-            console.error('[API] ❌ MongoDB error in getAllNodes:', dbError?.message || dbError);
-            console.error('[API] Error type:', dbError?.name);
-            console.error('[API] Error code:', dbError?.code);
-            console.error('[API] Stack:', dbError?.stack);
-            
-            // If connection error, try to trigger refresh anyway (might help)
-            if (dbError?.message?.includes('MONGODB_URI') || dbError?.message?.includes('not defined')) {
-              console.error('[API] 💡 MONGODB_URI not set in Vercel Environment Variables!');
-              console.error('[API] Please set MONGODB_URI in Vercel project settings > Environment Variables');
-            }
-            
-            // Return empty array instead of crashing - but log the error clearly
-            console.error('[API] Returning empty array due to MongoDB error');
-            nodes = [];
-          }
-        } else {
-          // SLOW PATH: Only do full refresh if explicitly requested
-          const customEndpoint = searchParams.get('endpoint') || process.env.NEXT_PUBLIC_PRPC_ENDPOINT;
-          
-          // If network ID provided, use that network's RPC URL
-          let endpointToUse = customEndpoint;
-          if (networkId && !customEndpoint) {
-            const networkConfig = getNetworkConfig(networkId);
-            if (networkConfig) {
-              endpointToUse = networkConfig.rpcUrl;
-            }
-          }
-
-          // STEP 1: Fetch nodes from gossip
-          const gossipNodes = await fetchPNodesFromGossip(endpointToUse || undefined, false);
-          
-          // STEP 2: Store nodes in MongoDB (no duplicates - pubkey is primary key)
-          await upsertNodes(gossipNodes);
-          
-          // STEP 3: Fetch geo location data for nodes missing it
-          const nodesNeedingGeo: PNode[] = [];
-          const geoMap = new Map<string, any>();
-          
-          for (const node of gossipNodes) {
-            const ip = node.address?.split(':')[0];
-            if (!ip || !ip.match(/^\d+\.\d+\.\d+\.\d+$/)) continue;
-            
-            if (!node.locationData?.lat || !node.locationData?.lon) {
-              nodesNeedingGeo.push(node);
-            } else {
-              geoMap.set(ip, node.locationData);
-            }
-          }
-          
-          if (nodesNeedingGeo.length > 0) {
-            const ipsToFetch = [...new Set(nodesNeedingGeo.map(n => n.address?.split(':')[0]).filter(Boolean))] as string[];
-            const fetchedGeo = await batchFetchLocations(ipsToFetch);
-            fetchedGeo.forEach((geo, ip) => geoMap.set(ip, geo));
-          }
-          
-          // STEP 4: Fetch on-chain data to check registration status
-          const allPubkeys = [...new Set(gossipNodes.map(node => node.pubkey || node.publicKey).filter(pk => pk))] as string[];
-          const balanceMap = new Map<string, any>();
-        
-          for (const pk of allPubkeys) {
-            const balanceData = await fetchBalanceForPubkey(pk);
-            if (balanceData) balanceMap.set(pk, balanceData);
-          }
-          
-          // STEP 5: Build enriched nodes and update MongoDB
-          const enrichedNodes = gossipNodes.map(node => {
-            const pk = node.pubkey || node.publicKey;
-            const ip = node.address?.split(':')[0];
-            const balanceData = pk ? balanceMap.get(pk) : null;
-            const geoData = ip ? geoMap.get(ip) : null;
-          
-            return {
-              ...node,
-              ...(geoData ? {
-                location: geoData.city ? `${geoData.city}, ${geoData.country}` : geoData.country,
-                locationData: {
-                  lat: geoData.lat,
-                  lon: geoData.lon,
-                  city: geoData.city,
-                  country: geoData.country,
-                  countryCode: geoData.countryCode,
-                },
-              } : {}),
-              isRegistered: balanceData?.isRegistered ?? false,
-              ...(balanceData ? {
-                balance: balanceData.balance,
-                managerPDA: balanceData.managerPDA,
-              } : {}),
-            };
-          });
-          
-          await upsertNodes(enrichedNodes);
-          
-          // Return fresh nodes from MongoDB
-          nodes = await getAllNodes();
-        }
-      } catch (error) {
-        console.error('[API] Error:', error);
-        nodes = [];
-      }
-    } else {
-      nodes = getMockPNodes();
-    }
-
-    // Always return nodes array (even if empty) - never return undefined
-    const response = {
-      nodes: nodes || [],
-      totalNodes: nodes?.length || 0,
-      timestamp: Date.now(),
-    };
+    const refresh = searchParams.get('refresh') === 'true';
     
-    console.log(`[API] Returning response with ${response.nodes.length} nodes`);
+    console.log('[VercelProxy] Proxying pnodes request to Render...');
     
-    // Add cache headers for faster subsequent loads
-    return NextResponse.json(response, {
+    // Build query string
+    const queryParams = new URLSearchParams();
+    if (networkId) queryParams.set('network', networkId);
+    if (refresh) queryParams.set('refresh', 'true');
+    
+    const url = `${RENDER_API_URL}/api/pnodes${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
       headers: {
-        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+        'Content-Type': 'application/json',
+        ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
       },
     });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return NextResponse.json(
+        {
+          ...data,
+          nodes: data.nodes || [],
+          totalNodes: data.count || 0,
+          timestamp: Date.now(),
+        },
+        { status: response.status }
+      );
+    }
+
+    console.log(`[VercelProxy] ✅ Returning ${data.nodes?.length || 0} nodes from Render`);
+    
+    // Format response to match expected format
+    return NextResponse.json(
+      {
+        nodes: data.nodes || [],
+        totalNodes: data.count || data.nodes?.length || 0,
+        timestamp: data.timestamp || Date.now(),
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+        },
+      }
+    );
   } catch (error: any) {
-    console.error('[API] Fatal error:', error?.message || error);
+    console.error('[VercelProxy] ❌ Failed to proxy to Render:', error);
     
     return NextResponse.json(
       {

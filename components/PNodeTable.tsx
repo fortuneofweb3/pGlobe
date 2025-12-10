@@ -14,6 +14,24 @@ interface PNodeTableProps {
   onNodeClick?: (node: PNode) => void;
 }
 
+/**
+ * Abbreviates version string to show only the prefix before timestamp
+ * Example: "0.7.3-trynet.20251210055354.57fd475" -> "0.7.3-"
+ */
+function abbreviateVersion(version: string): string {
+  if (!version) return version;
+  
+  // Find the first dash followed by a dot (timestamp pattern)
+  // Keep everything up to and including the dash
+  const match = version.match(/^([^-]+-)/);
+  if (match) {
+    return match[1];
+  }
+  
+  // If no pattern match, return as is
+  return version;
+}
+
 export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
   const router = useRouter();
   const [pingResults, setPingResults] = useState<Record<string, PingResult>>({});
@@ -218,7 +236,7 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
   }, [nodes, pingResults]);
 
   return (
-    <div className="flex flex-col h-full bg-card/30 border border-border/60 rounded-lg overflow-hidden">
+    <div className="flex flex-col h-full bg-card/30 border border-border/60 rounded-lg overflow-visible">
       {/* Info Banner */}
       {statsWithData.total > 0 && (
         <div className="px-3 sm:px-4 py-2 bg-muted/20 border-b border-border/60 text-xs text-muted-foreground">
@@ -228,7 +246,7 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
         </div>
       )}
       
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 overflow-visible">
         {/* Fixed Header */}
         <div className="overflow-x-auto border-b border-border/60 flex-shrink-0 bg-muted/40">
           <table className="min-w-full" style={{ minWidth: '800px' }}>
@@ -285,7 +303,8 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
         </div>
         
         {/* Scrollable Body */}
-        <div className="overflow-x-auto overflow-y-auto flex-1">
+        {/* Allow tooltips to overflow; rely on page scroll instead of inner scroll */}
+        <div className="overflow-x-auto overflow-y-visible flex-1">
           <table className="min-w-full" style={{ minWidth: '800px' }}>
             <colgroup>
               <col className="w-[11%]" />
@@ -472,9 +491,23 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
                         })()}
                       </td>
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
-                        <span className="text-xs text-foreground/70">
-                          {node.version || renderEmptyCell()}
-                        </span>
+                        {node.version ? (
+                          <span 
+                            className="text-xs text-foreground/70 cursor-help group relative"
+                            title={node.version}
+                          >
+                            {abbreviateVersion(node.version)}
+                            {/* Tooltip on hover */}
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-50 px-2 py-1 bg-gray-900 text-white text-xs rounded shadow-lg pointer-events-none border border-gray-700 whitespace-nowrap">
+                              {node.version}
+                              <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
+                                <div className="border-4 border-transparent border-t-gray-900"></div>
+                              </div>
+                            </div>
+                          </span>
+                        ) : (
+                          renderEmptyCell()
+                        )}
                       </td>
                     </tr>
                   );

@@ -1,15 +1,23 @@
 /**
- * Get a single node by ID (pubkey) from MongoDB
+ * Get a single node by ID - Proxies to Render backend
  */
 
 import { NextResponse } from 'next/server';
-import { getNodeByPubkey } from '@/lib/server/mongodb-nodes';
-import { PNode } from '@/lib/types/pnode';
+
+const RENDER_API_URL = process.env.RENDER_API_URL || process.env.NEXT_PUBLIC_RENDER_API_URL;
+const API_SECRET = process.env.API_SECRET;
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ): Promise<NextResponse> {
+  if (!RENDER_API_URL) {
+    return NextResponse.json(
+      { error: 'Render API URL not configured' },
+      { status: 500 }
+    );
+  }
+
   try {
     const nodeId = params.id;
     
@@ -20,24 +28,25 @@ export async function GET(
       );
     }
     
-    // Add timeout for MongoDB query
-    const nodePromise = getNodeByPubkey(nodeId);
-    const timeoutPromise = new Promise<PNode | null>((_, reject) =>
-      setTimeout(() => reject(new Error('Query timeout')), 5000)
-    );
+    console.log('[VercelProxy] Proxying node request to Render...');
     
-    const node = await Promise.race([nodePromise, timeoutPromise]);
-    
-    if (!node) {
-      return NextResponse.json(
-        { error: 'Node not found' },
-        { status: 404 }
-      );
+    const response = await fetch(`${RENDER_API_URL}/api/nodes/${nodeId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return NextResponse.json(data, { status: response.status });
     }
-    
-    return NextResponse.json({ node });
+
+    return NextResponse.json(data);
   } catch (error: any) {
-    console.error('[API] Error fetching node:', error?.message || error);
+    console.error('[VercelProxy] ❌ Failed to proxy to Render:', error);
     return NextResponse.json(
       { error: error?.message || 'Failed to fetch node' },
       { status: 500 }
