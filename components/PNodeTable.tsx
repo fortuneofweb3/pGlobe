@@ -236,17 +236,17 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
   }, [nodes, pingResults]);
 
   return (
-    <div className="flex flex-col h-full bg-card/30 border border-border/60 rounded-lg overflow-visible">
+    <div className="flex flex-col h-full bg-card/30 border border-border/60 rounded-lg overflow-hidden">
       {/* Info Banner */}
       {statsWithData.total > 0 && (
-        <div className="px-3 sm:px-4 py-2 bg-muted/20 border-b border-border/60 text-xs text-muted-foreground">
+        <div className="px-3 sm:px-4 py-2 bg-muted/20 border-b border-border/60 text-xs text-muted-foreground flex-shrink-0">
           <span className="font-medium text-foreground/60">Note: </span>
           <span className="hidden sm:inline">Most operators keep pRPC private for security. Stats shown: {statsWithData.withUptime} uptime, {statsWithData.withStorage} storage, {statsWithData.withCPU} CPU, {statsWithData.withLatency} latency (of {statsWithData.total} total nodes)</span>
           <span className="sm:hidden">Limited stats: {statsWithData.withUptime} uptime, {statsWithData.withStorage} storage, {statsWithData.withCPU} CPU, {statsWithData.withLatency} latency</span>
         </div>
       )}
       
-      <div className="flex flex-col flex-1 overflow-visible">
+      <div className="flex flex-col flex-1 overflow-hidden min-h-0">
         {/* Fixed Header */}
         <div className="overflow-x-auto border-b border-border/60 flex-shrink-0 bg-muted/40">
           <table className="min-w-full" style={{ minWidth: '800px' }}>
@@ -303,8 +303,7 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
         </div>
         
         {/* Scrollable Body */}
-        {/* Allow tooltips to overflow; rely on page scroll instead of inner scroll */}
-        <div className="overflow-x-auto overflow-y-visible flex-1">
+        <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0">
           <table className="min-w-full" style={{ minWidth: '800px' }}>
             <colgroup>
               <col className="w-[11%]" />

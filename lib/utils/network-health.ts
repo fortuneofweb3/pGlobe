@@ -1,6 +1,33 @@
 import { PNode } from '@/lib/types/pnode';
 
 /**
+ * Get the latest version using semantic version comparison
+ * This matches the logic used in VersionDistribution component
+ */
+export function getLatestVersion(versions: string[]): string | null {
+  if (versions.length === 0) return null;
+  
+  // Filter out unknown/invalid versions
+  const validVersions = versions.filter(v => v && v !== 'Unknown' && v !== 'unknown');
+  if (validVersions.length === 0) return null;
+  
+  // Sort by semantic version (highest first)
+  const sorted = [...validVersions].sort((a, b) => {
+    // Try semantic version comparison
+    const aParts = a.replace('v', '').split('.').map(Number);
+    const bParts = b.replace('v', '').split('.').map(Number);
+    for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+      const aVal = aParts[i] || 0;
+      const bVal = bParts[i] || 0;
+      if (aVal !== bVal) return bVal - aVal; // Descending order
+    }
+    return 0;
+  });
+  
+  return sorted[0] || null;
+}
+
+/**
  * Calculate network health score using consistent formula across all pages
  * 
  * Formula:
@@ -24,10 +51,10 @@ export function calculateNetworkHealth(nodes: PNode[]): {
   const onlineNodes = nodes.filter(n => n.status === 'online').length;
   const availability = (onlineNodes / nodes.length) * 100;
 
-  // 2. Version Health (35% weight) - % on latest version
+  // 2. Version Health (35% weight) - % on latest version (using semantic version comparison)
   const versions = nodes.map(n => n.version).filter(v => v);
-  const latestVersion = versions.sort().reverse()[0];
-  const latestVersionNodes = nodes.filter(n => n.version === latestVersion).length;
+  const latestVersion = getLatestVersion(versions);
+  const latestVersionNodes = latestVersion ? nodes.filter(n => n.version === latestVersion).length : 0;
   const versionHealth = latestVersion ? (latestVersionNodes / nodes.length) * 100 : 0;
 
   // 3. Distribution Score (25% weight) - Geographic diversity

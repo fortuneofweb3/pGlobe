@@ -1,9 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  experimental: {
-    instrumentationHook: true,
-  },
+  // instrumentationHook disabled - backend operations moved to render-api-server.ts
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // Add fallbacks for Node.js modules (for MapLibre GL and other libraries)

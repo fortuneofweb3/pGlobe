@@ -1,11 +1,14 @@
 /**
  * Public API v1: Get single node by ID/pubkey
  * GET /api/v1/nodes/:id
+ * Proxies to backend API server
  */
 
 import { NextResponse } from 'next/server';
 import { withAPIAuth } from '@/lib/server/api-auth';
-import { getNodeByPubkey } from '@/lib/server/mongodb-nodes';
+
+const RENDER_API_URL = process.env.RENDER_API_URL || process.env.NEXT_PUBLIC_RENDER_API_URL;
+const API_SECRET = process.env.API_SECRET;
 
 export async function GET(
   request: Request,
@@ -14,58 +17,41 @@ export async function GET(
   const { id } = await params;
   
   return withAPIAuth(async (req: Request, { apiKey }) => {
-    try {
-      const nodeId = id;
-    
-    const node = await getNodeByPubkey(nodeId);
-    
-    if (!node) {
+    if (!RENDER_API_URL) {
       return NextResponse.json(
-        { success: false, error: 'Node not found' },
-        { status: 404 }
+        { success: false, error: 'Backend API URL not configured. Set RENDER_API_URL in .env.local' },
+        { status: 500 }
       );
     }
 
-    // Format response (exclude internal fields)
-    const formattedNode = {
-      id: node.id,
-      pubkey: node.pubkey || node.publicKey,
-      address: node.address,
-      version: node.version,
-      status: node.status,
-      uptime: node.uptime,
-      cpuPercent: node.cpuPercent,
-      ramUsed: node.ramUsed,
-      ramTotal: node.ramTotal,
-      storageCapacity: node.storageCapacity,
-      storageUsed: node.storageUsed,
-      storageCommitted: node.storageCommitted,
-      storageUsagePercent: node.storageUsagePercent,
-      packetsReceived: node.packetsReceived,
-      packetsSent: node.packetsSent,
-      activeStreams: node.activeStreams,
-      latency: node.latency,
-      location: node.location,
-      locationData: node.locationData,
-      lastSeen: node.lastSeen,
-      peerCount: node.peerCount,
-      balance: node.balance,
-      isPublic: node.isPublic,
-      rpcPort: node.rpcPort,
-      dataOperationsHandled: node.dataOperationsHandled,
-      totalPages: node.totalPages,
-    };
+    try {
+      const nodeId = id;
+      
+      console.log(`[VercelProxy] Proxying /api/v1/nodes/${nodeId} request to backend...`);
+      
+      const response = await fetch(`${RENDER_API_URL}/api/v1/nodes/${nodeId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
+        },
+      });
 
-    return NextResponse.json({
-      success: true,
-      data: formattedNode,
-    });
-  } catch (error: any) {
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to fetch node' },
-      { status: 500 }
-    );
-  }
+      const data = await response.json();
+
+      if (!response.ok) {
+        return NextResponse.json(data, { status: response.status });
+      }
+
+      console.log(`[VercelProxy] ✅ Returning node ${nodeId} from backend for /api/v1/nodes/${nodeId}`);
+      return NextResponse.json(data);
+    } catch (error: any) {
+      console.error(`[VercelProxy] ❌ Failed to proxy /api/v1/nodes/${id} to backend:`, error);
+      return NextResponse.json(
+        { success: false, error: error?.message || 'Failed to fetch node' },
+        { status: 500 }
+      );
+    }
   })(request);
 }
 

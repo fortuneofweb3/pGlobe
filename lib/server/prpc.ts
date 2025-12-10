@@ -435,13 +435,17 @@ async function fetchPodsWithStatsFromEndpoint(endpoint: string): Promise<PNode[]
       status: status,
       lastSeen: lastSeen,
       // Stats from get-pods-with-stats (v0.7.0+)
-      uptime: pod.uptime || null,
+      uptime: pod.uptime ?? pod.uptime_seconds ?? undefined,
       storageUsed: storageUsed,
       storageCommitted: storageCommitted,
-      storageCapacity: storageCommitted || null, // Use storage_committed as capacity
+      storageCapacity: storageCommitted ?? pod.storage_capacity ?? pod.storageCapacity ?? undefined, // Use storage_committed as capacity, fallback to storage_capacity
       storageUsagePercent: pod.storage_usage_percent ?? pod.storageUsagePercent ?? undefined,
+      totalPages: pod.total_pages ?? pod.totalPages ?? undefined,
+      dataOperationsHandled: pod.data_operations_handled ?? pod.dataOperationsHandled ?? undefined,
       isPublic: pod.is_public ?? pod.isPublic ?? undefined,
       rpcPort: pod.rpc_port ?? pod.rpcPort ?? undefined,
+      peerCount: pod.peer_count ?? pod.peerCount ?? undefined,
+      peers: pod.peers ? (Array.isArray(pod.peers) ? pod.peers : undefined) : undefined,
       _raw: pod,
       _source: 'gossip-with-stats',
     };

@@ -1,8 +1,14 @@
 'use client';
 
 import { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
 import { PNode } from '@/lib/types/pnode';
+import { scaleBand, scaleLinear } from '@visx/scale';
+import { Group } from '@visx/group';
+import { Bar } from '@visx/shape';
+import { AxisBottom, AxisLeft } from '@visx/axis';
+import { useTooltip, TooltipWithBounds, defaultStyles } from '@visx/tooltip';
+import { localPoint } from '@visx/event';
+import ParentSize from '@visx/responsive/lib/components/ParentSize';
 
 interface NetworkHealthChartProps {
   nodes: PNode[];
@@ -14,30 +20,37 @@ const COLORS = {
   syncing: '#F0A741',
 };
 
-const CustomTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload;
-    const total = data.online + data.offline + data.syncing;
-    return (
-      <div className="bg-black/95 backdrop-blur-md border border-[#F0A741]/30 rounded-lg p-3 shadow-xl">
-        <p className="text-sm font-semibold text-foreground mb-2">{data.name}</p>
-        <div className="space-y-1">
-          <p className="text-xs text-foreground/80">
-            <span className="font-mono font-semibold">{data.value}</span> nodes
+type TooltipData = {
+  name: string;
+  value: number;
+  online: number;
+  offline: number;
+  syncing: number;
+};
+
+const CustomTooltip = ({ tooltipData }: { tooltipData?: TooltipData }) => {
+  if (!tooltipData) return null;
+  const total = tooltipData.online + tooltipData.offline + tooltipData.syncing;
+  return (
+    <div className="bg-black/95 backdrop-blur-md border border-[#F0A741]/30 rounded-lg p-3 shadow-xl">
+      <p className="text-sm font-semibold text-foreground mb-2">{tooltipData.name}</p>
+      <div className="space-y-1">
+        <p className="text-xs text-foreground/80">
+          <span className="font-mono font-semibold">{tooltipData.value}</span> nodes
+        </p>
+        {total > 0 && (
+          <p className="text-xs text-foreground/60">
+            {((tooltipData.value / total) * 100).toFixed(1)}% of network
           </p>
-          {total > 0 && (
-            <p className="text-xs text-foreground/60">
-              {((data.value / total) * 100).toFixed(1)}% of network
-            </p>
-          )}
-        </div>
+        )}
       </div>
-    );
-  }
-  return null;
+    </div>
+  );
 };
 
 export default function NetworkHealthChart({ nodes }: NetworkHealthChartProps) {
+  const { tooltipData, tooltipLeft, tooltipTop, tooltipOpen, showTooltip, hideTooltip } = useTooltip<TooltipData>();
+
   const data = useMemo(() => {
     const statusCounts = nodes.reduce(
       (acc, node) => {
@@ -80,31 +93,116 @@ export default function NetworkHealthChart({ nodes }: NetworkHealthChartProps) {
 
   const total = data.reduce((sum, item) => sum + item.value, 0);
 
+  if (total === 0) {
+    return (
+      <div className="flex items-center justify-center h-[300px] text-foreground/50">
+        <p className="text-sm">No data available</p>
+      </div>
+    );
+  }
+
+  const margin = { top: 5, right: 30, left: 80, bottom: 5 };
+  const chartHeight = 300;
+
   return (
     <div>
-      {total > 0 ? (
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 80, bottom: 5 }}>
-            <XAxis type="number" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
-            <YAxis 
-              dataKey="name" 
-              type="category" 
-              tick={{ fill: '#E5E7EB', fontSize: 13, fontWeight: 500 }}
-              width={70}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      ) : (
-        <div className="flex items-center justify-center h-[300px] text-foreground/50">
-          <p className="text-sm">No data available</p>
-        </div>
-      )}
+      <div style={{ width: '100%', height: chartHeight, position: 'relative' }}>
+        <ParentSize>
+          {({ width: parentWidth = 800 }) => {
+            const width = parentWidth;
+            const innerWidth = width - margin.left - margin.right;
+            const innerHeight = chartHeight - margin.top - margin.bottom;
+
+            const yScale = scaleBand<string>({
+              range: [innerHeight, 0],
+              domain: data.map(d => d.name),
+              padding: 0.2,
+            });
+
+            const xScale = scaleLinear<number>({
+              range: [0, innerWidth],
+              domain: [0, Math.max(...data.map(d => d.value)) * 1.1],
+              nice: true,
+            });
+
+            return (
+              <>
+                <svg width={width} height={chartHeight}>
+                  <Group left={margin.left} top={margin.top}>
+                    {data.map((d) => {
+                      const barHeight = yScale.bandwidth();
+                      const barWidth = xScale(d.value);
+                      const y = yScale(d.name) || 0;
+
+                      return (
+                        <Bar
+                          key={d.name}
+                          x={0}
+                          y={y}
+                          width={barWidth}
+                          height={barHeight}
+                          fill={d.color}
+                          rx={4}
+                          onMouseMove={(event) => {
+                            const coords = localPoint(event);
+                            if (coords) {
+                              showTooltip({
+                                tooltipLeft: coords.x,
+                                tooltipTop: coords.y,
+                                tooltipData: d,
+                              });
+                            }
+                          }}
+                          onMouseLeave={() => hideTooltip()}
+                        />
+                      );
+                    })}
+                  </Group>
+                  <AxisLeft
+                    left={margin.left}
+                    scale={yScale}
+                    tickFormat={(d) => d}
+                    tickLabelProps={() => ({
+                      fill: '#E5E7EB',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      textAnchor: 'end',
+                      dy: '0.33em',
+                      dx: -10,
+                    })}
+                  />
+                  <AxisBottom
+                    top={innerHeight + margin.top}
+                    left={margin.left}
+                    scale={xScale}
+                    tickFormat={(d) => String(d)}
+                    tickLabelProps={() => ({
+                      fill: '#9CA3AF',
+                      fontSize: 12,
+                      textAnchor: 'middle',
+                    })}
+                  />
+                </svg>
+                {tooltipOpen && tooltipData && (
+                  <TooltipWithBounds
+                    top={tooltipTop}
+                    left={tooltipLeft}
+                    style={{
+                      ...defaultStyles,
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      padding: 0,
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    <CustomTooltip tooltipData={tooltipData} />
+                  </TooltipWithBounds>
+                )}
+              </>
+            );
+          }}
+        </ParentSize>
+      </div>
       <div className="flex items-center justify-center gap-6 mt-4 text-xs">
         {data.map((entry, index) => (
           <div key={index} className="flex items-center gap-2">

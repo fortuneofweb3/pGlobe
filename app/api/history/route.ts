@@ -1,74 +1,110 @@
 /**
- * Historical data endpoint - returns historical snapshots from MongoDB
+ * Historical data endpoint - Proxies to API server (local in dev, Render in production)
+ * 
+ * API server handles:
+ * - Reading historical snapshots from MongoDB
+ * - Node-specific history queries
+ * - Summary statistics
  */
 
 import { NextResponse } from 'next/server';
-import { getHistoricalSnapshots, getDailyStats, getNodeHistory } from '@/lib/server/mongodb-history';
+
+const RENDER_API_URL = process.env.RENDER_API_URL || process.env.NEXT_PUBLIC_RENDER_API_URL;
+const API_SECRET = process.env.API_SECRET;
 
 export async function GET(request: Request) {
+  if (!RENDER_API_URL) {
+    return NextResponse.json(
+      {
+        error: 'API server URL not configured',
+        data: [],
+        count: 0,
+      },
+      { status: 500 }
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
-    const summary = searchParams.get('summary') === 'true';
-    const nodeId = searchParams.get('nodeId'); // Get history for specific node
-    const days = parseInt(searchParams.get('days') || '30');
-    const startTime = searchParams.get('startTime') ? parseInt(searchParams.get('startTime')!) : undefined;
-    const endTime = searchParams.get('endTime') ? parseInt(searchParams.get('endTime')!) : undefined;
     
-    // Get node-specific history
-    if (nodeId) {
-      const nodeHistory = await getNodeHistory(nodeId, startTime, endTime);
-      return NextResponse.json({
-        nodeId,
-        data: nodeHistory,
-        count: nodeHistory.length,
-      });
-    }
+    const url = `${RENDER_API_URL}/api/history${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    console.log('[VercelProxy] Proxying history request to API server:', url);
     
-    // Get summary statistics
-    if (summary) {
-      const dailyStats = await getDailyStats(days);
-      const snapshots = await getHistoricalSnapshots(
-        startTime || (Date.now() - days * 24 * 60 * 60 * 1000),
-        endTime
-      );
-      
-      if (snapshots.length === 0) {
-        return NextResponse.json({
-          totalDataPoints: 0,
-          dateRange: { start: Date.now(), end: Date.now() },
-          avgNodesOverTime: 0,
-          avgUptimeOverTime: 0,
-          dailyStats: [],
-        });
-      }
-      
-      const avgNodes = snapshots.reduce((sum, s) => sum + s.totalNodes, 0) / snapshots.length;
-      const avgUptime = snapshots.reduce((sum, s) => sum + s.avgUptimePercent, 0) / snapshots.length;
-      
-      return NextResponse.json({
-        totalDataPoints: snapshots.length,
-        dateRange: {
-          start: snapshots[0]?.timestamp || Date.now(),
-          end: snapshots[snapshots.length - 1]?.timestamp || Date.now(),
+    // Create AbortController for timeout
+    // Increased timeout to 45 seconds - MongoDB queries can take time with large datasets
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
+    
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
         },
-        avgNodesOverTime: Math.round(avgNodes),
-        avgUptimeOverTime: Math.round(avgUptime * 100) / 100,
-        dailyStats,
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        console.error('[VercelProxy] ❌ Request to API server timed out after 45 seconds');
+        return NextResponse.json(
+          {
+            error: 'Request timeout - API server took too long to respond',
+            data: [],
+            count: 0,
+          },
+          { status: 504 }
+        );
+      }
+      throw fetchError;
     }
+
+    let data: any;
+    try {
+      const text = await response.text();
+      data = text ? JSON.parse(text) : {};
+    } catch (parseError) {
+      console.error('[VercelProxy] ❌ Failed to parse response as JSON:', parseError);
+      return NextResponse.json(
+        {
+          error: 'Invalid response from API server',
+          data: [],
+          count: 0,
+        },
+        { status: 502 }
+      );
+    }
+
+    if (!response.ok) {
+      console.error('[VercelProxy] ❌ API server returned error:', response.status, data);
+      return NextResponse.json(
+        {
+          ...data,
+          error: data.error || 'Failed to fetch historical data',
+        },
+        { status: response.status }
+      );
+    }
+
+    console.log(`[VercelProxy] ✅ Returning historical data from API server`);
     
-    // Get full historical snapshots
-    const snapshots = await getHistoricalSnapshots(startTime, endTime, 1000);
-    
-    return NextResponse.json({
-      data: snapshots,
-      count: snapshots.length,
-      message: 'Historical data from MongoDB',
+    return NextResponse.json(data, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+      },
     });
   } catch (error: any) {
-    console.error('[API History] Error:', error);
+    console.error('[VercelProxy] ❌ Failed to proxy history to API server:', error);
+    
     return NextResponse.json(
-      { error: 'Failed to fetch historical data', message: error?.message || 'Unknown error' },
+      {
+        error: error?.message || 'Failed to fetch historical data',
+        data: [],
+        count: 0,
+      },
       { status: 500 }
     );
   }

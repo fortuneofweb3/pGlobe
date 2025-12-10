@@ -1,43 +1,44 @@
 /**
  * Public API v1: Network statistics
  * GET /api/v1/network/stats
+ * Proxies to backend API server
  */
 
 import { NextResponse } from 'next/server';
 import { withAPIAuth } from '@/lib/server/api-auth';
-import { getAllNodes } from '@/lib/server/mongodb-nodes';
+
+const RENDER_API_URL = process.env.RENDER_API_URL || process.env.NEXT_PUBLIC_RENDER_API_URL;
+const API_SECRET = process.env.API_SECRET;
 
 export const GET = withAPIAuth(async (request: Request) => {
+  if (!RENDER_API_URL) {
+    return NextResponse.json(
+      { success: false, error: 'Backend API URL not configured. Set RENDER_API_URL in .env.local' },
+      { status: 500 }
+    );
+  }
+
   try {
-    const nodes = await getAllNodes();
+    console.log('[VercelProxy] Proxying /api/v1/network/stats request to backend...');
     
-    if (nodes.length === 0) {
-      return NextResponse.json({
-        success: false,
-        error: 'No nodes found',
-      }, { status: 404 });
+    const response = await fetch(`${RENDER_API_URL}/api/v1/network/stats`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return NextResponse.json(data, { status: response.status });
     }
 
-    // Aggregate statistics
-    const stats = {
-      totalNodes: nodes.length,
-      totalStorage: nodes.reduce((sum, n) => sum + (n.storageCapacity || 0), 0),
-      totalRAM: nodes.reduce((sum, n) => sum + (n.ramTotal || 0), 0),
-      totalPacketsReceived: nodes.reduce((sum, n) => sum + (n.packetsReceived || 0), 0),
-      totalPacketsSent: nodes.reduce((sum, n) => sum + (n.packetsSent || 0), 0),
-      totalDataOperations: nodes.reduce((sum, n) => sum + (n.dataOperationsHandled || 0), 0),
-      totalPeers: nodes.reduce((sum, n) => sum + (n.peerCount || 0), 0),
-      publicNodes: nodes.filter(n => n.isPublic).length,
-      uniqueCountries: new Set(nodes.map(n => n.locationData?.countryCode).filter(Boolean)).size,
-      uniqueVersions: new Set(nodes.map(n => n.version).filter(Boolean)).size,
-    };
-
-    return NextResponse.json({
-      success: true,
-      data: stats,
-      timestamp: Date.now(),
-    });
+    console.log('[VercelProxy] ✅ Returning network stats from backend');
+    return NextResponse.json(data);
   } catch (error: any) {
+    console.error('[VercelProxy] ❌ Failed to proxy /api/v1/network/stats to backend:', error);
     return NextResponse.json(
       { success: false, error: error?.message || 'Failed to fetch network stats' },
       { status: 500 }

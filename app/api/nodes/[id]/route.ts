@@ -37,13 +37,13 @@ export async function GET(
         ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
       },
     });
-
+    
     const data = await response.json();
-
+    
     if (!response.ok) {
       return NextResponse.json(data, { status: response.status });
     }
-
+    
     return NextResponse.json(data);
   } catch (error: any) {
     console.error('[VercelProxy] ❌ Failed to proxy to Render:', error);

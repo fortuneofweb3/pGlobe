@@ -13,18 +13,22 @@ let db: Db | null = null;
 
 // MongoDB connection string
 // IMPORTANT: On Vercel, MONGODB_URI must be set in Environment Variables
-const MONGODB_URI = process.env.MONGODB_URI;
+// Read lazily to ensure dotenv has loaded
+function getMongoUri(): string | undefined {
+  return process.env.MONGODB_URI;
+}
 
 // Extract database name from URI if present, otherwise use default or env var
 function getDbName(): string {
-  if (!MONGODB_URI) return process.env.MONGODB_DB_NAME || 'xandeum-analytics';
+  const uri = getMongoUri();
+  if (!uri) return process.env.MONGODB_DB_NAME || 'pGlobe';
   // Check if database name is in the URI
-  const uriMatch = MONGODB_URI.match(/mongodb\+srv:\/\/[^/]+\/([^?]+)/);
+  const uriMatch = uri.match(/mongodb\+srv:\/\/[^/]+\/([^?]+)/);
   if (uriMatch && uriMatch[1]) {
     return uriMatch[1];
   }
   // Otherwise use env var or default
-  return process.env.MONGODB_DB_NAME || 'xandeum-analytics';
+  return process.env.MONGODB_DB_NAME || 'pGlobe';
 }
 
 const DB_NAME = getDbName();
@@ -59,6 +63,7 @@ async function getClient(retries: number = 3): Promise<MongoClient> {
   let lastError: any = null;
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
+      const MONGODB_URI = getMongoUri();
       if (!MONGODB_URI) {
         const errorMsg = 'MONGODB_URI is not defined. Please set it in Vercel Environment Variables.';
         console.error('[MongoDB] ❌', errorMsg);
@@ -102,7 +107,8 @@ async function getClient(retries: number = 3): Promise<MongoClient> {
         await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
       } else {
         console.error(`[MongoDB] ❌ Connection failed after ${retries} attempts: ${errorMsg}`);
-        console.error('[MongoDB] URI (masked):', MONGODB_URI ? MONGODB_URI.replace(/:[^:@]+@/, ':****@') : 'not set');
+        const uri = getMongoUri();
+        console.error('[MongoDB] URI (masked):', uri ? uri.replace(/:[^:@]+@/, ':****@') : 'not set');
         
         // Check for specific error types
         if (errorMsg.includes('ECONNREFUSED') || errorMsg.includes('querySrv')) {
@@ -325,6 +331,23 @@ export function documentToNode(doc: NodeDocument): PNode {
   const status: 'online' | 'offline' | 'syncing' = 
     doc.seenInGossip === false ? 'offline' : (doc.status || 'offline');
   
+  // Calculate uptimePercent if uptime is available
+  let uptimePercent: number | undefined = undefined;
+  if (doc.uptime !== undefined && doc.uptime !== null) {
+    // Calculate uptime percentage (assuming node was created when first seen)
+    // If we have accountCreatedAt, use that; otherwise estimate from firstSeenSlot
+    const now = Date.now();
+    const accountAge = doc.accountCreatedAt 
+      ? (now - doc.accountCreatedAt.getTime()) / 1000 // seconds
+      : doc.firstSeenSlot 
+        ? undefined // Can't calculate without time reference
+        : undefined;
+    
+    if (accountAge && accountAge > 0) {
+      uptimePercent = (doc.uptime / accountAge) * 100;
+    }
+  }
+
   const node: PNode = {
     id: doc._id?.toString() || '',
     pubkey: doc.pubkey || doc.publicKey || '',
@@ -334,6 +357,7 @@ export function documentToNode(doc: NodeDocument): PNode {
     status: status,
     lastSeen: doc.lastSeen,
     uptime: doc.uptime,
+    uptimePercent: uptimePercent,
     cpuPercent: doc.cpuPercent,
     ramUsed: doc.ramUsed,
     ramTotal: doc.ramTotal,
@@ -352,6 +376,7 @@ export function documentToNode(doc: NodeDocument): PNode {
     peerCount: doc.peerCount,
     peers: doc.peers ? JSON.parse(doc.peers) : undefined,
     balance: doc.balance,
+    credits: undefined, // Credits not stored in DB (would come from on-chain or heartbeat)
     isRegistered: doc.isRegistered,
     managerPDA: doc.managerPDA,
     accountCreatedAt: doc.accountCreatedAt,
@@ -401,13 +426,21 @@ export async function upsertNode(node: PNode): Promise<void> {
     // Remove createdAt, updatedAt, and _id from doc since we handle them separately
     const { _id: docId, createdAt, updatedAt, ...docWithoutTimestamps } = doc;
     
+    // Only set fields that have actual values (preserve existing stats if enrichment failed)
+    const setFields: any = {
+      updatedAt: now,
+    };
+    
+    for (const [key, value] of Object.entries(docWithoutTimestamps)) {
+      if (value !== undefined && value !== null) {
+        setFields[key] = value;
+      }
+    }
+    
     await collection.updateOne(
       { _id: nodeId as any }, // Use pubkey or IP address as _id
       {
-        $set: {
-          ...docWithoutTimestamps,
-          updatedAt: now,
-        },
+        $set: setFields,
         $setOnInsert: { 
           _id: nodeId,
           createdAt: now,
@@ -448,10 +481,11 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
       if (ip) existingByIP.set(ip, doc);
     }
     
-    // STEP 2: Deduplicate incoming nodes by IP address
+    // STEP 2: Deduplicate incoming nodes by pubkey FIRST, then by IP
     // Priority: pubkey > latest version > more data
     const deduplicated = new Map<string, PNode>();
     const ipToNode = new Map<string, PNode>();
+    const pubkeyToNode = new Map<string, PNode>(); // Track by pubkey to prevent duplicates
     
     for (const node of nodes) {
       const pubkey = node.pubkey || node.publicKey || '';
@@ -459,6 +493,35 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
       
       if (!pubkey && !ip) continue; // Skip nodes without identifier
       
+      // FIRST: Check for duplicate pubkey (even with different IPs)
+      if (pubkey && pubkeyToNode.has(pubkey)) {
+        // Same pubkey, different IP - keep the better node
+        const existing = pubkeyToNode.get(pubkey)!;
+        const existingVersion = existing.version || '';
+        const newNodeVersion = node.version || '';
+        const existingDataCount = Object.values(existing).filter(v => v !== undefined && v !== null).length;
+        const newNodeDataCount = Object.values(node).filter(v => v !== undefined && v !== null).length;
+        
+        // Keep the one with later version or more data
+        if (newNodeVersion > existingVersion || 
+            (newNodeVersion === existingVersion && newNodeDataCount > existingDataCount)) {
+          // Replace with better node
+          pubkeyToNode.set(pubkey, node);
+          deduplicated.set(`pubkey:${pubkey}`, node);
+          // Update IP mapping if IP changed
+          if (ip) {
+            const existingIP = existing.address?.split(':')[0] || '';
+            if (existingIP && existingIP !== ip) {
+              ipToNode.delete(existingIP);
+            }
+            ipToNode.set(ip, node);
+          }
+        }
+        // Skip this node - existing one is better
+        continue;
+      }
+      
+      // SECOND: Check for duplicate IP (only if no pubkey duplicate)
       if (ip && ipToNode.has(ip)) {
         // Duplicate IP - keep the better node
         const existing = ipToNode.get(ip)!;
@@ -498,6 +561,7 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
               (newNodeVersion === existingVersion && newNodeDataCount > existingDataCount)) {
             ipToNode.set(ip, node);
             if (pubkey) {
+              pubkeyToNode.set(pubkey, node);
               deduplicated.set(`pubkey:${pubkey}`, node);
             } else {
               deduplicated.set(`ip:${ip}`, node);
@@ -508,6 +572,7 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
         // New IP or first occurrence
         ipToNode.set(ip, node);
         if (pubkey) {
+          pubkeyToNode.set(pubkey, node);
           deduplicated.set(`pubkey:${pubkey}`, node);
         } else {
           deduplicated.set(`ip:${ip}`, node);
@@ -568,19 +633,31 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
       const doc = nodeToDocument(node);
       const { _id, createdAt, updatedAt, ...docWithoutTimestamps } = doc;
       
-      // Remove undefined values
+      // Remove undefined values - but preserve existing stats if new data doesn't have them
       const docToUpdate = Object.fromEntries(
         Object.entries(docWithoutTimestamps).filter(([_, value]) => value !== undefined)
       );
+      
+      // Build update with $set for new/updated fields and $setOnInsert for new documents
+      // IMPORTANT: Don't overwrite existing stats fields if they're undefined in new data
+      // Use $set only for fields that are actually defined
+      const setFields: any = {
+        updatedAt: now,
+      };
+      
+      // Only set fields that have actual values (not undefined)
+      // This preserves existing stats when enrichment fails
+      for (const [key, value] of Object.entries(docToUpdate)) {
+        if (value !== undefined && value !== null) {
+          setFields[key] = value;
+        }
+      }
       
       operations.push({
         updateOne: {
           filter: { _id: nodeId as any },
           update: {
-            $set: {
-              ...docToUpdate,
-              updatedAt: now,
-            },
+            $set: setFields,
             $setOnInsert: {
               _id: nodeId,
               createdAt: now,
@@ -604,8 +681,8 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
         console.log(`[MongoDB] ✅ Wrote ${newNodes} new nodes, updated ${updatedNodes} existing nodes (${matchedNodes} matched, ${operations.length} total)`);
       }
       
-      // STEP 4: Final cleanup - remove any remaining IP-based duplicates
-      // Find all nodes with pubkeys and delete IP-based versions of the same IP
+      // STEP 4: Final cleanup - ensure ONE document per pubkey (no duplicates)
+      // This handles cases where same pubkey exists with different _ids (IP-based vs pubkey-based)
       const cleanupOps: any[] = [];
       const pubkeyNodes = Array.from(deduplicated.values()).filter(n => n.pubkey || n.publicKey);
       
@@ -613,8 +690,47 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
         const ip = pubkeyNode.address?.split(':')[0] || '';
         const pubkey = pubkeyNode.pubkey || pubkeyNode.publicKey || '';
         
+        if (!pubkey) continue;
+        
+        // Find ALL documents with this pubkey (regardless of _id)
+        const docsWithSamePubkey = await collection.find({
+          $or: [
+            { pubkey },
+            { publicKey: pubkey },
+            { _id: pubkey as any }
+          ]
+        }).toArray();
+        
+        if (docsWithSamePubkey.length > 1) {
+          // Multiple documents with same pubkey - keep the one with _id = pubkey, delete others
+          const correctDoc = docsWithSamePubkey.find(d => d._id?.toString() === pubkey);
+          
+          if (correctDoc) {
+            // Delete all other documents with this pubkey
+            for (const doc of docsWithSamePubkey) {
+              if (doc._id?.toString() !== pubkey) {
+                cleanupOps.push({
+                  deleteOne: {
+                    filter: { _id: doc._id },
+                  },
+                });
+              }
+            }
+          } else {
+            // No document with _id = pubkey, but multiple exist - keep the first one, update its _id
+            // Actually, we'll delete all and let the upsert create the correct one
+            for (const doc of docsWithSamePubkey) {
+              cleanupOps.push({
+                deleteOne: {
+                  filter: { _id: doc._id },
+                },
+              });
+            }
+          }
+        }
+        
+        // Also check for IP-based duplicates (IP stored as _id when pubkey exists)
         if (ip && pubkey) {
-          // Check if there's an IP-based document (stored by IP, not pubkey)
           const ipBasedDoc = await collection.findOne({
             _id: ip as any,
             $or: [
@@ -626,7 +742,7 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
           });
           
           if (ipBasedDoc) {
-            // Delete IP-based duplicate
+            // Delete IP-based duplicate (pubkey-based one will be created/updated)
             cleanupOps.push({
               deleteOne: {
                 filter: { _id: ip },
@@ -638,7 +754,7 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
       
       if (cleanupOps.length > 0) {
         const cleanupResult = await collection.bulkWrite(cleanupOps);
-        console.log(`[MongoDB] 🧹 Cleaned up ${cleanupResult.deletedCount || 0} remaining IP-based duplicate nodes`);
+        console.log(`[MongoDB] 🧹 Cleaned up ${cleanupResult.deletedCount || 0} duplicate nodes (ensuring one document per pubkey)`);
       }
       
       // STEP 5: Mark nodes NOT in this gossip cycle as not seen AND offline
@@ -672,7 +788,7 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
 export async function getAllNodes(): Promise<PNode[]> {
   try {
     console.log('[MongoDB] getAllNodes: Starting...');
-    console.log('[MongoDB] MONGODB_URI set:', !!MONGODB_URI);
+    console.log('[MongoDB] MONGODB_URI set:', !!getMongoUri());
     console.log('[MongoDB] DB_NAME:', DB_NAME);
     
     // Ensure connection is alive (with faster timeout for reads)
@@ -695,15 +811,10 @@ export async function getAllNodes(): Promise<PNode[]> {
     
     console.log(`[MongoDB] Retrieved ${docs.length} documents from collection`);
     
-    // Filter out nodes without valid pubkeys
-    const nodes = docs
-      .map(doc => documentToNode(doc as unknown as NodeDocument))
-      .filter(node => {
-        const pubkey = node.pubkey || node.publicKey || '';
-        return isValidPubkey(pubkey);
-      });
+    // Convert all documents to nodes (return ALL nodes from DB, no filtering)
+    const nodes = docs.map(doc => documentToNode(doc as unknown as NodeDocument));
     
-    console.log(`[MongoDB] ✅ Returning ${nodes.length} nodes (after pubkey validation)`);
+    console.log(`[MongoDB] ✅ Returning ${nodes.length} nodes (all nodes from DB)`);
     return nodes;
   } catch (error: any) {
     console.error('[MongoDB] ❌ Error fetching nodes:', error?.message || error);

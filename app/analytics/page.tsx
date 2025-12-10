@@ -5,7 +5,6 @@ import { PNode } from '@/lib/types/pnode';
 import NetworkHealthChart from '@/components/charts/NetworkHealthChart';
 import NetworkHealthScoreDetailed from '@/components/NetworkHealthScoreDetailed';
 import VersionDistribution from '@/components/VersionDistribution';
-import NetworkInsights from '@/components/NetworkInsights';
 import NodeRankings from '@/components/NodeRankings';
 import LatencyDistribution from '@/components/analytics/LatencyDistribution';
 import ResourceUtilization from '@/components/analytics/ResourceUtilization';
@@ -27,24 +26,40 @@ export default function AnalyticsPage() {
   const { nodes, loading, error, lastUpdate, selectedNetwork, setSelectedNetwork, availableNetworks, currentNetwork, refreshNodes } = useNodes();
   
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
-  const [activeTab, setActiveTab] = useState<'insights' | 'events'>('insights');
 
   // Fetch historical data for charts (only when needed)
   useEffect(() => {
     const fetchHistoricalData = async () => {
       try {
+        // Get last 7 days of history
+        const endTime = Date.now();
+        const startTime = endTime - (7 * 24 * 60 * 60 * 1000);
+        
         const params = new URLSearchParams();
-        if (selectedNetwork) {
-          params.set('network', selectedNetwork);
-        }
-        params.set('history', 'true');
-        const response = await fetch(`/api/pnodes?${params.toString()}`);
-        const data = await response.json();
-        if (data.historicalData) {
-          setHistoricalData(data.historicalData);
+        params.set('startTime', startTime.toString());
+        params.set('endTime', endTime.toString());
+        
+        const response = await fetch(`/api/history?${params.toString()}`);
+        if (response.ok) {
+          const data = await response.json();
+          // Transform snapshots to HistoricalDataPoint format
+          if (data.data && Array.isArray(data.data)) {
+            const transformed = data.data.map((snapshot: any) => ({
+              timestamp: snapshot.timestamp,
+              avgUptime: snapshot.avgUptimePercent || 0,
+              onlineCount: snapshot.onlineCount || 0,
+              totalNodes: snapshot.totalNodes || 0,
+            }));
+            setHistoricalData(transformed);
+          } else {
+            setHistoricalData([]);
+          }
+        } else {
+          setHistoricalData([]);
         }
       } catch (err) {
         console.error('Failed to fetch historical data:', err);
+        setHistoricalData([]);
       }
     };
     
@@ -248,37 +263,6 @@ export default function AnalyticsPage() {
               <div className="bg-card/50 border border-border rounded-xl p-4">
                 <h3 className="text-xs font-semibold text-foreground/60 mb-3 uppercase tracking-wide">Top Nodes</h3>
                 <NodeRankings nodes={nodes} />
-              </div>
-
-              <div className="bg-card/50 border border-border rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <button
-                    onClick={() => setActiveTab('insights')}
-                    className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                      activeTab === 'insights'
-                        ? 'bg-[#F0A741]/20 text-[#F0A741]'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    Insights
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('events')}
-                    className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                      activeTab === 'events'
-                        ? 'bg-[#F0A741]/20 text-[#F0A741]'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    Events
-                  </button>
-                </div>
-                {activeTab === 'insights' && <NetworkInsights nodes={nodes} />}
-                {activeTab === 'events' && (
-                  <div className="text-center py-8 text-sm text-muted-foreground">
-                    <p>Event tracking coming soon</p>
-                  </div>
-                )}
               </div>
             </div>
 

@@ -15,6 +15,8 @@ interface MapLibreGlobeProps {
   scanLocation?: { lat: number; lon: number; city?: string; country?: string }; // Scan location to show marker and connections
   scanTopNodes?: PNode[]; // Top nodes to connect to scan location (top 20)
   navigateToNodeId?: string | null; // Node ID to navigate to (from search)
+  onNodeClick?: (node: PNode) => void; // Callback when a node is clicked (should navigate to node)
+  onPopupClick?: (node: PNode) => void; // Callback when popup is clicked (should open node details modal)
 }
 
 
@@ -66,7 +68,7 @@ const MAP_STYLE = {
   glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
 } as const;
 
-function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation, scanTopNodes, navigateToNodeId }: MapLibreGlobeProps) {
+function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation, scanTopNodes, navigateToNodeId, onNodeClick, onPopupClick }: MapLibreGlobeProps) {
   const router = useRouter();
   const mapRef = useRef<MapRef>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -1519,13 +1521,22 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
             console.debug('Node clicked! ID:', nodeId, 'Feature:', feature, 'Properties:', feature.properties);
             
             if (nodeId && typeof nodeId === 'string') {
-              // Find the node index in navigableNodes and navigate to it
-              const nodeIndex = navigableNodes.findIndex(n => n.id === nodeId);
-              if (nodeIndex >= 0) {
-                // Navigate to the node (this will open the popup after navigation completes)
-                navigateToNode(nodeIndex);
+              // Find the node
+              const clickedNode = navigableNodes.find(n => n.id === nodeId);
+              
+              if (clickedNode && onNodeClick) {
+                // Call the onNodeClick callback to open node detail modal
+                onNodeClick(clickedNode);
+                handleUserInteraction();
+              } else {
+                // Fallback to existing popup behavior if no callback provided
+                const nodeIndex = navigableNodes.findIndex(n => n.id === nodeId);
+                if (nodeIndex >= 0) {
+                  // Navigate to the node (this will open the popup after navigation completes)
+                  navigateToNode(nodeIndex);
+                }
+                handleUserInteraction();
               }
-              handleUserInteraction();
               
               // Reset flag after a short delay to allow map handler to check it
               setTimeout(() => {
@@ -2484,14 +2495,14 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
           <div 
             key={`node-popup-${selectedNodeId}`}
             className="fixed inset-0 pointer-events-none"
-            style={{ zIndex: 1000 }}
+            style={{ zIndex: 20 }}
           >
             {/* SVG for connector line and border - behind popup card */}
             <svg
               className="absolute inset-0 w-full h-full"
               style={{ 
                 pointerEvents: 'none', 
-                zIndex: 3, // Behind popup card
+                zIndex: 10, // Behind popup card and modal
               }}
             >
               {/* Connector line - updated via ref for 60 FPS */}
@@ -2533,7 +2544,12 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
             {/* Popup card - sits exactly inside the SVG stroke border, in front */}
             <div
               ref={popupCardRef}
-              className="shadow-2xl backdrop-blur-sm"
+              className="shadow-2xl backdrop-blur-sm cursor-pointer hover:bg-opacity-100 transition-opacity"
+              onClick={() => {
+                if (onPopupClick && selectedNode) {
+                  onPopupClick(selectedNode);
+                }
+              }}
               style={{
                 position: 'fixed',
                 left: `${popupX + 1}px`,
@@ -2542,7 +2558,7 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
                 height: `${popupHeight - 2}px`,
                 backgroundColor: 'rgba(20, 24, 32, 0.95)',
                 borderRadius: '18px', // 15 * 1.2
-                zIndex: 5, // In front of SVG connector line
+                zIndex: 20, // Above map but below modal (modal is z-50)
                 pointerEvents: 'auto',
                 animation: 'bubbleIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards',
                 boxShadow: `0 8px 32px rgba(0, 0, 0, 0.5)`,

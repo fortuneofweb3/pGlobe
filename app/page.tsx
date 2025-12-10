@@ -14,6 +14,7 @@ import { Activity, Server, HardDrive, TrendingUp, RefreshCw, BarChart3, Network,
 import SearchBar from '@/components/SearchBar';
 import { NetworkConfig } from '@/lib/server/network-config';
 import { useNodes } from '@/lib/context/NodesContext';
+import NodeDetailsModal from '@/components/NodeDetailsModal';
 
 // Helper function to format uptime seconds as human-readable duration
 function formatUptimeDuration(seconds: number): string {
@@ -53,6 +54,8 @@ function HomeContent() {
   const [globeSearchQuery, setGlobeSearchQuery] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [navigateToNodeId, setNavigateToNodeId] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] = useState<PNode | null>(null);
+  const [isNodeModalOpen, setIsNodeModalOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
@@ -108,8 +111,10 @@ function HomeContent() {
         
         setNavigateToNodeId(nodeIdentifier);
         
-        // Remove query parameter from URL immediately (don't wait)
-        router.replace('/', { scroll: false });
+        // Remove query parameter from URL after a short delay to allow navigation to complete
+        setTimeout(() => {
+          router.replace('/', { scroll: false });
+        }, 100);
         
         // Clear the navigation ID after navigation completes (longer delay to ensure navigation happens)
         setTimeout(() => {
@@ -119,8 +124,12 @@ function HomeContent() {
       } else {
         console.log('[Navigation] Node not found for param:', nodeParam, 'in', nodesWithGeo.length, 'nodes with geo');
       }
+    } else if (!nodeParam && navigateToNodeId) {
+      // If node param is removed but navigateToNodeId is still set, clear it
+      // This handles the case where user navigates away
+      setNavigateToNodeId(null);
     }
-  }, [searchParams, nodes, nodesWithGeo, router]);
+  }, [searchParams, nodes, nodesWithGeo, router, navigateToNodeId]);
 
   const filteredAndSortedNodes = useMemo(() => {
     let filtered = [...nodes];
@@ -593,6 +602,18 @@ function HomeContent() {
                       <MapLibreGlobe 
                         nodes={nodesWithGeo.length > 0 ? nodesWithGeo : nodes}
                         navigateToNodeId={navigateToNodeId}
+                        onNodeClick={(node) => {
+                          // Navigate to the node via URL parameter
+                          const nodeIdentifier = node.pubkey || node.publicKey || node.id;
+                          if (nodeIdentifier) {
+                            router.push(`/?node=${encodeURIComponent(nodeIdentifier)}`, { scroll: false });
+                          }
+                        }}
+                        onPopupClick={(node) => {
+                          // Open node details modal when popup is clicked
+                          setSelectedNode(node);
+                          setIsNodeModalOpen(true);
+                        }}
                       />
                       {geoEnriching && (
               <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-50 bg-black/90 backdrop-blur-md rounded-2xl px-4 py-2">
@@ -612,6 +633,16 @@ function HomeContent() {
           <p className="text-sm text-red-400 font-mono">{error}</p>
           </div>
         )}
+
+        {/* Node Details Modal */}
+        <NodeDetailsModal
+          node={selectedNode}
+          isOpen={isNodeModalOpen}
+          onClose={() => {
+            setIsNodeModalOpen(false);
+            setSelectedNode(null);
+          }}
+        />
     </div>
   );
 }

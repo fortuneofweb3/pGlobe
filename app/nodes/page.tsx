@@ -68,13 +68,54 @@ function NodesPageContent() {
       filtered = filtered.filter((node) => node.version === versionFilter);
     }
 
+    // Calculate "completeness score" - nodes with more complete details get higher score
+    const getCompletenessScore = (node: PNode): number => {
+      let score = 0;
+      // Core stats
+      if (node.cpuPercent !== undefined && node.cpuPercent !== null) score += 2;
+      if (node.ramUsed !== undefined && node.ramUsed !== null && node.ramTotal !== undefined && node.ramTotal !== null) score += 2;
+      if (node.latency !== undefined && node.latency !== null) score += 2;
+      if (node.uptime !== undefined && node.uptime !== null) score += 2;
+      if (node.uptimePercent !== undefined && node.uptimePercent !== null) score += 1;
+      // Network stats
+      if (node.packetsReceived !== undefined && node.packetsReceived !== null) score += 1;
+      if (node.packetsSent !== undefined && node.packetsSent !== null) score += 1;
+      if (node.activeStreams !== undefined && node.activeStreams !== null) score += 1;
+      // Storage stats
+      if (node.storageUsed !== undefined && node.storageUsed !== null) score += 1;
+      if (node.storageCapacity !== undefined && node.storageCapacity !== null) score += 1;
+      // Location data
+      if (node.locationData?.country) score += 1;
+      if (node.locationData?.city) score += 1;
+      // Version
+      if (node.version) score += 1;
+      return score;
+    };
+
     filtered.sort((a, b) => {
-      // First, sort by online status (seenInGossip) - online nodes first
-      const aIsOnline = a.seenInGossip !== false;
-      const bIsOnline = b.seenInGossip !== false;
+      // First, separate registered from unregistered nodes (registered first)
+      const aIsRegistered = a.isRegistered === true || (a.balance !== undefined && a.balance !== null && a.balance > 0);
+      const bIsRegistered = b.isRegistered === true || (b.balance !== undefined && b.balance !== null && b.balance > 0);
+      
+      if (aIsRegistered !== bIsRegistered) {
+        return aIsRegistered ? -1 : 1; // Registered nodes first
+      }
+      
+      // If both are registered (or both unregistered), sort registered nodes by completeness score
+      if (aIsRegistered && bIsRegistered) {
+        const aScore = getCompletenessScore(a);
+        const bScore = getCompletenessScore(b);
+        
+        if (aScore !== bScore) {
+          return bScore - aScore; // Higher score first
+        }
+      }
+      
+      // If same completeness (or both unregistered), sort by online status (online nodes first)
+      const aIsOnline = a.seenInGossip !== false && a.status === 'online';
+      const bIsOnline = b.seenInGossip !== false && b.status === 'online';
       
       if (aIsOnline !== bIsOnline) {
-        // Online nodes (true) come before offline nodes (false)
         return aIsOnline ? -1 : 1;
       }
       

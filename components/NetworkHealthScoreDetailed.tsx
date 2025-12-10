@@ -3,7 +3,7 @@
 import { PNode } from '@/lib/types/pnode';
 import { useMemo } from 'react';
 import { Info } from 'lucide-react';
-import { calculateNetworkHealth } from '@/lib/utils/network-health';
+import { calculateNetworkHealth, getLatestVersion } from '@/lib/utils/network-health';
 
 interface NetworkHealthScoreDetailedProps {
   nodes: PNode[];
@@ -83,10 +83,11 @@ export default function NetworkHealthScoreDetailed({ nodes }: NetworkHealthScore
             />
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            {nodes.filter(n => {
-              const latest = nodes.map(n => n.version).filter(v => v).sort().reverse()[0];
-              return n.version === latest;
-            }).length} nodes on latest version
+            {(() => {
+              const versions = nodes.map(n => n.version).filter(v => v);
+              const latest = getLatestVersion(versions);
+              return latest ? nodes.filter(n => n.version === latest).length : 0;
+            })()} nodes on latest version
           </div>
         </div>
 

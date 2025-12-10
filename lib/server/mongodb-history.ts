@@ -1,8 +1,9 @@
 /**
  * MongoDB Historical Data Storage
- * Stores hourly snapshots of VARIABLE node metrics for trend analysis
+ * Stores 10-minute interval snapshots of VARIABLE node metrics for trend analysis
+ * Each snapshot includes network-level aggregates AND per-node snapshots with status, latency, CPU, RAM, packets, etc.
  * 
- * NOTE: This stores only VARIABLE metrics (status, latency, CPU, RAM, packets, etc.)
+ * NOTE: This stores only VARIABLE metrics (status, latency, CPU, RAM, packets, etc.) for each node
  * Static data like creation dates (accountCreatedAt) are stored in the main nodes collection,
  * not in snapshots, since they don't change over time.
  * 
@@ -19,7 +20,7 @@ const COLLECTION_NAME = 'node_history';
 export interface HistoricalSnapshot {
   _id?: ObjectId;
   timestamp: number; // Unix timestamp in milliseconds
-  hour: string; // YYYY-MM-DD-HH format for aggregation
+  interval: string; // YYYY-MM-DD-HH-MM format for 10-minute aggregation (MM is 00, 10, 20, 30, 40, 50)
   date: string; // YYYY-MM-DD for easy querying
   
   // Network-level metrics (aggregated from variable node metrics)
@@ -88,8 +89,11 @@ export async function createHistoryIndexes(): Promise<void> {
     // Index on timestamp for time-range queries
     await collection.createIndex({ timestamp: -1 });
     
-    // Index on hour for hourly aggregation queries
-    await collection.createIndex({ hour: 1 });
+    // Index on interval for 10-minute interval aggregation queries
+    await collection.createIndex({ interval: 1 });
+    
+    // Index on nodeSnapshots.pubkey for efficient node-specific queries
+    await collection.createIndex({ 'nodeSnapshots.pubkey': 1 });
     
     // Index on date for daily queries
     await collection.createIndex({ date: 1 });
@@ -111,7 +115,7 @@ export async function createHistoryIndexes(): Promise<void> {
 
 /**
  * Store a historical snapshot
- * Only stores one snapshot per hour (aggregates multiple refreshes)
+ * Stores one snapshot per 10-minute interval (aggregates multiple refreshes within the same 10-minute window)
  */
 export async function storeHistoricalSnapshot(nodes: PNode[]): Promise<void> {
   try {
@@ -119,16 +123,17 @@ export async function storeHistoricalSnapshot(nodes: PNode[]): Promise<void> {
     const now = Date.now();
     const date = new Date(now);
     
-    // Create hour identifier (YYYY-MM-DD-HH)
-    const hour = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}-${String(date.getUTCHours()).padStart(2, '0')}`;
+    // Create 10-minute interval identifier (YYYY-MM-DD-HH-MM where MM is rounded to nearest 10)
+    const minutes = Math.floor(date.getUTCMinutes() / 10) * 10; // Round down to nearest 10 (0, 10, 20, 30, 40, 50)
+    const interval = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}-${String(date.getUTCHours()).padStart(2, '0')}-${String(minutes).padStart(2, '0')}`;
     const dateStr = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
     
-    // Check if we already have a snapshot for this hour
-    const existing = await collection.findOne({ hour });
+    // Check if we already have a snapshot for this 10-minute interval
+    const existing = await collection.findOne({ interval });
     if (existing) {
-      // Update existing snapshot (use latest data for the hour)
+      // Update existing snapshot (use latest data for the interval)
       await collection.updateOne(
-        { hour },
+        { interval },
         {
           $set: {
             timestamp: now,
@@ -157,7 +162,7 @@ export async function storeHistoricalSnapshot(nodes: PNode[]): Promise<void> {
     // Create new snapshot
     const snapshot: HistoricalSnapshot = {
       timestamp: now,
-      hour,
+      interval,
       date: dateStr,
       totalNodes: nodes.length,
       onlineNodes: nodes.filter(n => n.status === 'online').length,
@@ -178,7 +183,7 @@ export async function storeHistoricalSnapshot(nodes: PNode[]): Promise<void> {
     };
     
     await collection.insertOne(snapshot);
-    console.log(`[MongoDB History] ✅ Stored snapshot for ${hour} (${nodes.length} nodes)`);
+    console.log(`[MongoDB History] ✅ Stored snapshot for ${interval} (${nodes.length} nodes, ${snapshot.nodeSnapshots.length} node snapshots)`);
   } catch (error: any) {
     console.error('[MongoDB History] ❌ Failed to store snapshot:', error?.message || error);
     // Don't throw - historical data is nice to have but not critical
@@ -226,33 +231,195 @@ export async function getNodeHistory(
 ): Promise<Array<HistoricalSnapshot['nodeSnapshots'][0] & { timestamp: number }>> {
   try {
     const collection = await getHistoryCollection();
-    const query: any = {
-      'nodeSnapshots.pubkey': pubkey,
-    };
     
+    // Build time range query
+    const timeQuery: any = {};
     if (startTime || endTime) {
-      query.timestamp = {};
-      if (startTime) query.timestamp.$gte = startTime;
-      if (endTime) query.timestamp.$lte = endTime;
+      timeQuery.timestamp = {};
+      if (startTime) timeQuery.timestamp.$gte = startTime;
+      if (endTime) timeQuery.timestamp.$lte = endTime;
     }
     
-    const snapshots = await collection
-      .find(query)
-      .sort({ timestamp: 1 })
-      .toArray();
+    console.log('[MongoDB History] Querying node history:', {
+      pubkey,
+      startTime: startTime ? new Date(startTime).toISOString() : undefined,
+      endTime: endTime ? new Date(endTime).toISOString() : undefined,
+    });
     
-    // Extract node-specific data points
-    const nodeHistory: Array<HistoricalSnapshot['nodeSnapshots'][0] & { timestamp: number }> = [];
+    // Use aggregation pipeline for better performance
+    // Filter by node FIRST to use index, then extract only that node's data
+    const pipeline: any[] = [
+      // Match snapshots that contain this node AND are within time range
+      // This uses the compound index { 'nodeSnapshots.pubkey': 1, timestamp: -1 } efficiently
+      {
+        $match: {
+          'nodeSnapshots.pubkey': pubkey, // Uses index - matches documents containing this node
+          ...timeQuery, // Time range filter
+        }
+      },
+      // Filter the nodeSnapshots array to only include our node
+      // This avoids unwinding all nodes
+      {
+        $addFields: {
+          nodeSnapshots: {
+            $filter: {
+              input: '$nodeSnapshots',
+              as: 'node',
+              cond: { $eq: ['$$node.pubkey', pubkey] }
+            }
+          }
+        }
+      },
+      // Now unwind - but there should only be 1 element per document now
+      { $unwind: '$nodeSnapshots' },
+      // Project only the fields we need
+      {
+        $project: {
+          timestamp: 1,
+          pubkey: '$nodeSnapshots.pubkey',
+          status: '$nodeSnapshots.status',
+          latency: '$nodeSnapshots.latency',
+          cpuPercent: '$nodeSnapshots.cpuPercent',
+          ramPercent: '$nodeSnapshots.ramPercent',
+          packetsReceived: '$nodeSnapshots.packetsReceived',
+          packetsSent: '$nodeSnapshots.packetsSent',
+          activeStreams: '$nodeSnapshots.activeStreams',
+          uptime: '$nodeSnapshots.uptime',
+          uptimePercent: '$nodeSnapshots.uptimePercent',
+          storageUsed: '$nodeSnapshots.storageUsed',
+          storageCapacity: '$nodeSnapshots.storageCapacity',
+          version: '$nodeSnapshots.version',
+          isRegistered: '$nodeSnapshots.isRegistered',
+          location: '$nodeSnapshots.location',
+        }
+      },
+      // Sort by timestamp
+      { $sort: { timestamp: 1 } },
+      // Limit to prevent huge results (7 days = ~1000 data points max at 10-min intervals)
+      { $limit: 1000 }
+    ];
     
-    for (const snapshot of snapshots) {
-      const nodeSnapshot = snapshot.nodeSnapshots.find(n => n.pubkey === pubkey);
-      if (nodeSnapshot) {
-        nodeHistory.push({
-          ...nodeSnapshot,
-          timestamp: snapshot.timestamp,
-        });
+    // Try aggregation first (faster for large datasets)
+    // Add maxTimeMS to prevent queries from running too long
+    let results: any[];
+    try {
+      results = await collection.aggregate(pipeline, { maxTimeMS: 40000 }).toArray();
+    } catch (aggError: any) {
+      console.warn('[MongoDB History] Aggregation failed, falling back to find query:', aggError?.message);
+      // Fallback to simpler query if aggregation fails
+      const simpleQuery: any = {
+        'nodeSnapshots.pubkey': pubkey,
+        ...timeQuery,
+      };
+      const snapshots = await collection
+        .find(simpleQuery)
+        .sort({ timestamp: 1 })
+        .limit(1000)
+        .maxTimeMS(40000)
+        .toArray();
+      
+      // Extract node-specific data points
+      results = [];
+      for (const snapshot of snapshots) {
+        const nodeSnapshot = snapshot.nodeSnapshots.find((n: any) => n.pubkey === pubkey);
+        if (nodeSnapshot) {
+          results.push({
+            timestamp: snapshot.timestamp,
+            ...nodeSnapshot,
+          });
+        }
       }
     }
+    
+    // Map results to expected format
+    let nodeHistory = results.map((doc: any) => ({
+      timestamp: doc.timestamp,
+      pubkey: doc.pubkey || doc.nodeSnapshots?.pubkey,
+      status: doc.status || doc.nodeSnapshots?.status,
+      latency: doc.latency,
+      cpuPercent: doc.cpuPercent,
+      ramPercent: doc.ramPercent,
+      packetsReceived: doc.packetsReceived,
+      packetsSent: doc.packetsSent,
+      activeStreams: doc.activeStreams,
+      uptime: doc.uptime,
+      uptimePercent: doc.uptimePercent,
+      storageUsed: doc.storageUsed,
+      storageCapacity: doc.storageCapacity,
+      version: doc.version,
+      isRegistered: doc.isRegistered,
+      location: doc.location,
+    }));
+    
+    // If no results with exact match, try case-insensitive (but this should be rare)
+    if (nodeHistory.length === 0) {
+      console.log('[MongoDB History] No exact match, trying case-insensitive search...');
+      const caseInsensitivePipeline: any[] = [
+        ...(Object.keys(timeQuery).length > 0 ? [{ $match: timeQuery }] : []),
+        { $unwind: '$nodeSnapshots' },
+        {
+          $match: {
+            $expr: {
+              $eq: [
+                { $toLower: '$nodeSnapshots.pubkey' },
+                pubkey.toLowerCase()
+              ]
+            }
+          }
+        },
+        {
+          $project: {
+            timestamp: 1,
+            pubkey: '$nodeSnapshots.pubkey',
+            status: '$nodeSnapshots.status',
+            latency: '$nodeSnapshots.latency',
+            cpuPercent: '$nodeSnapshots.cpuPercent',
+            ramPercent: '$nodeSnapshots.ramPercent',
+            packetsReceived: '$nodeSnapshots.packetsReceived',
+            packetsSent: '$nodeSnapshots.packetsSent',
+            activeStreams: '$nodeSnapshots.activeStreams',
+            uptime: '$nodeSnapshots.uptime',
+            uptimePercent: '$nodeSnapshots.uptimePercent',
+            storageUsed: '$nodeSnapshots.storageUsed',
+            storageCapacity: '$nodeSnapshots.storageCapacity',
+            version: '$nodeSnapshots.version',
+            isRegistered: '$nodeSnapshots.isRegistered',
+            location: '$nodeSnapshots.location',
+          }
+        },
+        { $sort: { timestamp: 1 } },
+        { $limit: 1000 }
+      ];
+      
+      try {
+        const caseInsensitiveResults = await collection.aggregate(caseInsensitivePipeline, { maxTimeMS: 40000 }).toArray();
+        nodeHistory = caseInsensitiveResults.map((doc: any) => ({
+          timestamp: doc.timestamp,
+          pubkey: doc.pubkey,
+          status: doc.status,
+          latency: doc.latency,
+          cpuPercent: doc.cpuPercent,
+          ramPercent: doc.ramPercent,
+          packetsReceived: doc.packetsReceived,
+          packetsSent: doc.packetsSent,
+          activeStreams: doc.activeStreams,
+          uptime: doc.uptime,
+          uptimePercent: doc.uptimePercent,
+          storageUsed: doc.storageUsed,
+          storageCapacity: doc.storageCapacity,
+          version: doc.version,
+          isRegistered: doc.isRegistered,
+          location: doc.location,
+        }));
+      } catch (caseError: any) {
+        console.warn('[MongoDB History] Case-insensitive search failed:', caseError?.message);
+      }
+    }
+    
+    console.log('[MongoDB History] Extracted node history:', {
+      pubkey,
+      dataPoints: nodeHistory.length,
+    });
     
     return nodeHistory;
   } catch (error: any) {
@@ -411,31 +578,51 @@ function calculateVersionDistribution(nodes: PNode[]): Record<string, number> {
 
 function createNodeSnapshots(nodes: PNode[]): HistoricalSnapshot['nodeSnapshots'] {
   return nodes.map(node => {
-    const pubkey = node.pubkey || node.publicKey || '';
+    const pubkey = node.pubkey || node.publicKey || node.id || '';
     const ramPercent = node.ramUsed && node.ramTotal && node.ramTotal > 0
       ? ((node.ramUsed / node.ramTotal) * 100)
       : undefined;
     
+    // Determine status: use node.status if available, otherwise infer from seenInGossip
+    let status: 'online' | 'offline' | 'syncing' = 'offline';
+    if (node.status) {
+      status = node.status as 'online' | 'offline' | 'syncing';
+    } else if (node.seenInGossip === false) {
+      status = 'offline';
+    } else if (node.lastSeen) {
+      const lastSeenTime = typeof node.lastSeen === 'string' ? new Date(node.lastSeen).getTime() : node.lastSeen;
+      const timeSinceLastSeen = Date.now() - lastSeenTime;
+      if (timeSinceLastSeen < 5 * 60 * 1000) { // < 5 minutes
+        status = 'online';
+      } else if (timeSinceLastSeen < 60 * 60 * 1000) { // < 1 hour
+        status = 'syncing';
+      } else {
+        status = 'offline';
+      }
+    }
+    
     return {
       pubkey,
-      // Variable status metrics (change frequently)
-      status: node.status || 'offline',
-      latency: node.latency,
-      cpuPercent: node.cpuPercent,
+      // Variable status metrics (change frequently) - these are the key metrics we track
+      status,
+      latency: node.latency !== undefined && node.latency !== null ? node.latency : undefined,
+      cpuPercent: node.cpuPercent !== undefined && node.cpuPercent !== null ? node.cpuPercent : undefined,
       ramPercent,
-      packetsReceived: node.packetsReceived,
-      packetsSent: node.packetsSent,
-      activeStreams: node.activeStreams,
+      packetsReceived: node.packetsReceived !== undefined && node.packetsReceived !== null ? node.packetsReceived : undefined,
+      packetsSent: node.packetsSent !== undefined && node.packetsSent !== null ? node.packetsSent : undefined,
+      activeStreams: node.activeStreams !== undefined && node.activeStreams !== null ? node.activeStreams : undefined,
       // Cumulative metrics (track behavior over time)
-      uptime: node.uptime, // Cumulative - tracks if node stays online
-      uptimePercent: node.uptimePercent,
-      storageUsed: node.storageUsed, // Can grow over time
-      storageCapacity: node.storageCapacity,
+      uptime: node.uptime !== undefined && node.uptime !== null ? node.uptime : undefined,
+      uptimePercent: node.uptimePercent !== undefined && node.uptimePercent !== null ? node.uptimePercent : undefined,
+      storageUsed: node.storageUsed !== undefined && node.storageUsed !== null ? node.storageUsed : undefined,
+      storageCapacity: node.storageCapacity !== undefined && node.storageCapacity !== null ? node.storageCapacity : undefined,
       // Static-ish metadata (for context)
-      version: node.version,
-      isRegistered: node.isRegistered,
-      location: node.location,
+      version: node.version || undefined,
+      isRegistered: node.isRegistered !== undefined ? node.isRegistered : undefined,
+      location: node.location || (node.locationData?.city && node.locationData?.country 
+        ? `${node.locationData.city}, ${node.locationData.country}` 
+        : undefined),
     };
-  });
+  }).filter(snapshot => snapshot.pubkey); // Only include nodes with a valid pubkey
 }
 

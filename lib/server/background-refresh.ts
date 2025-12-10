@@ -432,9 +432,47 @@ export async function performRefresh(): Promise<void> {
     try {
       await upsertNodes(enrichedNodes);
       
-      // Store historical snapshot (hourly aggregation)
+      // Store historical snapshot (10-minute interval aggregation) in pGlobe database
+      // This captures node-level metrics: status, latency, CPU, RAM, packets, etc.
+      // IMPORTANT: Store snapshots for ALL nodes in database, not just current gossip nodes
+      // This ensures we track offline nodes and nodes that temporarily disappear from gossip
       try {
-        await storeHistoricalSnapshot(enrichedNodes);
+        // Get ALL nodes from database (including offline ones not in current gossip)
+        const allNodesInDb = await getAllNodes();
+        console.log(`[BackgroundRefresh] Found ${allNodesInDb.length} total nodes in database (${enrichedNodes.length} from current gossip)`);
+        
+        // Create a map of fresh gossip data by pubkey for quick lookup
+        const freshDataMap = new Map<string, PNode>();
+        enrichedNodes.forEach(node => {
+          const key = node.pubkey || node.publicKey || node.id;
+          if (key) freshDataMap.set(key, node);
+        });
+        
+        // Merge fresh gossip data with all database nodes
+        // For nodes in gossip: use fresh data
+        // For nodes not in gossip: use existing database data (they're offline)
+        const allNodesForSnapshot = allNodesInDb.map(dbNode => {
+          const key = dbNode.pubkey || dbNode.publicKey || dbNode.id;
+          const freshNode = key ? freshDataMap.get(key) : null;
+          
+          if (freshNode) {
+            // Node is in current gossip - use fresh data
+            return freshNode;
+          } else {
+            // Node is not in current gossip - use existing data but mark as offline
+            // Update status to offline if it was previously online/syncing
+            const updatedNode = { ...dbNode };
+            if (updatedNode.status === 'online' || updatedNode.status === 'syncing') {
+              updatedNode.status = 'offline';
+            }
+            // Update seenInGossip flag
+            updatedNode.seenInGossip = false;
+            return updatedNode;
+          }
+        });
+        
+        await storeHistoricalSnapshot(allNodesForSnapshot);
+        console.log(`[BackgroundRefresh] ✅ Stored historical snapshot with ${allNodesForSnapshot.length} node snapshots (${enrichedNodes.length} from gossip, ${allNodesForSnapshot.length - enrichedNodes.length} offline)`);
       } catch (historyError: any) {
         console.warn(`[BackgroundRefresh] ⚠️  Failed to store historical snapshot: ${historyError?.message || historyError}`);
         // Don't throw - historical data is nice to have but not critical

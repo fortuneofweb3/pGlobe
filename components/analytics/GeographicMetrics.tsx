@@ -2,38 +2,56 @@
 
 import { PNode } from '@/lib/types/pnode';
 import { useMemo, useState } from 'react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
+import { scaleBand, scaleLinear } from '@visx/scale';
+import { Group } from '@visx/group';
+import { Bar } from '@visx/shape';
+import { AxisBottom, AxisLeft } from '@visx/axis';
+import { GridColumns } from '@visx/grid';
+import { useTooltip, TooltipWithBounds, defaultStyles } from '@visx/tooltip';
+import { localPoint } from '@visx/event';
+import ParentSize from '@visx/responsive/lib/components/ParentSize';
 import { Globe, ChevronDown } from 'lucide-react';
 import { formatStorageBytes } from '@/lib/utils/storage';
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    const entry = payload[0].payload;
-    return (
-      <div className="bg-black/95 backdrop-blur-md border border-white/10 rounded-lg p-3 shadow-xl">
-        <p className="text-sm font-semibold text-[#E5E7EB] mb-2">{`Country: ${entry.fullCountry || label}`}</p>
-        <div className="space-y-1">
-          <p className="text-xs text-[#E5E7EB]">
-            <span className="font-mono font-semibold">{entry.value.toFixed(1)}{entry.unit}</span>
-          </p>
-          <p className="text-xs text-[#9CA3AF]">
-            {entry.label}
-          </p>
-        </div>
-      </div>
-    );
-  }
-  return null;
-};
+type MetricType = 'nodeCount' | 'latency' | 'storage' | 'onlineRate' | 'uptime';
 
 interface GeographicMetricsProps {
   nodes: PNode[];
 }
 
-type MetricType = 'nodeCount' | 'latency' | 'storage' | 'onlineRate' | 'uptime';
+type TooltipData = {
+  country: string;
+  fullCountry: string;
+  value: number;
+  unit: string;
+  label: string;
+  nodeCount: number;
+  avgLatency: number;
+  storageGB: number;
+  onlineRate: number;
+  avgUptimeDays: number;
+};
+
+const CustomTooltip = ({ tooltipData }: { tooltipData?: TooltipData }) => {
+  if (!tooltipData) return null;
+  return (
+    <div className="bg-black/95 backdrop-blur-md border border-white/10 rounded-lg p-3 shadow-xl">
+      <p className="text-sm font-semibold text-[#E5E7EB] mb-2">{`Country: ${tooltipData.fullCountry}`}</p>
+      <div className="space-y-1">
+        <p className="text-xs text-[#E5E7EB]">
+          <span className="font-mono font-semibold">{tooltipData.value.toFixed(1)}{tooltipData.unit}</span>
+        </p>
+        <p className="text-xs text-[#9CA3AF]">
+          {tooltipData.label}
+        </p>
+      </div>
+    </div>
+  );
+};
 
 export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('nodeCount');
+  const { tooltipData, tooltipLeft, tooltipTop, tooltipOpen, showTooltip, hideTooltip } = useTooltip<TooltipData>();
 
   const metricOptions = [
     { value: 'nodeCount' as MetricType, label: 'Node Count' },
@@ -54,7 +72,6 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
     }>();
 
     nodes.forEach(node => {
-      // Skip nodes not seen in gossip (offline)
       if (node.seenInGossip === false) return;
       
       const country = node.locationData?.country || 'Unknown';
@@ -105,7 +122,6 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
 
         const storageGB = data.totalStorage / (1024 * 1024 * 1024);
 
-        // Calculate value based on selected metric
         let value = 0;
         let label = '';
         let unit = '';
@@ -141,7 +157,7 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
         return {
           country: country.length > 20 ? country.substring(0, 17) + '...' : country,
           fullCountry: country,
-          value: Math.round(value * 10) / 10, // Round to 1 decimal
+          value: Math.round(value * 10) / 10,
           nodeCount: data.count,
           avgLatency: avgLatency || 0,
           hasLatency: avgLatency !== null,
@@ -153,7 +169,6 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
         };
       })
       .filter(item => {
-        // Filter out countries with no data for selected metric
         switch (selectedMetric) {
           case 'latency':
             return item.hasLatency;
@@ -166,13 +181,12 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
         }
       })
       .sort((a, b) => b.value - a.value)
-      .slice(0, 12); // Top 12 countries
+      .slice(0, 12);
   }, [nodes, selectedMetric]);
 
-  const getColor = (entry: any) => {
+  const getColor = (entry: TooltipData) => {
     switch (selectedMetric) {
       case 'nodeCount':
-        // More nodes = brighter green
         const maxCount = Math.max(...data.map(d => d.value));
         const intensity = entry.value / maxCount;
         if (intensity > 0.7) return '#3F8277';
@@ -180,7 +194,6 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
         return '#3F8277';
       
       case 'latency':
-        // Lower latency = better (green), higher = worse (red)
         if (entry.value < 50) return '#3F8277';
         if (entry.value < 100) return '#7DD87D';
         if (entry.value < 200) return '#F0A741';
@@ -188,7 +201,6 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
         return '#FF6B6B';
       
       case 'storage':
-        // More storage = brighter blue
         const maxStorage = Math.max(...data.map(d => d.value));
         const storageIntensity = entry.value / maxStorage;
         if (storageIntensity > 0.7) return '#3B82F6';
@@ -196,13 +208,11 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
         return '#93C5FD';
       
       case 'onlineRate':
-        // Higher online rate = better (green)
         if (entry.value >= 80) return '#3F8277';
         if (entry.value >= 50) return '#F0A741';
         return '#FF6B6B';
       
       case 'uptime':
-        // Higher uptime = better (green)
         if (entry.value >= 30) return '#3F8277';
         if (entry.value >= 7) return '#7DD87D';
         if (entry.value >= 1) return '#F0A741';
@@ -220,6 +230,9 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
       </div>
     );
   }
+
+  const margin = { top: 10, right: 30, left: 120, bottom: 40 };
+  const chartHeight = 300;
 
   return (
     <div>
@@ -245,48 +258,114 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
       </div>
       
       <div className="mt-3">
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart 
-            data={data} 
-            layout="vertical"
-            margin={{ top: 10, right: 30, left: 120, bottom: 20 }}
-          >
-            <XAxis 
-              type="number"
-              tick={{ fill: '#9CA3AF', fontSize: 12 }}
-              stroke="#6B7280"
-              opacity={0.6}
-              label={{ 
-                value: `${metricOptions.find(m => m.value === selectedMetric)?.label}${data[0]?.unit || ''}`, 
-                position: 'insideBottom', 
-                offset: -5, 
-                fill: '#9CA3AF', 
-                fontSize: 12 
-              }}
-            />
-            <YAxis 
-              dataKey="country"
-              type="category"
-              tick={{ fill: '#E5E7EB', fontSize: 11 }}
-              width={115}
-              stroke="#6B7280"
-              opacity={0.6}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar 
-              dataKey="value" 
-              radius={[0, 4, 4, 0]}
-              animationDuration={400}
-              animationEasing="ease-in-out"
-            >
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={getColor(entry)} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        <div style={{ width: '100%', height: chartHeight, position: 'relative' }}>
+          <ParentSize>
+            {({ width: parentWidth = 800 }) => {
+              const width = parentWidth;
+              const innerWidth = width - margin.left - margin.right;
+              const innerHeight = chartHeight - margin.top - margin.bottom;
+
+              const yScale = scaleBand<string>({
+                range: [innerHeight, 0],
+                domain: data.map(d => d.country),
+                padding: 0.2,
+              });
+
+              const maxValue = Math.max(...data.map(d => d.value), 1); // Ensure at least 1
+              const xScale = scaleLinear<number>({
+                range: [0, innerWidth],
+                domain: [0, maxValue * 1.1 || 10], // Ensure domain is valid
+                nice: true,
+              });
+
+              return (
+                <>
+                  <svg width={width} height={chartHeight}>
+                    <Group left={margin.left} top={margin.top}>
+                      {/* Grid lines for reference */}
+                      <GridColumns
+                        scale={xScale}
+                        height={innerHeight}
+                        strokeDasharray="2,2"
+                        stroke="rgba(156, 163, 175, 0.2)"
+                        pointerEvents="none"
+                      />
+                      {/* Bars */}
+                      {data.map((d) => {
+                        const barHeight = Math.max(yScale.bandwidth(), 1);
+                        const barWidth = Math.max(xScale(d.value), 0);
+                        const y = yScale(d.country) || 0;
+
+                        return (
+                          <Bar
+                            key={d.country}
+                            x={0}
+                            y={y}
+                            width={barWidth}
+                            height={barHeight}
+                            fill={getColor(d)}
+                            rx={4}
+                            style={{ pointerEvents: 'all' }}
+                            onMouseMove={(event) => {
+                              const coords = localPoint(event);
+                              if (coords) {
+                                showTooltip({
+                                  tooltipLeft: coords.x,
+                                  tooltipTop: coords.y,
+                                  tooltipData: d,
+                                });
+                              }
+                            }}
+                            onMouseLeave={() => hideTooltip()}
+                          />
+                        );
+                      })}
+                    </Group>
+                    <AxisLeft
+                      left={margin.left}
+                      scale={yScale}
+                      tickFormat={(d) => d}
+                      tickLabelProps={() => ({
+                        fill: '#E5E7EB',
+                        fontSize: 11,
+                        textAnchor: 'end',
+                        dy: '0.33em',
+                        dx: -10,
+                      })}
+                    />
+                    <AxisBottom
+                      top={innerHeight + margin.top}
+                      left={margin.left}
+                      scale={xScale}
+                      tickFormat={(d) => String(d)}
+                      tickLabelProps={() => ({
+                        fill: '#9CA3AF',
+                        fontSize: 12,
+                        textAnchor: 'middle',
+                      })}
+                    />
+                  </svg>
+                  {tooltipOpen && tooltipData && (
+                    <TooltipWithBounds
+                      top={tooltipTop}
+                      left={tooltipLeft}
+                      style={{
+                        ...defaultStyles,
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        padding: 0,
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      <CustomTooltip tooltipData={tooltipData} />
+                    </TooltipWithBounds>
+                  )}
+                </>
+              );
+            }}
+          </ParentSize>
+        </div>
       </div>
     </div>
   );
 }
-

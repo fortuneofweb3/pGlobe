@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     const refresh = searchParams.get('refresh') === 'true';
     
     console.log('[VercelProxy] Proxying pnodes request to Render...');
-    
+              
     // Build query string
     const queryParams = new URLSearchParams();
     if (networkId) queryParams.set('network', networkId);
@@ -58,7 +58,7 @@ export async function GET(request: Request) {
         },
         { status: response.status }
       );
-    }
+        }
 
     console.log(`[VercelProxy] ✅ Returning ${data.nodes?.length || 0} nodes from Render`);
     
@@ -70,9 +70,9 @@ export async function GET(request: Request) {
         timestamp: data.timestamp || Date.now(),
       },
       {
-        headers: {
-          'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
-        },
+      headers: {
+        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+      },
       }
     );
   } catch (error: any) {
