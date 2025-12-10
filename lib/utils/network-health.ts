@@ -52,7 +52,7 @@ export function calculateNetworkHealth(nodes: PNode[]): {
   const availability = (onlineNodes / nodes.length) * 100;
 
   // 2. Version Health (35% weight) - % on latest version (using semantic version comparison)
-  const versions = nodes.map(n => n.version).filter(v => v);
+  const versions = nodes.map(n => n.version).filter((v): v is string => !!v);
   const latestVersion = getLatestVersion(versions);
   const latestVersionNodes = latestVersion ? nodes.filter(n => n.version === latestVersion).length : 0;
   const versionHealth = latestVersion ? (latestVersionNodes / nodes.length) * 100 : 0;
