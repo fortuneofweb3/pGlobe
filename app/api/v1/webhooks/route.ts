@@ -96,7 +96,7 @@ export const GET = withAPIAuth(async (request: Request, { apiKey }) => {
 /**
  * Trigger webhook (internal function)
  */
-export async function triggerWebhook(event: string, data: any) {
+async function triggerWebhook(event: string, data: any) {
   const matchingWebhooks = Array.from(webhooks.values()).filter(
     wh => wh.enabled && wh.events.includes(event)
   );
