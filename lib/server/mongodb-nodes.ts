@@ -317,15 +317,21 @@ function nodeToDocument(node: PNode): NodeDocument {
 
 /**
  * Convert MongoDB document to PNode
+ * Status: Use status from gossip if node is in gossip, otherwise offline
  */
 export function documentToNode(doc: NodeDocument): PNode {
+  // If node is not in gossip, it's automatically offline
+  // Otherwise use the status from gossip (online/offline/syncing)
+  const status: 'online' | 'offline' | 'syncing' = 
+    doc.seenInGossip === false ? 'offline' : (doc.status || 'offline');
+  
   const node: PNode = {
     id: doc._id?.toString() || '',
     pubkey: doc.pubkey || doc.publicKey || '',
     publicKey: doc.publicKey || doc.pubkey || '',
     address: doc.address || '',
     version: doc.version || '',
-    status: doc.status,
+    status: status,
     lastSeen: doc.lastSeen,
     uptime: doc.uptime,
     cpuPercent: doc.cpuPercent,
@@ -635,16 +641,16 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
         console.log(`[MongoDB] 🧹 Cleaned up ${cleanupResult.deletedCount || 0} remaining IP-based duplicate nodes`);
       }
       
-      // STEP 5: Mark nodes NOT in this gossip cycle as not seen
+      // STEP 5: Mark nodes NOT in this gossip cycle as not seen AND offline
       // All nodes that were upserted are marked as seenInGossip: true
-      // Now mark all other nodes as seenInGossip: false
+      // Now mark all other nodes as seenInGossip: false AND status: 'offline'
       if (seenNodeIds.size > 0) {
         const markNotSeenResult = await collection.updateMany(
           { _id: { $nin: Array.from(seenNodeIds) as any } },
-          { $set: { seenInGossip: false, updatedAt: now } }
+          { $set: { seenInGossip: false, status: 'offline', updatedAt: now } }
         );
         if (markNotSeenResult.modifiedCount > 0) {
-          console.log(`[MongoDB] 📍 Marked ${markNotSeenResult.modifiedCount} nodes as not seen in current gossip cycle (offline)`);
+          console.log(`[MongoDB] 📍 Marked ${markNotSeenResult.modifiedCount} nodes as offline (not seen in current gossip cycle)`);
         }
       }
     }

@@ -71,10 +71,6 @@ export default function GeographicPerformance({ nodes }: GeographicPerformancePr
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Globe className="w-5 h-5 text-foreground/40" />
-        <h3 className="text-lg font-semibold text-foreground">Geographic Performance</h3>
-      </div>
       <ResponsiveContainer width="100%" height={250}>
         <BarChart data={data} layout="vertical">
           <XAxis type="number" tick={{ fill: '#9CA3AF', fontSize: 12 }} />

@@ -10,14 +10,24 @@ interface StorageDistributionChartProps {
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
+    const data = payload[0].payload;
     return (
       <div className="bg-black/95 backdrop-blur-md border border-[#FFD700]/30 rounded-lg p-3 shadow-xl">
         <p className="text-sm font-semibold text-foreground mb-2">{label}</p>
-        {payload.map((entry: any, index: number) => (
-          <p key={index} className="text-xs text-foreground/80" style={{ color: entry.color }}>
-            {entry.name}: <span className="font-mono font-semibold">{entry.value.toFixed(1)} GB</span>
+        <div className="space-y-1">
+          <p className="text-xs text-foreground/80">
+            Total: <span className="font-mono font-semibold text-[#FFD700]">{data.capacity.toFixed(1)} GB</span>
           </p>
-        ))}
+          <p className="text-xs text-foreground/80">
+            Used: <span className="font-mono font-semibold text-[#FFA500]">{data.used.toFixed(1)} GB</span>
+          </p>
+          <p className="text-xs text-foreground/80">
+            Available: <span className="font-mono font-semibold text-[#3F8277]">{data.available.toFixed(1)} GB</span>
+          </p>
+          <p className="text-xs text-foreground/60 mt-2 pt-2 border-t border-foreground/10">
+            Nodes: <span className="font-semibold">{data.nodes}</span>
+          </p>
+        </div>
       </div>
     );
   }
@@ -27,7 +37,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 const CustomLegend = (props: any) => {
   const { payload } = props;
   return (
-    <div className="flex items-center justify-center gap-6 mt-4">
+    <div className="flex items-center justify-center gap-6 mt-4 flex-wrap">
       {payload.map((entry: any, index: number) => (
         <div key={index} className="flex items-center gap-2">
           <div
@@ -95,35 +105,53 @@ export default function StorageDistributionChart({ nodes }: StorageDistributionC
       .slice(0, 10); // Top 10 locations
   }, [nodes]);
 
+  // Truncate long location names
+  const truncatedData = data.map(item => ({
+    ...item,
+    locationShort: item.location.length > 25 
+      ? item.location.substring(0, 22) + '...' 
+      : item.location,
+    locationFull: item.location,
+  }));
+
   return (
-    <div>
+    <div className="space-y-4">
       {data.length > 0 ? (
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#FFD700" opacity={0.1} />
-            <XAxis
-              dataKey="location"
-              angle={-45}
-              textAnchor="end"
-              height={100}
-              tick={{ fill: '#ffffff', fontSize: 11 }}
-              stroke="#FFD700"
-              opacity={0.6}
-            />
-            <YAxis 
-              tick={{ fill: '#ffffff', fontSize: 11 }}
-              stroke="#FFD700"
-              opacity={0.6}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend content={<CustomLegend />} />
-            <Bar dataKey="capacity" fill="#FFD700" name="Total Capacity (GB)" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="used" fill="#FFA500" name="Used (GB)" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="available" fill="#3F8277" name="Available (GB)" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+        <>
+          <ResponsiveContainer width="100%" height={350}>
+            <BarChart 
+              data={truncatedData} 
+              layout="vertical"
+              margin={{ top: 10, right: 30, left: 140, bottom: 20 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#9CA3AF" opacity={0.1} horizontal={true} vertical={false} />
+              <XAxis 
+                type="number"
+                tick={{ fill: '#9CA3AF', fontSize: 11 }}
+                stroke="#6B7280"
+                opacity={0.6}
+                label={{ value: 'Storage (GB)', position: 'insideBottom', offset: -5, fill: '#9CA3AF', fontSize: 12 }}
+              />
+              <YAxis 
+                type="category"
+                dataKey="locationShort"
+                tick={{ fill: '#E5E7EB', fontSize: 11 }}
+                width={130}
+                stroke="#6B7280"
+                opacity={0.6}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend content={<CustomLegend />} />
+              <Bar dataKey="used" stackId="a" fill="#FFA500" name="Used" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="available" stackId="a" fill="#3F8277" name="Available" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="text-xs text-muted-foreground text-center">
+            Showing top {data.length} locations by total storage capacity
+          </div>
+        </>
       ) : (
-        <div className="flex items-center justify-center h-[300px] text-foreground/50">
+        <div className="flex items-center justify-center h-[350px] text-foreground/50">
           <p className="text-sm">No storage data available</p>
         </div>
       )}

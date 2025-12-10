@@ -63,30 +63,21 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
 
   if (data.length === 0) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Wifi className="w-5 h-5 text-foreground/40" />
-          <h3 className="text-lg font-semibold text-foreground">Latency Distribution</h3>
-        </div>
-        <div className="flex items-center justify-center h-[250px] text-muted-foreground text-sm">
-          No latency data available
-        </div>
+      <div className="flex items-center justify-center h-[250px] text-muted-foreground text-sm">
+        No latency data available
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Wifi className="w-5 h-5 text-foreground/40" />
-          <h3 className="text-lg font-semibold text-foreground">Latency Distribution</h3>
-        </div>
+    <div>
+      <div className="flex items-center justify-between mb-3">
         <div className="text-sm text-muted-foreground">
           Avg: <span className="text-foreground font-semibold">{avgLatency}ms</span>
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={250}>
+      <div className="mt-3">
+        <ResponsiveContainer width="100%" height={250}>
         <BarChart data={data}>
           <XAxis dataKey="range" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
           <YAxis tick={{ fill: '#9CA3AF', fontSize: 12 }} />
@@ -108,14 +99,7 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
             ))}
           </Bar>
         </BarChart>
-      </ResponsiveContainer>
-      <div className="text-xs text-muted-foreground">
-        {nodes.filter(n => 
-          n.latency !== undefined && 
-          n.latency !== null && 
-          n.latency > 0 &&
-          n.seenInGossip !== false // Exclude nodes not seen in gossip (offline)
-        ).length} nodes reporting latency
+        </ResponsiveContainer>
       </div>
     </div>
   );

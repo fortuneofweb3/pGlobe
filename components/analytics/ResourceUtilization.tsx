@@ -82,25 +82,15 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
 
   if (data.length === 0 || data.every(d => d.cpu === 0 && d.ram === 0)) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Cpu className="w-5 h-5 text-foreground/40" />
-          <h3 className="text-lg font-semibold text-foreground">Resource Utilization</h3>
-        </div>
-        <div className="flex items-center justify-center h-[250px] text-muted-foreground text-sm">
-          No resource data available
-        </div>
+      <div className="flex items-center justify-center h-[250px] text-muted-foreground text-sm">
+        No resource data available
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Cpu className="w-5 h-5 text-foreground/40" />
-          <h3 className="text-lg font-semibold text-foreground">Resource Utilization</h3>
-        </div>
+    <div>
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-1">
             <Cpu className="w-4 h-4" />
@@ -112,7 +102,8 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
           </div>
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={250}>
+      <div className="mt-3">
+        <ResponsiveContainer width="100%" height={250}>
         <BarChart data={data}>
           <XAxis dataKey="range" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
           <YAxis tick={{ fill: '#9CA3AF', fontSize: 12 }} />
@@ -127,9 +118,7 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
           <Bar dataKey="cpu" name="CPU" fill="#00FF88" radius={[4, 4, 0, 0]} />
           <Bar dataKey="ram" name="RAM" fill="#3B82F6" radius={[4, 4, 0, 0]} />
         </BarChart>
-      </ResponsiveContainer>
-      <div className="text-xs text-muted-foreground">
-        {nodes.filter(n => n.cpuPercent !== undefined || (n.ramUsed !== undefined && n.ramTotal !== undefined)).length} nodes reporting resources
+        </ResponsiveContainer>
       </div>
     </div>
   );

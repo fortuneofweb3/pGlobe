@@ -3,16 +3,13 @@
 import { useEffect, useState, useMemo } from 'react';
 import { PNode } from '@/lib/types/pnode';
 import NetworkHealthChart from '@/components/charts/NetworkHealthChart';
-import StorageDistributionChart from '@/components/charts/StorageDistributionChart';
-import UptimeTrendChart from '@/components/charts/UptimeTrendChart';
 import NetworkHealthScoreDetailed from '@/components/NetworkHealthScoreDetailed';
 import VersionDistribution from '@/components/VersionDistribution';
 import NetworkInsights from '@/components/NetworkInsights';
 import NodeRankings from '@/components/NodeRankings';
 import LatencyDistribution from '@/components/analytics/LatencyDistribution';
 import ResourceUtilization from '@/components/analytics/ResourceUtilization';
-import GeographicPerformance from '@/components/analytics/GeographicPerformance';
-import NetworkReliability from '@/components/analytics/NetworkReliability';
+import GeographicMetrics from '@/components/analytics/GeographicMetrics';
 import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
 import { formatStorageBytes } from '@/lib/utils/storage';
@@ -133,7 +130,7 @@ export default function AnalyticsPage() {
       />
 
       <main className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 space-y-3 sm:space-y-4">
           {/* Hero */}
           <div className="bg-card/40 border border-border/60 rounded-2xl p-4 sm:p-5 shadow-lg shadow-black/20">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -236,25 +233,25 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          {/* Main Grid Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-            {/* Left Column - Health Score & Version Distribution */}
-            <div className="lg:col-span-1 space-y-4 sm:space-y-6">
-              <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
+          {/* Main Analytics Sections */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+            {/* Left Sidebar */}
+            <div className="lg:col-span-1 space-y-3 sm:space-y-4">
+              <div className="bg-card/50 border border-border rounded-xl p-4">
                 <NetworkHealthScoreDetailed nodes={nodes} />
               </div>
 
-              <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
+              <div className="bg-card/50 border border-border rounded-xl p-4">
                 <VersionDistribution nodes={nodes} />
               </div>
 
-              <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
-                <h3 className="text-sm font-semibold text-foreground/60 mb-4 uppercase tracking-wide">Top Nodes</h3>
+              <div className="bg-card/50 border border-border rounded-xl p-4">
+                <h3 className="text-xs font-semibold text-foreground/60 mb-3 uppercase tracking-wide">Top Nodes</h3>
                 <NodeRankings nodes={nodes} />
               </div>
 
-              <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
-                <div className="flex items-center gap-2 mb-4">
+              <div className="bg-card/50 border border-border rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-3">
                   <button
                     onClick={() => setActiveTab('insights')}
                     className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
@@ -280,59 +277,34 @@ export default function AnalyticsPage() {
                 {activeTab === 'events' && (
                   <div className="text-center py-8 text-sm text-muted-foreground">
                     <p>Event tracking coming soon</p>
-                    <p className="text-xs mt-1">Real-time network events will appear here</p>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Right Column - Charts */}
-            <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-              <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
-                <div className="flex items-center gap-2 mb-4 sm:mb-6">
-                  <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-foreground/40" />
-                  <h2 className="text-base sm:text-lg font-semibold text-foreground">Network Health Over Time</h2>
+            {/* Main Content Area */}
+            <div className="lg:col-span-2 space-y-3 sm:space-y-4">
+              <div className="bg-card/50 border border-border rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Activity className="w-4 h-4 text-foreground/40" />
+                  <h2 className="text-base font-semibold text-foreground">Network Health</h2>
                 </div>
                 <NetworkHealthChart nodes={nodes} />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
-                  <div className="flex items-center gap-2 mb-4 sm:mb-6">
-                    <HardDrive className="w-4 h-4 sm:w-5 sm:h-5 text-foreground/40" />
-                    <h2 className="text-base sm:text-lg font-semibold text-foreground">Storage Distribution</h2>
-                  </div>
-                  <StorageDistributionChart nodes={nodes} />
+              <div className="bg-card/50 border border-border rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <TrendingUp className="w-4 h-4 text-foreground/40" />
+                  <h2 className="text-base font-semibold text-foreground">Performance Metrics</h2>
                 </div>
-
-                <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
-                  <div className="flex items-center gap-2 mb-4 sm:mb-6">
-                    <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-foreground/40" />
-                    <h2 className="text-base sm:text-lg font-semibold text-foreground">Uptime Trend</h2>
-                  </div>
-                  <UptimeTrendChart nodes={nodes} historicalData={historicalData} />
-                </div>
-              </div>
-
-              {/* Developer-Focused Analytics */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   <LatencyDistribution nodes={nodes} />
-                </div>
-
-                <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
                   <ResourceUtilization nodes={nodes} />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
-                  <GeographicPerformance nodes={nodes} />
-                </div>
-
-                <div className="bg-card/50 border border-border rounded-xl p-4 sm:p-6">
-                  <NetworkReliability nodes={nodes} />
-                </div>
+              <div className="bg-card/50 border border-border rounded-xl p-4">
+                <GeographicMetrics nodes={nodes} />
               </div>
             </div>
           </div>

@@ -325,11 +325,13 @@ async function fetchPubkeyForNode(node: PNode): Promise<string | null> {
 }
 
 /**
- * Calculate node status based on last_seen_timestamp
+ * Calculate node status based on last_seen_timestamp from gossip
+ * If no last_seen_timestamp, status is offline
  */
 function calculateStatus(lastSeenTimestamp: number | undefined): { status: 'online' | 'offline' | 'syncing'; lastSeen: number } {
   if (!lastSeenTimestamp) {
-    return { status: 'syncing', lastSeen: Date.now() };
+    // No last_seen_timestamp = offline
+    return { status: 'offline', lastSeen: Date.now() };
   }
 
   // Handle timestamp in seconds vs milliseconds
@@ -854,16 +856,20 @@ export async function fetchNodeStats(node: PNode): Promise<PNode> {
       totalPages: stats.total_pages ?? undefined,
       // Data operations
       dataOperationsHandled: stats.data_operations_handled ?? undefined,
-      // Status - if we got stats, node is online
+      // Status: If we got stats, node is definitely online (override gossip status)
+      // Otherwise keep the gossip status (online/offline/syncing)
       status: 'online',
     };
 
     console.log(`  ✅ Enriched ${ip}: uptime=${(uptimeSeconds / 86400).toFixed(1)}d, cpu=${stats.cpu_percent || 0}%, packets_rx=${stats.packets_received || 0}, packets_tx=${stats.packets_sent || 0}, latency=${latency !== null ? `${latency}ms` : 'null'}`);
   } else {
-    // If stats call failed and we don't have latency, mark as offline
-    if (latency === null) {
+    // If stats call failed, preserve the gossip status (online/offline/syncing)
+    // Don't override - keep whatever status gossip gave us
+    // Only set offline if node has no status at all
+    if (!enrichedNode.status) {
       enrichedNode.status = 'offline';
     }
+    // Otherwise keep the existing status from gossip (preserves syncing!)
   }
 
   return enrichedNode;

@@ -2,29 +2,31 @@
 
 import Link from 'next/link';
 import Header from '@/components/Header';
-import { NETWORK_CONFIGS } from '@/lib/server/network-config';
+import { useNodes } from '@/lib/context/NodesContext';
 
 export default function HelpPage() {
+  const { nodes, loading, lastUpdate, availableNetworks, currentNetwork, refreshNodes } = useNodes();
+
   return (
-    <div className="min-h-screen bg-black text-foreground">
+    <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
       <Header
         activePage="help"
-        nodeCount={0}
-        lastUpdate={null}
-        loading={false}
-        onRefresh={() => {}}
-        networks={NETWORK_CONFIGS}
-        currentNetwork={null}
-        switchingNetwork={null}
+        nodeCount={nodes.length}
+        lastUpdate={lastUpdate}
+        loading={loading}
+        onRefresh={() => refreshNodes()}
+        networks={availableNetworks}
+        currentNetwork={currentNetwork}
         onNetworkChange={() => {}}
         showNetworkSelector={false}
       />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
-        <h1 className="text-2xl sm:text-3xl font-bold text-[#FFD700] mb-6 sm:mb-8">pGlobe Help & Documentation</h1>
+      <main className="flex-1 overflow-auto">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 space-y-3 sm:space-y-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-[#FFD700] mb-6">pGlobe Help & Documentation</h1>
 
         {/* What is pGlobe */}
-        <section className="mb-8 sm:mb-12">
+        <section className="mb-8">
           <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
             <span className="text-[#00FF88]">●</span> What is pGlobe?
           </h2>
@@ -42,7 +44,7 @@ export default function HelpPage() {
         </section>
 
         {/* Understanding the Metrics */}
-        <section className="mb-12">
+        <section className="mb-8">
           <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
             <span className="text-[#FFD700]">●</span> Understanding the Metrics
           </h2>
@@ -123,7 +125,7 @@ export default function HelpPage() {
         </section>
 
         {/* Network Health Score */}
-        <section className="mb-12">
+        <section className="mb-8">
           <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
             <span className="text-red-400">●</span> Network Health Score
           </h2>
@@ -147,7 +149,7 @@ export default function HelpPage() {
         </section>
 
         {/* Data Sources */}
-        <section className="mb-12">
+        <section className="mb-8">
           <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
             <span className="text-blue-400">●</span> Data Sources
           </h2>
@@ -170,7 +172,7 @@ export default function HelpPage() {
         </section>
 
         {/* Globe Interaction */}
-        <section className="mb-12">
+        <section className="mb-8">
           <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
             <span className="text-purple-400">●</span> Globe Interaction
           </h2>
@@ -187,7 +189,7 @@ export default function HelpPage() {
         </section>
 
         {/* FAQ */}
-        <section className="mb-12">
+        <section className="mb-8">
           <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
             <span className="text-cyan-400">●</span> FAQ
           </h2>
@@ -219,21 +221,136 @@ export default function HelpPage() {
           </div>
         </section>
 
-        {/* Links */}
+        {/* Deployment & Usage Documentation */}
+        <section className="mb-8">
+          <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+            <span className="text-[#00FF88]">●</span> Deployment & Usage Documentation
+          </h2>
+              <div className="bg-gradient-to-br from-muted/40 to-muted/20 rounded-lg p-6 sm:p-8 border border-[#FFD700]/20">
+            <div className="space-y-6">
+              <p className="text-foreground/90 leading-relaxed">
+                The <strong className="text-[#FFD700]">Xandeum pNode Analytics Platform</strong> is a production-ready, 
+                enterprise-grade monitoring solution designed for seamless deployment and integration. Built with 
+                Next.js 14 and modern web technologies, the platform offers comprehensive real-time analytics, 
+                historical data tracking, and powerful visualization capabilities for monitoring the Xandeum 
+                decentralized storage network.
+              </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-black/20 rounded-lg p-5 border border-[#FFD700]/10">
+                  <h4 className="font-semibold text-[#FFD700] mb-3 text-base flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Quick Start
+                  </h4>
+                  <p className="text-sm text-foreground/80 leading-relaxed">
+                    Get up and running quickly with our streamlined installation process. 
+                    Configure environment variables, connect to MongoDB, and start monitoring 
+                    your network in minutes.
+                  </p>
+                </div>
+                <div className="bg-black/20 rounded-lg p-5 border border-[#FFD700]/10">
+                  <h4 className="font-semibold text-[#FFD700] mb-3 text-base flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    Production Deployment
+                  </h4>
+                  <p className="text-sm text-foreground/80 leading-relaxed">
+                    Deploy to Vercel, AWS, Google Cloud, or any Node.js hosting platform. 
+                    Includes Docker configuration, environment setup, and production 
+                    optimization strategies.
+                  </p>
+                </div>
+                <div className="bg-black/20 rounded-lg p-5 border border-[#FFD700]/10">
+                  <h4 className="font-semibold text-[#FFD700] mb-3 text-base flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    API Integration
+                  </h4>
+                  <p className="text-sm text-foreground/80 leading-relaxed">
+                    Comprehensive RESTful API with full documentation. Access node data, 
+                    network statistics, and analytics through standardized endpoints with 
+                    authentication and rate limiting support.
+                  </p>
+                </div>
+                <div className="bg-black/20 rounded-lg p-5 border border-[#FFD700]/10">
+                  <h4 className="font-semibold text-[#FFD700] mb-3 text-base flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Configuration
+                  </h4>
+                  <p className="text-sm text-foreground/80 leading-relaxed">
+                    Customize pRPC endpoints, MongoDB connection strings, refresh intervals, 
+                    caching strategies, and network configurations to match your infrastructure 
+                    and monitoring requirements.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-black/30 rounded-lg p-6 mt-6 border-l-4 border-[#00FF88]">
+                <h3 className="font-semibold text-foreground mb-4 text-lg flex items-center gap-2">
+                  <svg className="w-5 h-5 text-[#00FF88]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Key Features
+                </h3>
+                <ul className="space-y-2 text-sm text-foreground/80">
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#00FF88] mt-1">•</span>
+                    <span><strong>Real-time Monitoring:</strong> Live updates of node status, performance metrics, and network health</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#00FF88] mt-1">•</span>
+                    <span><strong>Geographic Visualization:</strong> Interactive globe and maps showing node distribution worldwide</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#00FF88] mt-1">•</span>
+                    <span><strong>Comprehensive Analytics:</strong> Detailed metrics on uptime, CPU, RAM, storage, latency, and network activity</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#00FF88] mt-1">•</span>
+                    <span><strong>Public API:</strong> RESTful API with authentication for programmatic access to all network data</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#00FF88] mt-1">•</span>
+                    <span><strong>Data Export:</strong> Export node data in CSV or JSON format for further analysis</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#00FF88] mt-1">•</span>
+                    <span><strong>Network Health Scoring:</strong> Automated calculation of network health based on availability, uptime, version consistency, and activity</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Additional Resources */}
         <section>
           <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-            <span className="text-[#FFD700]">●</span> Resources
+            <span className="text-[#FFD700]">●</span> Additional Resources
           </h2>
           <div className="bg-muted/30 rounded-lg p-6">
-            <ul className="space-y-2">
+            <ul className="space-y-3">
               <li>
                 <a 
                   href="https://xandeum.com" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-[#FFD700] hover:underline"
+                  className="text-[#FFD700] hover:text-[#FFD700]/80 hover:underline flex items-center gap-2 transition-colors"
                 >
-                  Xandeum Official Website →
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                  </svg>
+                  <span className="font-medium">Xandeum Official Website</span>
+                  <svg className="w-4 h-4 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
                 </a>
               </li>
               <li>
@@ -241,32 +358,29 @@ export default function HelpPage() {
                   href="https://docs.xandeum.com" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-[#FFD700] hover:underline"
+                  className="text-[#FFD700] hover:text-[#FFD700]/80 hover:underline flex items-center gap-2 transition-colors"
                 >
-                  Xandeum Documentation →
-                </a>
-              </li>
-              <li>
-                <a 
-                  href="https://github.com/xandeum" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-[#FFD700] hover:underline"
-                >
-                  GitHub Repository →
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                  <span className="font-medium">Xandeum Documentation</span>
+                  <svg className="w-4 h-4 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
                 </a>
               </li>
             </ul>
           </div>
         </section>
 
-        <div className="mt-12 pt-8 border-t border-border">
+        <div className="mt-8 pt-6 border-t border-border">
           <Link 
             href="/"
             className="inline-flex items-center gap-2 text-[#FFD700] hover:underline"
           >
             ← Back to Dashboard
           </Link>
+        </div>
         </div>
       </main>
     </div>
