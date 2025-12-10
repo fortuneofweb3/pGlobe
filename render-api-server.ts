@@ -2,6 +2,7 @@
  * API Server for Render
  * 
  * This server handles all backend operations:
+ * - Background refresh (instrumentation) - runs every minute
  * - pRPC fetching from gossip
  * - MongoDB writes
  * - API endpoints for Vercel to call
@@ -10,8 +11,8 @@
  */
 
 import express from 'express';
-import { performRefresh } from './lib/server/background-refresh';
-import { getAllNodes, getNodeByPubkey } from './lib/server/mongodb-nodes';
+import { performRefresh, startBackgroundRefresh } from './lib/server/background-refresh';
+import { getAllNodes, getNodeByPubkey, createIndexes } from './lib/server/mongodb-nodes';
 import { fetchPNodesFromGossip } from './lib/server/prpc';
 import { upsertNodes } from './lib/server/mongodb-nodes';
 import { getNetworkConfig } from './lib/server/network-config';
@@ -176,13 +177,55 @@ app.get('/api/nodes/:id', authenticate, async (req, res) => {
   }
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`[RenderAPI] 🚀 API server running on port ${PORT}`);
-  console.log(`[RenderAPI] Environment:`, {
+// Initialize server with background refresh
+async function startServer() {
+  console.log('[RenderAPI] Starting server...');
+  console.log('[RenderAPI] Environment:', {
     nodeEnv: process.env.NODE_ENV,
     hasMongoUri: !!process.env.MONGODB_URI,
     hasApiSecret: !!API_SECRET,
+    prpcEndpoint: process.env.NEXT_PUBLIC_PRPC_ENDPOINT,
   });
-});
+
+  try {
+    // Step 1: Create MongoDB indexes
+    console.log('[RenderAPI] Creating MongoDB indexes...');
+    await createIndexes();
+    console.log('[RenderAPI] ✅ MongoDB indexes created');
+
+    // Step 2: Start background refresh (instrumentation)
+    console.log('[RenderAPI] Starting background refresh task...');
+    startBackgroundRefresh();
+    console.log('[RenderAPI] ✅ Background refresh started (runs every 1 minute)');
+
+    // Step 3: Start Express server
+    app.listen(PORT, () => {
+      console.log(`[RenderAPI] 🚀 API server running on port ${PORT}`);
+      console.log(`[RenderAPI] Background refresh active - data updates every minute`);
+    });
+
+    // Graceful shutdown
+    process.on('SIGTERM', async () => {
+      console.log('[RenderAPI] SIGTERM received, shutting down gracefully...');
+      const { stopBackgroundRefresh } = await import('./lib/server/background-refresh');
+      stopBackgroundRefresh();
+      process.exit(0);
+    });
+
+    process.on('SIGINT', async () => {
+      console.log('[RenderAPI] SIGINT received, shutting down gracefully...');
+      const { stopBackgroundRefresh } = await import('./lib/server/background-refresh');
+      stopBackgroundRefresh();
+      process.exit(0);
+    });
+
+  } catch (error: any) {
+    console.error('[RenderAPI] ❌ Failed to start server:', error);
+    console.error(error.stack);
+    process.exit(1);
+  }
+}
+
+// Start the server
+startServer();
 

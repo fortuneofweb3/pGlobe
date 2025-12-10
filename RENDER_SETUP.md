@@ -6,11 +6,13 @@ This guide shows you how to run all backend operations on Render while keeping y
 
 - **Vercel**: Frontend + API proxy endpoints (proxies to Render, no direct DB/pRPC access)
 - **Render**: 
-  - **Background Worker**: Runs refresh every minute (like local instrumentation)
-  - **API Server**: Handles all backend operations (pRPC fetching + MongoDB writes)
+  - **API Server**: Single service that handles:
+    - Background refresh (instrumentation) - runs every minute
+    - pRPC fetching + MongoDB writes
+    - API endpoints for Vercel to call
 - **MongoDB**: Shared database (only Render connects to it)
 
-## Step 1: Set Up Render Services
+## Step 1: Set Up Render API Server
 
 ### 1.1 Create Render Account
 
@@ -18,31 +20,7 @@ This guide shows you how to run all backend operations on Render while keeping y
 2. Sign up (free tier available)
 3. Connect your GitHub repository
 
-### 1.2 Create Background Worker
-
-1. In Render Dashboard, click **"New +"** → **"Background Worker"**
-2. Connect your repository
-3. Configure:
-
-   **Basic Settings:**
-   - **Name**: `pglobe-background-refresh`
-   - **Region**: Choose closest to your MongoDB
-   - **Branch**: `main`
-   - **Root Directory**: Leave empty
-
-   **Build & Deploy:**
-   - **Build Command**: `npm install`
-   - **Start Command**: `npx tsx render-server.ts`
-   - **Environment**: `Node`
-
-   **Environment Variables:**
-   - `NODE_ENV` = `production`
-   - `MONGODB_URI` = (your MongoDB connection string)
-   - `NEXT_PUBLIC_PRPC_ENDPOINT` = (your pRPC endpoint)
-
-4. Click **"Create Background Worker"**
-
-### 1.3 Create API Server
+### 1.2 Create API Server
 
 1. In Render Dashboard, click **"New +"** → **"Web Service"**
 2. Connect your repository
@@ -50,41 +28,39 @@ This guide shows you how to run all backend operations on Render while keeping y
 
    **Basic Settings:**
    - **Name**: `pglobe-api-server`
-   - **Region**: Same as worker
+   - **Region**: Choose closest to your MongoDB
    - **Branch**: `main`
    - **Root Directory**: Leave empty
 
    **Build & Deploy:**
-   - **Build Command**: `npm install`
+   - **Build Command**: `npm install --include=dev`
    - **Start Command**: `npx tsx render-api-server.ts`
    - **Environment**: `Node`
 
    **Environment Variables:**
    - `NODE_ENV` = `production`
-   - `MONGODB_URI` = (same as worker)
-   - `NEXT_PUBLIC_PRPC_ENDPOINT` = (same as worker)
+   - `MONGODB_URI` = (your MongoDB connection string)
+   - `NEXT_PUBLIC_PRPC_ENDPOINT` = (your pRPC endpoint)
    - `API_SECRET` = (generate with `openssl rand -hex 32` - **save this!**)
    - `PORT` = `3001` (or let Render auto-assign)
 
 4. Click **"Create Web Service"**
 5. **Copy the service URL** (e.g., `https://pglobe-api-server.onrender.com`) - you'll need this for Vercel
 
-### 1.4 Verify Services Are Running
+### 1.3 Verify Server Is Running
 
-**Background Worker Logs:**
+**API Server Logs should show:**
 ```
-[RenderServer] Starting background refresh server...
-[RenderServer] ✅ MongoDB indexes created
-[RenderServer] ✅ Background refresh task started (runs every 1 minute)
-[RenderServer] 🚀 Server running - background refresh active
-```
-
-**API Server Logs:**
-```
+[RenderAPI] Starting server...
+[RenderAPI] Creating MongoDB indexes...
+[RenderAPI] ✅ MongoDB indexes created
+[RenderAPI] Starting background refresh task...
+[RenderAPI] ✅ Background refresh started (runs every 1 minute)
 [RenderAPI] 🚀 API server running on port 3001
+[RenderAPI] Background refresh active - data updates every minute
 ```
 
-Wait 1-2 minutes, then check worker logs for:
+Wait 1-2 minutes, then check logs for:
 ```
 [BackgroundRefresh] Starting refresh...
 [BackgroundRefresh] Fetched X nodes from gossip
@@ -109,14 +85,15 @@ Wait 1-2 minutes, then check worker logs for:
 
 ### Check Render Logs
 
-**Background Worker** should show refresh every minute:
+**API Server** should show:
+1. Background refresh running every minute:
 ```
 [BackgroundRefresh] Starting refresh...
 [BackgroundRefresh] Fetched 120 nodes from gossip
 [BackgroundRefresh] ✅ Updated 120 nodes in MongoDB
 ```
 
-**API Server** should handle requests:
+2. API requests being handled:
 ```
 [RenderAPI] Refresh request received
 [RenderAPI] ✅ Refresh completed
@@ -140,17 +117,17 @@ Should see proxy requests:
 
 ## Step 4: Monitor & Troubleshoot
 
-### Render Worker Not Starting
+### API Server Not Starting
 
 **Check:**
 - Environment variables are set correctly
 - `MONGODB_URI` is valid
-- Build command completed successfully
-- Start command is `npx tsx render-server.ts`
+- Build command is `npm install --include=dev` (needed for `tsx` and `tailwindcss`)
+- Start command is `npx tsx render-api-server.ts`
 
 **Logs to look for:**
 ```
-[RenderServer] ❌ Failed to start server: [error]
+[RenderAPI] ❌ Failed to start server: [error]
 ```
 
 ### API Server Not Responding
@@ -180,7 +157,7 @@ curl -H "Authorization: Bearer YOUR_API_SECRET" \
 
 ### Data Not Updating
 
-1. **Check Render worker logs**: Is refresh completing successfully?
+1. **Check Render API server logs**: Is background refresh completing successfully?
 2. **Check Render API logs**: Are requests being handled?
 3. **Check MongoDB**: Are nodes actually being updated?
 
@@ -188,14 +165,13 @@ curl -H "Authorization: Bearer YOUR_API_SECRET" \
 
 ## Render Free Tier Limits
 
-- ✅ Background workers supported
 - ✅ Web services supported
 - ✅ 750 hours/month free (enough for 24/7)
 - ⚠️ **Free tier services sleep after 15 minutes of inactivity**
-  - Background workers: Always running (don't sleep)
   - Web services: May sleep (wake up on first request)
+  - **Note**: Background refresh will pause when service sleeps, but resumes when woken
 
-**For production**: Consider paid tier ($7/month) for always-on API server
+**For production**: Consider paid tier ($7/month) for always-on API server (background refresh runs continuously)
 
 ---
 
@@ -214,8 +190,7 @@ This architecture keeps all sensitive operations on Render, away from client-sid
 | Service | Free Tier | Paid Tier |
 |---------|-----------|-----------|
 | **Vercel** | Frontend hosting | $20/month (Pro) |
-| **Render Worker** | 750 hrs/month | Always-on (included) |
-| **Render API** | 750 hrs/month | $7/month (always-on) |
+| **Render API** | 750 hrs/month (may sleep) | $7/month (always-on) |
 | **MongoDB** | Atlas free tier | Varies |
 
 **Total**: Free for development, ~$27/month for production (always-on)
@@ -225,10 +200,10 @@ This architecture keeps all sensitive operations on Render, away from client-sid
 ## Benefits of This Setup
 
 ✅ **Secure**: No DB/pRPC access from Vercel (client-side safe)  
-✅ **Reliable**: Background refresh runs continuously (like local)  
-✅ **No timeouts**: Render workers don't have serverless limits  
-✅ **Simple**: Same code as local instrumentation  
-✅ **Scalable**: Can add more workers/API instances if needed  
+✅ **Reliable**: Background refresh runs continuously (like local instrumentation)  
+✅ **No timeouts**: Render web services don't have serverless limits  
+✅ **Simple**: Single service handles everything (refresh + API)  
+✅ **Cost-effective**: One service instead of two  
 
 ---
 

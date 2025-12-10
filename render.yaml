@@ -1,23 +1,12 @@
 services:
-  # Background Worker - Runs refresh every minute (like local instrumentation)
-  - type: worker
-    name: pglobe-background-refresh
-    env: node
-    buildCommand: npm install
-    startCommand: npx tsx render-server.ts
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: MONGODB_URI
-        sync: false  # Set this in Render dashboard
-      - key: NEXT_PUBLIC_PRPC_ENDPOINT
-        sync: false  # Set this in Render dashboard
-
-  # API Server - Handles all backend operations (pRPC + MongoDB)
+  # API Server - Handles all backend operations:
+  # - Background refresh (instrumentation) - runs every minute
+  # - pRPC fetching + MongoDB writes
+  # - API endpoints for Vercel to call
   - type: web
     name: pglobe-api-server
     env: node
-    buildCommand: npm install
+    buildCommand: npm install --include=dev
     startCommand: npx tsx render-api-server.ts
     envVars:
       - key: NODE_ENV
@@ -27,6 +16,6 @@ services:
       - key: NEXT_PUBLIC_PRPC_ENDPOINT
         sync: false  # Set this in Render dashboard
       - key: API_SECRET
-        sync: false  # Secret for Vercel to authenticate (same as Vercel API_SECRET)
+        sync: false  # Secret for Vercel to authenticate
       - key: PORT
         value: "3001"
