@@ -91,7 +91,7 @@ export default function NetworkHealthScore({ nodes }: NetworkHealthScoreProps) {
           <div className="text-[10px] text-muted-foreground mb-0.5">Latest Version</div>
           <div className="text-xs font-medium text-foreground">
             {nodes.filter(n => {
-              const latest = nodes.map(n => n.version).filter(v => v).sort().reverse()[0];
+              const latest = nodes.map(n => n.version).filter((v): v is string => !!v).sort().reverse()[0];
               return n.version === latest;
             }).length} nodes
           </div>

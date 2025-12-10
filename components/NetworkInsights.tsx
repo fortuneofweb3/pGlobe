@@ -53,7 +53,7 @@ export default function NetworkInsights({ nodes }: NetworkInsightsProps) {
     }
 
     // 2. Version Health
-    const versions = nodes.map(n => n.version).filter(v => v);
+    const versions = nodes.map(n => n.version).filter((v): v is string => !!v);
     const latestVersion = versions.sort().reverse()[0];
     const latestVersionNodes = nodes.filter(n => n.version === latestVersion).length;
     const versionHealthPercent = (latestVersionNodes / nodes.length) * 100;

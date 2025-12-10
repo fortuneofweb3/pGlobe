@@ -70,7 +70,7 @@ export default function NodeRankings({ nodes }: NodeRankingsProps) {
 
   // Get latest version for status badges
   const latestVersion = useMemo(() => {
-    const versions = nodes.map(n => n.version).filter(v => v);
+    const versions = nodes.map(n => n.version).filter((v): v is string => !!v);
     return versions.sort().reverse()[0];
   }, [nodes]);
 
