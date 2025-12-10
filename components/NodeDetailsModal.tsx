@@ -97,11 +97,11 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
       
       <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 pointer-events-none">
         <div
-          className="bg-black border-0 sm:border border-[#FFD700]/20 rounded-none sm:rounded-xl shadow-2xl w-full h-full sm:w-full sm:max-w-4xl sm:max-h-[85vh] overflow-hidden flex flex-col pointer-events-auto"
+          className="bg-black border-0 sm:border border-[#F0A741]/20 rounded-none sm:rounded-xl shadow-2xl w-full h-full sm:w-full sm:max-w-4xl sm:max-h-[85vh] overflow-hidden flex flex-col pointer-events-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Compact Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#FFD700]/20">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#F0A741]/20">
             <div className="flex items-center gap-3">
               {getStatusBadge(node.status)}
               <div>
@@ -183,7 +183,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
               <div className="bg-card/40 border border-border/60 rounded-lg p-3">
                 <div className="flex items-center gap-1.5 mb-1.5">
-                  <Clock className="w-3.5 h-3.5 text-[#FFD700]" />
+                  <Clock className="w-3.5 h-3.5 text-[#F0A741]" />
                   <p className="text-xs text-foreground/60">Uptime</p>
                 </div>
                 <p className="text-lg font-bold">{formatUptime(node.uptime)}</p>
@@ -191,7 +191,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
 
               <div className="bg-card/40 border border-border/60 rounded-lg p-3">
                 <div className="flex items-center gap-1.5 mb-1.5">
-                  <HardDrive className="w-3.5 h-3.5 text-[#FFD700]" />
+                  <HardDrive className="w-3.5 h-3.5 text-[#F0A741]" />
                   <p className="text-xs text-foreground/60">Storage</p>
                 </div>
                 <p className="text-lg font-bold">{formatValue(node.storageUsed, formatStorageBytes)}</p>
@@ -202,7 +202,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
 
               <div className="bg-card/40 border border-border/60 rounded-lg p-3">
                 <div className="flex items-center gap-1.5 mb-1.5">
-                  <Cpu className="w-3.5 h-3.5 text-[#FFD700]" />
+                  <Cpu className="w-3.5 h-3.5 text-[#F0A741]" />
                   <p className="text-xs text-foreground/60">CPU</p>
                 </div>
                 <p className="text-lg font-bold">{formatValue(node.cpuPercent, (val) => `${val.toFixed(1)}%`)}</p>
@@ -210,7 +210,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
 
               <div className="bg-card/40 border border-border/60 rounded-lg p-3">
                 <div className="flex items-center gap-1.5 mb-1.5">
-                  <Network className="w-3.5 h-3.5 text-[#FFD700]" />
+                  <Network className="w-3.5 h-3.5 text-[#F0A741]" />
                   <p className="text-xs text-foreground/60">Latency</p>
                 </div>
                 <p className="text-lg font-bold">{formatValue(node.latency, (val) => `${val.toFixed(0)}ms`)}</p>
@@ -222,7 +222,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
               {/* Storage & Memory */}
               <div className="bg-card/40 border border-border/60 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <HardDrive className="w-4 h-4 text-[#FFD700]" />
+                  <HardDrive className="w-4 h-4 text-[#F0A741]" />
                   <h3 className="text-sm font-semibold">Storage & Memory</h3>
                   </div>
                 <div className="space-y-3">
@@ -236,7 +236,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                       </div>
                       <div className="w-full bg-foreground/10 rounded-full h-1.5">
                         <div
-                          className="bg-[#FFD700] h-1.5 rounded-full transition-all"
+                          className="bg-[#F0A741] h-1.5 rounded-full transition-all"
                           style={{ width: `${nodeStats?.storageUtilization || 0}%` }}
                         />
                       </div>
@@ -256,7 +256,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                       </div>
                       <div className="w-full bg-foreground/10 rounded-full h-1.5">
                         <div
-                          className="bg-[#FFD700] h-1.5 rounded-full transition-all"
+                          className="bg-[#F0A741] h-1.5 rounded-full transition-all"
                           style={{ width: `${nodeStats?.ramUtilization || 0}%` }}
                         />
                       </div>
@@ -272,7 +272,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
               {/* Network */}
               <div className="bg-card/40 border border-border/60 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <Network className="w-4 h-4 text-[#FFD700]" />
+                  <Network className="w-4 h-4 text-[#F0A741]" />
                   <h3 className="text-sm font-semibold">Network</h3>
                 </div>
                 <div className="space-y-2 text-xs">
@@ -312,7 +312,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               <div className="bg-card/40 border border-border/60 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <MapPin className="w-4 h-4 text-[#FFD700]" />
+                  <MapPin className="w-4 h-4 text-[#F0A741]" />
                   <h3 className="text-sm font-semibold">Location</h3>
                 </div>
                 <div className="space-y-2 text-xs">
@@ -345,7 +345,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
 
               <div className="bg-card/40 border border-border/60 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <CheckCircle2 className="w-4 h-4 text-[#FFD700]" />
+                  <CheckCircle2 className="w-4 h-4 text-[#F0A741]" />
                   <h3 className="text-sm font-semibold">Status</h3>
                 </div>
                 <div className="space-y-2 text-xs">

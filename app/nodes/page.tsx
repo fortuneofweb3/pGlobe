@@ -263,7 +263,7 @@ export default function NodesPage() {
     <Suspense fallback={
       <div className="min-h-screen bg-black text-foreground flex items-center justify-center">
         <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-[#FFD700]" />
+          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-[#F0A741]" />
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>

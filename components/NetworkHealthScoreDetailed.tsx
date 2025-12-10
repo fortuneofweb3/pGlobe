@@ -13,14 +13,14 @@ export default function NetworkHealthScoreDetailed({ nodes }: NetworkHealthScore
   const healthMetrics = useMemo(() => calculateNetworkHealth(nodes), [nodes]);
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-[#00FF88]';
-    if (score >= 60) return 'text-[#FFD700]';
+    if (score >= 80) return 'text-[#3F8277]';
+    if (score >= 60) return 'text-[#F0A741]';
     return 'text-red-400';
   };
 
   const getBarColor = (score: number) => {
-    if (score >= 80) return 'bg-[#00FF88]';
-    if (score >= 60) return 'bg-[#FFD700]';
+    if (score >= 80) return 'bg-[#3F8277]';
+    if (score >= 60) return 'bg-[#F0A741]';
     return 'bg-red-400';
   };
 

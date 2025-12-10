@@ -59,7 +59,7 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
     return Math.round(sum / nodesWithLatency.length);
   }, [nodes]);
 
-  const COLORS = ['#00FF88', '#7DD87D', '#FFD700', '#FFA500', '#FF6B6B'];
+  const COLORS = ['#3F8277', '#7DD87D', '#F0A741', '#FFA500', '#FF6B6B'];
 
   if (data.length === 0) {
     return (
@@ -93,7 +93,7 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
               return [value, name];
             }}
           />
-          <Bar dataKey="count" fill="#00FF88" radius={[4, 4, 0, 0]}>
+          <Bar dataKey="count" fill="#3F8277" radius={[4, 4, 0, 0]}>
             {data.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
             ))}

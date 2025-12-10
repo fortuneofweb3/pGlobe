@@ -62,9 +62,9 @@ export default function GeographicPerformance({ nodes }: GeographicPerformancePr
 
   const getColor = (latency: number, hasLatency: boolean) => {
     if (!hasLatency) return '#6B7280';
-    if (latency < 50) return '#00FF88';
+    if (latency < 50) return '#3F8277';
     if (latency < 100) return '#7DD87D';
-    if (latency < 200) return '#FFD700';
+    if (latency < 200) return '#F0A741';
     if (latency < 500) return '#FFA500';
     return '#FF6B6B';
   };

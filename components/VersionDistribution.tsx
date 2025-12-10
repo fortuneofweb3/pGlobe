@@ -77,7 +77,7 @@ export default function VersionDistribution({ nodes }: VersionDistributionProps)
                     {version}
                   </span>
                   {label && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-[#00FF88]/20 text-[#00FF88] font-medium">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-[#3F8277]/20 text-[#3F8277] font-medium">
                       {label}
                     </span>
                   )}
@@ -91,7 +91,7 @@ export default function VersionDistribution({ nodes }: VersionDistributionProps)
               <div className="w-full bg-muted/30 rounded-full h-1.5">
                 <div
                   className={`h-1.5 rounded-full transition-all duration-500 ${
-                    isLatest ? 'bg-[#00FF88]' : 'bg-[#FFD700]/50'
+                    isLatest ? 'bg-[#3F8277]' : 'bg-[#F0A741]/50'
                   }`}
                   style={{ width: `${percentage}%` }}
                 />

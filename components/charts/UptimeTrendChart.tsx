@@ -179,14 +179,14 @@ function ChartContent({
             scale={yScaleUptime}
             width={xMax}
             strokeDasharray="3,3"
-            stroke="#FFD700"
+            stroke="#F0A741"
             opacity={0.15}
           />
           <GridColumns
             scale={xScale}
             height={yMax}
             strokeDasharray="3,3"
-            stroke="#FFD700"
+            stroke="#F0A741"
             opacity={0.15}
           />
 
@@ -194,7 +194,7 @@ function ChartContent({
             data={chartData}
             x={(d) => xScale(d.timestamp)}
             y={(d) => yScaleUptime(d.uptime)}
-            stroke="#FFD700"
+            stroke="#F0A741"
             strokeWidth={2.5}
             curve={curveMonotoneX}
           />
@@ -220,8 +220,8 @@ function ChartContent({
                 : 0;
               return timeSpan > 86400000 ? formatDate(date) : formatTime(date);
             }}
-            stroke="#FFD700"
-            tickStroke="#FFD700"
+            stroke="#F0A741"
+            tickStroke="#F0A741"
             tickLabelProps={() => ({
               fill: '#ffffff',
               fontSize: 11,
@@ -235,8 +235,8 @@ function ChartContent({
               fill: '#ffffff',
               fontSize: 11,
             }}
-            stroke="#FFD700"
-            tickStroke="#FFD700"
+            stroke="#F0A741"
+            tickStroke="#F0A741"
             tickLabelProps={() => ({
               fill: '#ffffff',
               fontSize: 11,
@@ -252,8 +252,8 @@ function ChartContent({
               fill: '#ffffff',
               fontSize: 11,
             }}
-            stroke="#FFD700"
-            tickStroke="#FFD700"
+            stroke="#F0A741"
+            tickStroke="#F0A741"
             tickLabelProps={() => ({
               fill: '#ffffff',
               fontSize: 11,
@@ -269,7 +269,7 @@ function ChartContent({
                 x2={xScale(tooltipData.timestamp)}
                 y1={0}
                 y2={yMax}
-                stroke="#FFD700"
+                stroke="#F0A741"
                 strokeWidth={1}
                 strokeDasharray="2,2"
                 opacity={0.5}
@@ -278,7 +278,7 @@ function ChartContent({
                 cx={xScale(tooltipData.timestamp)}
                 cy={yScaleUptime(tooltipData.uptime)}
                 r={5}
-                fill="#FFD700"
+                fill="#F0A741"
                 stroke="#000"
                 strokeWidth={2}
               />
@@ -297,7 +297,7 @@ function ChartContent({
 
       <div className="absolute top-2 right-4 flex gap-4">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-0.5 bg-[#FFD700]"></div>
+          <div className="w-4 h-0.5 bg-[#F0A741]"></div>
           <span className="text-xs text-foreground/80">Avg Uptime (%)</span>
         </div>
         <div className="flex items-center gap-2">
@@ -313,7 +313,7 @@ function ChartContent({
           style={{
             ...defaultStyles,
             backgroundColor: 'rgba(0, 0, 0, 0.95)',
-            border: '1px solid #FFD700',
+            border: '1px solid #F0A741',
             borderRadius: '8px',
             padding: '10px 14px',
             color: '#ffffff',
@@ -325,7 +325,7 @@ function ChartContent({
             </div>
             <div className="space-y-1">
               <div className="text-foreground/90">
-                <span className="text-[#FFD700]">Uptime:</span> <span className="font-mono font-semibold">{tooltipData.uptime.toFixed(1)}%</span>
+                <span className="text-[#F0A741]">Uptime:</span> <span className="font-mono font-semibold">{tooltipData.uptime.toFixed(1)}%</span>
               </div>
               <div className="text-foreground/90">
                 <span className="text-[#3F8277]">Online:</span> <span className="font-mono font-semibold">{tooltipData.online} nodes</span>

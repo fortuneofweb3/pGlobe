@@ -84,7 +84,7 @@ export default function NodeRankings({ nodes }: NodeRankingsProps) {
           onClick={() => setActiveTab('uptime')}
           className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
             activeTab === 'uptime'
-              ? 'bg-[#FFD700]/20 text-[#FFD700]'
+              ? 'bg-[#F0A741]/20 text-[#F0A741]'
               : 'text-muted-foreground hover:text-foreground'
           }`}
         >
@@ -94,7 +94,7 @@ export default function NodeRankings({ nodes }: NodeRankingsProps) {
           onClick={() => setActiveTab('storage')}
           className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
             activeTab === 'storage'
-              ? 'bg-[#FFD700]/20 text-[#FFD700]'
+              ? 'bg-[#F0A741]/20 text-[#F0A741]'
               : 'text-muted-foreground hover:text-foreground'
           }`}
         >
@@ -112,7 +112,7 @@ export default function NodeRankings({ nodes }: NodeRankingsProps) {
             >
               {/* Rank badge */}
               <span className={`w-5 h-5 flex items-center justify-center text-xs font-bold rounded ${
-                index === 0 ? 'bg-[#FFD700]/30 text-[#FFD700]' :
+                index === 0 ? 'bg-[#F0A741]/30 text-[#F0A741]' :
                 index === 1 ? 'bg-gray-400/30 text-gray-300' :
                 index === 2 ? 'bg-amber-700/30 text-amber-500' :
                 'bg-muted text-muted-foreground'
@@ -129,7 +129,7 @@ export default function NodeRankings({ nodes }: NodeRankingsProps) {
               </div>
               
               {/* Value */}
-              <span className="text-xs font-semibold text-[#00FF88] whitespace-nowrap">
+              <span className="text-xs font-semibold text-[#3F8277] whitespace-nowrap">
                 {activeTab === 'uptime'
                   ? `${(node.uptimePercent || 0).toFixed(1)}%`
                   : formatStorageBytes(node.storageUsed || 0)

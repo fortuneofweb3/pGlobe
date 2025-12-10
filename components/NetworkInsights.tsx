@@ -144,9 +144,9 @@ export default function NetworkInsights({ nodes }: NetworkInsightsProps) {
   const getTypeStyles = (type: Insight['type']) => {
     switch (type) {
       case 'success':
-        return 'bg-[#00FF88]/10 border-[#00FF88]/30 text-[#00FF88]';
+        return 'bg-[#3F8277]/10 border-[#3F8277]/30 text-[#3F8277]';
       case 'warning':
-        return 'bg-[#FFD700]/10 border-[#FFD700]/30 text-[#FFD700]';
+        return 'bg-[#F0A741]/10 border-[#F0A741]/30 text-[#F0A741]';
       case 'error':
         return 'bg-red-500/10 border-red-500/30 text-red-400';
       case 'info':

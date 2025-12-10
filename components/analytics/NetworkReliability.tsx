@@ -98,7 +98,7 @@ export default function NetworkReliability({ nodes }: NetworkReliabilityProps) {
               return [value, name];
             }}
           />
-          <Bar dataKey="count" fill="#00FF88" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="count" fill="#3F8277" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
       <div className="text-xs text-muted-foreground">

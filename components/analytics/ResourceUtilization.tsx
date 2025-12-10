@@ -115,7 +115,7 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
             }}
           />
           <Legend />
-          <Bar dataKey="cpu" name="CPU" fill="#00FF88" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="cpu" name="CPU" fill="#3F8277" radius={[4, 4, 0, 0]} />
           <Bar dataKey="ram" name="RAM" fill="#3B82F6" radius={[4, 4, 0, 0]} />
         </BarChart>
         </ResponsiveContainer>

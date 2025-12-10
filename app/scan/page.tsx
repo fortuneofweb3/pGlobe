@@ -425,7 +425,7 @@ export default function ScanPage() {
         )}
 
         {/* Left Sidebar - Scan Controls */}
-        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative w-80 flex-shrink-0 bg-black/90 backdrop-blur-md border-r border-[#FFD700]/20 overflow-y-auto z-50 md:z-40 h-full transition-transform duration-300`}>
+        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative w-80 flex-shrink-0 bg-black/90 backdrop-blur-md border-r border-[#F0A741]/20 overflow-y-auto z-50 md:z-40 h-full transition-transform duration-300`}>
           <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -463,13 +463,13 @@ export default function ScanPage() {
                       }
                     }}
                     placeholder="e.g., 8.8.8.8"
-                    className="flex-1 px-3 py-2 text-sm bg-muted/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50"
+                    className="flex-1 px-3 py-2 text-sm bg-muted/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#F0A741]/50"
                     disabled={scanning}
                   />
                   <button
                     onClick={handleScan}
                     disabled={scanning}
-                    className="px-3 sm:px-4 py-2 bg-[#FFD700]/20 hover:bg-[#FFD700]/30 text-[#FFD700] rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 sm:gap-2 min-w-[70px] sm:min-w-[80px] text-xs sm:text-sm"
+                    className="px-3 sm:px-4 py-2 bg-[#F0A741]/20 hover:bg-[#F0A741]/30 text-[#F0A741] rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 sm:gap-2 min-w-[70px] sm:min-w-[80px] text-xs sm:text-sm"
                   >
                     {scanning ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -531,7 +531,7 @@ export default function ScanPage() {
                     onClick={() => setRankingTab('distance')}
                     className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                       rankingTab === 'distance'
-                        ? 'bg-[#FFD700]/20 text-[#FFD700]'
+                        ? 'bg-[#F0A741]/20 text-[#F0A741]'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
@@ -542,7 +542,7 @@ export default function ScanPage() {
                     disabled={testingLatency || nodesByLatency.length === 0}
                     className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                       rankingTab === 'latency'
-                        ? 'bg-[#FFD700]/20 text-[#FFD700]'
+                        ? 'bg-[#F0A741]/20 text-[#F0A741]'
                         : 'text-muted-foreground hover:text-foreground'
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                     title="Server-to-node latency (not client-to-node)"
@@ -569,7 +569,7 @@ export default function ScanPage() {
                           <span className="text-xs font-mono text-foreground/90 truncate flex-1">
                             {node.pubkey || node.publicKey || node.id}
                           </span>
-                          <span className="text-xs font-semibold text-[#00FF88] whitespace-nowrap ml-2">
+                          <span className="text-xs font-semibold text-[#3F8277] whitespace-nowrap ml-2">
                             {node.distanceKm !== undefined
                               ? `${node.distanceKm < 1 
                                   ? `${Math.round(node.distanceKm * 1000)}m`
@@ -596,7 +596,7 @@ export default function ScanPage() {
                             {node.status || 'offline'}
                           </span>
                           {index < 10 && (
-                            <span className="text-xs px-2 py-0.5 rounded bg-[#FFD700]/20 text-[#FFD700]">
+                            <span className="text-xs px-2 py-0.5 rounded bg-[#F0A741]/20 text-[#F0A741]">
                               Top {index + 1}
                             </span>
                           )}
@@ -685,7 +685,7 @@ export default function ScanPage() {
           {/* Mobile Sidebar Toggle Button */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="md:hidden absolute top-4 left-4 z-50 p-2 bg-black/90 backdrop-blur-md border border-[#FFD700]/20 rounded-lg text-[#FFD700] hover:bg-[#FFD700]/10 transition-colors"
+            className="md:hidden absolute top-4 left-4 z-50 p-2 bg-black/90 backdrop-blur-md border border-[#F0A741]/20 rounded-lg text-[#F0A741] hover:bg-[#F0A741]/10 transition-colors"
             aria-label="Toggle sidebar"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

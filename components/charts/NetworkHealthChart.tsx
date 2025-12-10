@@ -11,7 +11,7 @@ interface NetworkHealthChartProps {
 const COLORS = {
   online: '#3F8277',
   offline: '#ED1C24',
-  syncing: '#FFD700',
+  syncing: '#F0A741',
 };
 
 const CustomTooltip = ({ active, payload }: any) => {
@@ -19,7 +19,7 @@ const CustomTooltip = ({ active, payload }: any) => {
     const data = payload[0].payload;
     const total = data.online + data.offline + data.syncing;
     return (
-      <div className="bg-black/95 backdrop-blur-md border border-[#FFD700]/30 rounded-lg p-3 shadow-xl">
+      <div className="bg-black/95 backdrop-blur-md border border-[#F0A741]/30 rounded-lg p-3 shadow-xl">
         <p className="text-sm font-semibold text-foreground mb-2">{data.name}</p>
         <div className="space-y-1">
           <p className="text-xs text-foreground/80">

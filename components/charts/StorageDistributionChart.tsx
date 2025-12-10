@@ -12,11 +12,11 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
-      <div className="bg-black/95 backdrop-blur-md border border-[#FFD700]/30 rounded-lg p-3 shadow-xl">
+      <div className="bg-black/95 backdrop-blur-md border border-[#F0A741]/30 rounded-lg p-3 shadow-xl">
         <p className="text-sm font-semibold text-foreground mb-2">{label}</p>
         <div className="space-y-1">
           <p className="text-xs text-foreground/80">
-            Total: <span className="font-mono font-semibold text-[#FFD700]">{data.capacity.toFixed(1)} GB</span>
+            Total: <span className="font-mono font-semibold text-[#F0A741]">{data.capacity.toFixed(1)} GB</span>
           </p>
           <p className="text-xs text-foreground/80">
             Used: <span className="font-mono font-semibold text-[#FFA500]">{data.used.toFixed(1)} GB</span>

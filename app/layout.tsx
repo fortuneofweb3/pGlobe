@@ -5,6 +5,9 @@ import { NodesProvider } from "@/lib/context/NodesContext";
 export const metadata: Metadata = {
   title: "pGlobe",
   description: "Analytics platform for Xandeum Provider Nodes (pNodes)",
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({

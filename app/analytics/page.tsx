@@ -145,7 +145,7 @@ export default function AnalyticsPage() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 sm:gap-3">
-                <div className="px-3 sm:px-4 py-2 rounded-xl bg-[#00FF88]/10 border border-[#00FF88]/30 text-xs sm:text-sm font-semibold text-[#00FF88]">
+                <div className="px-3 sm:px-4 py-2 rounded-xl bg-[#3F8277]/10 border border-[#3F8277]/30 text-xs sm:text-sm font-semibold text-[#3F8277]">
                   {nodes.length} nodes tracked
                 </div>
                 <div className="px-3 sm:px-4 py-2 rounded-xl bg-muted/30 border border-border text-xs sm:text-sm font-mono text-foreground/80">
@@ -256,7 +256,7 @@ export default function AnalyticsPage() {
                     onClick={() => setActiveTab('insights')}
                     className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                       activeTab === 'insights'
-                        ? 'bg-[#FFD700]/20 text-[#FFD700]'
+                        ? 'bg-[#F0A741]/20 text-[#F0A741]'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
@@ -266,7 +266,7 @@ export default function AnalyticsPage() {
                     onClick={() => setActiveTab('events')}
                     className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                       activeTab === 'events'
-                        ? 'bg-[#FFD700]/20 text-[#FFD700]'
+                        ? 'bg-[#F0A741]/20 text-[#F0A741]'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >

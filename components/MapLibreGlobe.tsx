@@ -19,8 +19,8 @@ interface MapLibreGlobeProps {
 
 
 const statusColors = {
-  online: '#00FF88', // Neon green
-  syncing: '#FFD700', // Gold/yellow
+  online: '#3F8277', // Xandeum green
+  syncing: '#F0A741', // Xandeum orange
   offline: '#FF4444', // Red
 };
 
@@ -2262,8 +2262,8 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
               ],
               'circle-color': [
                 'case',
-                ['==', ['get', 'status'], 'online'], '#00FF88',
-                ['==', ['get', 'status'], 'syncing'], '#FFD700',
+                ['==', ['get', 'status'], 'online'], '#3F8277',
+                ['==', ['get', 'status'], 'syncing'], '#F0A741',
                 '#FF4444'
               ],
               'circle-opacity': 0.15,
@@ -2307,8 +2307,8 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
               ],
               'circle-color': [
                 'case',
-                ['==', ['get', 'highlighted'], 1], '#FFD700', // Highlighted nodes: gold
-                ['==', ['get', 'status'], 'online'], '#00FF88',
+                ['==', ['get', 'highlighted'], 1], '#F0A741', // Highlighted nodes: Xandeum orange
+                ['==', ['get', 'status'], 'online'], '#3F8277',
                 ['==', ['get', 'status'], 'syncing'], '#FBBF24',
                 '#EF4444'
               ],
@@ -2320,7 +2320,7 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
               ],
               'circle-stroke-color': [
                 'case',
-                ['==', ['get', 'highlighted'], 1], '#FFD700', // Highlighted nodes: gold stroke
+                ['==', ['get', 'highlighted'], 1], '#F0A741', // Highlighted nodes: Xandeum orange stroke
                 ['==', ['get', 'id'], currentNodeIndex >= 0 ? String(nodesWithLocation[currentNodeIndex]?.id ?? '') : ''], '#ffffff',
                 '#000000',
               ],
@@ -2350,7 +2350,7 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
                 'line-color': [
                   'case',
                   ['==', ['get', 'connectorId'], activeScanConnector || ''],
-                  '#FFD700',
+                  '#F0A741',
                   'rgba(147, 51, 234, 0.7)', // Purple/violet color for scan connectors
                 ],
                 'line-width': [

@@ -346,7 +346,7 @@ function HomeContent() {
         )}
 
         {/* Left Sidebar */}
-        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative w-80 flex-shrink-0 bg-black/90 backdrop-blur-md border-r border-[#FFD700]/20 overflow-y-auto z-50 md:z-40 h-full transition-transform duration-300`}>
+        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative w-80 flex-shrink-0 bg-black/90 backdrop-blur-md border-r border-[#F0A741]/20 overflow-y-auto z-50 md:z-40 h-full transition-transform duration-300`}>
           <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             {/* Mobile close button */}
             <div className="flex items-center justify-between mb-2 md:hidden">
@@ -373,14 +373,14 @@ function HomeContent() {
                     Online
                     <InfoTooltip content="Seen in gossip network within last 5 minutes" />
                   </span>
-                  <span className="text-xs sm:text-sm font-semibold text-[#00FF88]">{stats.onlineNodes}</span>
+                  <span className="text-xs sm:text-sm font-semibold text-[#3F8277]">{stats.onlineNodes}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5">
                     Syncing
                     <InfoTooltip content="Seen within last hour, still synchronizing with network" />
                   </span>
-                  <span className="text-xs sm:text-sm font-semibold text-[#FFD700]">
+                  <span className="text-xs sm:text-sm font-semibold text-[#F0A741]">
                     {nodes.filter(n => n.status === 'syncing').length}
                   </span>
                 </div>
@@ -409,7 +409,7 @@ function HomeContent() {
                 <MetricRow
                   label="Avg Uptime"
                   value={stats.avgUptime > 0 ? formatUptimeDuration(stats.avgUptime) : 'N/A'}
-                  valueColor="text-[#00FF88]"
+                  valueColor="text-[#3F8277]"
                   tooltip="Average time nodes have been running continuously. Calculated from nodes reporting uptime stats."
                 />
                 <MetricRow
@@ -480,7 +480,7 @@ function HomeContent() {
                 <MetricRow
                   label="Active Streams"
                   value={stats.totalActiveStreams > 0 ? stats.totalActiveStreams.toLocaleString() : 'N/A'}
-                  valueColor="text-[#00FF88]"
+                  valueColor="text-[#3F8277]"
                   tooltip="Total active network connections across all nodes. Streams are peer-to-peer connections for data transfer."
                 />
                 <MetricRow
@@ -503,7 +503,7 @@ function HomeContent() {
           {/* Mobile Sidebar Toggle Button */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="md:hidden absolute top-4 left-4 z-50 p-2 bg-black/90 backdrop-blur-md border border-[#FFD700]/20 rounded-lg text-[#FFD700] hover:bg-[#FFD700]/10 transition-colors"
+            className="md:hidden absolute top-4 left-4 z-50 p-2 bg-black/90 backdrop-blur-md border border-[#F0A741]/20 rounded-lg text-[#F0A741] hover:bg-[#F0A741]/10 transition-colors"
             aria-label="Toggle sidebar"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -533,7 +533,7 @@ function HomeContent() {
             >
               {/* Search Results Dropdown */}
               {showSearchResults && globeSearchQuery.trim() && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-black/95 backdrop-blur-md border border-[#FFD700]/20 rounded-lg shadow-xl max-h-64 sm:max-h-96 overflow-y-auto z-50">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-black/95 backdrop-blur-md border border-[#F0A741]/20 rounded-lg shadow-xl max-h-64 sm:max-h-96 overflow-y-auto z-50">
                   {globeSearchResults.length === 0 ? (
                     <div className="p-4 text-sm text-muted-foreground text-center">
                       No nodes found
@@ -621,7 +621,7 @@ export default function Home() {
     <Suspense fallback={
       <div className="min-h-screen bg-black text-foreground flex items-center justify-center">
         <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-[#FFD700]" />
+          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-[#F0A741]" />
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>

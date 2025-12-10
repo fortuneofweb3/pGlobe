@@ -64,8 +64,8 @@ export default function NodeStatusBadge({ node, latestVersion, showLabel = true 
       type: 'healthy' as const,
       label: 'Healthy',
       tooltip: 'Node is online, running the latest version, and has good uptime. This node is operating normally.',
-      color: 'bg-[#00FF88]/20 text-[#00FF88] border-[#00FF88]/30',
-      dotColor: 'bg-[#00FF88]',
+      color: 'bg-[#3F8277]/20 text-[#3F8277] border-[#3F8277]/30',
+      dotColor: 'bg-[#3F8277]',
     };
   };
 

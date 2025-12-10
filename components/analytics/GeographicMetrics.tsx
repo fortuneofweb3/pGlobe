@@ -155,15 +155,15 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
         // More nodes = brighter green
         const maxCount = Math.max(...data.map(d => d.value));
         const intensity = entry.value / maxCount;
-        if (intensity > 0.7) return '#00FF88';
+        if (intensity > 0.7) return '#3F8277';
         if (intensity > 0.4) return '#7DD87D';
         return '#3F8277';
       
       case 'latency':
         // Lower latency = better (green), higher = worse (red)
-        if (entry.value < 50) return '#00FF88';
+        if (entry.value < 50) return '#3F8277';
         if (entry.value < 100) return '#7DD87D';
-        if (entry.value < 200) return '#FFD700';
+        if (entry.value < 200) return '#F0A741';
         if (entry.value < 500) return '#FFA500';
         return '#FF6B6B';
       
@@ -177,15 +177,15 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
       
       case 'onlineRate':
         // Higher online rate = better (green)
-        if (entry.value >= 80) return '#00FF88';
-        if (entry.value >= 50) return '#FFD700';
+        if (entry.value >= 80) return '#3F8277';
+        if (entry.value >= 50) return '#F0A741';
         return '#FF6B6B';
       
       case 'uptime':
         // Higher uptime = better (green)
-        if (entry.value >= 30) return '#00FF88';
+        if (entry.value >= 30) return '#3F8277';
         if (entry.value >= 7) return '#7DD87D';
-        if (entry.value >= 1) return '#FFD700';
+        if (entry.value >= 1) return '#F0A741';
         return '#FFA500';
       
       default:
@@ -212,7 +212,7 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
           <select
             value={selectedMetric}
             onChange={(e) => setSelectedMetric(e.target.value as MetricType)}
-            className="appearance-none bg-muted/40 border border-border/60 rounded-lg px-4 py-2 pr-8 text-sm text-foreground hover:bg-muted/60 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#FFD700]/30 focus:border-[#FFD700]/50"
+            className="appearance-none bg-muted/40 border border-border/60 rounded-lg px-4 py-2 pr-8 text-sm text-foreground hover:bg-muted/60 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#F0A741]/30 focus:border-[#F0A741]/50"
           >
             {metricOptions.map((option) => (
               <option key={option.value} value={option.value}>

@@ -44,14 +44,14 @@ export default function Header({
   };
 
   return (
-    <header className="flex-shrink-0 z-50 bg-black/90 backdrop-blur-md border-b border-[#FFD700]/20">
+    <header className="flex-shrink-0 z-50 bg-black/90 backdrop-blur-md border-b border-[#F0A741]/20">
       <div className="w-full px-4 py-3">
         <div className="flex items-center justify-between">
           {/* Left side - Title and Navigation */}
           <div className="flex items-center gap-4">
             <Link 
               href="/" 
-              className="text-xl sm:text-2xl font-bold text-[#FFD700] hover:text-[#FFD700]/80 transition-colors" 
+              className="text-xl sm:text-2xl font-bold text-[#F0A741] hover:text-[#F0A741]/80 transition-colors" 
               style={{ fontFamily: "'Exo 2', sans-serif", letterSpacing: '-0.02em' }}
             >
               pGlobe
@@ -63,8 +63,8 @@ export default function Header({
                 prefetch={true}
                 className={`px-4 py-2 text-sm font-medium rounded-xl transition-all ${
                   activePage === 'overview'
-                    ? 'text-[#FFD700] bg-[#FFD700]/10'
-                    : 'text-[#FFD700]/60 hover:text-[#FFD700] hover:bg-[#FFD700]/5'
+                    ? 'text-[#F0A741] bg-[#F0A741]/10'
+                    : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                 }`}
               >
                 Overview
@@ -74,8 +74,8 @@ export default function Header({
                 prefetch={true}
                 className={`px-4 py-2 text-sm font-medium rounded-xl transition-all ${
                   activePage === 'nodes'
-                    ? 'text-[#FFD700] bg-[#FFD700]/10'
-                    : 'text-[#FFD700]/60 hover:text-[#FFD700] hover:bg-[#FFD700]/5'
+                    ? 'text-[#F0A741] bg-[#F0A741]/10'
+                    : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                 }`}
               >
                 Nodes {nodeCount > 0 && `(${nodeCount})`}
@@ -85,8 +85,8 @@ export default function Header({
                 prefetch={true}
                 className={`px-4 py-2 text-sm font-medium rounded-xl transition-all ${
                   activePage === 'analytics'
-                    ? 'text-[#FFD700] bg-[#FFD700]/10'
-                    : 'text-[#FFD700]/60 hover:text-[#FFD700] hover:bg-[#FFD700]/5'
+                    ? 'text-[#F0A741] bg-[#F0A741]/10'
+                    : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                 }`}
               >
                 Analytics
@@ -96,8 +96,8 @@ export default function Header({
                 prefetch={true}
                 className={`px-4 py-2 text-sm font-medium rounded-xl transition-all ${
                   activePage === 'scan'
-                    ? 'text-[#FFD700] bg-[#FFD700]/10'
-                    : 'text-[#FFD700]/60 hover:text-[#FFD700] hover:bg-[#FFD700]/5'
+                    ? 'text-[#F0A741] bg-[#F0A741]/10'
+                    : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                 }`}
               >
                 Scan
@@ -107,8 +107,8 @@ export default function Header({
                 prefetch={true}
                 className={`px-4 py-2 text-sm font-medium rounded-xl transition-all ${
                   activePage === 'help'
-                    ? 'text-[#FFD700] bg-[#FFD700]/10'
-                    : 'text-[#FFD700]/60 hover:text-[#FFD700] hover:bg-[#FFD700]/5'
+                    ? 'text-[#F0A741] bg-[#F0A741]/10'
+                    : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                 }`}
               >
                 Help
@@ -164,7 +164,7 @@ export default function Header({
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-[#FFD700]/20 bg-black/95 backdrop-blur-md">
+        <div className="md:hidden border-t border-[#F0A741]/20 bg-black/95 backdrop-blur-md">
           <nav className="px-4 py-3 space-y-2">
             <Link
               href="/"
@@ -172,8 +172,8 @@ export default function Header({
               onClick={() => setMobileMenuOpen(false)}
               className={`block px-4 py-2 text-sm font-medium rounded-xl transition-all ${
                 activePage === 'overview'
-                  ? 'text-[#FFD700] bg-[#FFD700]/10'
-                  : 'text-[#FFD700]/60 hover:text-[#FFD700] hover:bg-[#FFD700]/5'
+                  ? 'text-[#F0A741] bg-[#F0A741]/10'
+                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
               }`}
             >
               Overview
@@ -184,8 +184,8 @@ export default function Header({
               onClick={() => setMobileMenuOpen(false)}
               className={`block px-4 py-2 text-sm font-medium rounded-xl transition-all ${
                 activePage === 'nodes'
-                  ? 'text-[#FFD700] bg-[#FFD700]/10'
-                  : 'text-[#FFD700]/60 hover:text-[#FFD700] hover:bg-[#FFD700]/5'
+                  ? 'text-[#F0A741] bg-[#F0A741]/10'
+                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
               }`}
             >
               Nodes {nodeCount > 0 && `(${nodeCount})`}
@@ -196,8 +196,8 @@ export default function Header({
               onClick={() => setMobileMenuOpen(false)}
               className={`block px-4 py-2 text-sm font-medium rounded-xl transition-all ${
                 activePage === 'analytics'
-                  ? 'text-[#FFD700] bg-[#FFD700]/10'
-                  : 'text-[#FFD700]/60 hover:text-[#FFD700] hover:bg-[#FFD700]/5'
+                  ? 'text-[#F0A741] bg-[#F0A741]/10'
+                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
               }`}
             >
               Analytics
@@ -208,8 +208,8 @@ export default function Header({
               onClick={() => setMobileMenuOpen(false)}
               className={`block px-4 py-2 text-sm font-medium rounded-xl transition-all ${
                 activePage === 'scan'
-                  ? 'text-[#FFD700] bg-[#FFD700]/10'
-                  : 'text-[#FFD700]/60 hover:text-[#FFD700] hover:bg-[#FFD700]/5'
+                  ? 'text-[#F0A741] bg-[#F0A741]/10'
+                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
               }`}
             >
               Scan
@@ -220,8 +220,8 @@ export default function Header({
               onClick={() => setMobileMenuOpen(false)}
               className={`block px-4 py-2 text-sm font-medium rounded-xl transition-all ${
                 activePage === 'help'
-                  ? 'text-[#FFD700] bg-[#FFD700]/10'
-                  : 'text-[#FFD700]/60 hover:text-[#FFD700] hover:bg-[#FFD700]/5'
+                  ? 'text-[#F0A741] bg-[#F0A741]/10'
+                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
               }`}
             >
               Help
