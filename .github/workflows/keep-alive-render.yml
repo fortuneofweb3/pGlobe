@@ -1,0 +1,46 @@
+name: Keep Render Service Alive
+
+on:
+  schedule:
+    # Run every 10 minutes to prevent Render free tier spin-down (15 min timeout)
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    
+    steps:
+      - name: Ping Render Health Endpoint
+        env:
+          RENDER_API_URL: ${{ secrets.RENDER_API_URL }}
+        run: |
+          if [ -z "$RENDER_API_URL" ]; then
+            echo "⚠️  RENDER_API_URL secret not set."
+            echo "Please set RENDER_API_URL secret to your Render API server URL"
+            echo "Format: https://pglobe-api-server.onrender.com"
+            exit 1
+          fi
+          
+          # Ensure URL doesn't have trailing slash
+          RENDER_API_URL=$(echo "$RENDER_API_URL" | sed 's|/$||')
+          
+          echo "Pinging Render service: ${RENDER_API_URL}/health"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "${RENDER_API_URL}/health" || echo "000")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          echo "Response Code: $HTTP_CODE"
+          echo "Response Body: $BODY"
+          
+          if [ "$HTTP_CODE" -eq 200 ]; then
+            echo "✅ Render service is awake"
+            exit 0
+          else
+            echo "⚠️  Render service responded with status $HTTP_CODE (may be spinning up)"
+            # Don't fail - service might be spinning up
+            exit 0
+          fi
+

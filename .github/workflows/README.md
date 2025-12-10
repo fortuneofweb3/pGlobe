@@ -1,4 +1,11 @@
-# GitHub Actions Setup for Background Refresh
+# GitHub Actions Workflows
+
+This repository uses GitHub Actions for two automated tasks:
+
+1. **Background Refresh** - Refreshes node data every minute
+2. **Keep Render Alive** - Pings Render service every 10 minutes to prevent spin-down
+
+## Background Refresh Workflow
 
 This workflow automatically refreshes your node data every minute using GitHub Actions (completely free).
 

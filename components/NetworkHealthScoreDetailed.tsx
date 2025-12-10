@@ -84,7 +84,7 @@ export default function NetworkHealthScoreDetailed({ nodes }: NetworkHealthScore
           </div>
           <div className="text-xs text-muted-foreground mt-1">
             {(() => {
-              const versions = nodes.map(n => n.version).filter(v => v);
+              const versions = nodes.map(n => n.version).filter((v): v is string => !!v);
               const latest = getLatestVersion(versions);
               return latest ? nodes.filter(n => n.version === latest).length : 0;
             })()} nodes on latest version

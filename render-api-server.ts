@@ -48,9 +48,13 @@ const authenticate = (req: express.Request, res: express.Response, next: express
   next();
 };
 
-// Health check
+// Health check endpoint (used by external cron jobs to keep service awake)
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
 });
 
 /**
