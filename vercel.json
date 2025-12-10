@@ -1,9 +1,0 @@
-{
-  "crons": [
-    {
-      "path": "/api/refresh-nodes",
-      "schedule": "*/1 * * * *"
-    }
-  ]
-}
-
