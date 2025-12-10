@@ -54,6 +54,12 @@ export interface PNode {
   latency?: number; // Latency in ms (from ping test)
   balance?: number; // SOL balance (from Solana on-chain)
   credits?: number; // Credits (from on-chain or heartbeat system, NOT from get-stats)
+  isRegistered?: boolean; // Is node registered on-chain? (balance > 0)
+  managerPDA?: string; // Manager PDA address (from on-chain)
+  
+  // On-chain account tracking (from Solana blockchain)
+  accountCreatedAt?: Date; // When the Solana account was created (approximate, from first transaction)
+  firstSeenSlot?: number; // First slot where account was seen (from oldest transaction signature)
   
   // Gossip tracking
   seenInGossip?: boolean; // true if node was returned by gossip in the last cycle, false if not (offline)

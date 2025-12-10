@@ -51,3 +51,7 @@ export function getDefaultNetwork(): NetworkConfig {
   return NETWORK_CONFIGS[0]; // Default to devnet1
 }
 
+export function getEnabledNetworks(): NetworkConfig[] {
+  return NETWORK_CONFIGS.filter(n => n.enabled);
+}
+

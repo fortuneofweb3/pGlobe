@@ -13,8 +13,6 @@ services:
         value: production
       - key: MONGODB_URI
         sync: false  # Set this in Render dashboard
-      - key: NEXT_PUBLIC_PRPC_ENDPOINT
-        sync: false  # Set this in Render dashboard
       - key: API_SECRET
         sync: false  # Secret for Vercel to authenticate
       - key: PORT

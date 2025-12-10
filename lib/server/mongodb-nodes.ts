@@ -136,7 +136,7 @@ async function getClient(retries: number = 3): Promise<MongoClient> {
 /**
  * Get database instance
  */
-async function getDb(): Promise<Db> {
+export async function getDb(): Promise<Db> {
   if (!db) {
     const client = await getClient();
     db = client.db(DB_NAME);

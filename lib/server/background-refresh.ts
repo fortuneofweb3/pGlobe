@@ -4,10 +4,12 @@
  */
 
 import { fetchPNodesFromGossip } from './prpc';
-import { upsertNodes, cleanupInvalidNodes } from './mongodb-nodes';
+import { upsertNodes, cleanupInvalidNodes, getAllNodes } from './mongodb-nodes';
 import { batchFetchLocations } from './location-cache';
 import { fetchBalanceForPubkey } from './balance-cache';
-import { getNetworkConfig } from './network-config';
+import { getNetworkConfig, getEnabledNetworks } from './network-config';
+import { storeHistoricalSnapshot } from './mongodb-history';
+import { Connection, PublicKey } from '@solana/web3.js';
 import { PNode } from '../types/pnode';
 
 let refreshInterval: NodeJS.Timeout | null = null;
@@ -26,14 +28,48 @@ export async function performRefresh(): Promise<void> {
   try {
     console.log(`[BackgroundRefresh] Starting refresh...`);
     
-    // Get default network config
-    const networkConfig = getNetworkConfig('devnet1');
-    const endpoint = networkConfig?.rpcUrl || process.env.NEXT_PUBLIC_PRPC_ENDPOINT;
+    // Get all enabled networks (for redundancy - try multiple endpoints)
+    const enabledNetworks = getEnabledNetworks();
+    if (enabledNetworks.length === 0) {
+      console.error(`[BackgroundRefresh] ❌ No enabled networks found in config`);
+      return;
+    }
 
     // STEP 1: Fetch nodes from gossip (includes get-pods-with-stats + get-stats enrichment)
+    // Try multiple enabled networks for redundancy (they point to same gossip network)
     // fetchPNodesFromGossip already enriches nodes with detailed stats (CPU, RAM, packets) via get-stats
-    console.log(`[BackgroundRefresh] Fetching nodes from gossip...`);
-    const gossipNodes = await fetchPNodesFromGossip(endpoint, false);
+    console.log(`[BackgroundRefresh] Fetching nodes from gossip (trying ${enabledNetworks.length} enabled network(s))...`);
+    
+    let gossipNodes: PNode[] = [];
+    let lastError: Error | null = null;
+    
+    // Try each enabled network until we get nodes
+    for (const network of enabledNetworks) {
+      try {
+        console.log(`[BackgroundRefresh] Trying ${network.name} (${network.rpcUrl})...`);
+        const nodes = await fetchPNodesFromGossip(network.rpcUrl, false);
+        if (nodes.length > 0) {
+          gossipNodes = nodes;
+          console.log(`[BackgroundRefresh] ✅ Fetched ${gossipNodes.length} nodes from ${network.name}`);
+          break; // Success, stop trying other networks
+        } else {
+          console.log(`[BackgroundRefresh] ⚠️  ${network.name} returned 0 nodes, trying next network...`);
+        }
+      } catch (error: any) {
+        lastError = error;
+        console.warn(`[BackgroundRefresh] ⚠️  Failed to fetch from ${network.name}: ${error?.message || error}`);
+        // Continue to next network
+      }
+    }
+    
+    if (gossipNodes.length === 0) {
+      console.error(`[BackgroundRefresh] ❌ Failed to fetch nodes from all enabled networks`);
+      if (lastError) {
+        console.error(`[BackgroundRefresh] Last error:`, lastError);
+      }
+      return;
+    }
+    
     console.log(`[BackgroundRefresh] Fetched ${gossipNodes.length} nodes from gossip`);
     
     if (gossipNodes.length === 0) {
@@ -109,18 +145,83 @@ export async function performRefresh(): Promise<void> {
       console.log(`[BackgroundRefresh] Fetched geo for ${fetchedGeo.size} IPs`);
     }
 
-    // STEP 4: Fetch on-chain data to check registration status
+    // STEP 4: Fetch on-chain data to check registration status and account creation dates
     const allPubkeys = [...new Set(nodesWithValidPubkeys.map(node => node.pubkey || node.publicKey).filter(pk => pk))] as string[];
     console.log(`[BackgroundRefresh] Fetching on-chain data for ${allPubkeys.length} pubkeys...`);
     const balanceMap = new Map<string, any>();
+    const accountCreationMap = new Map<string, { accountCreatedAt?: Date; firstSeenSlot?: number }>();
+
+    // Get existing nodes to check which ones already have accountCreatedAt
+    const existingNodesMap = new Map<string, PNode>();
+    try {
+      const existingNodes = await getAllNodes();
+      existingNodes.forEach(node => {
+        const key = node.pubkey || node.publicKey;
+        if (key) existingNodesMap.set(key, node);
+      });
+    } catch (e) {
+      console.warn('[BackgroundRefresh] Could not fetch existing nodes for account creation check');
+    }
+
+    // Use Solana connection for account creation date fetching
+    const DEVNET_RPC = 'https://api.devnet.xandeum.com:8899';
+    const connection = new Connection(DEVNET_RPC, 'confirmed');
 
     for (const pk of allPubkeys) {
       try {
+        // Fetch balance (includes registration status)
         const balanceData = await fetchBalanceForPubkey(pk);
         if (balanceData) {
           balanceMap.set(pk, balanceData);
           if (balanceData.balance > 0) {
             console.log(`[BackgroundRefresh] Found balance for ${pk.substring(0, 8)}...: ${balanceData.balance} SOL`);
+          }
+        }
+
+        // Fetch account creation date for registered nodes (or nodes without it yet)
+        // Only fetch if:
+        // 1. Node is registered (balance > 0), OR
+        // 2. Node doesn't have accountCreatedAt yet (might be newly registered)
+        const existingNode = existingNodesMap.get(pk);
+        const needsCreationDate = balanceData?.balance !== undefined && balanceData.balance !== null && (
+          balanceData.balance > 0 || // Registered node
+          !existingNode?.accountCreatedAt // Not fetched yet
+        );
+
+        if (needsCreationDate) {
+          try {
+            const pubkey = new PublicKey(pk);
+            const accountInfo = await connection.getAccountInfo(pubkey).catch(() => null);
+            
+            if (accountInfo) {
+              // Account exists - try to get first transaction for creation date
+              try {
+                const signatures = await connection.getSignaturesForAddress(
+                  pubkey,
+                  { limit: 1000 }, // Get up to 1000 signatures to find the oldest
+                  'confirmed'
+                );
+                
+                if (signatures.length > 0) {
+                  // The last signature in the array is the oldest
+                  const oldestSig = signatures[signatures.length - 1];
+                  const firstSeenSlot = oldestSig.slot;
+                  
+                  // Estimate timestamp from slot (approximate)
+                  // Solana devnet: ~400ms per slot on average
+                  const currentSlot = await connection.getSlot();
+                  const slotsAgo = currentSlot - firstSeenSlot;
+                  const msAgo = slotsAgo * 400; // Approximate
+                  const accountCreatedAt = new Date(Date.now() - msAgo);
+                  
+                  accountCreationMap.set(pk, { accountCreatedAt, firstSeenSlot });
+                }
+              } catch (sigError) {
+                // Silent fail - account might not have transactions yet
+              }
+            }
+          } catch (creationError) {
+            // Silent fail for account creation date fetch
           }
         }
       } catch (e) {
@@ -129,20 +230,17 @@ export async function performRefresh(): Promise<void> {
       }
     }
     const nodesWithBalance = Array.from(balanceMap.values()).filter(b => b.balance > 0).length;
+    const nodesWithCreationDate = accountCreationMap.size;
     console.log(`[BackgroundRefresh] Fetched on-chain data for ${balanceMap.size}/${allPubkeys.length} pubkeys (${nodesWithBalance} with balance > 0)`);
+    console.log(`[BackgroundRefresh] Fetched account creation dates for ${nodesWithCreationDate} nodes`);
 
     // STEP 5: Re-enrich nodes with null values (especially those with uptime but missing stats)
-    // Fetch existing nodes to check for null values that need enrichment
-    const { getAllNodes } = await import('./mongodb-nodes');
-    const existingNodesMap = new Map<string, PNode>();
+    // Use existingNodesMap from STEP 4 (already fetched)
     const nodesNeedingReEnrichment: PNode[] = [];
     
     try {
-      const existingNodes = await getAllNodes();
-      existingNodes.forEach(node => {
-        const key = node.pubkey || node.publicKey;
-        if (key) existingNodesMap.set(key, node);
-        
+      // Check nodes from existingNodesMap for re-enrichment
+      existingNodesMap.forEach((node, key) => {
         // Check if node needs re-enrichment (has uptime but missing CPU/RAM/packets)
         // This indicates the node might be online but stats fetch failed previously
         const needsEnrichment = (
@@ -306,6 +404,24 @@ export async function performRefresh(): Promise<void> {
       }
       // If no on-chain data and no existing node, balance will be undefined (new node, no balance yet)
 
+      // Set account creation date (from on-chain fetch or preserve existing)
+      const creationData = pk ? accountCreationMap.get(pk) : null;
+      if (creationData) {
+        // Use fresh account creation data
+        enrichedNode.accountCreatedAt = creationData.accountCreatedAt;
+        enrichedNode.firstSeenSlot = creationData.firstSeenSlot;
+      } else if (existingNode) {
+        // Preserve existing account creation data if fetch failed or not needed
+        if (existingNode.accountCreatedAt) {
+          enrichedNode.accountCreatedAt = existingNode.accountCreatedAt;
+        }
+        if (existingNode.firstSeenSlot) {
+          enrichedNode.firstSeenSlot = existingNode.firstSeenSlot;
+        }
+      }
+      // Note: For unregistered nodes (not initialized on-chain), accountCreatedAt will be undefined
+      // This is expected - we can't get creation date for accounts that don't exist yet
+
       // Always set isRegistered based on balance (update during sync)
       enrichedNode.isRegistered = isRegistered;
 
@@ -315,6 +431,14 @@ export async function performRefresh(): Promise<void> {
     console.log(`[BackgroundRefresh] Updating MongoDB with enriched data...`);
     try {
       await upsertNodes(enrichedNodes);
+      
+      // Store historical snapshot (hourly aggregation)
+      try {
+        await storeHistoricalSnapshot(enrichedNodes);
+      } catch (historyError: any) {
+        console.warn(`[BackgroundRefresh] ⚠️  Failed to store historical snapshot: ${historyError?.message || historyError}`);
+        // Don't throw - historical data is nice to have but not critical
+      }
       
       // Check final count after update
       let finalCount = 0;

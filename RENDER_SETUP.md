@@ -40,9 +40,10 @@ This guide shows you how to run all backend operations on Render while keeping y
    **Environment Variables:**
    - `NODE_ENV` = `production`
    - `MONGODB_URI` = (your MongoDB connection string)
-   - `NEXT_PUBLIC_PRPC_ENDPOINT` = (your pRPC endpoint)
    - `API_SECRET` = (generate with `openssl rand -hex 32` - **save this!**)
    - `PORT` = `3001` (or let Render auto-assign)
+   
+   **Note**: pRPC endpoints are configured in `lib/server/network-config.ts`. The system automatically uses all enabled networks (currently devnet1 and devnet2) for redundancy.
 
 4. Click **"Create Web Service"**
 5. **Copy the service URL** (e.g., `https://pglobe-api-server.onrender.com`) - you'll need this for Vercel

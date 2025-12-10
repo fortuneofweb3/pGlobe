@@ -13,6 +13,7 @@
 import express from 'express';
 import { performRefresh, startBackgroundRefresh } from './lib/server/background-refresh';
 import { getAllNodes, getNodeByPubkey, createIndexes } from './lib/server/mongodb-nodes';
+import { createHistoryIndexes } from './lib/server/mongodb-history';
 import { fetchPNodesFromGossip } from './lib/server/prpc';
 import { upsertNodes } from './lib/server/mongodb-nodes';
 import { getNetworkConfig } from './lib/server/network-config';
@@ -184,7 +185,6 @@ async function startServer() {
     nodeEnv: process.env.NODE_ENV,
     hasMongoUri: !!process.env.MONGODB_URI,
     hasApiSecret: !!API_SECRET,
-    prpcEndpoint: process.env.NEXT_PUBLIC_PRPC_ENDPOINT,
   });
 
   try {
@@ -192,6 +192,14 @@ async function startServer() {
     console.log('[RenderAPI] Creating MongoDB indexes...');
     await createIndexes();
     console.log('[RenderAPI] ✅ MongoDB indexes created');
+    
+    // Create historical data indexes
+    try {
+      await createHistoryIndexes();
+      console.log('[RenderAPI] ✅ Historical data indexes created');
+    } catch (error: any) {
+      console.warn('[RenderAPI] ⚠️  Failed to create history indexes:', error?.message || error);
+    }
 
     // Step 2: Start background refresh (instrumentation)
     console.log('[RenderAPI] Starting background refresh task...');
