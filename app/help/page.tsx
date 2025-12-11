@@ -1,14 +1,17 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
+import { BookOpen, ChevronRight, X, FileText, Settings, BarChart3, MapPin, Search, HelpCircle } from 'lucide-react';
 
 export default function HelpPage() {
   const { nodes, loading, lastUpdate, availableNetworks, currentNetwork, refreshNodes } = useNodes();
+  const [activeDoc, setActiveDoc] = useState<string | null>(null);
 
   return (
-    <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
+    <div className="fixed inset-0 w-full h-full flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       <Header
         activePage="help"
         nodeCount={nodes.length}
@@ -21,622 +24,827 @@ export default function HelpPage() {
         showNetworkSelector={false}
       />
 
-      <main className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 space-y-6">
-          <div className="mb-6">
-            <h1 className="text-2xl sm:text-3xl font-bold text-[#F0A741] mb-2">pGlobe Help & Documentation</h1>
-            <p className="text-foreground/70 text-sm sm:text-base">
-              Your complete guide to using the Xandeum pNode Analytics Platform
-            </p>
+      <main className="flex-1 overflow-hidden flex">
+        {/* Sidebar Navigation */}
+        <aside className="w-64 border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 overflow-y-auto flex-shrink-0">
+          <div className="p-4">
+            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">Documentation</h2>
+            <nav className="space-y-1">
+              <button
+                onClick={() => setActiveDoc(null)}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                  activeDoc === null
+                    ? 'bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-medium'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                Quick Start Guide
+              </button>
+              <button
+                onClick={() => setActiveDoc('deployment')}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${
+                  activeDoc === 'deployment'
+                    ? 'bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-medium'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                <span>Deployment</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setActiveDoc('analytics')}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${
+                  activeDoc === 'analytics'
+                    ? 'bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-medium'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                <span>Analytics & Metrics</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setActiveDoc('architecture')}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${
+                  activeDoc === 'architecture'
+                    ? 'bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-medium'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                <span>Architecture</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </nav>
           </div>
+        </aside>
 
-        {/* What is pGlobe */}
-        <section className="mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-            <span className="text-[#3F8277]">●</span> What is pGlobe?
-          </h2>
-            <div className="bg-muted/30 rounded-lg p-4 sm:p-6 space-y-4">
-              <p className="text-foreground/80 leading-relaxed">
-                <strong className="text-[#F0A741]">pGlobe</strong> is a real-time analytics and monitoring platform for the <strong className="text-[#F0A741]">Xandeum pNode network</strong>. 
-                It provides comprehensive visibility into the decentralized storage layer that powers Solana dApps with scalable, 
-              affordable data storage.
-            </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <div className="bg-black/20 rounded-lg p-4 border border-[#F0A741]/10">
-                  <h3 className="font-semibold text-[#F0A741] mb-2">What are pNodes?</h3>
-                  <p className="text-sm text-foreground/70">
-                    Provider Nodes (pNodes) form a distributed storage network where each node contributes storage capacity 
-                    and earns rewards for serving data to applications. They're the backbone of Xandeum's decentralized storage infrastructure.
-                  </p>
-                </div>
-                <div className="bg-black/20 rounded-lg p-4 border border-[#F0A741]/10">
-                  <h3 className="font-semibold text-[#F0A741] mb-2">Why Use pGlobe?</h3>
-                  <p className="text-sm text-foreground/70">
-                    Monitor network health, track node performance, analyze storage distribution, and make informed decisions 
-                    about staking or operating nodes. All in real-time with historical data tracking.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Getting Started */}
-          <section className="mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-              <span className="text-[#F0A741]">●</span> Getting Started
-            </h2>
-            <div className="bg-muted/30 rounded-lg p-4 sm:p-6 space-y-4">
-              <h3 className="font-semibold text-foreground mb-3">Navigation</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-black/20 rounded-lg p-4 border border-[#3F8277]/20">
-                  <h4 className="font-medium text-[#3F8277] mb-2">Overview</h4>
-                  <p className="text-sm text-foreground/70">
-                    The main dashboard with interactive globe, network statistics, health score, and node list. 
-                    Click any node on the globe or in the list to view detailed information.
-                  </p>
-                </div>
-                <div className="bg-black/20 rounded-lg p-4 border border-[#3F8277]/20">
-                  <h4 className="font-medium text-[#3F8277] mb-2">Analytics</h4>
-                  <p className="text-sm text-foreground/70">
-                    Deep dive into network metrics with charts showing performance trends, resource utilization, 
-                    latency distribution, and geographic metrics.
-                  </p>
-                </div>
-                <div className="bg-black/20 rounded-lg p-4 border border-[#3F8277]/20">
-                  <h4 className="font-medium text-[#3F8277] mb-2">Scan</h4>
-                  <p className="text-sm text-foreground/70">
-                    Search and filter nodes by various criteria. Export data, view rankings, and compare node performance.
-                  </p>
-                </div>
-                <div className="bg-black/20 rounded-lg p-4 border border-[#3F8277]/20">
-                  <h4 className="font-medium text-[#3F8277] mb-2">Help</h4>
-                  <p className="text-sm text-foreground/70">
-                    This page! Documentation, FAQs, and guides to help you get the most out of pGlobe.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-border">
-                <h3 className="font-semibold text-foreground mb-3">Quick Actions</h3>
-                <ul className="space-y-2 text-sm text-foreground/70">
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#F0A741] mt-1">•</span>
-                    <span><strong>Refresh Data:</strong> Click the refresh button (↻) in the header to manually update node data</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#F0A741] mt-1">•</span>
-                    <span><strong>Auto-refresh:</strong> Data automatically refreshes every 30 seconds by default</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#F0A741] mt-1">•</span>
-                    <span><strong>View Node Details:</strong> Click any node on the globe, in the list, or in rankings to see full details</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#F0A741] mt-1">•</span>
-                    <span><strong>Export Data:</strong> Use the export button in the Scan page to download node data as CSV or JSON</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </section>
-
-          {/* Using the Overview Page */}
-          <section className="mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-              <span className="text-purple-400">●</span> Using the Overview Page
-            </h2>
-            <div className="bg-muted/30 rounded-lg p-4 sm:p-6 space-y-4">
-              <h3 className="font-semibold text-foreground mb-3">Interactive Globe</h3>
-              <div className="bg-black/20 rounded-lg p-4 space-y-2">
-                <p className="text-sm text-foreground/70 mb-3">
-                  The 3D globe visualization shows all nodes in the network with their geographic locations. 
-                  Each dot represents a pNode, and colors indicate status (green = online, yellow = syncing, red = offline).
-                </p>
-                <ul className="space-y-2 text-sm text-foreground/70">
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#F0A741] mt-1">•</span>
-                    <span><strong>Click a node</strong> - Opens detailed node information modal</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#F0A741] mt-1">•</span>
-                    <span><strong>Drag</strong> - Rotate the globe (stops auto-rotation)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#F0A741] mt-1">•</span>
-                    <span><strong>Scroll / Pinch</strong> - Zoom in/out</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#F0A741] mt-1">•</span>
-                    <span><strong>Arrow keys</strong> - Navigate between nodes (when a node is selected)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#F0A741] mt-1">•</span>
-                    <span><strong>&lt; / &gt; buttons</strong> - Previous/next node navigation</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#F0A741] mt-1">•</span>
-                    <span><strong>Reset button</strong> - Return to default view and resume auto-rotation</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-border">
-                <h3 className="font-semibold text-foreground mb-3">Network Statistics Cards</h3>
-                <p className="text-sm text-foreground/70 mb-3">
-                  The top section displays key network metrics at a glance:
-                </p>
-                <ul className="space-y-2 text-sm text-foreground/70">
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#3F8277] mt-1">•</span>
-                    <span><strong>Total Nodes:</strong> Total number of pNodes discovered in the network</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#3F8277] mt-1">•</span>
-                    <span><strong>Online/Syncing/Offline:</strong> Current status breakdown of all nodes</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#3F8277] mt-1">•</span>
-                    <span><strong>Storage Capacity/Used:</strong> Total network storage metrics</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#3F8277] mt-1">•</span>
-                    <span><strong>Average Metrics:</strong> Uptime, CPU, RAM, and latency averages</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-border">
-                <h3 className="font-semibold text-foreground mb-3">Network Health Score</h3>
-                <p className="text-sm text-foreground/70">
-                  The health score (0-100) is displayed prominently and calculated from multiple factors. 
-                  Click on it to see a detailed breakdown of how the score is calculated.
-                </p>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-border">
-                <h3 className="font-semibold text-foreground mb-3">Node List</h3>
-                <p className="text-sm text-foreground/70">
-                  Below the globe, you'll find a sortable table of all nodes. Click any row to view detailed information 
-                  including historical data, performance metrics, and network activity.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Using the Analytics Page */}
-          <section className="mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-              <span className="text-blue-400">●</span> Using the Analytics Page
-            </h2>
-            <div className="bg-muted/30 rounded-lg p-4 sm:p-6 space-y-4">
-            <p className="text-foreground/80">
-                The Analytics page provides detailed visualizations and insights into network performance and distribution.
-              </p>
-              
-              <div className="space-y-4">
-                <div className="bg-black/20 rounded-lg p-4 border border-[#F0A741]/10">
-                  <h4 className="font-semibold text-[#F0A741] mb-2">Network Health Chart</h4>
-                  <p className="text-sm text-foreground/70">
-                    Visual breakdown of node status distribution (online, syncing, offline) with percentages. 
-                    Hover over segments to see exact counts.
-                  </p>
-                </div>
-
-                <div className="bg-black/20 rounded-lg p-4 border border-[#F0A741]/10">
-                  <h4 className="font-semibold text-[#F0A741] mb-2">Performance Metrics</h4>
-                  <p className="text-sm text-foreground/70 mb-2">
-                    Two bar charts showing:
-                  </p>
-                  <ul className="text-sm text-foreground/70 space-y-1 ml-4">
-                    <li>• <strong>Latency Distribution:</strong> How many nodes fall into different latency ranges</li>
-                    <li>• <strong>Resource Utilization:</strong> CPU and RAM usage distribution across nodes</li>
-                  </ul>
-                  <p className="text-sm text-foreground/70 mt-2">
-                    Hover over bars to see exact values and node counts.
-                  </p>
-                </div>
-
-                <div className="bg-black/20 rounded-lg p-4 border border-[#F0A741]/10">
-                  <h4 className="font-semibold text-[#F0A741] mb-2">Geographic Distribution</h4>
-                  <p className="text-sm text-foreground/70">
-                    Horizontal bar chart showing node count by country. Helps visualize where the network 
-                    has the most presence and geographic diversity.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Using the Scan Page */}
-          <section className="mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-              <span className="text-cyan-400">●</span> Using the Scan Page
-            </h2>
-            <div className="bg-muted/30 rounded-lg p-4 sm:p-6 space-y-4">
-              <h3 className="font-semibold text-foreground mb-3">Search & Filter</h3>
-              <ul className="space-y-2 text-sm text-foreground/70">
-                <li className="flex items-start gap-2">
-                  <span className="text-[#F0A741] mt-1">•</span>
-                  <span><strong>Search Bar:</strong> Search by node ID, public key, IP address, or location (city/country)</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#F0A741] mt-1">•</span>
-                  <span><strong>Status Filter:</strong> Filter by Online, Syncing, or Offline status</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#F0A741] mt-1">•</span>
-                  <span><strong>Version Filter:</strong> Filter nodes by their Pod version (e.g., 0.7.3, 0.7.2)</span>
-                </li>
-              </ul>
-
-              <div className="mt-4 pt-4 border-t border-border">
-                <h3 className="font-semibold text-foreground mb-3">Sorting</h3>
-                <p className="text-sm text-foreground/70 mb-2">
-                  Click column headers to sort by:
-                </p>
-                <ul className="space-y-1 text-sm text-foreground/70 ml-4">
-                  <li>• Reputation score</li>
-                  <li>• Uptime percentage</li>
-                  <li>• Latency (response time)</li>
-                  <li>• Storage usage</li>
-                  <li>• Node ID</li>
-                </ul>
-                <p className="text-sm text-foreground/70 mt-2">
-                  Click again to reverse the sort order.
-                </p>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-border">
-                <h3 className="font-semibold text-foreground mb-3">Node Rankings</h3>
-                <p className="text-sm text-foreground/70">
-                  View top-performing nodes by uptime or storage. These leaderboards help identify the most 
-                  reliable and active nodes in the network.
-                </p>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-border">
-                <h3 className="font-semibold text-foreground mb-3">Export Data</h3>
-                <p className="text-sm text-foreground/70">
-                  Use the export button to download the current filtered/sorted node data as CSV or JSON. 
-                  Perfect for further analysis in spreadsheets or custom tools.
-            </p>
-              </div>
-          </div>
-        </section>
-
-          {/* Understanding Metrics */}
-        <section className="mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-            <span className="text-[#F0A741]">●</span> Understanding the Metrics
-          </h2>
-          
-          <div className="space-y-4">
-            <div className="bg-muted/30 rounded-lg p-6">
-                <h3 className="font-semibold text-foreground mb-3">Node Status</h3>
-              <dl className="space-y-3">
-                <div>
-                    <dt className="text-sm font-medium text-[#3F8277]">Online</dt>
-                    <dd className="text-sm text-foreground/70">
-                      Node was seen in gossip within the last 5 minutes. These are actively participating nodes.
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-[#F0A741]">Syncing</dt>
-                    <dd className="text-sm text-foreground/70">
-                      Node was seen within the last hour but not in the last 5 minutes. May be catching up on network state.
-                    </dd>
-                </div>
-                <div>
-                    <dt className="text-sm font-medium text-red-400">Offline</dt>
-                  <dd className="text-sm text-foreground/70">
-                      Node hasn't been seen for over an hour. May be down, disconnected, or experiencing issues.
-                  </dd>
-                </div>
-              </dl>
-            </div>
-
-            <div className="bg-muted/30 rounded-lg p-6">
-              <h3 className="font-semibold text-foreground mb-3">Performance Metrics</h3>
-              <dl className="space-y-3">
-                <div>
-                    <dt className="text-sm font-medium text-[#F0A741]">Uptime (%)</dt>
-                  <dd className="text-sm text-foreground/70">
-                      Percentage of time the node has been continuously running, calculated over a 30-day window. 
-                      Higher uptime (95%+) indicates a reliable, well-maintained node.
-                  </dd>
-                </div>
-                <div>
-                    <dt className="text-sm font-medium text-[#F0A741]">CPU (%)</dt>
-                  <dd className="text-sm text-foreground/70">
-                      Processor utilization. Shows how much of the node's CPU capacity is being used. 
-                      Lower values (under 50%) mean more headroom for growth and better performance.
-                  </dd>
-                </div>
-                <div>
-                    <dt className="text-sm font-medium text-[#F0A741]">RAM (%)</dt>
-                  <dd className="text-sm text-foreground/70">
-                      Memory usage as a percentage of total available RAM. Typical pNode setups use 2-8GB 
-                      depending on data volume. High RAM usage may indicate memory pressure.
-                  </dd>
-                </div>
-                <div>
-                    <dt className="text-sm font-medium text-[#F0A741]">Latency (ms)</dt>
-                  <dd className="text-sm text-foreground/70">
-                      Response time measured directly from your browser to each node's pRPC endpoint. 
-                      This gives you accurate latency based on your location and internet connection. 
-                      Latency measurements are cached for 6 hours to improve performance. Lower is better (under 100ms is excellent).
-                  </dd>
-                </div>
-              </dl>
-            </div>
-
-            <div className="bg-muted/30 rounded-lg p-6">
-              <h3 className="font-semibold text-foreground mb-3">Storage Metrics</h3>
-              <dl className="space-y-3">
-                <div>
-                  <dt className="text-sm font-medium text-[#3F8277]">Capacity</dt>
-                  <dd className="text-sm text-foreground/70">
-                    Estimated total storage capacity across all reporting nodes. Calculated based on 
-                      actual data stored (nodes typically provision 1.5x current usage for headroom).
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-[#3F8277]">Used</dt>
-                  <dd className="text-sm text-foreground/70">
-                    Total data currently stored by the network. This is real dApp data being served 
-                      to applications using Xandeum storage. Shows actual network utilization.
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-[#3F8277]">Usage %</dt>
-                    <dd className="text-sm text-foreground/70">
-                      Percentage of capacity currently in use. Higher values indicate more active storage usage.
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-
-              <div className="bg-muted/30 rounded-lg p-6">
-                <h3 className="font-semibold text-foreground mb-3">Network Activity</h3>
-                <dl className="space-y-3">
-                  <div>
-                    <dt className="text-sm font-medium text-[#3F8277]">Packets Received/Sent</dt>
-                    <dd className="text-sm text-foreground/70">
-                      Network traffic metrics showing data packets. Higher values indicate more network activity.
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-[#3F8277]">Active Streams</dt>
-                    <dd className="text-sm text-foreground/70">
-                      Number of active data streams. Shows how many concurrent data transfers the node is handling.
-                  </dd>
-                </div>
-              </dl>
-            </div>
-          </div>
-        </section>
-
-        {/* Network Health Score */}
-        <section className="mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-            <span className="text-red-400">●</span> Network Health Score
-          </h2>
-          <div className="bg-muted/30 rounded-lg p-6 space-y-4">
-            <p className="text-foreground/80">
-                The health score (0-100) is a weighted composite metric that provides an overall assessment of network health:
-            </p>
-            <ul className="list-disc list-inside text-foreground/70 space-y-2 ml-4">
-                <li><strong>40%</strong> - Availability (online nodes / total nodes)</li>
-                <li><strong>35%</strong> - Version Health (% of nodes on the latest version)</li>
-                <li><strong>25%</strong> - Geographic Distribution (diversity of node locations)</li>
-            </ul>
-              <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-border">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[#3F8277]"></span>
-                  <span className="text-sm text-foreground/70">80-100: Excellent</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[#F0A741]"></span>
-                  <span className="text-sm text-foreground/70">60-79: Good</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-orange-400"></span>
-                  <span className="text-sm text-foreground/70">40-59: Fair</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-red-400"></span>
-                  <span className="text-sm text-foreground/70">0-39: Poor</span>
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground mt-4">
-                Click on the health score card to see a detailed breakdown of each component.
-              </p>
-            </div>
-          </section>
-
-          {/* Node Details Modal */}
-          <section className="mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-              <span className="text-green-400">●</span> Node Details & Historical Data
-            </h2>
-            <div className="bg-muted/30 rounded-lg p-4 sm:p-6 space-y-4">
-              <p className="text-foreground/80">
-                Clicking any node opens a detailed modal with comprehensive information:
-              </p>
-              <ul className="space-y-2 text-sm text-foreground/70">
-                <li className="flex items-start gap-2">
-                  <span className="text-[#F0A741] mt-1">•</span>
-                  <span><strong>Basic Info:</strong> Public key, version, status, registration status, and location</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#F0A741] mt-1">•</span>
-                  <span><strong>Performance Metrics:</strong> Current CPU, RAM, latency, and uptime</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#F0A741] mt-1">•</span>
-                  <span><strong>Storage Info:</strong> Capacity, used space, and usage percentage</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#F0A741] mt-1">•</span>
-                  <span><strong>Network Activity:</strong> Packets, streams, and network statistics</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#F0A741] mt-1">•</span>
-                  <span><strong>Historical Data:</strong> Charts showing uptime and storage trends over time (if available)</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#F0A741] mt-1">•</span>
-                  <span><strong>Raw Data:</strong> Complete JSON response from the pRPC API</span>
-                </li>
-              </ul>
-              <div className="bg-black/20 rounded-lg p-4 mt-4 border border-[#F0A741]/10">
-                <p className="text-sm text-foreground/70">
-                  <strong className="text-[#F0A741]">Note:</strong> Historical data is only available for nodes that have been 
-                  tracked over time. The data may take a few seconds to load.
-                </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Data Sources */}
-        <section className="mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-              <span className="text-blue-400">●</span> How Data is Collected
-          </h2>
-            <div className="bg-muted/30 rounded-lg p-4 sm:p-6 space-y-4">
-            <p className="text-foreground/80">
-                pGlobe uses a <strong>pure gossip approach</strong> to discover and monitor nodes:
-            </p>
-            <ol className="list-decimal list-inside text-foreground/70 space-y-2 ml-4">
-                <li>Query known pRPC endpoints with <code className="bg-muted px-1.5 py-0.5 rounded text-xs">get-pods</code> to discover nodes in the gossip network</li>
-                <li>Deduplicate nodes by public key (each node has a unique identifier)</li>
-                <li>Enrich with detailed stats via <code className="bg-muted px-1.5 py-0.5 rounded text-xs">get-stats</code> when pRPC is publicly accessible</li>
-              <li>Add geographic location via IP geolocation API</li>
-                <li>Store historical snapshots for trend analysis</li>
-            </ol>
-              <div className="bg-black/20 rounded-lg p-4 mt-4 border border-[#F0A741]/10">
-                <p className="text-sm text-foreground/70">
-                  <strong className="text-[#F0A741]">Security Note:</strong> Most nodes keep pRPC private (localhost-only) for security, 
-                  which is the recommended configuration. Only nodes with public pRPC (configured with <code className="bg-muted px-1 rounded">--rpc-ip 0.0.0.0</code>) 
-                  expose detailed statistics. This is why some metrics show "N/A" or "Limited data".
-            </p>
-          </div>
-          </div>
-        </section>
-
-        {/* FAQ */}
-        <section className="mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-              <span className="text-cyan-400">●</span> Frequently Asked Questions
-          </h2>
-          <div className="space-y-4">
-            <div className="bg-muted/30 rounded-lg p-6">
-              <h3 className="font-semibold text-foreground mb-2">Why do some nodes show "N/A" for stats?</h3>
-              <p className="text-sm text-foreground/70">
-                  pNode operators can choose to keep their pRPC endpoint private (localhost-only) for security. 
-                  This is the recommended security configuration. Only nodes with public pRPC expose detailed statistics. 
-                  We still track these nodes for network discovery and basic status, but detailed metrics aren't available.
-              </p>
-            </div>
-            <div className="bg-muted/30 rounded-lg p-6">
-              <h3 className="font-semibold text-foreground mb-2">Why are multiple nodes at the same location?</h3>
-              <p className="text-sm text-foreground/70">
-                  Many nodes run in the same datacenter or cloud provider (e.g., Hetzner, Contabo, AWS). 
-                  While they appear at the same geographic location, each is a separate, unique node with its own 
-                  public key and contributes independently to the network. Geographic diversity is still important 
-                  for network resilience.
-              </p>
-            </div>
-            <div className="bg-muted/30 rounded-lg p-6">
-              <h3 className="font-semibold text-foreground mb-2">What's the difference between DevNet and MainNet?</h3>
-              <p className="text-sm text-foreground/70">
-                  <strong>DevNet</strong> is the active test network with real nodes running test software. 
-                  <strong>MainNet</strong> is the production network that will launch when Xandeum goes fully live. 
-                  Currently, only DevNet is active. You can switch between networks using the network selector in the header.
-              </p>
-            </div>
-              <div className="bg-muted/30 rounded-lg p-6">
-                <h3 className="font-semibold text-foreground mb-2">How often is the data updated?</h3>
-                <p className="text-sm text-foreground/70">
-                  Data automatically refreshes every 30 seconds. You can also manually refresh using the refresh button 
-                  in the header. Historical data is stored hourly, so trend charts show data points at hourly intervals.
-                  </p>
-                </div>
-              <div className="bg-muted/30 rounded-lg p-6">
-                <h3 className="font-semibold text-foreground mb-2">Can I use this data for staking decisions?</h3>
-                <p className="text-sm text-foreground/70">
-                  Yes! The platform provides comprehensive metrics to help you make informed decisions. Look for nodes with 
-                  high uptime (95%+), latest version, good performance metrics, and active network participation. 
-                  The rankings and filters are particularly useful for identifying reliable nodes.
-                  </p>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-6">
-                <h3 className="font-semibold text-foreground mb-2">Is there an API I can use?</h3>
-                <p className="text-sm text-foreground/70">
-                  Yes! The platform exposes a RESTful API for programmatic access. Check the API documentation 
-                  for endpoints, authentication, and usage examples. The API provides access to all the same data 
-                  you see in the dashboard.
-                </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Additional Resources */}
-          <section className="mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-            <span className="text-[#F0A741]">●</span> Additional Resources
-          </h2>
-          <div className="bg-muted/30 rounded-lg p-6">
-            <ul className="space-y-3">
-              <li>
-                <a 
-                  href="https://xandeum.com" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-[#F0A741] hover:text-[#F0A741]/80 hover:underline flex items-center gap-2 transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                  </svg>
-                  <span className="font-medium">Xandeum Official Website</span>
-                  <svg className="w-4 h-4 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-              </li>
-              <li>
-                <a 
-                  href="https://docs.xandeum.com" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-[#F0A741] hover:text-[#F0A741]/80 hover:underline flex items-center gap-2 transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                  <span className="font-medium">Xandeum Documentation</span>
-                  <svg className="w-4 h-4 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-              </li>
-            </ul>
-          </div>
-        </section>
-
-        <div className="mt-8 pt-6 border-t border-border">
-          <Link 
-            href="/"
-              className="inline-flex items-center gap-2 text-[#F0A741] hover:text-[#F0A741]/80 hover:underline transition-colors"
-          >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Back to Dashboard
-          </Link>
-        </div>
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-y-auto">
+          {activeDoc === null ? (
+            <QuickStartGuide />
+          ) : activeDoc === 'deployment' ? (
+            <DeploymentDocs onClose={() => setActiveDoc(null)} />
+          ) : activeDoc === 'analytics' ? (
+            <AnalyticsDocs onClose={() => setActiveDoc(null)} />
+          ) : activeDoc === 'architecture' ? (
+            <ArchitectureDocs onClose={() => setActiveDoc(null)} />
+          ) : null}
         </div>
       </main>
+    </div>
+  );
+}
+
+function QuickStartGuide() {
+  return (
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">pGlobe Documentation</h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          Real-time analytics and monitoring platform for the Xandeum pNode network
+        </p>
+      </div>
+
+      {/* What is pGlobe */}
+      <section className="mb-12">
+        <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">What is pGlobe?</h2>
+        <div className="prose prose-gray dark:prose-invert max-w-none">
+          <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+            pGlobe is a real-time analytics and monitoring platform for the <strong>Xandeum pNode network</strong>. 
+            It provides comprehensive visibility into the decentralized storage layer that powers Solana dApps with scalable, 
+            affordable data storage.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+            <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">What are pNodes?</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Provider Nodes (pNodes) form a distributed storage network where each node contributes storage capacity 
+                and earns rewards for serving data to applications. They're the backbone of Xandeum's decentralized storage infrastructure.
+              </p>
+            </div>
+            <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Why Use pGlobe?</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Monitor network health, track node performance, analyze storage distribution, and make informed decisions 
+                about staking or operating nodes. All in real-time with historical data tracking.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Getting Started */}
+      <section className="mb-12">
+        <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Getting Started</h2>
+        <div className="prose prose-gray dark:prose-invert max-w-none">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">Navigation</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <MapPin className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                <h4 className="font-medium text-gray-900 dark:text-gray-100">Overview</h4>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                The main dashboard with interactive globe, network statistics, health score, and node list. 
+                Click any node on the globe or in the list to view detailed information.
+              </p>
+            </div>
+            <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <BarChart3 className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                <h4 className="font-medium text-gray-900 dark:text-gray-100">Analytics</h4>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Deep dive into network metrics with charts showing performance trends, resource utilization, 
+                latency distribution, and geographic metrics.
+              </p>
+            </div>
+            <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Search className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                <h4 className="font-medium text-gray-900 dark:text-gray-100">Scan</h4>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Search and filter nodes by various criteria. Export data, view rankings, and compare node performance.
+              </p>
+            </div>
+            <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <HelpCircle className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                <h4 className="font-medium text-gray-900 dark:text-gray-100">Help</h4>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Documentation, FAQs, and guides to help you get the most out of pGlobe.
+              </p>
+            </div>
+          </div>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-8">Quick Actions</h3>
+          <ul className="space-y-2 text-gray-700 dark:text-gray-300">
+            <li className="flex items-start gap-2">
+              <span className="text-gray-400 mt-1">•</span>
+              <span><strong>Refresh Data:</strong> Click the refresh button (↻) in the header to manually update node data</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-gray-400 mt-1">•</span>
+              <span><strong>Auto-refresh:</strong> Data automatically refreshes every 30 seconds by default</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-gray-400 mt-1">•</span>
+              <span><strong>View Node Details:</strong> Click any node on the globe, in the list, or in rankings to see full details</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-gray-400 mt-1">•</span>
+              <span><strong>Export Data:</strong> Use the export button in the Scan page to download node data as CSV or JSON</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      {/* Understanding Metrics */}
+      <section className="mb-12">
+        <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Understanding Metrics</h2>
+        <div className="prose prose-gray dark:prose-invert max-w-none">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">Node Status</h3>
+          <dl className="space-y-3 mb-6">
+            <div>
+              <dt className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Online</dt>
+              <dd className="text-sm text-gray-600 dark:text-gray-400">
+                Node was seen in gossip within the last 5 minutes. These are actively participating nodes.
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Syncing</dt>
+              <dd className="text-sm text-gray-600 dark:text-gray-400">
+                Node was seen within the last hour but not in the last 5 minutes. May be catching up on network state.
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Offline</dt>
+              <dd className="text-sm text-gray-600 dark:text-gray-400">
+                Node hasn't been seen for over an hour. May be down, disconnected, or experiencing issues.
+              </dd>
+            </div>
+          </dl>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">Performance Metrics</h3>
+          <dl className="space-y-3 mb-6">
+            <div>
+              <dt className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Uptime (%)</dt>
+              <dd className="text-sm text-gray-600 dark:text-gray-400">
+                Percentage of time the node has been continuously running, calculated over a 30-day window. 
+                Higher uptime (95%+) indicates a reliable, well-maintained node.
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">CPU (%)</dt>
+              <dd className="text-sm text-gray-600 dark:text-gray-400">
+                Processor utilization. Shows how much of the node's CPU capacity is being used. 
+                Lower values (under 50%) mean more headroom for growth and better performance.
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">RAM (%)</dt>
+              <dd className="text-sm text-gray-600 dark:text-gray-400">
+                Memory usage as a percentage of total available RAM. Typical pNode setups use 2-8GB 
+                depending on data volume. High RAM usage may indicate memory pressure.
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Latency (ms)</dt>
+              <dd className="text-sm text-gray-600 dark:text-gray-400">
+                Response time measured directly from your browser to each node's pRPC endpoint. 
+                This gives you accurate latency based on your location and internet connection. 
+                Latency measurements are cached for 6 hours to improve performance. Lower is better (under 100ms is excellent).
+              </dd>
+            </div>
+          </dl>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">Network Health Score</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-3">
+            The health score (0-100) is a weighted composite metric that provides an overall assessment of network health:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-1 mb-4">
+            <li><strong>40%</strong> - Availability (online nodes / total nodes)</li>
+            <li><strong>35%</strong> - Version Health (% of nodes on the latest version)</li>
+            <li><strong>25%</strong> - Geographic Distribution (diversity of node locations)</li>
+          </ul>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="mb-12">
+        <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Frequently Asked Questions</h2>
+        <div className="space-y-4">
+          <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Why do some nodes show "N/A" for stats?</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              pNode operators can choose to keep their pRPC endpoint private (localhost-only) for security. 
+              This is the recommended security configuration. Only nodes with public pRPC expose detailed statistics. 
+              We still track these nodes for network discovery and basic status, but detailed metrics aren't available.
+            </p>
+          </div>
+          <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">How often is the data updated?</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Data automatically refreshes every 30 seconds. You can also manually refresh using the refresh button 
+              in the header. Historical data is stored hourly, so trend charts show data points at hourly intervals.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-800">
+        <Link 
+          href="/"
+          className="inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Dashboard
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function DeploymentDocs({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="max-w-4xl mx-auto px-6 py-8 bg-white dark:bg-gray-950">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Deployment Documentation</h1>
+          <p className="text-gray-600 dark:text-gray-400">How pGlobe is deployed in production</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="prose prose-gray dark:prose-invert max-w-none">
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Production Architecture</h2>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            pGlobe is deployed using a two-server architecture:
+          </p>
+          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6 mb-4">
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Frontend (Vercel)</h3>
+                <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                  <li>Next.js 14 application hosted on Vercel</li>
+                  <li>API proxy routes that forward requests to Render backend</li>
+                  <li>No direct database or pRPC access</li>
+                  <li>Client-side latency measurement</li>
+                  <li>Automatic deployments on git push</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Backend (Render)</h3>
+                <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                  <li>Express.js API server hosted on Render</li>
+                  <li>Background refresh worker (runs every minute)</li>
+                  <li>pRPC fetching and gossip network discovery</li>
+                  <li>MongoDB read/write operations</li>
+                  <li>Historical data storage</li>
+                  <li>Automatic deployments on git push</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Database (MongoDB Atlas)</h3>
+                <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                  <li>Node data storage</li>
+                  <li>Historical snapshots</li>
+                  <li>Geographic location cache</li>
+                  <li>Only accessible from Render backend</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Deployment Process</h2>
+          
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Initial Setup</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            The platform was initially deployed as follows:
+          </p>
+          
+          <div className="mb-6">
+            <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">1. Render API Server Setup</h4>
+            <ol className="list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+              <li>Created Render account and connected GitHub repository</li>
+              <li>Created new Web Service named <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">pglobe-api-server</code></li>
+              <li>Configured build command: <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">npm install --include=dev</code></li>
+              <li>Configured start command: <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">npx tsx render-api-server.ts</code></li>
+              <li>Set environment variables:
+                <ul className="list-disc list-inside ml-6 mt-1 space-y-1">
+                  <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">NODE_ENV=production</code></li>
+                  <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">MONGODB_URI</code> (MongoDB Atlas connection string)</li>
+                  <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">API_SECRET</code> (generated with <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">openssl rand -hex 32</code>)</li>
+                  <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">PORT=3001</code></li>
+                </ul>
+              </li>
+              <li>Service URL obtained: <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">https://pglobe-api-server.onrender.com</code></li>
+            </ol>
+          </div>
+
+          <div className="mb-6">
+            <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">2. Vercel Frontend Setup</h4>
+            <ol className="list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+              <li>Created Vercel account and imported GitHub repository</li>
+              <li>Vercel auto-detected Next.js configuration</li>
+              <li>Configured environment variables:
+                <ul className="list-disc list-inside ml-6 mt-1 space-y-1">
+                  <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">RENDER_API_URL</code> (Render API server URL)</li>
+                  <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">API_SECRET</code> (same secret as Render)</li>
+                </ul>
+              </li>
+              <li>Frontend URL: <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">https://pglobe.vercel.app</code></li>
+            </ol>
+          </div>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Continuous Deployment</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            Both services are configured for automatic deployment:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li><strong>Render:</strong> Automatically deploys when code is pushed to the main branch</li>
+            <li><strong>Vercel:</strong> Automatically deploys when code is pushed to the main branch</li>
+            <li>Both services pull from the same GitHub repository</li>
+            <li>Deployments are independent - frontend and backend can be updated separately</li>
+          </ul>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Environment Configuration</h2>
+          
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Render Environment Variables</h3>
+          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 mb-4">
+            <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
+              <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">NODE_ENV</code> = <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">production</code></li>
+              <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">MONGODB_URI</code> = MongoDB Atlas connection string</li>
+              <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">API_SECRET</code> = Shared secret for Vercel authentication</li>
+              <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">PORT</code> = <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">3001</code></li>
+            </ul>
+          </div>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Vercel Environment Variables</h3>
+          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 mb-4">
+            <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
+              <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">RENDER_API_URL</code> = Render API server URL</li>
+              <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">API_SECRET</code> = Same secret as Render (for authentication)</li>
+            </ul>
+          </div>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Deployment Workflow</h2>
+          
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Standard Deployment Process</h3>
+          <ol className="list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li>Make changes locally and test with <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">npm run dev:api</code> and <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">npm run dev</code></li>
+            <li>Commit changes: <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">git add .</code> → <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">git commit -m "..."</code></li>
+            <li>Push to GitHub: <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">git push</code></li>
+            <li>Render automatically detects push and starts deployment</li>
+            <li>Vercel automatically detects push and starts deployment</li>
+            <li>Both services deploy independently and update production</li>
+          </ol>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Monitoring Deployments</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            Deployment status can be monitored:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li><strong>Render Dashboard:</strong> View build logs, deployment status, and service health</li>
+            <li><strong>Vercel Dashboard:</strong> View build logs, deployment status, and function logs</li>
+            <li><strong>GitHub Actions:</strong> Optional cron job configured to keep Render service alive (prevents free tier sleep)</li>
+          </ul>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Infrastructure Details</h2>
+          
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Render Service</h3>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li><strong>Service Type:</strong> Web Service</li>
+            <li><strong>Runtime:</strong> Node.js</li>
+            <li><strong>Build:</strong> <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">npm install --include=dev</code></li>
+            <li><strong>Start:</strong> <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">npx tsx render-api-server.ts</code></li>
+            <li><strong>Background Tasks:</strong> Runs background refresh every minute</li>
+            <li><strong>API Endpoints:</strong> <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">/api/pnodes</code>, <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">/api/refresh-nodes</code>, <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">/health</code></li>
+          </ul>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Vercel Service</h3>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li><strong>Framework:</strong> Next.js 14</li>
+            <li><strong>Build:</strong> Automatic (detects Next.js)</li>
+            <li><strong>API Routes:</strong> Proxy routes that forward to Render backend</li>
+            <li><strong>Static Assets:</strong> Served from Vercel CDN</li>
+            <li><strong>Edge Functions:</strong> Not used (all API calls proxy to Render)</li>
+          </ul>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Data Flow in Production</h2>
+          
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Background Refresh (Render)</h3>
+          <ol className="list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li>Render API server runs background refresh task every minute</li>
+            <li>Queries pRPC endpoints using <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">get-pods-with-stats</code> (v0.7.0+) or <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">get-pods</code> (all versions)</li>
+            <li>Enriches nodes with detailed stats via <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">get-stats</code> when pRPC is public</li>
+            <li>Fetches geographic location data for nodes</li>
+            <li>Fetches on-chain Solana data (registration status, balances)</li>
+            <li>Stores/updates nodes in MongoDB</li>
+            <li>Creates historical snapshot for trend analysis</li>
+          </ol>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">User Request Flow</h3>
+          <ol className="list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li>User visits pGlobe frontend (Vercel)</li>
+            <li>Frontend makes API request to Next.js API route (e.g., <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">/api/pnodes</code>)</li>
+            <li>API route proxies request to Render backend with <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">API_SECRET</code> authentication</li>
+            <li>Render backend queries MongoDB and returns data</li>
+            <li>Frontend receives data and renders UI</li>
+            <li>Client-side latency measurement runs in background (deferred using requestIdleCallback)</li>
+          </ol>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function AnalyticsDocs({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="max-w-4xl mx-auto px-6 py-8 bg-white dark:bg-gray-950">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Analytics & Metrics Guide</h1>
+          <p className="text-gray-600 dark:text-gray-400">Understanding how analytics work in pGlobe</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="prose prose-gray dark:prose-invert max-w-none">
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Overview Page Analytics</h2>
+          
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Network Statistics Cards</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            The top section displays key network metrics calculated in real-time:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li><strong>Total Nodes:</strong> Count of all discovered pNodes in the network</li>
+            <li><strong>Online/Syncing/Offline:</strong> Status breakdown based on last seen timestamps</li>
+            <li><strong>Storage Capacity/Used:</strong> Aggregated storage metrics from all reporting nodes</li>
+            <li><strong>Average Metrics:</strong> Calculated averages for uptime, CPU, RAM, and latency</li>
+          </ul>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Network Health Score</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            The health score is a weighted composite metric (0-100) calculated from:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li><strong>40% Availability:</strong> Percentage of nodes that are online</li>
+            <li><strong>35% Version Health:</strong> Percentage of nodes running the latest version (using semantic version comparison)</li>
+            <li><strong>25% Geographic Distribution:</strong> Diversity score based on node locations across different countries</li>
+          </ul>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            Click on the health score card to see a detailed breakdown of each component.
+          </p>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Interactive Globe</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            The 3D globe visualization shows all nodes with their geographic locations. Each node is represented as a dot, 
+            colored by status (green = online, yellow = syncing, red = offline). The globe uses MapLibre GL for rendering 
+            and supports:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li>Drag to rotate</li>
+            <li>Scroll/pinch to zoom</li>
+            <li>Click nodes to view details</li>
+            <li>Arrow keys for navigation</li>
+            <li>Auto-rotation (pauses on user interaction)</li>
+          </ul>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Analytics Page</h2>
+          
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Network Health Chart</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            A donut chart showing the distribution of node statuses (online, syncing, offline) with percentages. 
+            Hover over segments to see exact counts. The chart uses visx library for rendering.
+          </p>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Performance Metrics</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            Two bar charts displaying:
+          </p>
+          
+          <div className="mb-4">
+            <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Latency Distribution</h4>
+            <p className="text-gray-700 dark:text-gray-300 mb-2">
+              Shows how many nodes fall into different latency ranges:
+            </p>
+            <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-1 ml-4">
+              <li>&lt;50ms</li>
+              <li>50-100ms</li>
+              <li>100-200ms</li>
+              <li>200-500ms</li>
+              <li>&gt;500ms</li>
+            </ul>
+            <p className="text-gray-700 dark:text-gray-300 mt-2 text-sm">
+              Latency is measured client-side from your browser to each node's pRPC endpoint. Measurements are cached for 6 hours.
+            </p>
+          </div>
+
+          <div className="mb-4">
+            <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Resource Utilization</h4>
+            <p className="text-gray-700 dark:text-gray-300 mb-2">
+              Shows CPU and RAM usage distribution across nodes, grouped into ranges:
+            </p>
+            <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-1 ml-4">
+              <li>0-25%</li>
+              <li>25-50%</li>
+              <li>50-75%</li>
+              <li>75-100%</li>
+            </ul>
+          </div>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Geographic Distribution</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            A horizontal bar chart showing node count by country. Helps visualize where the network has the most presence 
+            and geographic diversity. Countries are sorted by node count (highest first).
+          </p>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Top Performing Nodes</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            Leaderboards showing the top 10 nodes by:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li><strong>Uptime:</strong> Nodes with the highest uptime percentage (calculated over 30-day window)</li>
+            <li><strong>Storage:</strong> Nodes storing the most data</li>
+          </ul>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            Click any node in the rankings to view its detailed information.
+          </p>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Node Details Modal</h2>
+          
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Historical Data Charts</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            When viewing a node's details, you can see historical trends for:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li><strong>Uptime Over Time:</strong> Line chart showing uptime percentage trends</li>
+            <li><strong>Storage Over Time:</strong> Line chart showing storage usage trends</li>
+          </ul>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            Historical data is stored hourly in MongoDB. Charts use visx library with smooth interpolation between data points. 
+            X-axis labels are horizontal and automatically skip labels to prevent overlap.
+          </p>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Real-time Metrics</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            The modal displays current metrics including:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li>CPU and RAM usage percentages</li>
+            <li>Client-side latency measurement</li>
+            <li>Storage capacity and usage</li>
+            <li>Network activity (packets, streams)</li>
+            <li>Node status and version</li>
+          </ul>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Data Collection & Processing</h2>
+          
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Gossip Network Discovery</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            pGlobe uses a pure gossip approach to discover nodes:
+          </p>
+          <ol className="list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li>Query known pRPC endpoints with <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">get-pods-with-stats</code> (v0.7.0+) or <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">get-pods</code> (all versions) to discover nodes in the gossip network</li>
+            <li>Deduplicate nodes by public key (each node has a unique identifier)</li>
+            <li>Enrich with detailed stats via <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">get-stats</code> when pRPC is publicly accessible (adds CPU, RAM, packets data)</li>
+            <li>Add geographic location via IP geolocation API</li>
+            <li>Store historical snapshots for trend analysis</li>
+          </ol>
+          <p className="text-gray-700 dark:text-gray-300 mb-4 text-sm">
+            <strong>Note:</strong> <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">get-pods-with-stats</code> (available in Pod v0.7.0+) provides basic stats (uptime, storage) directly, but we still query <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">get-stats</code> for detailed metrics (CPU, RAM, network packets) when nodes have public pRPC.
+          </p>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Background Refresh</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            The Render API server runs a background refresh task every minute that:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li>Fetches fresh node data from the gossip network</li>
+            <li>Updates MongoDB with latest node information</li>
+            <li>Stores historical snapshots for trend analysis</li>
+            <li>Runs independently of user requests</li>
+          </ul>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Client-Side Latency Measurement</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            Latency is measured directly from your browser to each node's pRPC endpoint:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li>Provides accurate latency based on your location and internet connection</li>
+            <li>Measurements are cached for 6 hours to improve performance</li>
+            <li>Only measures nodes that aren't cached or have expired cache</li>
+            <li>Uses deferred measurement (requestIdleCallback) to avoid blocking UI</li>
+          </ul>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function ArchitectureDocs({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="max-w-4xl mx-auto px-6 py-8 bg-white dark:bg-gray-950">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">System Architecture</h1>
+          <p className="text-gray-600 dark:text-gray-400">Technical overview of pGlobe's architecture</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="prose prose-gray dark:prose-invert max-w-none">
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">High-Level Architecture</h2>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            pGlobe follows a two-server architecture pattern:
+          </p>
+          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6 mb-4">
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Frontend (Vercel)</h3>
+                <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                  <li>Next.js 14 application</li>
+                  <li>API proxy routes that forward requests to Render backend</li>
+                  <li>No direct database or pRPC access</li>
+                  <li>Client-side latency measurement</li>
+                  <li>Static asset hosting</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Backend (Render)</h3>
+                <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                  <li>Express.js API server</li>
+                  <li>Background refresh worker (runs every minute)</li>
+                  <li>pRPC fetching and gossip network discovery</li>
+                  <li>MongoDB read/write operations</li>
+                  <li>Historical data storage</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Database (MongoDB)</h3>
+                <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                  <li>Node data storage</li>
+                  <li>Historical snapshots</li>
+                  <li>Geographic location cache</li>
+                  <li>Only accessible from Render backend</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Data Flow</h2>
+          
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Background Refresh Flow</h3>
+          <ol className="list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li>Render API server runs background refresh every minute</li>
+            <li>Queries pRPC endpoints to discover nodes via gossip</li>
+            <li>Fetches detailed stats for nodes with public pRPC</li>
+            <li>Enriches with geographic location data</li>
+            <li>Stores/updates nodes in MongoDB</li>
+            <li>Creates historical snapshot for trend analysis</li>
+          </ol>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">User Request Flow</h3>
+          <ol className="list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li>User visits pGlobe frontend (Vercel)</li>
+            <li>Frontend makes API request to Next.js API route</li>
+            <li>API route proxies request to Render backend with authentication</li>
+            <li>Render backend queries MongoDB and returns data</li>
+            <li>Frontend receives data and renders UI</li>
+            <li>Client-side latency measurement runs in background</li>
+          </ol>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Technology Stack</h2>
+          
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Frontend</h3>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li><strong>Next.js 14:</strong> React framework with App Router</li>
+            <li><strong>TypeScript:</strong> Type-safe development</li>
+            <li><strong>Tailwind CSS:</strong> Utility-first styling</li>
+            <li><strong>visx:</strong> Data visualization library for charts</li>
+            <li><strong>MapLibre GL:</strong> 3D globe rendering</li>
+            <li><strong>React Context:</strong> Global state management</li>
+          </ul>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Backend</h3>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li><strong>Express.js:</strong> Web server framework</li>
+            <li><strong>TypeScript:</strong> Type-safe development</li>
+            <li><strong>MongoDB:</strong> Document database</li>
+            <li><strong>pRPC:</strong> Xandeum protocol for node communication</li>
+          </ul>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Infrastructure</h3>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li><strong>Vercel:</strong> Frontend hosting and deployment</li>
+            <li><strong>Render:</strong> Backend hosting and deployment</li>
+            <li><strong>MongoDB Atlas:</strong> Database hosting</li>
+          </ul>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Performance Optimizations</h2>
+          
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Client-Side Optimizations</h3>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li><strong>Lazy Loading:</strong> MapLibreGlobe component loads only when needed</li>
+            <li><strong>Deferred Measurements:</strong> Latency and geo enrichment use requestIdleCallback</li>
+            <li><strong>Caching:</strong> 6-hour cache for latency measurements in localStorage</li>
+            <li><strong>Memoization:</strong> Heavy computations use useMemo to prevent re-calculations</li>
+            <li><strong>Code Splitting:</strong> Dynamic imports for heavy components</li>
+          </ul>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Server-Side Optimizations</h3>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li><strong>Background Refresh:</strong> Data updates independently of user requests</li>
+            <li><strong>MongoDB Indexes:</strong> Optimized queries for fast data retrieval</li>
+            <li><strong>Request Deduplication:</strong> Prevents duplicate API calls</li>
+            <li><strong>Connection Pooling:</strong> Efficient database connections</li>
+          </ul>
+        </section>
+      </div>
     </div>
   );
 }
