@@ -51,7 +51,8 @@ export interface PNode {
     country?: string;
     countryCode?: string;
   };
-  latency?: number; // Latency in ms (from ping test)
+  latency?: number; // Latency in ms (from ping test) - primary latency from server region
+  latencyByRegion?: Record<string, number>; // Latency measurements from different regions { 'us-east': 50, 'eu-west': 120, ... }
   balance?: number; // SOL balance (from Solana on-chain)
   credits?: number; // Credits (from on-chain or heartbeat system, NOT from get-stats)
   isRegistered?: boolean; // Is node registered on-chain? (balance > 0)

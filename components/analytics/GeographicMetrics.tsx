@@ -89,9 +89,8 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
       entry.count++;
       entry.nodes.push(node);
       
-      // Note: GeographicMetrics latency uses server latency for comparison
-      // This is acceptable since it's showing geographic distribution patterns
-      // Individual node displays use client-side latency
+      // Note: GeographicMetrics shows geographic distribution patterns
+      // Individual node displays use client-side latency measurements
       if (node.latency !== undefined && node.latency !== null && node.latency > 0) {
         entry.latencies.push(node.latency);
       }
@@ -283,8 +282,8 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
 
               return (
                 <>
-                  <svg width={width} height={chartHeight}>
-                    <Group left={margin.left} top={margin.top}>
+                <svg width={width} height={chartHeight}>
+                  <Group left={margin.left} top={margin.top}>
                       {/* Grid lines for reference */}
                       <GridColumns
                         scale={xScale}
@@ -294,78 +293,78 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
                         pointerEvents="none"
                       />
                       {/* Bars */}
-                      {data.map((d) => {
+                    {data.map((d) => {
                         const barHeight = Math.max(yScale.bandwidth(), 1);
                         const barWidth = Math.max(xScale(d.value), 0);
-                        const y = yScale(d.country) || 0;
+                      const y = yScale(d.country) || 0;
 
-                        return (
-                          <Bar
-                            key={d.country}
-                            x={0}
-                            y={y}
-                            width={barWidth}
-                            height={barHeight}
-                            fill={getColor(d)}
-                            rx={4}
+                      return (
+                        <Bar
+                          key={d.country}
+                          x={0}
+                          y={y}
+                          width={barWidth}
+                          height={barHeight}
+                          fill={getColor(d)}
+                          rx={4}
                             style={{ pointerEvents: 'all' }}
-                            onMouseMove={(event) => {
+                          onMouseMove={(event) => {
                               const coords = localPoint(event);
-                              if (coords) {
-                                showTooltip({
-                                  tooltipLeft: coords.x,
-                                  tooltipTop: coords.y,
-                                  tooltipData: d,
-                                });
-                              }
-                            }}
-                            onMouseLeave={() => hideTooltip()}
-                          />
-                        );
-                      })}
-                    </Group>
-                    <AxisLeft
-                      left={margin.left}
+                            if (coords) {
+                              showTooltip({
+                                tooltipLeft: coords.x,
+                                tooltipTop: coords.y,
+                                tooltipData: d,
+                              });
+                            }
+                          }}
+                          onMouseLeave={() => hideTooltip()}
+                        />
+                      );
+                    })}
+                  </Group>
+                  <AxisLeft
+                    left={margin.left}
                       top={margin.top}
-                      scale={yScale}
+                    scale={yScale}
                       numTicks={Math.min(data.length, 12)}
-                      tickFormat={(d) => d}
-                      tickLabelProps={() => ({
-                        fill: '#E5E7EB',
-                        fontSize: 11,
-                        textAnchor: 'end',
-                        dy: '0.33em',
-                        dx: -10,
-                      })}
-                    />
-                    <AxisBottom
+                    tickFormat={(d) => d}
+                    tickLabelProps={() => ({
+                      fill: '#E5E7EB',
+                      fontSize: 11,
+                      textAnchor: 'end',
+                      dy: '0.33em',
+                      dx: -10,
+                    })}
+                  />
+                  <AxisBottom
                       top={margin.top + innerHeight}
-                      left={margin.left}
-                      scale={xScale}
+                    left={margin.left}
+                    scale={xScale}
                       numTicks={5}
-                      tickFormat={(d) => String(d)}
-                      tickLabelProps={() => ({
-                        fill: '#9CA3AF',
-                        fontSize: 12,
-                        textAnchor: 'middle',
-                      })}
-                    />
-                  </svg>
-                  {tooltipOpen && tooltipData && (
-                    <TooltipWithBounds
-                      top={tooltipTop}
-                      left={tooltipLeft}
-                      style={{
-                        ...defaultStyles,
-                        backgroundColor: 'transparent',
-                        border: 'none',
-                        padding: 0,
+                    tickFormat={(d) => String(d)}
+                    tickLabelProps={() => ({
+                      fill: '#9CA3AF',
+                      fontSize: 12,
+                      textAnchor: 'middle',
+                    })}
+                  />
+                </svg>
+        {tooltipOpen && tooltipData && (
+          <TooltipWithBounds
+            top={tooltipTop}
+            left={tooltipLeft}
+            style={{
+              ...defaultStyles,
+              backgroundColor: 'transparent',
+              border: 'none',
+              padding: 0,
                         pointerEvents: 'none',
-                      }}
-                    >
-                      <CustomTooltip tooltipData={tooltipData} />
-                    </TooltipWithBounds>
-                  )}
+            }}
+          >
+            <CustomTooltip tooltipData={tooltipData} />
+          </TooltipWithBounds>
+        )}
                 </>
               );
             }}

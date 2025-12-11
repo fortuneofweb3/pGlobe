@@ -172,21 +172,6 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
       return true;
     });
     
-    // Detailed logging for transparency
-    if (nodes.length > 0) {
-      const duplicatesRemoved = withLocation.length - deduplicated.length;
-      const noLocationCount = nodes.length - withLocation.length;
-      
-      if (withLocation.length === 0) {
-        console.warn(`[Globe] ${nodes.length} nodes received but NONE have locationData!`);
-      } else {
-        if (duplicatesRemoved > 0) {
-          console.warn(`[Globe] ⚠️ Removed ${duplicatesRemoved} duplicate nodes!`);
-        }
-        console.info(`[Globe] Nodes: ${deduplicated.length} unique visible (${noLocationCount} no location, ${duplicatesRemoved} duplicates removed)`);
-      }
-    }
-    
     return deduplicated;
   }, [nodes]);
 

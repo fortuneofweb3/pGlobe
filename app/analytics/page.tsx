@@ -10,6 +10,7 @@ import LatencyDistribution from '@/components/analytics/LatencyDistribution';
 import ResourceUtilization from '@/components/analytics/ResourceUtilization';
 import GeographicMetrics from '@/components/analytics/GeographicMetrics';
 import Header from '@/components/Header';
+import NodeDetailsModal from '@/components/NodeDetailsModal';
 import { useNodes } from '@/lib/context/NodesContext';
 import { formatStorageBytes } from '@/lib/utils/storage';
 import { Activity, HardDrive, TrendingUp, Server, BarChart3, Download, FileJson, FileSpreadsheet } from 'lucide-react';
@@ -26,8 +27,10 @@ export default function AnalyticsPage() {
   const { nodes, loading, error, lastUpdate, selectedNetwork, setSelectedNetwork, availableNetworks, currentNetwork, refreshNodes } = useNodes();
   
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
+  const [selectedNode, setSelectedNode] = useState<PNode | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Fetch historical data for charts (only when needed)
+  // Fetch historical data for charts (deferred to avoid blocking initial render)
   useEffect(() => {
     const fetchHistoricalData = async () => {
       try {
@@ -58,13 +61,21 @@ export default function AnalyticsPage() {
           setHistoricalData([]);
         }
       } catch (err) {
-        console.error('Failed to fetch historical data:', err);
+        // Failed to fetch historical data
         setHistoricalData([]);
       }
     };
     
-    // Fetch historical data on mount and when network changes
-    fetchHistoricalData();
+    // Defer historical data fetch until after initial render
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      requestIdleCallback(() => {
+        fetchHistoricalData();
+      }, { timeout: 2000 });
+    } else {
+      setTimeout(() => {
+        fetchHistoricalData();
+      }, 100);
+    }
   }, [selectedNetwork]);
 
   // Export functions
@@ -262,7 +273,13 @@ export default function AnalyticsPage() {
 
               <div className="bg-card/50 border border-border rounded-xl p-4">
                 <h3 className="text-xs font-semibold text-foreground/60 mb-3 uppercase tracking-wide">Top Nodes</h3>
-                <NodeRankings nodes={nodes} />
+                <NodeRankings 
+                  nodes={nodes} 
+                  onNodeClick={(node) => {
+                    setSelectedNode(node);
+                    setIsModalOpen(true);
+                  }}
+                />
               </div>
             </div>
 
@@ -294,6 +311,16 @@ export default function AnalyticsPage() {
           </div>
         </div>
       </main>
+
+      {/* Node Details Modal */}
+      <NodeDetailsModal
+        node={selectedNode}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedNode(null);
+        }}
+      />
     </div>
   );
 }

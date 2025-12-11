@@ -7,11 +7,12 @@ import NodeStatusBadge from './NodeStatusBadge';
 
 interface NodeRankingsProps {
   nodes: PNode[];
+  onNodeClick?: (node: PNode) => void;
 }
 
 type RankingTab = 'uptime' | 'storage';
 
-export default function NodeRankings({ nodes }: NodeRankingsProps) {
+export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) {
   const [activeTab, setActiveTab] = useState<RankingTab>('uptime');
 
   const rankings = useMemo(() => {
@@ -108,7 +109,10 @@ export default function NodeRankings({ nodes }: NodeRankingsProps) {
           currentRankings.map((node, index) => (
             <div
               key={node.id}
-              className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
+              onClick={() => onNodeClick?.(node)}
+              className={`flex items-center gap-2 p-2 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors ${
+                onNodeClick ? 'cursor-pointer' : ''
+              }`}
             >
               {/* Rank badge */}
               <span className={`w-5 h-5 flex items-center justify-center text-xs font-bold rounded ${

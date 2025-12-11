@@ -471,6 +471,8 @@ export async function performRefresh(): Promise<void> {
           }
         });
         
+        // Use server location detected at start of refresh (already logged above)
+        // This ensures consistency - all latency measurements in this refresh cycle are from the same server location
         await storeHistoricalSnapshot(allNodesForSnapshot);
         console.log(`[BackgroundRefresh] ✅ Stored historical snapshot with ${allNodesForSnapshot.length} node snapshots (${enrichedNodes.length} from gossip, ${allNodesForSnapshot.length - enrichedNodes.length} offline)`);
       } catch (historyError: any) {

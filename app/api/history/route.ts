@@ -38,11 +38,11 @@ export async function GET(request: Request) {
     let response: Response;
     try {
       response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
-        },
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
+      },
         signal: controller.signal,
       });
       clearTimeout(timeoutId);

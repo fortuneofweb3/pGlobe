@@ -1,6 +1,13 @@
 /**
  * Latency region utilities for calculating latency from different server regions
+ * 
+ * SERVER LOCATION: US East (New York)
+ * All server-side latency measurements are taken from US East region.
+ * Client latency is calculated by adjusting server latency based on geographic distance.
  */
+
+// Server location - where all latency measurements are taken from
+export const SERVER_REGION_ID = 'us-east';
 
 export interface LatencyRegion {
   id: string;
@@ -74,13 +81,129 @@ export const LATENCY_REGIONS: LatencyRegion[] = [
       lon: 139.6503,
     },
   },
+  {
+    id: 'africa-south',
+    name: 'Africa South',
+    location: {
+      country: 'South Africa',
+      city: 'Johannesburg',
+      lat: -26.2041,
+      lon: 28.0473,
+    },
+  },
+  {
+    id: 'africa-west',
+    name: 'Africa West',
+    location: {
+      country: 'Nigeria',
+      city: 'Lagos',
+      lat: 6.5244,
+      lon: 3.3792,
+    },
+  },
 ];
 
 /**
- * Calculate approximate latency based on geographic distance
- * This is a rough estimation - actual latency depends on network routes, not just distance
+ * Get typical RTT latency between region centers (in milliseconds)
+ * Based on real-world measurements from cloud providers and network infrastructure
+ * These are typical values for well-connected regions via major internet backbones
  */
-function calculateDistanceLatency(
+function getTypicalRegionLatency(fromRegion: string, toRegion: string): number {
+  // Lookup table of typical RTT latencies between region centers (ms)
+  // Values based on real-world measurements from AWS, GCP, Azure inter-region latency
+  // Same region = 0 (no inter-region travel)
+  const latencyTable: Record<string, Record<string, number>> = {
+    'us-east': {
+      'us-east': 0,
+      'us-west': 70,
+      'eu-west': 85,
+      'eu-north': 90,
+      'asia-east': 200,
+      'asia-north': 150,
+      'africa-south': 250,
+      'africa-west': 220,
+    },
+    'us-west': {
+      'us-east': 70,
+      'us-west': 0,
+      'eu-west': 150,
+      'eu-north': 160,
+      'asia-east': 140,
+      'asia-north': 110,
+      'africa-south': 280,
+      'africa-west': 260,
+    },
+    'eu-west': {
+      'us-east': 85,
+      'us-west': 150,
+      'eu-west': 0,
+      'eu-north': 15,
+      'asia-east': 180,
+      'asia-north': 220,
+      'africa-south': 180,
+      'africa-west': 160,
+    },
+    'eu-north': {
+      'us-east': 90,
+      'us-west': 160,
+      'eu-west': 15,
+      'eu-north': 0,
+      'asia-east': 200,
+      'asia-north': 240,
+      'africa-south': 190,
+      'africa-west': 170,
+    },
+    'asia-east': {
+      'us-east': 200,
+      'us-west': 140,
+      'eu-west': 180,
+      'eu-north': 200,
+      'asia-east': 0,
+      'asia-north': 50,
+      'africa-south': 220,
+      'africa-west': 200,
+    },
+    'asia-north': {
+      'us-east': 150,
+      'us-west': 110,
+      'eu-west': 220,
+      'eu-north': 240,
+      'asia-east': 50,
+      'asia-north': 0,
+      'africa-south': 240,
+      'africa-west': 220,
+    },
+    'africa-south': {
+      'us-east': 250,
+      'us-west': 280,
+      'eu-west': 180,
+      'eu-north': 190,
+      'asia-east': 220,
+      'asia-north': 240,
+      'africa-south': 0,
+      'africa-west': 80, // Same continent, good connectivity
+    },
+    'africa-west': {
+      'us-east': 220,
+      'us-west': 260,
+      'eu-west': 160,
+      'eu-north': 170,
+      'asia-east': 200,
+      'asia-north': 220,
+      'africa-south': 80, // Same continent, good connectivity
+      'africa-west': 0,
+    },
+  };
+  
+  return latencyTable[fromRegion]?.[toRegion] ?? 200; // Default fallback
+}
+
+/**
+ * Calculate one-way network latency estimate based on geographic distance
+ * This estimates only the network portion (not including node processing)
+ * Used as fallback when region multipliers aren't available
+ */
+function calculateOneWayNetworkLatency(
   nodeLat: number,
   nodeLon: number,
   serverLat: number,
@@ -97,96 +220,128 @@ function calculateDistanceLatency(
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const distanceKm = R * c;
 
-  // Rough latency estimation:
-  // - Base latency: 5ms (processing time)
+  // One-way network latency estimation:
   // - Speed of light in fiber: ~200,000 km/s (2/3 of vacuum speed)
-  // - Distance factor: ~1ms per 200km
-  // - Additional routing overhead: ~20-50ms depending on distance
-  const baseLatency = 5;
-  const distanceLatency = (distanceKm / 200) * 1; // ~1ms per 200km
-  const routingOverhead = distanceKm < 1000 ? 20 : distanceKm < 5000 ? 30 : 50;
+  // - Distance factor: ~1ms per 200km (one-way)
+  // - Additional routing overhead: ~10-25ms depending on distance (one-way)
+  const distanceLatency = (distanceKm / 200) * 1; // ~1ms per 200km one-way
+  const routingOverhead = distanceKm < 1000 ? 10 : distanceKm < 5000 ? 15 : 25;
   
-  return Math.round(baseLatency + distanceLatency + routingOverhead);
+  return Math.round(distanceLatency + routingOverhead);
 }
 
 /**
- * Adjust server latency for a different region
- * Uses geographic distance to estimate latency from different server locations
+ * Adjust server RTT latency for a different region
+ * 
+ * CORRECT CALCULATION:
+ * serverLatency = RTT from server region to node
+ *                = 2 × network_server_to_node + node_processing_time
+ * 
+ * We want: RTT_user_to_node = 2 × network_user_to_node + node_processing_time
+ * 
+ * Since we don't know node_processing_time separately, we estimate it:
+ * - Assume node_processing_time is small (~5-10ms) and relatively constant
+ * - Extract network portion: network_server = (serverLatency - estimated_processing) / 2
+ * - Calculate network_user based on distance ratio
+ * - Reconstruct: RTT_user = 2 × network_user + estimated_processing
+ * 
+ * @param serverLatency - RTT measured from server (includes network both ways + node processing)
+ * @param nodeLocation - Node's geographic location
+ * @param fromRegion - Region where server latency was measured
+ * @param toRegion - Target region (user's region) to estimate latency for
+ */
+/**
+ * Adjust server RTT latency for a different region
+ * 
+ * IMPORTANT: We measure latency TO proxy endpoints (rpc1.pchednode.com, etc.), not directly to nodes.
+ * The proxy endpoints are likely in US East and route requests to nodes.
+ * 
+ * Actual path: Server → Proxy → Node
+ * Measured: Server → Proxy (what we store as serverLatency)
+ * User path: User → Proxy → Node
+ * 
+ * Calculation:
+ * 1. Proxy is likely in US East (proxyRegion = 'us-east')
+ * 2. Server → Proxy = serverLatency (what we measured)
+ * 3. User → Proxy = lookup(toRegion → proxyRegion)
+ * 4. Proxy → Node = estimated from serverLatency, accounting for Server → Proxy distance
+ * 
+ * Since Proxy → Node is the same for all nodes (same proxy), we estimate:
+ * - Extract Server → Proxy portion from serverLatency
+ * - Estimate Proxy → Node (assume it's relatively constant, ~50-100ms for proxy routing)
+ * - User → Node ≈ User → Proxy + Proxy → Node
+ * 
+ * @param serverLatency - RTT measured from server TO proxy endpoint (not directly to node)
+ * @param nodeLocation - Node's geographic location (for fine-tuning)
+ * @param fromRegion - Region where server is located (where measurement was taken from)
+ * @param toRegion - Target region (user's region) to estimate latency for
  */
 export function adjustLatencyForRegion(
   serverLatency: number,
   nodeLocation: { lat?: number; lon?: number; country?: string } | null,
-  fromRegion: string,
+  fromRegion: string = SERVER_REGION_ID,
   toRegion: string
 ): number {
-  if (!nodeLocation || !nodeLocation.lat || !nodeLocation.lon) {
-    // If we don't have node location, use a rough multiplier based on region distance
-    const regionMultipliers: Record<string, Record<string, number>> = {
-      'us-east': {
-        'us-west': 1.3,
-        'eu-west': 1.8,
-        'eu-north': 1.9,
-        'asia-east': 2.5,
-        'asia-north': 2.7,
-      },
-      'us-west': {
-        'us-east': 1.3,
-        'eu-west': 2.0,
-        'eu-north': 2.1,
-        'asia-east': 1.4,
-        'asia-north': 1.6,
-      },
-      'eu-west': {
-        'us-east': 1.8,
-        'us-west': 2.0,
-        'eu-north': 1.1,
-        'asia-east': 2.2,
-        'asia-north': 2.4,
-      },
-      'eu-north': {
-        'us-east': 1.9,
-        'us-west': 2.1,
-        'eu-west': 1.1,
-        'asia-east': 2.3,
-        'asia-north': 2.5,
-      },
-      'asia-east': {
-        'us-east': 2.5,
-        'us-west': 1.4,
-        'eu-west': 2.2,
-        'eu-north': 2.3,
-        'asia-north': 1.2,
-      },
-      'asia-north': {
-        'us-east': 2.7,
-        'us-west': 1.6,
-        'eu-west': 2.4,
-        'eu-north': 2.5,
-        'asia-east': 1.2,
-      },
-    };
-    
-    const multiplier = regionMultipliers[fromRegion]?.[toRegion] || 1.0;
-    return Math.round(serverLatency * multiplier);
+  // IMPORTANT: If user selects the same region as where server measured from,
+  // use the server's measurement directly (it's the ground truth for that region)
+  if (fromRegion === toRegion) {
+    return serverLatency;
   }
 
-  // Use geographic calculation
-  const fromRegionData = LATENCY_REGIONS.find(r => r.id === fromRegion);
-  const toRegionData = LATENCY_REGIONS.find(r => r.id === toRegion);
+  // Proxy endpoints are likely in US East
+  const PROXY_REGION = 'us-east';
   
-  if (!fromRegionData || !toRegionData) {
-    return serverLatency; // Fallback to original
+  // Step 1: Get User → Proxy latency (user's region to proxy region)
+  const userToProxyLatency = getTypicalRegionLatency(toRegion, PROXY_REGION);
+  const proxyToUserLatency = getTypicalRegionLatency(PROXY_REGION, toRegion);
+  const avgUserToProxy = (userToProxyLatency + proxyToUserLatency) / 2;
+  
+  // Step 2: Get Server → Proxy latency (server's region to proxy region)
+  const serverToProxyLatency = getTypicalRegionLatency(fromRegion, PROXY_REGION);
+  const proxyToServerLatency = getTypicalRegionLatency(PROXY_REGION, fromRegion);
+  const avgServerToProxy = (serverToProxyLatency + proxyToServerLatency) / 2;
+  
+  // Step 3: Estimate Proxy → Node latency
+  // The serverLatency we measured includes: Server → Proxy + Proxy → Node (routing)
+  // We can estimate Proxy → Node by subtracting the Server → Proxy portion
+  // But since we don't know the exact breakdown, we use a conservative estimate
+  // Typical proxy routing adds 50-150ms depending on node location
+  const estimatedProxyToNode = Math.max(50, Math.min(150, serverLatency - avgServerToProxy));
+  
+  // Step 4: Calculate User → Node latency
+  // User → Node = User → Proxy + Proxy → Node
+  const userToNodeLatency = avgUserToProxy + estimatedProxyToNode;
+  
+  // Fine-tuning: if we know node location, adjust based on node's distance to user vs proxy
+  if (nodeLocation && nodeLocation.lat && nodeLocation.lon) {
+    const toRegionData = LATENCY_REGIONS.find(r => r.id === toRegion);
+    const proxyRegionData = LATENCY_REGIONS.find(r => r.id === PROXY_REGION);
+    
+    if (toRegionData && proxyRegionData) {
+      const nodeToUserDistance = calculateOneWayNetworkLatency(
+        nodeLocation.lat,
+        nodeLocation.lon,
+        toRegionData.location.lat,
+        toRegionData.location.lon
+      );
+      
+      const nodeToProxyDistance = calculateOneWayNetworkLatency(
+        nodeLocation.lat,
+        nodeLocation.lon,
+        proxyRegionData.location.lat,
+        proxyRegionData.location.lon
+      );
+      
+      // If node is closer to user than to proxy, reduce latency slightly
+      // If node is farther from user than proxy, increase latency slightly
+      const distanceDiff = nodeToUserDistance - nodeToProxyDistance;
+      const fineTuneAdjustment = distanceDiff * 0.3; // Small adjustment factor
+      
+      return Math.round(Math.max(10, userToNodeLatency + fineTuneAdjustment));
+    }
   }
-
-  // Calculate latency from new region
-  const newLatency = calculateDistanceLatency(
-    nodeLocation.lat!,
-    nodeLocation.lon!,
-    toRegionData.location.lat,
-    toRegionData.location.lon
-  );
-
-  return newLatency;
+  
+  return Math.round(Math.max(10, userToNodeLatency));
 }
 
 /**

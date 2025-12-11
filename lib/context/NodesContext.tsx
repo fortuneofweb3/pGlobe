@@ -197,14 +197,20 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     
     // STEP 1: Fetch from MongoDB FIRST (fast, non-blocking)
     // This ensures we show data immediately, even if refresh is slow
-    console.log('[NodesContext] Initial mount - starting data fetch...');
-    // Use setTimeout instead of requestAnimationFrame to ensure it runs
-    setTimeout(() => {
-      console.log('[NodesContext] Calling refreshNodes()...');
-      refreshNodes().catch(err => {
-        console.error('[NodesContext] Initial refreshNodes failed:', err);
-      });
-    }, 100); // Small delay to ensure component is mounted
+    // Defer fetch until after initial render to avoid blocking navigation
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      requestIdleCallback(() => {
+        refreshNodes().catch(() => {
+          // Silently fail - cached data is already shown
+        });
+      }, { timeout: 500 });
+    } else {
+      setTimeout(() => {
+        refreshNodes().catch(() => {
+          // Silently fail - cached data is already shown
+        });
+      }, 50);
+    }
     
     // STEP 2: Trigger server-side refresh AFTER fetching MongoDB data
     // This keeps MongoDB updated in the background
@@ -213,41 +219,50 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     const oneMinuteAgo = now - 60 * 1000;
     
     if (!lastRefreshTime || parseInt(lastRefreshTime) < oneMinuteAgo) {
-      // Wait a bit longer to ensure MongoDB fetch completes first
-      setTimeout(() => {
-        console.log('[NodesContext] Triggering background refresh...');
-        
-        // Add timeout to prevent hanging
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
-        
-        fetch('/api/refresh-nodes', { 
-          method: 'GET',
-          signal: controller.signal,
-        })
-          .then(async (res) => {
-            clearTimeout(timeoutId);
-            const data = await res.json();
-            if (res.ok) {
-              console.log('[NodesContext] ✅ Background refresh successful');
-              localStorage.setItem('lastServerRefresh', now.toString());
-              // After refresh completes, fetch fresh data from MongoDB
-              refreshNodes();
-            } else {
-              console.error('[NodesContext] ❌ Background refresh failed:', data.error || res.statusText);
-            }
+      // Defer background refresh to avoid blocking navigation
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        requestIdleCallback(() => {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
+          
+          fetch('/api/refresh-nodes', { 
+            method: 'GET',
+            signal: controller.signal,
           })
-          .catch((err) => {
-            clearTimeout(timeoutId);
-            if (err.name === 'AbortError') {
-              console.warn('[NodesContext] ⚠️ Background refresh timed out (this is OK, it continues in background)');
-            } else {
-              console.error('[NodesContext] ❌ Background refresh request failed:', err);
-            }
-          });
-      }, 2000); // Wait 2s to let MongoDB fetch complete first
-    } else {
-      console.log('[NodesContext] Skipping background refresh (refreshed recently)');
+            .then(async (res) => {
+              clearTimeout(timeoutId);
+              const data = await res.json();
+              if (res.ok) {
+                localStorage.setItem('lastServerRefresh', Date.now().toString());
+                refreshNodes();
+              }
+            })
+            .catch(() => {
+              clearTimeout(timeoutId);
+            });
+        }, { timeout: 5000 });
+      } else {
+        setTimeout(() => {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
+          
+          fetch('/api/refresh-nodes', { 
+            method: 'GET',
+            signal: controller.signal,
+          })
+            .then(async (res) => {
+              clearTimeout(timeoutId);
+              const data = await res.json();
+              if (res.ok) {
+                localStorage.setItem('lastServerRefresh', Date.now().toString());
+                refreshNodes();
+              }
+            })
+            .catch(() => {
+              clearTimeout(timeoutId);
+            });
+        }, 2000);
+      }
     }
   }, [refreshNodes, loadCache]);
 

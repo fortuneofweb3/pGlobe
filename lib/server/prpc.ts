@@ -71,6 +71,144 @@ function httpPost(url: string, data: object, timeoutMs: number = 5000): Promise<
   });
 }
 
+/**
+ * Measure network latency using Time To First Byte (TTFB)
+ * This measures actual network RTT, excluding server processing time
+ * Returns latency in milliseconds, or null if measurement fails
+ */
+function measureLatencyTTFB(ip: string, port: number, timeoutMs: number = 2000): Promise<number | null> {
+  return new Promise((resolve) => {
+    const startTime = Date.now();
+    let firstByteReceived = false;
+    
+    const requestBody = JSON.stringify({
+      jsonrpc: '2.0',
+      method: 'get-version', // Lightweight call for latency measurement
+      id: 1,
+    });
+
+    const options = {
+      hostname: ip,
+      port: port,
+      path: '/rpc',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(requestBody),
+      },
+      timeout: timeoutMs,
+    };
+
+    const req = http.request(options, (res) => {
+      // Measure Time To First Byte (TTFB) - this is the actual network latency
+      res.once('data', () => {
+        if (!firstByteReceived) {
+          firstByteReceived = true;
+          const latency = Date.now() - startTime;
+          // Consume and discard the rest of the response
+          res.on('data', () => {});
+          res.on('end', () => {
+            req.destroy();
+            resolve(latency);
+          });
+        }
+      });
+
+      res.on('error', () => {
+        resolve(null);
+      });
+    });
+
+    req.on('error', () => {
+      resolve(null);
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      resolve(null);
+    });
+
+    req.setTimeout(timeoutMs);
+    req.write(requestBody);
+    req.end();
+  });
+}
+
+/**
+ * Measure latency to proxy RPC endpoint - what users actually use
+ * Users connect to proxy RPC endpoints like rpc1.pchednode.com/rpc, not individual nodes
+ * This measures latency as if we're a real client connecting through the proxy
+ * Uses a lightweight pRPC call (get-version) for accurate measurement
+ * Returns latency in milliseconds, or null if measurement fails
+ */
+function measureProxyRPCLatency(rpcUrl: string, timeoutMs: number = 2000): Promise<number | null> {
+  return new Promise((resolve) => {
+    const startTime = Date.now();
+    let firstByteReceived = false;
+    
+    // Use pRPC's get-version method - lightweight and fast
+    const requestBody = JSON.stringify({
+      jsonrpc: '2.0',
+      method: 'get-version',
+      id: 1,
+      params: [],
+    });
+
+    try {
+      const urlObj = new URL(rpcUrl);
+      const isHttps = urlObj.protocol === 'https:';
+      const httpModule = isHttps ? require('https') : require('http');
+
+      const options = {
+        hostname: urlObj.hostname,
+        port: urlObj.port || (isHttps ? 443 : 80),
+        path: urlObj.pathname,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(requestBody),
+        },
+        timeout: timeoutMs,
+      };
+
+      const req = httpModule.request(options, (res: any) => {
+        // Measure Time To First Byte (TTFB) - this is what users experience
+        res.once('data', () => {
+          if (!firstByteReceived) {
+            firstByteReceived = true;
+            const latency = Date.now() - startTime;
+            // Consume and discard the rest of the response
+            res.on('data', () => {});
+            res.on('end', () => {
+              req.destroy();
+              resolve(latency);
+            });
+          }
+        });
+
+        res.on('error', () => {
+          resolve(null);
+        });
+      });
+
+      req.on('error', () => {
+        resolve(null);
+      });
+
+      req.on('timeout', () => {
+        req.destroy();
+        resolve(null);
+      });
+
+      req.setTimeout(timeoutMs);
+      req.write(requestBody);
+      req.end();
+    } catch (e) {
+      resolve(null);
+    }
+  });
+}
+
 // ============================================================================
 // KNOWN PUBLIC pRPC ENDPOINTS
 // These are pNodes with publicly accessible pRPC (port 6000)
@@ -97,7 +235,7 @@ const PUBLIC_PRPC_IPS = new Set(
 );
 
 // Proxy RPC servers (aggregate data from multiple pNodes)
-const PROXY_RPC_ENDPOINTS = [
+export const PROXY_RPC_ENDPOINTS = [
   'https://rpc1.pchednode.com/rpc',
   'https://rpc2.pchednode.com/rpc',
   'https://rpc3.pchednode.com/rpc',
@@ -812,11 +950,80 @@ export async function fetchNodeStats(node: PNode): Promise<PNode> {
   // Fetch stats and version in parallel (silent mode - failures are expected)
   // Use shorter timeouts for faster enrichment (most nodes won't respond anyway)
   
-  // Measure latency from get-version call (lighter, faster response)
-  // Only set latency if the call succeeds - don't use timeout values as latency
-  const latencyStartTime = Date.now();
-  const versionResult = await callPRPCMultiPort(node, 'get-version', 2000, true);
-  const latency = versionResult ? Date.now() - latencyStartTime : null;
+  // Measure latency as if we're a real client using the node for data transfer
+  // Applications connect through proxy RPC endpoints (rpc1.pchednode.com/rpc, etc.) for data operations
+  // 
+  // MULTI-REGION APPROACH:
+  // Option 1: Measure from multiple regions using Cloudflare Workers (if configured)
+  // Option 2: Measure from server location only (current fallback)
+  //
+  let latency: number | null = null;
+  let latencyByRegion: Record<string, number> | undefined = undefined;
+  let versionResult: any | null = null;
+  let latencyMethod: 'multi-region' | 'proxy' | 'direct-prpc' | 'fallback-prpc' | null = null;
+  
+  // Multi-region latency is now measured in batch before calling fetchNodeStats
+  // If node already has latencyByRegion from batch measurement, use it
+  if (node.latencyByRegion && Object.keys(node.latencyByRegion).length > 0) {
+    latencyByRegion = node.latencyByRegion;
+    latency = node.latency; // Already set from batch measurement
+    latencyMethod = 'multi-region';
+    console.log(`[Latency] ${ip}: Using pre-measured multi-region latency from ${Object.keys(latencyByRegion).length} regions, best: ${latency}ms`);
+  }
+  
+  // Fallback: Measure from server location only
+  if (latency === null) {
+    const proxyEndpoints = PROXY_RPC_ENDPOINTS;
+    const proxyLatencies: Array<{ endpoint: string; latency: number }> = [];
+    
+    for (const endpoint of proxyEndpoints) {
+      const proxyLatency = await measureProxyRPCLatency(endpoint, 2000);
+      if (proxyLatency !== null) {
+        proxyLatencies.push({ endpoint, latency: proxyLatency });
+      }
+    }
+    
+    // Use the minimum latency from proxy endpoints (best case scenario)
+    if (proxyLatencies.length > 0) {
+      const bestProxy = proxyLatencies.reduce((best, current) => 
+        current.latency < best.latency ? current : best
+      );
+      latency = bestProxy.latency;
+      latencyMethod = 'proxy';
+      console.log(`[Latency] ${ip}: Proxy RPC latency = ${latency}ms (from ${bestProxy.endpoint}, tried ${proxyLatencies.length} endpoints)`);
+    } else {
+    // Fallback: Try direct pRPC endpoint (port 6000/9000) if proxy measurement failed
+    // This gives us network latency to the specific node, though users don't connect directly
+    if (ip) {
+      const portsToTry = node.rpcPort ? [node.rpcPort, 6000, 9000] : [6000, 9000];
+      for (const port of portsToTry) {
+        const measuredLatency = await measureLatencyTTFB(ip, port, 2000);
+        if (measuredLatency !== null) {
+          latency = measuredLatency;
+          latencyMethod = 'direct-prpc';
+          console.log(`[Latency] ${ip}: Direct pRPC latency = ${latency}ms (port ${port}, TTFB)`);
+          break;
+        }
+      }
+    }
+  }
+  
+  // Final fallback: if TTFB measurement failed, try regular pRPC call (includes processing time)
+  // This also fetches version for us
+  if (latency === null) {
+    const latencyStartTime = Date.now();
+    versionResult = await callPRPCMultiPort(node, 'get-version', 2000, true);
+    latency = versionResult ? Date.now() - latencyStartTime : null;
+    if (latency !== null) {
+      latencyMethod = 'fallback-prpc';
+      console.log(`[Latency] ${ip}: Fallback pRPC latency = ${latency}ms (full request/response)`);
+    } else {
+      console.log(`[Latency] ${ip}: Failed to measure latency (all methods failed)`);
+    }
+  } else {
+    // If we got latency from proxy or direct pRPC TTFB, still fetch version separately
+    versionResult = await callPRPCMultiPort(node, 'get-version', 2000, true);
+  }
 
   // Fetch stats in parallel (version already fetched above)
   const statsResult = await Promise.allSettled([
@@ -828,6 +1035,7 @@ export async function fetchNodeStats(node: PNode): Promise<PNode> {
           // Only set latency if we got a successful response
           // If call failed/timeout, latency is null (offline/unreachable)
           enrichedNode.latency = latency ?? undefined;
+          enrichedNode.latencyByRegion = latencyByRegion;
 
   // Process version (already fetched for latency measurement)
   if (versionResult?.version) {
@@ -865,7 +1073,10 @@ export async function fetchNodeStats(node: PNode): Promise<PNode> {
       status: 'online',
     };
 
-    console.log(`  ✅ Enriched ${ip}: uptime=${(uptimeSeconds / 86400).toFixed(1)}d, cpu=${stats.cpu_percent || 0}%, packets_rx=${stats.packets_received || 0}, packets_tx=${stats.packets_sent || 0}, latency=${latency !== null ? `${latency}ms` : 'null'}`);
+    const latencyInfo = latency !== null 
+      ? `${latency}ms (${latencyMethod || 'unknown'})` 
+      : 'null';
+    console.log(`  ✅ Enriched ${ip}: uptime=${(uptimeSeconds / 86400).toFixed(1)}d, cpu=${stats.cpu_percent || 0}%, packets_rx=${stats.packets_received || 0}, packets_tx=${stats.packets_sent || 0}, latency=${latencyInfo}`);
   } else {
     // If stats call failed, preserve the gossip status (online/offline/syncing)
     // Don't override - keep whatever status gossip gave us
@@ -1032,10 +1243,80 @@ async function enrichNodesWithStats(nodesMap: Map<string, PNode>): Promise<PNode
     return true;
   });
   
+  // STEP: Batch multi-region latency measurement (provider-agnostic)
+  // Supports Deno Deploy, Cloudflare Workers, VPS endpoints, Vercel Edge Functions, or any HTTP endpoint
+  // This measures ALL nodes at once from all regions (8 requests total instead of 1,272)
+  const regionEndpoints: Record<string, string> | undefined = (() => {
+    const urls: Record<string, string> = {};
+    
+    // Check for any environment variable matching region pattern
+    // Priority: DENO_DEPLOY_* (recommended), then CF_WORKER_*, VPS_*, EDGE_FUNCTION_*, LATENCY_*, etc.
+    const regionSuffixes = ['US_EAST', 'US_WEST', 'EU_WEST', 'EU_NORTH', 'ASIA_EAST', 'ASIA_NORTH', 'AFRICA_SOUTH', 'AFRICA_WEST'];
+    const regionIds = ['us-east', 'us-west', 'eu-west', 'eu-north', 'asia-east', 'asia-north', 'africa-south', 'africa-west'];
+    
+    for (let i = 0; i < regionSuffixes.length; i++) {
+      const suffix = regionSuffixes[i];
+      const regionId = regionIds[i];
+      
+      // Check prefixes in priority order (AWS Lambda first - true region control, then others)
+      const prefixes = ['AWS_LAMBDA_', 'VPS_', 'DENO_DEPLOY_', 'CF_WORKER_', 'EDGE_FUNCTION_', 'LATENCY_', 'MEASUREMENT_'];
+      for (const prefix of prefixes) {
+        const envVar = `${prefix}${suffix}`;
+        const value = process.env[envVar];
+        if (value) {
+          urls[regionId] = value;
+          break; // Use first match
+        }
+      }
+    }
+    
+    return Object.keys(urls).length > 0 ? urls : undefined;
+  })();
+  
+  let multiRegionLatencies: Record<string, Record<string, number>> = {}; // region -> nodeIP -> latency
+  
+  if (regionEndpoints && Object.keys(regionEndpoints).length > 0) {
+    try {
+      // Collect all node IPs
+      const nodeIPs = nodesToEnrich
+        .map(node => node.address?.split(':')[0])
+        .filter((ip): ip is string => !!ip && ip !== 'localhost' && ip !== '127.0.0.1');
+      
+      if (nodeIPs.length > 0) {
+        console.log(`[EnrichStats] Measuring latency from ${Object.keys(regionEndpoints).length} regions for ${nodeIPs.length} nodes (batched, provider-agnostic)...`);
+        const { measureLatencyFromMultipleRegions } = await import('./multi-region-latency');
+        multiRegionLatencies = await measureLatencyFromMultipleRegions(regionEndpoints, nodeIPs);
+        
+        // Apply multi-region latencies to nodes
+        for (const node of nodesToEnrich) {
+          const ip = node.address?.split(':')[0];
+          if (ip && multiRegionLatencies) {
+            const nodeLatencyByRegion: Record<string, number> = {};
+            for (const [regionId, regionLatencies] of Object.entries(multiRegionLatencies)) {
+              if (regionLatencies[ip] !== undefined) {
+                nodeLatencyByRegion[regionId] = regionLatencies[ip];
+              }
+            }
+            if (Object.keys(nodeLatencyByRegion).length > 0) {
+              node.latencyByRegion = nodeLatencyByRegion;
+              // Set primary latency as minimum from all regions
+              node.latency = Math.min(...Object.values(nodeLatencyByRegion));
+            }
+          }
+        }
+        
+        const nodesWithLatency = nodesToEnrich.filter(n => n.latencyByRegion && Object.keys(n.latencyByRegion).length > 0).length;
+        console.log(`[EnrichStats] ✅ Multi-region latency measured for ${nodesWithLatency}/${nodeIPs.length} nodes`);
+      }
+    } catch (error: any) {
+      console.warn(`[EnrichStats] Multi-region latency measurement failed:`, error.message);
+    }
+  }
+  
   // Batch process in chunks to avoid overwhelming
   const BATCH_SIZE = 20;
   
-  console.log(`[EnrichStats] Enriching ${nodesToEnrich.length} nodes with latency measurements...`);
+  console.log(`[EnrichStats] Enriching ${nodesToEnrich.length} nodes with stats...`);
   
   for (let i = 0; i < nodesToEnrich.length; i += BATCH_SIZE) {
     const batch = nodesToEnrich.slice(i, i + BATCH_SIZE);

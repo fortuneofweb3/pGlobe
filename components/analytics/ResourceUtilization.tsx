@@ -148,8 +148,8 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
 
               return (
                 <>
-                  <svg width={width} height={chartHeight}>
-                    <Group left={margin.left} top={margin.top}>
+                <svg width={width} height={chartHeight}>
+                  <Group left={margin.left} top={margin.top}>
                       {/* Grid lines for reference */}
                       <GridRows
                         scale={yScale}
@@ -159,8 +159,8 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
                         pointerEvents="none"
                       />
                       {/* Bars */}
-                      {data.map((d) => {
-                        const x = xScale(d.range) || 0;
+                    {data.map((d) => {
+                      const x = xScale(d.range) || 0;
                         const cpuValue = d.cpu;
                         const ramValue = d.ram;
                         const cpuBarTop = yScale(cpuValue);
@@ -168,100 +168,100 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
                         const cpuBarHeight = Math.max(innerHeight - cpuBarTop, 0);
                         const ramBarHeight = Math.max(innerHeight - ramBarTop, 0);
 
-                        return (
-                          <Group key={d.range}>
-                            <Bar
-                              x={x}
+                      return (
+                        <Group key={d.range}>
+                          <Bar
+                            x={x}
                               y={cpuBarTop}
                               width={Math.max(barWidth, 1)}
-                              height={cpuBarHeight}
-                              fill={colors.cpu}
-                              rx={4}
+                            height={cpuBarHeight}
+                            fill={colors.cpu}
+                            rx={4}
                               style={{ pointerEvents: 'all' }}
-                              onMouseMove={(event) => {
+                            onMouseMove={(event) => {
                                 const coords = localPoint(event);
-                                if (coords) {
-                                  showTooltip({
-                                    tooltipLeft: coords.x,
-                                    tooltipTop: coords.y,
-                                    tooltipData: d,
-                                  });
-                                }
-                              }}
-                              onMouseLeave={() => hideTooltip()}
-                            />
-                            <Bar
-                              x={x + barWidth}
+                              if (coords) {
+                                showTooltip({
+                                  tooltipLeft: coords.x,
+                                  tooltipTop: coords.y,
+                                  tooltipData: d,
+                                });
+                              }
+                            }}
+                            onMouseLeave={() => hideTooltip()}
+                          />
+                          <Bar
+                            x={x + barWidth}
                               y={ramBarTop}
                               width={Math.max(barWidth, 1)}
-                              height={ramBarHeight}
-                              fill={colors.ram}
-                              rx={4}
+                            height={ramBarHeight}
+                            fill={colors.ram}
+                            rx={4}
                               style={{ pointerEvents: 'all' }}
-                              onMouseMove={(event) => {
+                            onMouseMove={(event) => {
                                 const coords = localPoint(event);
-                                if (coords) {
-                                  showTooltip({
-                                    tooltipLeft: coords.x,
-                                    tooltipTop: coords.y,
-                                    tooltipData: d,
-                                  });
-                                }
-                              }}
-                              onMouseLeave={() => hideTooltip()}
-                            />
-                          </Group>
-                        );
-                      })}
-                    </Group>
-                    <AxisBottom
+                              if (coords) {
+                                showTooltip({
+                                  tooltipLeft: coords.x,
+                                  tooltipTop: coords.y,
+                                  tooltipData: d,
+                                });
+                              }
+                            }}
+                            onMouseLeave={() => hideTooltip()}
+                          />
+                        </Group>
+                      );
+                    })}
+                  </Group>
+                  <AxisBottom
                       top={margin.top + innerHeight}
-                      left={margin.left}
-                      scale={xScale}
+                    left={margin.left}
+                    scale={xScale}
                       numTicks={data.length}
-                      tickFormat={(d) => d}
-                      tickLabelProps={() => ({
-                        fill: '#9CA3AF',
-                        fontSize: 12,
-                        textAnchor: 'middle',
-                      })}
-                    />
-                    <AxisLeft
-                      left={margin.left}
+                    tickFormat={(d) => d}
+                    tickLabelProps={() => ({
+                      fill: '#9CA3AF',
+                      fontSize: 12,
+                      textAnchor: 'middle',
+                    })}
+                  />
+                  <AxisLeft
+                    left={margin.left}
                       top={margin.top}
-                      scale={yScale}
+                    scale={yScale}
                       numTicks={5}
-                      tickFormat={(d) => String(d)}
-                      tickLabelProps={() => ({
-                        fill: '#9CA3AF',
-                        fontSize: 12,
-                        textAnchor: 'end',
-                        dx: -5,
-                      })}
-                    />
-                  </svg>
-                  {tooltipOpen && tooltipData && (
-                    <TooltipWithBounds
-                      top={tooltipTop}
-                      left={tooltipLeft}
-                      style={{
-                        ...defaultStyles,
-                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        borderRadius: '8px',
-                        padding: '8px 12px',
+                    tickFormat={(d) => String(d)}
+                    tickLabelProps={() => ({
+                      fill: '#9CA3AF',
+                      fontSize: 12,
+                      textAnchor: 'end',
+                      dx: -5,
+                    })}
+                  />
+                </svg>
+        {tooltipOpen && tooltipData && (
+          <TooltipWithBounds
+            top={tooltipTop}
+            left={tooltipLeft}
+            style={{
+              ...defaultStyles,
+              backgroundColor: 'rgba(0, 0, 0, 0.9)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '8px',
+              padding: '8px 12px',
                         pointerEvents: 'none',
-                      }}
-                    >
-                      <div className="text-xs">
-                        <div className="font-semibold text-foreground mb-1">{tooltipData.range}</div>
-                        <div className="text-foreground/80 space-y-1">
-                          <div>CPU: {tooltipData.cpu} nodes</div>
-                          <div>RAM: {tooltipData.ram} nodes</div>
-                        </div>
-                      </div>
-                    </TooltipWithBounds>
-                  )}
+            }}
+          >
+            <div className="text-xs">
+              <div className="font-semibold text-foreground mb-1">{tooltipData.range}</div>
+              <div className="text-foreground/80 space-y-1">
+                <div>CPU: {tooltipData.cpu} nodes</div>
+                <div>RAM: {tooltipData.ram} nodes</div>
+              </div>
+            </div>
+          </TooltipWithBounds>
+        )}
                 </>
               );
             }}

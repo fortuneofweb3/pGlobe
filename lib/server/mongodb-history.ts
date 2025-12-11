@@ -29,7 +29,6 @@ export interface HistoricalSnapshot {
   offlineNodes: number;
   syncingNodes: number;
   // Variable metrics (change frequently)
-  avgLatency: number; // Average latency in ms
   avgCpuPercent: number; // Average CPU usage %
   avgRamPercent: number; // Average RAM usage %
   avgPacketsReceived: number; // Average packets received per second
@@ -53,7 +52,6 @@ export interface HistoricalSnapshot {
     pubkey: string;
     // Variable status metrics
     status: 'online' | 'offline' | 'syncing';
-    latency?: number; // ms - changes frequently
     cpuPercent?: number; // % - changes frequently
     ramPercent?: number; // % - changes frequently
     packetsReceived?: number; // per second - changes frequently
@@ -116,8 +114,11 @@ export async function createHistoryIndexes(): Promise<void> {
 /**
  * Store a historical snapshot
  * Stores one snapshot per 10-minute interval (aggregates multiple refreshes within the same 10-minute window)
+ * @param nodes - Array of nodes to snapshot
  */
-export async function storeHistoricalSnapshot(nodes: PNode[]): Promise<void> {
+export async function storeHistoricalSnapshot(
+  nodes: PNode[]
+): Promise<void> {
   try {
     const collection = await getHistoryCollection();
     const now = Date.now();
@@ -132,29 +133,28 @@ export async function storeHistoricalSnapshot(nodes: PNode[]): Promise<void> {
     const existing = await collection.findOne({ interval });
     if (existing) {
       // Update existing snapshot (use latest data for the interval)
+      const updateData: any = {
+        timestamp: now,
+        totalNodes: nodes.length,
+        onlineNodes: nodes.filter(n => n.status === 'online').length,
+        offlineNodes: nodes.filter(n => n.status === 'offline').length,
+        syncingNodes: nodes.filter(n => n.status === 'syncing').length,
+        avgCpuPercent: calculateAvgCpuPercent(nodes),
+        avgRamPercent: calculateAvgRamPercent(nodes),
+        avgPacketsReceived: calculateAvgPacketsReceived(nodes),
+        avgPacketsSent: calculateAvgPacketsSent(nodes),
+        avgActiveStreams: calculateAvgActiveStreams(nodes),
+        avgUptime: calculateAvgUptime(nodes),
+        avgUptimePercent: calculateAvgUptimePercent(nodes),
+        versionDistribution: calculateVersionDistribution(nodes),
+        countries: new Set(nodes.map(n => n.locationData?.country).filter(Boolean)).size,
+        cities: new Set(nodes.map(n => n.locationData?.city).filter(Boolean)).size,
+        nodeSnapshots: createNodeSnapshots(nodes),
+      };
+      
       await collection.updateOne(
         { interval },
-        {
-          $set: {
-            timestamp: now,
-            totalNodes: nodes.length,
-            onlineNodes: nodes.filter(n => n.status === 'online').length,
-            offlineNodes: nodes.filter(n => n.status === 'offline').length,
-            syncingNodes: nodes.filter(n => n.status === 'syncing').length,
-            avgLatency: calculateAvgLatency(nodes),
-            avgCpuPercent: calculateAvgCpuPercent(nodes),
-            avgRamPercent: calculateAvgRamPercent(nodes),
-            avgPacketsReceived: calculateAvgPacketsReceived(nodes),
-            avgPacketsSent: calculateAvgPacketsSent(nodes),
-            avgActiveStreams: calculateAvgActiveStreams(nodes),
-            avgUptime: calculateAvgUptime(nodes),
-            avgUptimePercent: calculateAvgUptimePercent(nodes),
-            versionDistribution: calculateVersionDistribution(nodes),
-            countries: new Set(nodes.map(n => n.locationData?.country).filter(Boolean)).size,
-            cities: new Set(nodes.map(n => n.locationData?.city).filter(Boolean)).size,
-            nodeSnapshots: createNodeSnapshots(nodes),
-          },
-        }
+        { $set: updateData }
       );
       return;
     }
@@ -168,7 +168,6 @@ export async function storeHistoricalSnapshot(nodes: PNode[]): Promise<void> {
       onlineNodes: nodes.filter(n => n.status === 'online').length,
       offlineNodes: nodes.filter(n => n.status === 'offline').length,
       syncingNodes: nodes.filter(n => n.status === 'syncing').length,
-      avgLatency: calculateAvgLatency(nodes),
       avgCpuPercent: calculateAvgCpuPercent(nodes),
       avgRamPercent: calculateAvgRamPercent(nodes),
       avgPacketsReceived: calculateAvgPacketsReceived(nodes),
@@ -228,7 +227,11 @@ export async function getNodeHistory(
   pubkey: string,
   startTime?: number,
   endTime?: number
-): Promise<Array<HistoricalSnapshot['nodeSnapshots'][0] & { timestamp: number }>> {
+): Promise<Array<HistoricalSnapshot['nodeSnapshots'][0] & { 
+  timestamp: number;
+  serverRegionId?: string;
+  serverLocation?: { lat?: number; lon?: number; country?: string; city?: string };
+}>> {
   try {
     const collection = await getHistoryCollection();
     
@@ -276,9 +279,12 @@ export async function getNodeHistory(
       {
         $project: {
           timestamp: 1,
+          serverRegionId: 1,
+          serverLocation: 1,
           pubkey: '$nodeSnapshots.pubkey',
           status: '$nodeSnapshots.status',
           latency: '$nodeSnapshots.latency',
+          latencyByRegion: '$nodeSnapshots.latencyByRegion',
           cpuPercent: '$nodeSnapshots.cpuPercent',
           ramPercent: '$nodeSnapshots.ramPercent',
           packetsReceived: '$nodeSnapshots.packetsReceived',
@@ -291,6 +297,7 @@ export async function getNodeHistory(
           version: '$nodeSnapshots.version',
           isRegistered: '$nodeSnapshots.isRegistered',
           location: '$nodeSnapshots.location',
+          nodeLocation: '$nodeSnapshots.nodeLocation',
         }
       },
       // Sort by timestamp
@@ -336,7 +343,6 @@ export async function getNodeHistory(
       timestamp: doc.timestamp,
       pubkey: doc.pubkey || doc.nodeSnapshots?.pubkey,
       status: doc.status || doc.nodeSnapshots?.status,
-      latency: doc.latency,
       cpuPercent: doc.cpuPercent,
       ramPercent: doc.ramPercent,
       packetsReceived: doc.packetsReceived,
@@ -372,7 +378,6 @@ export async function getNodeHistory(
             timestamp: 1,
             pubkey: '$nodeSnapshots.pubkey',
             status: '$nodeSnapshots.status',
-            latency: '$nodeSnapshots.latency',
             cpuPercent: '$nodeSnapshots.cpuPercent',
             ramPercent: '$nodeSnapshots.ramPercent',
             packetsReceived: '$nodeSnapshots.packetsReceived',
@@ -398,6 +403,7 @@ export async function getNodeHistory(
           pubkey: doc.pubkey,
           status: doc.status,
           latency: doc.latency,
+          latencyByRegion: doc.latencyByRegion,
           cpuPercent: doc.cpuPercent,
           ramPercent: doc.ramPercent,
           packetsReceived: doc.packetsReceived,
@@ -410,6 +416,9 @@ export async function getNodeHistory(
           version: doc.version,
           isRegistered: doc.isRegistered,
           location: doc.location,
+          nodeLocation: doc.nodeLocation,
+          serverRegionId: doc.serverRegionId,
+          serverLocation: doc.serverLocation,
         }));
       } catch (caseError: any) {
         console.warn('[MongoDB History] Case-insensitive search failed:', caseError?.message);
@@ -520,11 +529,6 @@ function calculateAvgUptimePercent(nodes: PNode[]): number {
   return total / nodesWithUptime.length;
 }
 
-function calculateAvgLatency(nodes: PNode[]): number {
-  const nodesWithLatency = nodes.filter(n => n.latency !== undefined && n.latency !== null && n.latency > 0);
-  if (nodesWithLatency.length === 0) return 0;
-  return nodesWithLatency.reduce((sum, n) => sum + (n.latency || 0), 0) / nodesWithLatency.length;
-}
 
 function calculateAvgCpuPercent(nodes: PNode[]): number {
   const nodesWithCpu = nodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null && n.cpuPercent >= 0);
@@ -605,7 +609,6 @@ function createNodeSnapshots(nodes: PNode[]): HistoricalSnapshot['nodeSnapshots'
       pubkey,
       // Variable status metrics (change frequently) - these are the key metrics we track
       status,
-      latency: node.latency !== undefined && node.latency !== null ? node.latency : undefined,
       cpuPercent: node.cpuPercent !== undefined && node.cpuPercent !== null ? node.cpuPercent : undefined,
       ramPercent,
       packetsReceived: node.packetsReceived !== undefined && node.packetsReceived !== null ? node.packetsReceived : undefined,

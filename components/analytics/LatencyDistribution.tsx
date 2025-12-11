@@ -1,7 +1,7 @@
 'use client';
 
 import { PNode } from '@/lib/types/pnode';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { scaleBand, scaleLinear } from '@visx/scale';
 import { Group } from '@visx/group';
 import { Bar } from '@visx/shape';
@@ -11,7 +11,8 @@ import { useTooltip, TooltipWithBounds, defaultStyles } from '@visx/tooltip';
 import { localPoint } from '@visx/event';
 import ParentSize from '@visx/responsive/lib/components/ParentSize';
 import { Wifi } from 'lucide-react';
-import { measureClientLatency } from '@/lib/utils/latency';
+import { measureNodesLatency, getCachedNodesLatencies } from '@/lib/utils/client-latency';
+import { useState, useEffect } from 'react';
 
 interface LatencyDistributionProps {
   nodes: PNode[];
@@ -27,57 +28,80 @@ type TooltipData = {
 
 export default function LatencyDistribution({ nodes }: LatencyDistributionProps) {
   const { tooltipData, tooltipLeft, tooltipTop, tooltipOpen, showTooltip, hideTooltip } = useTooltip<TooltipData>();
-  const [clientLatencies, setClientLatencies] = useState<Record<string, number | null>>({});
-  const [measuringLatencies, setMeasuringLatencies] = useState<Set<string>>(new Set());
+  // Load cached latencies immediately (synchronous)
+  const [nodeLatencies, setNodeLatencies] = useState<Record<string, number | null>>(() => {
+    return getCachedNodesLatencies(nodes);
+  });
 
-  // Measure client-side latency for all nodes
+  // Measure latency for uncached nodes after initial render (deferred for better UX)
   useEffect(() => {
+    let mounted = true;
+    
     const measureLatencies = async () => {
-      const nodesToMeasure = nodes
-        .filter(n => 
-          n.seenInGossip !== false &&
-          n.address &&
-          !clientLatencies[n.id] &&
-          !measuringLatencies.has(n.id)
-        )
-        .slice(0, 20); // Limit to 20 concurrent measurements
-
-      await Promise.allSettled(
-        nodesToMeasure.map(async (node) => {
-          setMeasuringLatencies(prev => new Set(prev).add(node.id));
-          try {
-            const latency = await measureClientLatency(node);
-            setClientLatencies(prev => ({
-              ...prev,
-              [node.id]: latency,
-            }));
-          } catch (error) {
-            setClientLatencies(prev => ({
-              ...prev,
-              [node.id]: null,
-            }));
-          } finally {
-            setMeasuringLatencies(prev => {
-              const next = new Set(prev);
-              next.delete(node.id);
-              return next;
-            });
+      if (nodes.length === 0) return;
+      
+      // Load cached values first (already done in useState initializer)
+      const cached = getCachedNodesLatencies(nodes);
+      if (mounted) {
+        setNodeLatencies(cached);
+      }
+      
+      // Check if we need to measure any nodes
+      const uncachedNodes = nodes.filter(node => cached[node.id] === undefined);
+      if (uncachedNodes.length === 0) {
+        // All nodes are cached, no need to measure
+        return;
+      }
+      
+      // Defer measurement until after initial render to avoid blocking UI
+      const deferMeasurement = () => {
+        if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+          requestIdleCallback(() => {
+            if (!mounted) return;
+            measureUncachedNodes();
+          }, { timeout: 2000 });
+        } else {
+          setTimeout(() => {
+            if (!mounted) return;
+            measureUncachedNodes();
+          }, 100);
+        }
+      };
+      
+      const measureUncachedNodes = async () => {
+        try {
+          // Measure latency for uncached nodes only
+          const newLatencies = await measureNodesLatency(nodes, 10, 2000);
+          if (mounted) {
+            // Merge new measurements with cached values
+            setNodeLatencies(prev => ({ ...prev, ...newLatencies }));
           }
-        })
-      );
+        } catch (error) {
+          console.warn('[LatencyDistribution] Failed to measure node latencies:', error);
+        }
+      };
+      
+      deferMeasurement();
     };
 
     measureLatencies();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes.length]);
+    
+    return () => {
+      mounted = false;
+    };
+  }, [nodes.length]); // Re-measure when nodes change
 
   const data = useMemo(() => {
-    // Only use client-side latency measurements
-    const nodesWithLatency = nodes.filter(n => {
-      if (n.seenInGossip === false) return false;
-      const clientLatency = clientLatencies[n.id];
-      return clientLatency !== null && clientLatency !== undefined && clientLatency > 0;
-    });
+    // Get all nodes with valid latency measurements
+    const nodesWithLatency = Object.entries(nodeLatencies)
+      .filter(([nodeId, latency]) => {
+        // Check if latency is valid
+        if (latency === null || latency === undefined) return false;
+        // Check if node exists and is not offline
+        const node = nodes.find(n => n.id === nodeId);
+        return node && node.seenInGossip !== false;
+      })
+      .map(([nodeId, latency]) => ({ nodeId, latency: latency! }));
     
     if (nodesWithLatency.length === 0) {
       return [];
@@ -91,8 +115,8 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
       '>500ms': 0,
     };
 
-    nodesWithLatency.forEach(node => {
-      const latency = clientLatencies[node.id] || 0;
+    // Categorize each node by its latency
+    nodesWithLatency.forEach(({ latency }) => {
       if (latency < 50) buckets['<50ms']++;
       else if (latency < 100) buckets['50-100ms']++;
       else if (latency < 200) buckets['100-200ms']++;
@@ -105,18 +129,17 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
       count,
       percentage: (count / nodesWithLatency.length) * 100,
     }));
-  }, [nodes, clientLatencies]);
+  }, [nodes, nodeLatencies]);
 
   const avgLatency = useMemo(() => {
-    const nodesWithLatency = nodes.filter(n => {
-      if (n.seenInGossip === false) return false;
-      const clientLatency = clientLatencies[n.id];
-      return clientLatency !== null && clientLatency !== undefined && clientLatency > 0;
-    });
-    if (nodesWithLatency.length === 0) return 0;
-    const sum = nodesWithLatency.reduce((acc, n) => acc + (clientLatencies[n.id] || 0), 0);
-    return Math.round(sum / nodesWithLatency.length);
-  }, [nodes, clientLatencies]);
+    // Calculate average from per-node latencies
+    const latencies = Object.values(nodeLatencies)
+      .filter((lat): lat is number => lat !== null && lat !== undefined);
+    
+    if (latencies.length === 0) return 0;
+    
+    return Math.round(latencies.reduce((sum, lat) => sum + lat, 0) / latencies.length);
+  }, [nodeLatencies]);
 
   if (data.length === 0) {
     return (
@@ -159,8 +182,8 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
 
               return (
                 <>
-                  <svg width={width} height={chartHeight}>
-                    <Group left={margin.left} top={margin.top}>
+                <svg width={width} height={chartHeight}>
+                  <Group left={margin.left} top={margin.top}>
                       {/* Grid lines for reference */}
                       <GridRows
                         scale={yScale}
@@ -170,86 +193,86 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
                         pointerEvents="none"
                       />
                       {/* Bars */}
-                      {data.map((d, index) => {
+                    {data.map((d, index) => {
                         const barWidth = Math.max(xScale.bandwidth(), 1);
                         const barValue = d.count;
                         const barTop = yScale(barValue); // Top of bar (yScale maps value to y-coordinate)
                         const barHeight = Math.max(innerHeight - barTop, 0); // Height from top to bottom
-                        const x = xScale(d.range) || 0;
+                      const x = xScale(d.range) || 0;
                         const y = barTop; // Y position is the top of the bar
 
-                        return (
-                          <Bar
-                            key={d.range}
-                            x={x}
-                            y={y}
-                            width={barWidth}
-                            height={barHeight}
-                            fill={COLORS[index % COLORS.length]}
-                            rx={4}
+                      return (
+                        <Bar
+                          key={d.range}
+                          x={x}
+                          y={y}
+                          width={barWidth}
+                          height={barHeight}
+                          fill={COLORS[index % COLORS.length]}
+                          rx={4}
                             style={{ pointerEvents: 'all' }}
-                            onMouseMove={(event) => {
+                          onMouseMove={(event) => {
                               const coords = localPoint(event);
-                              if (coords) {
-                                showTooltip({
-                                  tooltipLeft: coords.x,
-                                  tooltipTop: coords.y,
-                                  tooltipData: d,
-                                });
-                              }
-                            }}
-                            onMouseLeave={() => hideTooltip()}
-                          />
-                        );
-                      })}
-                    </Group>
-                    <AxisBottom
+                            if (coords) {
+                              showTooltip({
+                                tooltipLeft: coords.x,
+                                tooltipTop: coords.y,
+                                tooltipData: d,
+                              });
+                            }
+                          }}
+                          onMouseLeave={() => hideTooltip()}
+                        />
+                      );
+                    })}
+                  </Group>
+                  <AxisBottom
                       top={margin.top + innerHeight}
-                      left={margin.left}
-                      scale={xScale}
+                    left={margin.left}
+                    scale={xScale}
                       numTicks={data.length}
                       tickFormat={(d) => d.replace('ms', '')}
-                      tickLabelProps={() => ({
-                        fill: '#9CA3AF',
-                        fontSize: 12,
-                        textAnchor: 'middle',
-                      })}
-                    />
-                    <AxisLeft
-                      left={margin.left}
+                    tickLabelProps={() => ({
+                      fill: '#9CA3AF',
+                      fontSize: 12,
+                      textAnchor: 'middle',
+                    })}
+                  />
+                  <AxisLeft
+                    left={margin.left}
                       top={margin.top}
-                      scale={yScale}
+                    scale={yScale}
                       numTicks={5}
-                      tickFormat={(d) => String(d)}
-                      tickLabelProps={() => ({
-                        fill: '#9CA3AF',
-                        fontSize: 12,
-                        textAnchor: 'end',
-                        dx: -5,
-                      })}
-                    />
-                  </svg>
-                  {tooltipOpen && tooltipData && (
-                    <TooltipWithBounds
-                      top={tooltipTop}
-                      left={tooltipLeft}
-                      style={{
-                        ...defaultStyles,
-                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        borderRadius: '8px',
-                        padding: '8px 12px',
+                    tickFormat={(d) => String(d)}
+                    tickLabelProps={() => ({
+                      fill: '#9CA3AF',
+                      fontSize: 12,
+                      textAnchor: 'end',
+                      dx: -5,
+                    })}
+                  />
+                </svg>
+        {tooltipOpen && tooltipData && (
+          <TooltipWithBounds
+            top={tooltipTop}
+            left={tooltipLeft}
+            style={{
+              ...defaultStyles,
+              backgroundColor: 'rgba(0, 0, 0, 0.9)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '8px',
+              padding: '8px 12px',
                         pointerEvents: 'none',
-                      }}
-                    >
-                      <div className="text-xs">
-                        <div className="font-semibold text-foreground mb-1">{tooltipData.range}</div>
-                        <div className="text-foreground/80">
-                          {tooltipData.count} nodes ({tooltipData.percentage.toFixed(1)}%)
-                        </div>
-                      </div>
-                    </TooltipWithBounds>
-                  )}
+            }}
+          >
+            <div className="text-xs">
+              <div className="font-semibold text-foreground mb-1">{tooltipData.range}</div>
+              <div className="text-foreground/80">
+                {tooltipData.count} nodes ({tooltipData.percentage.toFixed(1)}%)
+              </div>
+            </div>
+          </TooltipWithBounds>
+        )}
                 </>
               );
             }}

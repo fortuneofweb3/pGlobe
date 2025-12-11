@@ -238,28 +238,27 @@ export function getLatencyColor(
 
 /**
  * Get latency tooltip text
+ * Latency is server-side but adjusted for user's region
  */
 export function getLatencyTooltip(
   latency: number | null,
   ranking: LatencyRanking | null,
-  clientLatency: number | null,
+  userRegion: string | null,
   context: LatencyContext | null
 ): string {
   const parts: string[] = [];
 
   if (latency === null) {
-    return 'Latency data not available. Most nodes keep pRPC private (localhost-only) for security, so client-side latency measurement is not possible.';
+    return 'Latency data not available.';
   }
 
-  // Latency is now always client-side (user's browser)
-  parts.push(`Your Latency: ${latency}ms`);
-  parts.push('(Measured from your browser)');
-
-  if (ranking) {
-    parts.push(`\n\nRanking: ${ranking.label} (${ranking.percentile.toFixed(1)}th percentile)`);
-    parts.push('(Compared to all nodes in the network)');
-    parts.push('Note: Ranking uses server-side latency data for comparison, but displayed latency is measured from your location.');
+  parts.push(`Estimated Latency: ${latency}ms`);
+  if (userRegion) {
+    parts.push(`(Adjusted for ${userRegion} region)`);
+  } else {
+    parts.push('(Server latency adjusted for your location)');
   }
+
 
   if (context) {
     parts.push(`\n\nNode Location: ${context.nodeRegion}`);
@@ -268,7 +267,7 @@ export function getLatencyTooltip(
     parts.push(`• Nearby region: ${context.expectedRanges.nearbyRegion}`);
     parts.push(`• Far region: ${context.expectedRanges.farRegion}`);
   } else {
-    parts.push('\n\nNote: Latency is measured from your geographic location. Actual latency depends on your distance from the node.');
+    parts.push('\n\nNote: Latency is estimated based on server measurements and adjusted for your geographic region.');
   }
 
   return parts.join('\n');

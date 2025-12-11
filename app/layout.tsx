@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { NodesProvider } from "@/lib/context/NodesContext";
+import { UserRegionProvider } from "@/lib/contexts/UserRegionContext";
 
 export const metadata: Metadata = {
   title: "pGlobe",
@@ -42,7 +43,9 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
-        <NodesProvider>{children}</NodesProvider>
+        <NodesProvider>
+          <UserRegionProvider>{children}</UserRegionProvider>
+        </NodesProvider>
       </body>
     </html>
   );

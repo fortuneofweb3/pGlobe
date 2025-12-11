@@ -63,12 +63,12 @@ export async function GET(request: Request) {
       });
     }
     
-    // Fetch from external API (with timeout protection - 5 seconds)
+    // Fetch from external API (with timeout protection - 10 seconds)
     let geo: any = null;
     try {
       const geoMapPromise = batchFetchLocations([ip]);
       const timeoutPromise = new Promise<Map<string, any>>((_, reject) => 
-        setTimeout(() => reject(new Error('Geo API timeout')), 5000)
+        setTimeout(() => reject(new Error('Geo API timeout')), 10000)
       );
       
       const geoMap = await Promise.race([geoMapPromise, timeoutPromise]);

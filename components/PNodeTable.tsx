@@ -3,16 +3,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { PNode } from '@/lib/types/pnode';
-// Server-side ping removed - all latency is now client-side
+// Latency is server-side but adjusted for user's region
 import {
-  calculateLatencyRanking,
   getLatencyContext,
-  measureClientLatency,
-  formatLatencyWithContext,
   getLatencyColor,
   getLatencyTooltip,
-  type LatencyRanking,
 } from '@/lib/utils/latency';
+import { measureNodesLatency, getCachedNodesLatencies } from '@/lib/utils/client-latency';
 import { fetchNodeBalance } from '@/lib/utils/balance';
 import BalanceDisplay from './BalanceDisplay';
 import { formatBytes, formatStorageBytes } from '@/lib/utils/storage';
@@ -162,80 +159,74 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
   const router = useRouter();
   const [balances, setBalances] = useState<Record<string, number | null>>({});
   const [fetchingBalances, setFetchingBalances] = useState<Set<string>>(new Set());
-  const [clientLatencies, setClientLatencies] = useState<Record<string, number | null>>({});
-  const [measuringClientLatency, setMeasuringClientLatency] = useState<Set<string>>(new Set());
+  // Load cached latencies immediately (synchronous)
+  const [nodeLatencies, setNodeLatencies] = useState<Record<string, number | null>>(() => {
+    return getCachedNodesLatencies(nodes);
+  });
+  const [measuringLatency, setMeasuringLatency] = useState(false);
 
-  // Calculate latency rankings for all nodes
-  const latencyRankings = useMemo(() => {
-    const rankings: Record<string, LatencyRanking> = {};
-    nodes.forEach(node => {
-      if (node.latency !== undefined && node.latency !== null) {
-        const ranking = calculateLatencyRanking(node.latency, nodes);
-        if (ranking) {
-          rankings[node.id] = ranking;
-        }
-      }
-    });
-    return rankings;
-  }, [nodes]);
-
-  // Note: Server-side ping removed - all latency is now measured client-side from user's browser
-  // Ranking still uses server latency data (from node.latency) for comparison purposes
-
-  // Measure client-side latency for all nodes (primary latency measurement)
+  // Measure latency for uncached nodes after initial render (deferred for better UX)
   useEffect(() => {
-    const measureClientLatencies = async () => {
-      // Measure latency for all nodes (batch process to avoid overwhelming browser)
-      const nodesToMeasure = nodes
-        .filter(n => 
-          n.seenInGossip !== false &&
-          n.address &&
-          !clientLatencies[n.id] &&
-          !measuringClientLatency.has(n.id)
-        );
-
-      // Process in batches of 10 to avoid overwhelming the browser
-      const batchSize = 10;
-      for (let i = 0; i < nodesToMeasure.length; i += batchSize) {
-        const batch = nodesToMeasure.slice(i, i + batchSize);
-        
-        await Promise.allSettled(
-          batch.map(async (node) => {
-            setMeasuringClientLatency(prev => new Set(prev).add(node.id));
-            
-            try {
-              const latency = await measureClientLatency(node);
-              setClientLatencies(prev => ({
-                ...prev,
-                [node.id]: latency,
-              }));
-            } catch (error) {
-              // Expected to fail for most nodes (CORS, localhost-only, etc.)
-              // Set to null to indicate we tried but couldn't measure
-              setClientLatencies(prev => ({
-                ...prev,
-                [node.id]: null,
-              }));
-            } finally {
-              setMeasuringClientLatency(prev => {
-                const next = new Set(prev);
-                next.delete(node.id);
-                return next;
-              });
-            }
-          })
-        );
-        
-        // Small delay between batches to avoid overwhelming the browser
-        if (i + batchSize < nodesToMeasure.length) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+    let mounted = true;
+    
+    const measureLatencies = async () => {
+      // Load cached values first (already done in useState initializer)
+      const cached = getCachedNodesLatencies(nodes);
+      if (mounted) {
+        setNodeLatencies(cached);
+      }
+      
+      // Check if we need to measure any nodes
+      const uncachedNodes = nodes.filter(node => cached[node.id] === undefined);
+      if (uncachedNodes.length === 0) {
+        // All nodes are cached, no need to measure
+        return;
+      }
+      
+      // Defer measurement until after initial render to avoid blocking UI
+      const deferMeasurement = () => {
+        if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+          requestIdleCallback(() => {
+            if (!mounted) return;
+            measureUncachedNodes();
+          }, { timeout: 2000 });
+        } else {
+          setTimeout(() => {
+            if (!mounted) return;
+            measureUncachedNodes();
+          }, 100);
         }
+      };
+      
+      const measureUncachedNodes = async () => {
+        setMeasuringLatency(true);
+        try {
+          // Measure latency for uncached nodes only
+          const newLatencies = await measureNodesLatency(nodes, 10, 2000);
+          if (mounted) {
+            // Merge new measurements with cached values
+            setNodeLatencies(prev => ({ ...prev, ...newLatencies }));
+          }
+        } catch (error) {
+          console.warn('[PNodeTable] Failed to measure node latencies:', error);
+        } finally {
+          if (mounted) {
+            setMeasuringLatency(false);
+          }
+        }
+      };
+      
+      if (nodes.length > 0) {
+        deferMeasurement();
       }
     };
 
-    measureClientLatencies();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes.length]);
+    measureLatencies();
+    
+    return () => {
+      mounted = false;
+    };
+  }, [nodes.length]); // Re-measure when nodes change
 
   // Fetch balances for nodes (only if not already set)
   useEffect(() => {
@@ -379,12 +370,11 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
     const withCPU = nodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null).length;
     const withLatency = nodes.filter(n => {
       // Check for client-side latency measurement
-      const clientLatency = clientLatencies[n.id];
-      return clientLatency !== null && clientLatency !== undefined;
+      return nodeLatencies[n.id] !== null && nodeLatencies[n.id] !== undefined;
     }).length;
     
     return { withUptime, withStorage, withCPU, withLatency, total: nodes.length };
-  }, [nodes, clientLatencies]);
+  }, [nodes]);
 
   return (
     <div className="flex flex-col h-full bg-card/30 border border-border/60 rounded-lg overflow-hidden">
@@ -557,48 +547,31 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
                             return renderEmptyCell();
                           }
                           
-                          const isMeasuringClient = measuringClientLatency.has(node.id);
-                          const clientLatency = clientLatencies[node.id];
+                          // Use per-node latency measurement
+                          const nodeLatency = nodeLatencies[node.id];
                           
-                          // Only show client-side latency (measured from user's browser)
-                          // Ranking uses server latency (node.latency) for comparison, but not displayed
-                          const ranking = node.latency !== null && node.latency !== undefined ? latencyRankings[node.id] : null;
-                          const context = getLatencyContext(node);
-                          
-                          if (isMeasuringClient) {
+                          if (nodeLatency !== null && nodeLatency !== undefined) {
+                            const color = getLatencyColor(nodeLatency, null);
                             return (
-                              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <span className="inline-block w-2.5 h-2.5 border-2 border-foreground/20 border-t-foreground/60 rounded-full animate-spin" />
-                              </span>
+                              <div className="flex flex-col items-end gap-0.5">
+                                <span 
+                                  className={`text-xs sm:text-sm font-mono font-medium ${color}`}
+                                  title={`Your latency to this node: ${nodeLatency.toFixed(0)}ms (measured from your browser)`}
+                                >
+                                  {nodeLatency.toFixed(0)}ms
+                                </span>
+                                <span className="text-[10px] text-muted-foreground/60">
+                                  Your latency
+                                </span>
+                              </div>
                             );
                           }
                           
-                          // Only show if we have client-side latency measurement
-                          if (clientLatency === null || clientLatency === undefined) {
-                            return renderEmptyCell('Latency not available (node pRPC is private)');
+                          if (measuringLatency) {
+                            return <span className="text-muted-foreground/50 text-xs">Measuring...</span>;
                           }
                           
-                          const color = getLatencyColor(clientLatency, ranking);
-                          const tooltip = getLatencyTooltip(clientLatency, ranking, null, context);
-                          
-                          return (
-                            <div className="flex flex-col items-end gap-0.5 group relative">
-                              <span 
-                                className={`text-xs sm:text-sm font-mono font-medium ${color} cursor-help`}
-                                title={tooltip}
-                              >
-                                {ranking && (
-                                  <span className="text-[10px] opacity-70 mr-1">
-                                    {ranking.label}
-                                  </span>
-                                )}
-                                {clientLatency}ms
-                              </span>
-                              <span className="text-[10px] text-muted-foreground/60">
-                                Your latency
-                              </span>
-                            </div>
-                          );
+                          return renderEmptyCell('Node not reachable');
                         })()}
                       </td>
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap">

@@ -4,7 +4,19 @@ import { useEffect, useState, useMemo, useCallback, useRef, Suspense } from 'rea
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PNode } from '@/lib/types/pnode';
 import StatsCard from '@/components/StatsCard';
-import MapLibreGlobe from '@/components/MapLibreGlobe';
+import dynamic from 'next/dynamic';
+
+const MapLibreGlobe = dynamic(() => import('@/components/MapLibreGlobe'), {
+  ssr: false,
+  loading: () => (
+    <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black">
+      <div className="text-center">
+        <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[#F0A741]" />
+        <p className="text-xs text-muted-foreground">Loading map...</p>
+      </div>
+    </div>
+  ),
+});
 import NetworkSelector from '@/components/NetworkSelector';
 import Header from '@/components/Header';
 import InfoTooltip, { MetricRow } from '@/components/InfoTooltip';
@@ -15,6 +27,7 @@ import SearchBar from '@/components/SearchBar';
 import { NetworkConfig } from '@/lib/server/network-config';
 import { useNodes } from '@/lib/context/NodesContext';
 import NodeDetailsModal from '@/components/NodeDetailsModal';
+import { measureNodesLatency, getCachedNodesLatencies } from '@/lib/utils/client-latency';
 
 // Helper function to format uptime seconds as human-readable duration
 function formatUptimeDuration(seconds: number): string {
@@ -38,6 +51,10 @@ function HomeContent() {
   const searchParams = useSearchParams();
   // Use shared nodes data from context (fetched once, updated passively)
   const { nodes, loading, error, lastUpdate, selectedNetwork, setSelectedNetwork, availableNetworks, currentNetwork, refreshNodes } = useNodes();
+  // Load cached latencies immediately (synchronous)
+  const [nodeLatencies, setNodeLatencies] = useState<Record<string, number | null>>(() => {
+    return getCachedNodesLatencies(nodes);
+  });
   
   const [dataSource, setDataSource] = useState<'prpc' | 'mock' | 'gossip' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,10 +76,71 @@ function HomeContent() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // Geo enrichment for map display (runs when nodes update from context)
+  // Measure latency for uncached nodes after initial render (deferred for better UX)
   useEffect(() => {
-    if (nodes.length > 0) {
-      // Check if nodes already have geo data
+    let mounted = true;
+    
+    const measureLatencies = async () => {
+      if (nodes.length === 0) return;
+      
+      // Load cached values first (already done in useState initializer)
+      const cached = getCachedNodesLatencies(nodes);
+      if (mounted) {
+        setNodeLatencies(cached);
+      }
+      
+      // Check if we need to measure any nodes
+      const uncachedNodes = nodes.filter(node => cached[node.id] === undefined);
+      if (uncachedNodes.length === 0) {
+        // All nodes are cached, no need to measure
+        return;
+      }
+      
+      // Defer measurement until after initial render to avoid blocking UI
+      // Use requestIdleCallback if available, otherwise setTimeout
+      const deferMeasurement = () => {
+        if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+          requestIdleCallback(() => {
+            if (!mounted) return;
+            measureUncachedNodes();
+          }, { timeout: 2000 });
+        } else {
+          setTimeout(() => {
+            if (!mounted) return;
+            measureUncachedNodes();
+          }, 100);
+        }
+      };
+      
+      const measureUncachedNodes = async () => {
+        try {
+          // Measure latency for uncached nodes only
+          const newLatencies = await measureNodesLatency(nodes, 10, 2000);
+          if (mounted) {
+            // Merge new measurements with cached values
+            setNodeLatencies(prev => ({ ...prev, ...newLatencies }));
+          }
+        } catch (error) {
+          // Failed to measure node latencies
+        }
+      };
+      
+      deferMeasurement();
+    };
+
+    measureLatencies();
+    
+    return () => {
+      mounted = false;
+    };
+  }, [nodes.length]); // Re-measure when nodes change
+
+  // Geo enrichment for map display (deferred to avoid blocking initial render)
+  useEffect(() => {
+    if (nodes.length === 0) return;
+    
+    // Check if nodes already have geo data (defer this check too)
+    const checkAndEnrich = () => {
       const hasGeoData = nodes.some(n => n.locationData?.lat !== undefined);
       if (hasGeoData) {
         setNodesWithGeo(nodes);
@@ -77,6 +155,17 @@ function HomeContent() {
           })
           .catch(() => setGeoEnriching(false));
       }
+    };
+    
+    // Defer geo check until after initial render
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      requestIdleCallback(() => {
+        checkAndEnrich();
+      }, { timeout: 1000 });
+    } else {
+      setTimeout(() => {
+        checkAndEnrich();
+      }, 50);
     }
   }, [nodes]);
 
@@ -99,16 +188,6 @@ function HomeContent() {
         // Use the most reliable identifier (pubkey > publicKey > id)
         const nodeIdentifier = node.pubkey || node.publicKey || node.id;
         
-        console.log('[Navigation] Navigating to node:', {
-          nodeIdentifier,
-          fromParam: nodeParam,
-          nodePubkey: node.pubkey,
-          nodePublicKey: node.publicKey,
-          nodeId: node.id,
-          nodeAddress: node.address,
-          hasLocation: !!node.locationData
-        });
-        
         setNavigateToNodeId(nodeIdentifier);
         
         // Remove query parameter from URL after a short delay to allow navigation to complete
@@ -118,11 +197,8 @@ function HomeContent() {
         
         // Clear the navigation ID after navigation completes (longer delay to ensure navigation happens)
         setTimeout(() => {
-          console.log('[Navigation] Clearing navigateToNodeId');
           setNavigateToNodeId(null);
         }, 3000); // 3 seconds to allow navigation to complete
-      } else {
-        console.log('[Navigation] Node not found for param:', nodeParam, 'in', nodesWithGeo.length, 'nodes with geo');
       }
     } else if (!nodeParam && navigateToNodeId) {
       // If node param is removed but navigateToNodeId is still set, clear it
@@ -179,7 +255,6 @@ function HomeContent() {
   const stats = useMemo(() => {
     // Always use the full nodes array for stats, not nodesWithGeo
     const totalNodes = nodes.length;
-    console.debug('[Overview] Stats calculated:', { totalNodes, nodesLength: nodes.length, nodesWithGeoLength: nodesWithGeo.length });
     const onlineNodes = nodes.filter((n) => n.status === 'online').length;
     
     // Storage metrics
@@ -222,10 +297,13 @@ function HomeContent() {
         }, 0) / nodesWithRAM.length
       : 0;
     
-    // Latency metrics - removed server-side latency average
-    // Latency is now measured client-side (from user's browser) and shown per-node
-    // Network-wide averages are not meaningful since most nodes have private pRPC
-    const avgLatency = 0; // Not applicable - latency is user-specific
+    // Latency metrics - calculate average from per-node latencies
+    const nodesWithLatency = Object.entries(nodeLatencies)
+      .filter(([_, latency]) => latency !== null && latency !== undefined)
+      .map(([_, latency]) => latency!);
+    const avgLatency = nodesWithLatency.length > 0
+      ? Math.round(nodesWithLatency.reduce((sum, lat) => sum + lat, 0) / nodesWithLatency.length)
+      : 0;
     
     // Network metrics
     const totalPacketsReceived = nodes.reduce((sum, n) => sum + (n.packetsReceived || 0), 0);
@@ -259,7 +337,7 @@ function HomeContent() {
       totalCredits,
       avgCredits,
     };
-  }, [nodes]);
+  }, [nodes, nodeLatencies]);
 
 
   const versions = useMemo(() => {
@@ -428,8 +506,11 @@ function HomeContent() {
                 />
                 <MetricRow
                   label="Avg Latency"
-                  value="N/A"
-                  tooltip="Latency is now measured client-side (from your browser) and shown per-node. Network-wide averages are not available since most nodes keep pRPC private for security."
+                  value={stats.avgLatency > 0 ? `${stats.avgLatency.toFixed(0)}ms` : 'N/A'}
+                  tooltip={stats.avgLatency > 0 
+                    ? `Average latency: ${stats.avgLatency.toFixed(0)}ms (from ${Object.values(nodeLatencies).filter(lat => lat !== null && lat !== undefined).length} reachable nodes)`
+                    : 'No latency data available'
+                  }
                 />
             </div>
           </div>

@@ -127,77 +127,77 @@ export default function NetworkHealthChart({ nodes }: NetworkHealthChartProps) {
 
             return (
               <>
-                <svg width={width} height={chartHeight}>
-                  <Group left={margin.left} top={margin.top}>
-                    {data.map((d) => {
-                      const barHeight = yScale.bandwidth();
-                      const barWidth = xScale(d.value);
-                      const y = yScale(d.name) || 0;
+              <svg width={width} height={chartHeight}>
+                <Group left={margin.left} top={margin.top}>
+                  {data.map((d) => {
+                    const barHeight = yScale.bandwidth();
+                    const barWidth = xScale(d.value);
+                    const y = yScale(d.name) || 0;
 
-                      return (
-                        <Bar
-                          key={d.name}
-                          x={0}
-                          y={y}
-                          width={barWidth}
-                          height={barHeight}
-                          fill={d.color}
-                          rx={4}
-                          onMouseMove={(event) => {
+                    return (
+                      <Bar
+                        key={d.name}
+                        x={0}
+                        y={y}
+                        width={barWidth}
+                        height={barHeight}
+                        fill={d.color}
+                        rx={4}
+                        onMouseMove={(event) => {
                             const coords = localPoint(event);
-                            if (coords) {
-                              showTooltip({
-                                tooltipLeft: coords.x,
-                                tooltipTop: coords.y,
-                                tooltipData: d,
-                              });
-                            }
-                          }}
-                          onMouseLeave={() => hideTooltip()}
-                        />
-                      );
-                    })}
-                  </Group>
-                  <AxisLeft
-                    left={margin.left}
-                    scale={yScale}
-                    tickFormat={(d) => d}
-                    tickLabelProps={() => ({
-                      fill: '#E5E7EB',
-                      fontSize: 13,
-                      fontWeight: 500,
-                      textAnchor: 'end',
-                      dy: '0.33em',
-                      dx: -10,
-                    })}
-                  />
-                  <AxisBottom
-                    top={innerHeight + margin.top}
-                    left={margin.left}
-                    scale={xScale}
-                    tickFormat={(d) => String(d)}
-                    tickLabelProps={() => ({
-                      fill: '#9CA3AF',
-                      fontSize: 12,
-                      textAnchor: 'middle',
-                    })}
-                  />
-                </svg>
-                {tooltipOpen && tooltipData && (
-                  <TooltipWithBounds
-                    top={tooltipTop}
-                    left={tooltipLeft}
-                    style={{
-                      ...defaultStyles,
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      padding: 0,
+                          if (coords) {
+                            showTooltip({
+                              tooltipLeft: coords.x,
+                              tooltipTop: coords.y,
+                              tooltipData: d,
+                            });
+                          }
+                        }}
+                        onMouseLeave={() => hideTooltip()}
+                      />
+                    );
+                  })}
+                </Group>
+                <AxisLeft
+                  left={margin.left}
+                  scale={yScale}
+                  tickFormat={(d) => d}
+                  tickLabelProps={() => ({
+                    fill: '#E5E7EB',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    textAnchor: 'end',
+                    dy: '0.33em',
+                    dx: -10,
+                  })}
+                />
+                <AxisBottom
+                  top={innerHeight + margin.top}
+                  left={margin.left}
+                  scale={xScale}
+                  tickFormat={(d) => String(d)}
+                  tickLabelProps={() => ({
+                    fill: '#9CA3AF',
+                    fontSize: 12,
+                    textAnchor: 'middle',
+                  })}
+                />
+              </svg>
+      {tooltipOpen && tooltipData && (
+        <TooltipWithBounds
+          top={tooltipTop}
+          left={tooltipLeft}
+          style={{
+            ...defaultStyles,
+            backgroundColor: 'transparent',
+            border: 'none',
+            padding: 0,
                       pointerEvents: 'none',
-                    }}
-                  >
-                    <CustomTooltip tooltipData={tooltipData} />
-                  </TooltipWithBounds>
-                )}
+          }}
+        >
+          <CustomTooltip tooltipData={tooltipData} />
+        </TooltipWithBounds>
+      )}
               </>
             );
           }}

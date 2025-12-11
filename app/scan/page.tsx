@@ -2,11 +2,24 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { PNode } from '@/lib/types/pnode';
-import MapLibreGlobe from '@/components/MapLibreGlobe';
+import dynamic from 'next/dynamic';
+
+const MapLibreGlobe = dynamic(() => import('@/components/MapLibreGlobe'), {
+  ssr: false,
+  loading: () => (
+    <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black">
+      <div className="text-center">
+        <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#F0A741]" />
+        <p className="text-xs text-muted-foreground">Loading map...</p>
+      </div>
+    </div>
+  ),
+});
 import Header from '@/components/Header';
 import { Search, MapPin, Navigation2, Loader2, X } from 'lucide-react';
 import { enrichNodesWithGeo } from '@/lib/utils/geo';
 import { useNodes } from '@/lib/context/NodesContext';
+import { measureNodeLatency } from '@/lib/utils/client-latency';
 
 /**
  * Calculate distance between two coordinates using Haversine formula
@@ -171,12 +184,10 @@ export default function ScanPage() {
         country: geoData.country,
       };
 
-      console.debug('[Scan] Scan location:', location);
 
       setScanLocation(location);
 
       // Calculate distances to all nodes with location data
-      let debugCount = 0;
       const nodesWithDistance: NodeWithDistance[] = nodesWithGeo
         .filter(node => node.locationData?.lat && node.locationData?.lon)
         .map(node => {
@@ -187,16 +198,6 @@ export default function ScanPage() {
             node.locationData!.lon
           );
           
-          // Log first few calculations for debugging
-          if (debugCount++ < 3) {
-            console.debug('[Scan] Distance calculation:', {
-              nodeId: node.id?.substring(0, 10),
-              scanLocation: `${location.lat.toFixed(4)}, ${location.lon.toFixed(4)}`,
-              nodeLocation: `${node.locationData!.lat.toFixed(4)}, ${node.locationData!.lon.toFixed(4)}`,
-              distanceKm: distanceKm.toFixed(2),
-            });
-          }
-          
           return {
             ...node,
             distanceKm,
@@ -205,11 +206,6 @@ export default function ScanPage() {
         })
         .sort((a, b) => (a.distanceKm || Infinity) - (b.distanceKm || Infinity));
       
-      console.debug('[Scan] Top 5 closest nodes:', nodesWithDistance.slice(0, 5).map(n => ({
-        id: n.id?.substring(0, 10),
-        distance: n.distanceKm?.toFixed(2) + 'km',
-        location: n.locationData?.city || `${n.locationData?.lat?.toFixed(4)}, ${n.locationData?.lon?.toFixed(4)}`,
-      })));
 
       // Top 20 by distance - show immediately
       const top20ByDistance = nodesWithDistance.slice(0, 20);
@@ -227,138 +223,21 @@ export default function ScanPage() {
       (async () => {
         try {
           // Client-side ping function - measures latency from browser to node directly
-          const pingFromClient = async (ip: string, port: string = '6000'): Promise<{ latency: number | null; status: 'online' | 'offline'; method: 'client' | 'server' }> => {
-            const url = `http://${ip}:${port}/rpc`;
-            const startTime = performance.now();
-            
-            try {
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout for client ping
-              
-              const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  jsonrpc: '2.0',
-                  method: 'get-version',
-                  id: 1,
-                }),
-                signal: controller.signal,
-                mode: 'cors', // Try CORS first
-                cache: 'no-cache',
-              });
-              
-              clearTimeout(timeoutId);
-              const endTime = performance.now();
-              const latency = Math.round(endTime - startTime);
-              
-              if (response.ok) {
-                console.debug(`[Scan] Client ping success for ${ip}:`, { latency, method: 'client' });
-                return { latency, status: 'online' as const, method: 'client' as const };
-              } else {
-                // HTTP error - try server-side fallback
-                return await pingFromServer(ip, port);
-              }
-            } catch (err: any) {
-              // Check if it's a CORS error (typically happens very quickly)
-              const endTime = performance.now();
-              const elapsed = endTime - startTime;
-              
-              // CORS errors typically happen during preflight (< 50ms)
-              // Network errors (timeouts, connection refused) take longer
-              const isLikelyCORS = elapsed < 50 && (
-                err.message?.includes('CORS') ||
-                err.message?.includes('cors') ||
-                err.message?.includes('network') ||
-                err.name === 'TypeError'
-              );
-              
-              if (err.name === 'AbortError') {
-                // Timeout - try server-side fallback
-                return await pingFromServer(ip, port);
-              }
-              
-              if (isLikelyCORS) {
-                // CORS blocked - fall back to server-side ping
-                console.debug(`[Scan] CORS blocked for ${ip}, using server-side ping`);
-                return await pingFromServer(ip, port);
-              }
-              
-              // Other network error - try server-side as fallback
-              console.debug(`[Scan] Client ping failed for ${ip}, trying server-side:`, err.message);
-              return await pingFromServer(ip, port);
-            }
-          };
-
-          // Server-side ping function (fallback when CORS blocks client ping)
-          const pingFromServer = async (ip: string, port: string = '6000'): Promise<{ latency: number | null; status: 'online' | 'offline'; method: 'client' | 'server' }> => {
-            try {
-              const clientStartTime = performance.now(); // Measure round-trip time
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 5000);
-              
-              const response = await fetch(`/api/ping?ip=${encodeURIComponent(ip)}&port=${encodeURIComponent(port)}`, {
-                signal: controller.signal,
-              });
-              
-              clearTimeout(timeoutId);
-              const clientEndTime = performance.now();
-              const clientRoundTrip = Math.round(clientEndTime - clientStartTime);
-              
-              if (response.ok) {
-                const data = await response.json();
-                // Server-to-node latency from API + client-to-server latency approximation
-                // This is an approximation, but better than nothing
-                const serverLatency = data.latency || 0;
-                // Approximate client-to-node as: server latency + (client round-trip / 2)
-                // This is rough but accounts for network path differences
-                const estimatedLatency = serverLatency > 0 
-                  ? Math.round(serverLatency + (clientRoundTrip / 2))
-                  : null;
-                
-                console.debug(`[Scan] Server ping result for ${ip}:`, {
-                  serverLatency: data.latency,
-                  clientRoundTrip,
-                  estimatedLatency,
-                  method: 'server',
-                  note: 'Estimated client-to-node latency (server-to-node + approximation)',
-                });
-                
-                return {
-                  latency: data.status === 'online' && estimatedLatency ? estimatedLatency : null,
-                  status: data.status === 'online' ? 'online' as const : 'offline' as const,
-                  method: 'server' as const,
-                };
-              } else {
-                return { latency: null, status: 'offline' as const, method: 'server' as const };
-              }
-            } catch (err: any) {
-              console.warn(`[Scan] Server ping also failed for ${ip}:`, err);
-              return { latency: null, status: 'offline' as const, method: 'server' as const };
-            }
-          };
-
           // Use Promise.allSettled with shorter timeout to avoid hanging
+          // Use the client-latency utility which includes caching
           const latencyPromises = top20ByDistance.map(async (node) => {
             if (!node.address) return { ...node, latency: null };
             
             try {
-              const ip = node.address.split(':')[0];
-              // Use node's rpcPort if available, otherwise try port from address, fallback to 6000
-              const port = node.rpcPort?.toString() || node.address.split(':')[1] || '6000';
+              // Use measureNodeLatency which handles caching and uses the API route
+              const latency = await measureNodeLatency(node, 2000);
               
-              // Try client-side first, fall back to server-side if CORS blocks it
-              const pingResult = await pingFromClient(ip, port);
-              
-              // Only use latency if node is online
               return {
                 ...node,
-                latency: pingResult.status === 'online' ? pingResult.latency : null,
+                latency: latency, // null if unreachable
               };
             } catch (err: any) {
-              console.warn(`[Scan] Failed to ping ${node.address}:`, err);
+              // Failed to measure latency
               return { ...node, latency: null };
             }
           });
@@ -368,8 +247,8 @@ export default function ScanPage() {
           const nodesWithLatency: NodeWithDistance[] = latencyResults
             .map((result): NodeWithDistance | null => result.status === 'fulfilled' ? result.value : null)
             .filter((node): node is NodeWithDistance => {
-              // Only include nodes with valid latency (online nodes only)
-              // Note: Latency is server-to-node, not client-to-node
+              // Only include nodes with valid latency (reachable nodes)
+              // Latency is measured client-side from your browser
               return node !== null && node !== undefined && node.latency !== null && node.latency !== undefined;
             });
           
@@ -383,7 +262,7 @@ export default function ScanPage() {
 
           setNodesByLatency(sortedByLatency.slice(0, 20));
         } catch (err) {
-          console.error('Latency testing error:', err);
+          // Latency testing error
           // Show nodes without latency data if testing fails
           setNodesByLatency(top20ByDistance.map(n => ({ ...n, latency: null })));
         } finally {
@@ -545,7 +424,7 @@ export default function ScanPage() {
                         ? 'bg-[#F0A741]/20 text-[#F0A741]'
                         : 'text-muted-foreground hover:text-foreground'
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
-                    title="Server-to-node latency (not client-to-node)"
+                    title="Client-side latency measured from your browser"
                   >
                     By Latency
                     {testingLatency && (
@@ -713,7 +592,7 @@ export default function ScanPage() {
                   // Only include nodes with valid location data
                   const hasLocation = n !== undefined && n.locationData?.lat !== undefined && n.locationData?.lon !== undefined;
                   if (!hasLocation) {
-                    console.warn('[ScanPage] Filtering out node without location:', n?.id);
+                    // Filtering out node without location
                   }
                   return hasLocation;
                 }) : undefined}

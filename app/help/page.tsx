@@ -30,17 +30,17 @@ export default function HelpPage() {
             </p>
           </div>
 
-          {/* What is pGlobe */}
-          <section className="mb-8">
+        {/* What is pGlobe */}
+        <section className="mb-8">
             <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-              <span className="text-[#3F8277]">●</span> What is pGlobe?
-            </h2>
+            <span className="text-[#3F8277]">●</span> What is pGlobe?
+          </h2>
             <div className="bg-muted/30 rounded-lg p-4 sm:p-6 space-y-4">
               <p className="text-foreground/80 leading-relaxed">
                 <strong className="text-[#F0A741]">pGlobe</strong> is a real-time analytics and monitoring platform for the <strong className="text-[#F0A741]">Xandeum pNode network</strong>. 
                 It provides comprehensive visibility into the decentralized storage layer that powers Solana dApps with scalable, 
-                affordable data storage.
-              </p>
+              affordable data storage.
+            </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <div className="bg-black/20 rounded-lg p-4 border border-[#F0A741]/10">
                   <h3 className="font-semibold text-[#F0A741] mb-2">What are pNodes?</h3>
@@ -209,7 +209,7 @@ export default function HelpPage() {
               <span className="text-blue-400">●</span> Using the Analytics Page
             </h2>
             <div className="bg-muted/30 rounded-lg p-4 sm:p-6 space-y-4">
-              <p className="text-foreground/80">
+            <p className="text-foreground/80">
                 The Analytics page provides detailed visualizations and insights into network performance and distribution.
               </p>
               
@@ -299,22 +299,22 @@ export default function HelpPage() {
                 <p className="text-sm text-foreground/70">
                   Use the export button to download the current filtered/sorted node data as CSV or JSON. 
                   Perfect for further analysis in spreadsheets or custom tools.
-                </p>
+            </p>
               </div>
-            </div>
-          </section>
+          </div>
+        </section>
 
           {/* Understanding Metrics */}
-          <section className="mb-8">
+        <section className="mb-8">
             <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-              <span className="text-[#F0A741]">●</span> Understanding the Metrics
-            </h2>
-            
-            <div className="space-y-4">
-              <div className="bg-muted/30 rounded-lg p-6">
+            <span className="text-[#F0A741]">●</span> Understanding the Metrics
+          </h2>
+          
+          <div className="space-y-4">
+            <div className="bg-muted/30 rounded-lg p-6">
                 <h3 className="font-semibold text-foreground mb-3">Node Status</h3>
-                <dl className="space-y-3">
-                  <div>
+              <dl className="space-y-3">
+                <div>
                     <dt className="text-sm font-medium text-[#3F8277]">Online</dt>
                     <dd className="text-sm text-foreground/70">
                       Node was seen in gossip within the last 5 minutes. These are actively participating nodes.
@@ -325,64 +325,65 @@ export default function HelpPage() {
                     <dd className="text-sm text-foreground/70">
                       Node was seen within the last hour but not in the last 5 minutes. May be catching up on network state.
                     </dd>
-                  </div>
-                  <div>
+                </div>
+                <div>
                     <dt className="text-sm font-medium text-red-400">Offline</dt>
-                    <dd className="text-sm text-foreground/70">
+                  <dd className="text-sm text-foreground/70">
                       Node hasn't been seen for over an hour. May be down, disconnected, or experiencing issues.
-                    </dd>
-                  </div>
-                </dl>
-              </div>
+                  </dd>
+                </div>
+              </dl>
+            </div>
 
-              <div className="bg-muted/30 rounded-lg p-6">
-                <h3 className="font-semibold text-foreground mb-3">Performance Metrics</h3>
-                <dl className="space-y-3">
-                  <div>
+            <div className="bg-muted/30 rounded-lg p-6">
+              <h3 className="font-semibold text-foreground mb-3">Performance Metrics</h3>
+              <dl className="space-y-3">
+                <div>
                     <dt className="text-sm font-medium text-[#F0A741]">Uptime (%)</dt>
-                    <dd className="text-sm text-foreground/70">
+                  <dd className="text-sm text-foreground/70">
                       Percentage of time the node has been continuously running, calculated over a 30-day window. 
                       Higher uptime (95%+) indicates a reliable, well-maintained node.
-                    </dd>
-                  </div>
-                  <div>
+                  </dd>
+                </div>
+                <div>
                     <dt className="text-sm font-medium text-[#F0A741]">CPU (%)</dt>
-                    <dd className="text-sm text-foreground/70">
+                  <dd className="text-sm text-foreground/70">
                       Processor utilization. Shows how much of the node's CPU capacity is being used. 
                       Lower values (under 50%) mean more headroom for growth and better performance.
-                    </dd>
-                  </div>
-                  <div>
+                  </dd>
+                </div>
+                <div>
                     <dt className="text-sm font-medium text-[#F0A741]">RAM (%)</dt>
-                    <dd className="text-sm text-foreground/70">
+                  <dd className="text-sm text-foreground/70">
                       Memory usage as a percentage of total available RAM. Typical pNode setups use 2-8GB 
                       depending on data volume. High RAM usage may indicate memory pressure.
-                    </dd>
-                  </div>
-                  <div>
+                  </dd>
+                </div>
+                <div>
                     <dt className="text-sm font-medium text-[#F0A741]">Latency (ms)</dt>
-                    <dd className="text-sm text-foreground/70">
-                      Response time when querying node statistics via pRPC. Measured server-side, 
-                      so it's not affected by your internet connection. Lower is better (under 100ms is excellent).
-                    </dd>
-                  </div>
-                </dl>
-              </div>
+                  <dd className="text-sm text-foreground/70">
+                      Response time measured directly from your browser to each node's pRPC endpoint. 
+                      This gives you accurate latency based on your location and internet connection. 
+                      Latency measurements are cached for 6 hours to improve performance. Lower is better (under 100ms is excellent).
+                  </dd>
+                </div>
+              </dl>
+            </div>
 
-              <div className="bg-muted/30 rounded-lg p-6">
-                <h3 className="font-semibold text-foreground mb-3">Storage Metrics</h3>
-                <dl className="space-y-3">
-                  <div>
-                    <dt className="text-sm font-medium text-[#3F8277]">Capacity</dt>
-                    <dd className="text-sm text-foreground/70">
-                      Estimated total storage capacity across all reporting nodes. Calculated based on 
+            <div className="bg-muted/30 rounded-lg p-6">
+              <h3 className="font-semibold text-foreground mb-3">Storage Metrics</h3>
+              <dl className="space-y-3">
+                <div>
+                  <dt className="text-sm font-medium text-[#3F8277]">Capacity</dt>
+                  <dd className="text-sm text-foreground/70">
+                    Estimated total storage capacity across all reporting nodes. Calculated based on 
                       actual data stored (nodes typically provision 1.5x current usage for headroom).
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-[#3F8277]">Used</dt>
-                    <dd className="text-sm text-foreground/70">
-                      Total data currently stored by the network. This is real dApp data being served 
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-[#3F8277]">Used</dt>
+                  <dd className="text-sm text-foreground/70">
+                    Total data currently stored by the network. This is real dApp data being served 
                       to applications using Xandeum storage. Shows actual network utilization.
                     </dd>
                   </div>
@@ -408,27 +409,27 @@ export default function HelpPage() {
                     <dt className="text-sm font-medium text-[#3F8277]">Active Streams</dt>
                     <dd className="text-sm text-foreground/70">
                       Number of active data streams. Shows how many concurrent data transfers the node is handling.
-                    </dd>
-                  </div>
-                </dl>
-              </div>
+                  </dd>
+                </div>
+              </dl>
             </div>
-          </section>
+          </div>
+        </section>
 
-          {/* Network Health Score */}
-          <section className="mb-8">
+        {/* Network Health Score */}
+        <section className="mb-8">
             <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-              <span className="text-red-400">●</span> Network Health Score
-            </h2>
-            <div className="bg-muted/30 rounded-lg p-6 space-y-4">
-              <p className="text-foreground/80">
+            <span className="text-red-400">●</span> Network Health Score
+          </h2>
+          <div className="bg-muted/30 rounded-lg p-6 space-y-4">
+            <p className="text-foreground/80">
                 The health score (0-100) is a weighted composite metric that provides an overall assessment of network health:
-              </p>
-              <ul className="list-disc list-inside text-foreground/70 space-y-2 ml-4">
+            </p>
+            <ul className="list-disc list-inside text-foreground/70 space-y-2 ml-4">
                 <li><strong>40%</strong> - Availability (online nodes / total nodes)</li>
                 <li><strong>35%</strong> - Version Health (% of nodes on the latest version)</li>
                 <li><strong>25%</strong> - Geographic Distribution (diversity of node locations)</li>
-              </ul>
+            </ul>
               <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-border">
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-[#3F8277]"></span>
@@ -493,81 +494,81 @@ export default function HelpPage() {
                   <strong className="text-[#F0A741]">Note:</strong> Historical data is only available for nodes that have been 
                   tracked over time. The data may take a few seconds to load.
                 </p>
-              </div>
             </div>
-          </section>
+          </div>
+        </section>
 
-          {/* Data Sources */}
-          <section className="mb-8">
+        {/* Data Sources */}
+        <section className="mb-8">
             <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
               <span className="text-blue-400">●</span> How Data is Collected
-            </h2>
+          </h2>
             <div className="bg-muted/30 rounded-lg p-4 sm:p-6 space-y-4">
-              <p className="text-foreground/80">
+            <p className="text-foreground/80">
                 pGlobe uses a <strong>pure gossip approach</strong> to discover and monitor nodes:
-              </p>
-              <ol className="list-decimal list-inside text-foreground/70 space-y-2 ml-4">
+            </p>
+            <ol className="list-decimal list-inside text-foreground/70 space-y-2 ml-4">
                 <li>Query known pRPC endpoints with <code className="bg-muted px-1.5 py-0.5 rounded text-xs">get-pods</code> to discover nodes in the gossip network</li>
                 <li>Deduplicate nodes by public key (each node has a unique identifier)</li>
                 <li>Enrich with detailed stats via <code className="bg-muted px-1.5 py-0.5 rounded text-xs">get-stats</code> when pRPC is publicly accessible</li>
-                <li>Add geographic location via IP geolocation API</li>
+              <li>Add geographic location via IP geolocation API</li>
                 <li>Store historical snapshots for trend analysis</li>
-              </ol>
+            </ol>
               <div className="bg-black/20 rounded-lg p-4 mt-4 border border-[#F0A741]/10">
                 <p className="text-sm text-foreground/70">
                   <strong className="text-[#F0A741]">Security Note:</strong> Most nodes keep pRPC private (localhost-only) for security, 
                   which is the recommended configuration. Only nodes with public pRPC (configured with <code className="bg-muted px-1 rounded">--rpc-ip 0.0.0.0</code>) 
                   expose detailed statistics. This is why some metrics show "N/A" or "Limited data".
-                </p>
-              </div>
-            </div>
-          </section>
+            </p>
+          </div>
+          </div>
+        </section>
 
-          {/* FAQ */}
-          <section className="mb-8">
+        {/* FAQ */}
+        <section className="mb-8">
             <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
               <span className="text-cyan-400">●</span> Frequently Asked Questions
-            </h2>
-            <div className="space-y-4">
-              <div className="bg-muted/30 rounded-lg p-6">
-                <h3 className="font-semibold text-foreground mb-2">Why do some nodes show "N/A" for stats?</h3>
-                <p className="text-sm text-foreground/70">
+          </h2>
+          <div className="space-y-4">
+            <div className="bg-muted/30 rounded-lg p-6">
+              <h3 className="font-semibold text-foreground mb-2">Why do some nodes show "N/A" for stats?</h3>
+              <p className="text-sm text-foreground/70">
                   pNode operators can choose to keep their pRPC endpoint private (localhost-only) for security. 
                   This is the recommended security configuration. Only nodes with public pRPC expose detailed statistics. 
                   We still track these nodes for network discovery and basic status, but detailed metrics aren't available.
-                </p>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-6">
-                <h3 className="font-semibold text-foreground mb-2">Why are multiple nodes at the same location?</h3>
-                <p className="text-sm text-foreground/70">
+              </p>
+            </div>
+            <div className="bg-muted/30 rounded-lg p-6">
+              <h3 className="font-semibold text-foreground mb-2">Why are multiple nodes at the same location?</h3>
+              <p className="text-sm text-foreground/70">
                   Many nodes run in the same datacenter or cloud provider (e.g., Hetzner, Contabo, AWS). 
                   While they appear at the same geographic location, each is a separate, unique node with its own 
                   public key and contributes independently to the network. Geographic diversity is still important 
                   for network resilience.
-                </p>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-6">
-                <h3 className="font-semibold text-foreground mb-2">What's the difference between DevNet and MainNet?</h3>
-                <p className="text-sm text-foreground/70">
+              </p>
+            </div>
+            <div className="bg-muted/30 rounded-lg p-6">
+              <h3 className="font-semibold text-foreground mb-2">What's the difference between DevNet and MainNet?</h3>
+              <p className="text-sm text-foreground/70">
                   <strong>DevNet</strong> is the active test network with real nodes running test software. 
                   <strong>MainNet</strong> is the production network that will launch when Xandeum goes fully live. 
                   Currently, only DevNet is active. You can switch between networks using the network selector in the header.
-                </p>
-              </div>
+              </p>
+            </div>
               <div className="bg-muted/30 rounded-lg p-6">
                 <h3 className="font-semibold text-foreground mb-2">How often is the data updated?</h3>
                 <p className="text-sm text-foreground/70">
                   Data automatically refreshes every 30 seconds. You can also manually refresh using the refresh button 
                   in the header. Historical data is stored hourly, so trend charts show data points at hourly intervals.
-                </p>
-              </div>
+                  </p>
+                </div>
               <div className="bg-muted/30 rounded-lg p-6">
                 <h3 className="font-semibold text-foreground mb-2">Can I use this data for staking decisions?</h3>
                 <p className="text-sm text-foreground/70">
                   Yes! The platform provides comprehensive metrics to help you make informed decisions. Look for nodes with 
                   high uptime (95%+), latest version, good performance metrics, and active network participation. 
                   The rankings and filters are particularly useful for identifying reliable nodes.
-                </p>
+                  </p>
               </div>
               <div className="bg-muted/30 rounded-lg p-6">
                 <h3 className="font-semibold text-foreground mb-2">Is there an API I can use?</h3>
@@ -576,64 +577,64 @@ export default function HelpPage() {
                   for endpoints, authentication, and usage examples. The API provides access to all the same data 
                   you see in the dashboard.
                 </p>
-              </div>
             </div>
-          </section>
+          </div>
+        </section>
 
-          {/* Additional Resources */}
+        {/* Additional Resources */}
           <section className="mb-8">
             <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-              <span className="text-[#F0A741]">●</span> Additional Resources
-            </h2>
-            <div className="bg-muted/30 rounded-lg p-6">
-              <ul className="space-y-3">
-                <li>
-                  <a 
-                    href="https://xandeum.com" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-[#F0A741] hover:text-[#F0A741]/80 hover:underline flex items-center gap-2 transition-colors"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                    </svg>
-                    <span className="font-medium">Xandeum Official Website</span>
-                    <svg className="w-4 h-4 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                  </a>
-                </li>
-                <li>
-                  <a 
-                    href="https://docs.xandeum.com" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-[#F0A741] hover:text-[#F0A741]/80 hover:underline flex items-center gap-2 transition-colors"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                    <span className="font-medium">Xandeum Documentation</span>
-                    <svg className="w-4 h-4 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </section>
+            <span className="text-[#F0A741]">●</span> Additional Resources
+          </h2>
+          <div className="bg-muted/30 rounded-lg p-6">
+            <ul className="space-y-3">
+              <li>
+                <a 
+                  href="https://xandeum.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-[#F0A741] hover:text-[#F0A741]/80 hover:underline flex items-center gap-2 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                  </svg>
+                  <span className="font-medium">Xandeum Official Website</span>
+                  <svg className="w-4 h-4 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              </li>
+              <li>
+                <a 
+                  href="https://docs.xandeum.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-[#F0A741] hover:text-[#F0A741]/80 hover:underline flex items-center gap-2 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                  <span className="font-medium">Xandeum Documentation</span>
+                  <svg className="w-4 h-4 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </section>
 
-          <div className="mt-8 pt-6 border-t border-border">
-            <Link 
-              href="/"
+        <div className="mt-8 pt-6 border-t border-border">
+          <Link 
+            href="/"
               className="inline-flex items-center gap-2 text-[#F0A741] hover:text-[#F0A741]/80 hover:underline transition-colors"
-            >
+          >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
               Back to Dashboard
-            </Link>
-          </div>
+          </Link>
+        </div>
         </div>
       </main>
     </div>
