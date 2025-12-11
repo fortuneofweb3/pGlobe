@@ -1,7 +1,7 @@
 'use client';
 
 import { PNode } from '@/lib/types/pnode';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { scaleBand, scaleLinear } from '@visx/scale';
 import { Group } from '@visx/group';
 import { Bar } from '@visx/shape';
@@ -11,6 +11,7 @@ import { useTooltip, TooltipWithBounds, defaultStyles } from '@visx/tooltip';
 import { localPoint } from '@visx/event';
 import ParentSize from '@visx/responsive/lib/components/ParentSize';
 import { Wifi } from 'lucide-react';
+import { measureClientLatency } from '@/lib/utils/latency';
 
 interface LatencyDistributionProps {
   nodes: PNode[];
@@ -26,14 +27,57 @@ type TooltipData = {
 
 export default function LatencyDistribution({ nodes }: LatencyDistributionProps) {
   const { tooltipData, tooltipLeft, tooltipTop, tooltipOpen, showTooltip, hideTooltip } = useTooltip<TooltipData>();
+  const [clientLatencies, setClientLatencies] = useState<Record<string, number | null>>({});
+  const [measuringLatencies, setMeasuringLatencies] = useState<Set<string>>(new Set());
+
+  // Measure client-side latency for all nodes
+  useEffect(() => {
+    const measureLatencies = async () => {
+      const nodesToMeasure = nodes
+        .filter(n => 
+          n.seenInGossip !== false &&
+          n.address &&
+          !clientLatencies[n.id] &&
+          !measuringLatencies.has(n.id)
+        )
+        .slice(0, 20); // Limit to 20 concurrent measurements
+
+      await Promise.allSettled(
+        nodesToMeasure.map(async (node) => {
+          setMeasuringLatencies(prev => new Set(prev).add(node.id));
+          try {
+            const latency = await measureClientLatency(node);
+            setClientLatencies(prev => ({
+              ...prev,
+              [node.id]: latency,
+            }));
+          } catch (error) {
+            setClientLatencies(prev => ({
+              ...prev,
+              [node.id]: null,
+            }));
+          } finally {
+            setMeasuringLatencies(prev => {
+              const next = new Set(prev);
+              next.delete(node.id);
+              return next;
+            });
+          }
+        })
+      );
+    };
+
+    measureLatencies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodes.length]);
 
   const data = useMemo(() => {
-    const nodesWithLatency = nodes.filter(n => 
-      n.latency !== undefined && 
-      n.latency !== null && 
-      n.latency > 0 &&
-      n.seenInGossip !== false
-    );
+    // Only use client-side latency measurements
+    const nodesWithLatency = nodes.filter(n => {
+      if (n.seenInGossip === false) return false;
+      const clientLatency = clientLatencies[n.id];
+      return clientLatency !== null && clientLatency !== undefined && clientLatency > 0;
+    });
     
     if (nodesWithLatency.length === 0) {
       return [];
@@ -48,7 +92,7 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
     };
 
     nodesWithLatency.forEach(node => {
-      const latency = node.latency || 0;
+      const latency = clientLatencies[node.id] || 0;
       if (latency < 50) buckets['<50ms']++;
       else if (latency < 100) buckets['50-100ms']++;
       else if (latency < 200) buckets['100-200ms']++;
@@ -61,19 +105,18 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
       count,
       percentage: (count / nodesWithLatency.length) * 100,
     }));
-  }, [nodes]);
+  }, [nodes, clientLatencies]);
 
   const avgLatency = useMemo(() => {
-    const nodesWithLatency = nodes.filter(n => 
-      n.latency !== undefined && 
-      n.latency !== null && 
-      n.latency > 0 &&
-      n.seenInGossip !== false
-    );
+    const nodesWithLatency = nodes.filter(n => {
+      if (n.seenInGossip === false) return false;
+      const clientLatency = clientLatencies[n.id];
+      return clientLatency !== null && clientLatency !== undefined && clientLatency > 0;
+    });
     if (nodesWithLatency.length === 0) return 0;
-    const sum = nodesWithLatency.reduce((acc, n) => acc + (n.latency || 0), 0);
+    const sum = nodesWithLatency.reduce((acc, n) => acc + (clientLatencies[n.id] || 0), 0);
     return Math.round(sum / nodesWithLatency.length);
-  }, [nodes]);
+  }, [nodes, clientLatencies]);
 
   if (data.length === 0) {
     return (
@@ -161,10 +204,11 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
                       })}
                     </Group>
                     <AxisBottom
-                      top={innerHeight + margin.top}
+                      top={margin.top + innerHeight}
                       left={margin.left}
                       scale={xScale}
-                      tickFormat={(d) => d}
+                      numTicks={data.length}
+                      tickFormat={(d) => d.replace('ms', '')}
                       tickLabelProps={() => ({
                         fill: '#9CA3AF',
                         fontSize: 12,
@@ -173,7 +217,9 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
                     />
                     <AxisLeft
                       left={margin.left}
+                      top={margin.top}
                       scale={yScale}
+                      numTicks={5}
                       tickFormat={(d) => String(d)}
                       tickLabelProps={() => ({
                         fill: '#9CA3AF',

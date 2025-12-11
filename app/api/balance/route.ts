@@ -26,8 +26,10 @@ export async function GET(request: Request) {
       );
     }
     
+    // Return null if balance is not set (don't default to 0)
+    // This prevents overwriting existing balances with 0
     return NextResponse.json({
-      balance: node.balance || 0,
+      balance: node.balance !== undefined && node.balance !== null ? node.balance : null,
       isRegistered: node.isRegistered || false,
     });
   } catch (error: any) {

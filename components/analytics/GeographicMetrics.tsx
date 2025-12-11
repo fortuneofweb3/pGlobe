@@ -89,6 +89,9 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
       entry.count++;
       entry.nodes.push(node);
       
+      // Note: GeographicMetrics latency uses server latency for comparison
+      // This is acceptable since it's showing geographic distribution patterns
+      // Individual node displays use client-side latency
       if (node.latency !== undefined && node.latency !== null && node.latency > 0) {
         entry.latencies.push(node.latency);
       }
@@ -323,7 +326,9 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
                     </Group>
                     <AxisLeft
                       left={margin.left}
+                      top={margin.top}
                       scale={yScale}
+                      numTicks={Math.min(data.length, 12)}
                       tickFormat={(d) => d}
                       tickLabelProps={() => ({
                         fill: '#E5E7EB',
@@ -334,9 +339,10 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
                       })}
                     />
                     <AxisBottom
-                      top={innerHeight + margin.top}
+                      top={margin.top + innerHeight}
                       left={margin.left}
                       scale={xScale}
+                      numTicks={5}
                       tickFormat={(d) => String(d)}
                       tickLabelProps={() => ({
                         fill: '#9CA3AF',

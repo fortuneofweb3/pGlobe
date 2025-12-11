@@ -1,9 +1,18 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { PNode } from '@/lib/types/pnode';
-import { pingNode, getLatencyColor, formatLatency, PingResult } from '@/lib/utils/ping';
+// Server-side ping removed - all latency is now client-side
+import {
+  calculateLatencyRanking,
+  getLatencyContext,
+  measureClientLatency,
+  formatLatencyWithContext,
+  getLatencyColor,
+  getLatencyTooltip,
+  type LatencyRanking,
+} from '@/lib/utils/latency';
 import { fetchNodeBalance } from '@/lib/utils/balance';
 import BalanceDisplay from './BalanceDisplay';
 import { formatBytes, formatStorageBytes } from '@/lib/utils/storage';
@@ -32,87 +41,228 @@ function abbreviateVersion(version: string): string {
   return version;
 }
 
+/**
+ * Version tooltip component with proper positioning and z-index
+ */
+function VersionTooltip({ version, abbreviated }: { version: string; abbreviated: string }) {
+  const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number; placement: 'top' | 'bottom' } | null>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLSpanElement>(null);
+
+  const handleMouseEnter = () => {
+    if (!triggerRef.current) return;
+    
+    const triggerRect = triggerRef.current.getBoundingClientRect();
+    const padding = 8;
+    
+    // Calculate center position
+    let left = triggerRect.left + (triggerRect.width / 2);
+    let top = triggerRect.top;
+    let placement: 'top' | 'bottom' = 'top';
+    
+    // Estimate tooltip size (will be measured after render)
+    const estimatedWidth = version.length * 7 + 16; // Rough estimate
+    const estimatedHeight = 28;
+    
+    // Adjust horizontal position to prevent overflow
+    if (left - estimatedWidth / 2 < padding) {
+      left = estimatedWidth / 2 + padding;
+    } else if (left + estimatedWidth / 2 > window.innerWidth - padding) {
+      left = window.innerWidth - estimatedWidth / 2 - padding;
+    }
+    
+    // Check if tooltip would go above viewport
+    if (top - estimatedHeight - padding < 0) {
+      // Show below instead
+      top = triggerRect.bottom + padding;
+      placement = 'bottom';
+    } else {
+      top = top - estimatedHeight - padding;
+    }
+    
+    setTooltipPosition({ top, left, placement });
+    
+    // After tooltip renders, adjust position based on actual size
+    setTimeout(() => {
+      if (!tooltipRef.current || !triggerRef.current) return;
+      
+      const tooltipRect = tooltipRef.current.getBoundingClientRect();
+      const newTriggerRect = triggerRef.current.getBoundingClientRect();
+      
+      let adjustedLeft = newTriggerRect.left + (newTriggerRect.width / 2);
+      let adjustedTop = tooltipPosition?.top || top;
+      let adjustedPlacement = placement;
+      
+      // Recalculate with actual tooltip size
+      if (adjustedLeft - tooltipRect.width / 2 < padding) {
+        adjustedLeft = tooltipRect.width / 2 + padding;
+      } else if (adjustedLeft + tooltipRect.width / 2 > window.innerWidth - padding) {
+        adjustedLeft = window.innerWidth - tooltipRect.width / 2 - padding;
+      }
+      
+      if (adjustedPlacement === 'top' && adjustedTop - tooltipRect.height < 0) {
+        adjustedTop = newTriggerRect.bottom + padding;
+        adjustedPlacement = 'bottom';
+      } else if (adjustedPlacement === 'top') {
+        adjustedTop = newTriggerRect.top - tooltipRect.height - padding;
+      }
+      
+      if (adjustedLeft !== left || adjustedTop !== top || adjustedPlacement !== placement) {
+        setTooltipPosition({ top: adjustedTop, left: adjustedLeft, placement: adjustedPlacement });
+      }
+    }, 0);
+  };
+
+  const handleMouseLeave = () => {
+    setTooltipPosition(null);
+  };
+
+  return (
+    <span 
+      ref={triggerRef}
+      className="text-xs text-foreground/70 cursor-help group relative inline-block"
+      title={version}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {abbreviated}
+      {tooltipPosition && (
+        <div
+          ref={tooltipRef}
+          className="fixed z-[9999] px-2 py-1 bg-gray-900 text-white text-xs rounded shadow-xl pointer-events-none border border-gray-700 whitespace-nowrap"
+          style={{
+            top: `${tooltipPosition.top}px`,
+            left: `${tooltipPosition.left}px`,
+            transform: 'translateX(-50%)',
+          }}
+        >
+          {version}
+          <div 
+            className={`absolute left-1/2 transform -translate-x-1/2 ${
+              tooltipPosition.placement === 'top' 
+                ? 'top-full -mt-1' 
+                : 'bottom-full -mb-1'
+            }`}
+          >
+            <div 
+              className={`border-4 border-transparent ${
+                tooltipPosition.placement === 'top'
+                  ? 'border-t-gray-900'
+                  : 'border-b-gray-900'
+              }`}
+            />
+          </div>
+        </div>
+      )}
+    </span>
+  );
+}
+
 export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
   const router = useRouter();
-  const [pingResults, setPingResults] = useState<Record<string, PingResult>>({});
-  const [pingingNodes, setPingingNodes] = useState<Set<string>>(new Set());
   const [balances, setBalances] = useState<Record<string, number | null>>({});
   const [fetchingBalances, setFetchingBalances] = useState<Set<string>>(new Set());
+  const [clientLatencies, setClientLatencies] = useState<Record<string, number | null>>({});
+  const [measuringClientLatency, setMeasuringClientLatency] = useState<Set<string>>(new Set());
 
-  // Ping nodes when they're loaded (only once per node)
+  // Calculate latency rankings for all nodes
+  const latencyRankings = useMemo(() => {
+    const rankings: Record<string, LatencyRanking> = {};
+    nodes.forEach(node => {
+      if (node.latency !== undefined && node.latency !== null) {
+        const ranking = calculateLatencyRanking(node.latency, nodes);
+        if (ranking) {
+          rankings[node.id] = ranking;
+        }
+      }
+    });
+    return rankings;
+  }, [nodes]);
+
+  // Note: Server-side ping removed - all latency is now measured client-side from user's browser
+  // Ranking still uses server latency data (from node.latency) for comparison purposes
+
+  // Measure client-side latency for all nodes (primary latency measurement)
   useEffect(() => {
-    const pingNodes = async () => {
-      for (const node of nodes) {
-        // Skip if node is not seen in gossip (offline)
-        if (node.seenInGossip === false) {
-          continue;
-        }
-        
-        // Skip if we already have a result or are currently pinging
-        if (pingResults[node.id] || pingingNodes.has(node.id)) continue;
-        
-        // Skip if node already has latency data
-        if (node.latency !== undefined) {
-          setPingResults(prev => ({
-            ...prev,
-            [node.id]: {
-              latency: node.latency ?? null,
-              status: node.status === 'online' ? 'online' : 'offline',
-            },
-          }));
-          continue;
-        }
+    const measureClientLatencies = async () => {
+      // Measure latency for all nodes (batch process to avoid overwhelming browser)
+      const nodesToMeasure = nodes
+        .filter(n => 
+          n.seenInGossip !== false &&
+          n.address &&
+          !clientLatencies[n.id] &&
+          !measuringClientLatency.has(n.id)
+        );
 
-        setPingingNodes(prev => new Set(prev).add(node.id));
+      // Process in batches of 10 to avoid overwhelming the browser
+      const batchSize = 10;
+      for (let i = 0; i < nodesToMeasure.length; i += batchSize) {
+        const batch = nodesToMeasure.slice(i, i + batchSize);
         
-        try {
-          const result = await pingNode(node);
-          setPingResults(prev => ({
-            ...prev,
-            [node.id]: result,
-          }));
-        } catch (error) {
-          setPingResults(prev => ({
-            ...prev,
-            [node.id]: {
-              latency: null,
-              status: 'offline',
-            },
-          }));
-        } finally {
-          setPingingNodes(prev => {
-            const next = new Set(prev);
-            next.delete(node.id);
-            return next;
-          });
+        await Promise.allSettled(
+          batch.map(async (node) => {
+            setMeasuringClientLatency(prev => new Set(prev).add(node.id));
+            
+            try {
+              const latency = await measureClientLatency(node);
+              setClientLatencies(prev => ({
+                ...prev,
+                [node.id]: latency,
+              }));
+            } catch (error) {
+              // Expected to fail for most nodes (CORS, localhost-only, etc.)
+              // Set to null to indicate we tried but couldn't measure
+              setClientLatencies(prev => ({
+                ...prev,
+                [node.id]: null,
+              }));
+            } finally {
+              setMeasuringClientLatency(prev => {
+                const next = new Set(prev);
+                next.delete(node.id);
+                return next;
+              });
+            }
+          })
+        );
+        
+        // Small delay between batches to avoid overwhelming the browser
+        if (i + batchSize < nodesToMeasure.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
     };
 
-    pingNodes();
+    measureClientLatencies();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes.length]);
 
-  // Fetch balances for nodes
+  // Fetch balances for nodes (only if not already set)
   useEffect(() => {
     const fetchBalances = async () => {
       for (const node of nodes) {
+        // Skip if already fetched or currently fetching
         if (balances[node.id] !== undefined || fetchingBalances.has(node.id)) continue;
+        // Skip if node already has balance data (don't refetch unnecessarily)
+        if (node.balance !== undefined && node.balance !== null) continue;
+        // Skip if no pubkey
         if (!node.pubkey && !node.publicKey) continue;
 
         setFetchingBalances(prev => new Set(prev).add(node.id));
         
         try {
           const balance = await fetchNodeBalance(node);
-          setBalances(prev => ({
-            ...prev,
-            [node.id]: balance,
-          }));
+          // Only update if we got a valid balance (not null)
+          // Don't overwrite existing balances with null or 0
+          if (balance !== null && balance !== undefined) {
+            setBalances(prev => ({
+              ...prev,
+              [node.id]: balance,
+            }));
+          }
         } catch (error) {
-          setBalances(prev => ({
-            ...prev,
-            [node.id]: null,
-          }));
+          // Don't set balance to null on error - preserve existing value
+          console.warn(`Failed to fetch balance for node ${node.id}:`, error);
         } finally {
           setFetchingBalances(prev => {
             const next = new Set(prev);
@@ -228,12 +378,13 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
     const withStorage = nodes.filter(n => n.storageUsed && n.storageUsed > 0).length;
     const withCPU = nodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null).length;
     const withLatency = nodes.filter(n => {
-      const pingResult = pingResults[n.id];
-      return pingResult?.latency !== null && pingResult?.latency !== undefined || n.latency !== undefined;
+      // Check for client-side latency measurement
+      const clientLatency = clientLatencies[n.id];
+      return clientLatency !== null && clientLatency !== undefined;
     }).length;
     
     return { withUptime, withStorage, withCPU, withLatency, total: nodes.length };
-  }, [nodes, pingResults]);
+  }, [nodes, clientLatencies]);
 
   return (
     <div className="flex flex-col h-full bg-card/30 border border-border/60 rounded-lg overflow-hidden">
@@ -246,23 +397,24 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
         </div>
       )}
       
-      <div className="flex flex-col flex-1 overflow-hidden min-h-0">
-        {/* Fixed Header */}
-        <div className="overflow-x-auto border-b border-border/60 flex-shrink-0 bg-muted/40">
-          <table className="min-w-full" style={{ minWidth: '800px' }}>
+      <div className="flex flex-col flex-1 overflow-hidden min-h-0 -mt-px">
+        {/* Scrollable Container with Sticky Header */}
+        <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0" style={{ margin: 0, padding: 0, marginTop: '-1px' }}>
+          <table className="min-w-full border-collapse m-0 border-spacing-0" style={{ minWidth: '800px', borderCollapse: 'collapse', margin: 0, padding: 0 }}>
             <colgroup>
-              <col className="w-[12%]" />
-              <col className="w-[15%]" />
-              <col className="w-[8%]" />
-              <col className="w-[10%]" />
-              <col className="w-[12%]" />
-              <col className="w-[12%]" />
-              <col className="w-[8%]" />
-              <col className="w-[8%]" />
-              <col className="w-[10%]" />
+              <col className="w-[11%]" />
+              <col className="w-[14%]" />
+              <col className="w-[7%]" />
+              <col className="w-[9%]" />
+              <col className="w-[11%]" />
+              <col className="w-[11%]" />
+              <col className="w-[9%]" />
+              <col className="w-[7%]" />
+              <col className="w-[7%]" />
+              <col className="w-[9%]" />
               <col className="w-[5%]" />
             </colgroup>
-            <thead>
+            <thead className="sticky top-0 z-10 bg-muted border-b border-border/60" style={{ margin: 0, padding: 0 }}>
               <tr>
                 <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   IP Address
@@ -299,25 +451,6 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
                 </th>
               </tr>
             </thead>
-          </table>
-        </div>
-        
-        {/* Scrollable Body */}
-        <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0">
-          <table className="min-w-full" style={{ minWidth: '800px' }}>
-            <colgroup>
-              <col className="w-[11%]" />
-              <col className="w-[14%]" />
-              <col className="w-[7%]" />
-              <col className="w-[9%]" />
-              <col className="w-[11%]" />
-              <col className="w-[11%]" />
-              <col className="w-[9%]" />
-              <col className="w-[7%]" />
-              <col className="w-[7%]" />
-              <col className="w-[9%]" />
-              <col className="w-[5%]" />
-            </colgroup>
             <tbody className="divide-y divide-border/40">
               {nodes.length === 0 ? (
                 <tr>
@@ -424,10 +557,15 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
                             return renderEmptyCell();
                           }
                           
-                          const pingResult = pingResults[node.id];
-                          const isPinging = pingingNodes.has(node.id);
+                          const isMeasuringClient = measuringClientLatency.has(node.id);
+                          const clientLatency = clientLatencies[node.id];
                           
-                          if (isPinging) {
+                          // Only show client-side latency (measured from user's browser)
+                          // Ranking uses server latency (node.latency) for comparison, but not displayed
+                          const ranking = node.latency !== null && node.latency !== undefined ? latencyRankings[node.id] : null;
+                          const context = getLatencyContext(node);
+                          
+                          if (isMeasuringClient) {
                             return (
                               <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                                 <span className="inline-block w-2.5 h-2.5 border-2 border-foreground/20 border-t-foreground/60 rounded-full animate-spin" />
@@ -435,26 +573,32 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
                             );
                           }
                           
-                          if (pingResult) {
-                            const latency = pingResult.latency;
-                            const color = getLatencyColor(latency);
-                            return (
-                              <span className={`text-xs sm:text-sm font-mono font-medium ${color}`}>
-                                {formatLatency(latency)}
-                              </span>
-                            );
+                          // Only show if we have client-side latency measurement
+                          if (clientLatency === null || clientLatency === undefined) {
+                            return renderEmptyCell('Latency not available (node pRPC is private)');
                           }
                           
-                          if (node.latency !== undefined) {
-                            const color = getLatencyColor(node.latency);
-                            return (
-                              <span className={`text-xs sm:text-sm font-mono font-medium ${color}`}>
-                                {formatLatency(node.latency)}
-                              </span>
-                            );
-                          }
+                          const color = getLatencyColor(clientLatency, ranking);
+                          const tooltip = getLatencyTooltip(clientLatency, ranking, null, context);
                           
-                          return renderEmptyCell();
+                          return (
+                            <div className="flex flex-col items-end gap-0.5 group relative">
+                              <span 
+                                className={`text-xs sm:text-sm font-mono font-medium ${color} cursor-help`}
+                                title={tooltip}
+                              >
+                                {ranking && (
+                                  <span className="text-[10px] opacity-70 mr-1">
+                                    {ranking.label}
+                                  </span>
+                                )}
+                                {clientLatency}ms
+                              </span>
+                              <span className="text-[10px] text-muted-foreground/60">
+                                Your latency
+                              </span>
+                            </div>
+                          );
                         })()}
                       </td>
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
@@ -491,19 +635,7 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
                       </td>
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
                         {node.version ? (
-                          <span 
-                            className="text-xs text-foreground/70 cursor-help group relative"
-                            title={node.version}
-                          >
-                            {abbreviateVersion(node.version)}
-                            {/* Tooltip on hover */}
-                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-50 px-2 py-1 bg-gray-900 text-white text-xs rounded shadow-lg pointer-events-none border border-gray-700 whitespace-nowrap">
-                              {node.version}
-                              <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-                                <div className="border-4 border-transparent border-t-gray-900"></div>
-                              </div>
-                            </div>
-                          </span>
+                          <VersionTooltip version={node.version} abbreviated={abbreviateVersion(node.version)} />
                         ) : (
                           renderEmptyCell()
                         )}

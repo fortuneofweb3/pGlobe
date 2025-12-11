@@ -8,6 +8,19 @@ import { detectDataCenter, getRegionName } from '@/lib/utils/dataCenter';
 import { formatBytes, formatStorageBytes } from '@/lib/utils/storage';
 import { useNodes } from '@/lib/context/NodesContext';
 import BalanceDisplay from './BalanceDisplay';
+import {
+  calculateLatencyRanking,
+  getLatencyContext,
+  measureClientLatency,
+  getLatencyTooltip,
+  type LatencyRanking,
+} from '@/lib/utils/latency';
+import {
+  LATENCY_REGIONS,
+  adjustLatencyForRegion,
+  getRegionById,
+  type LatencyRegion,
+} from '@/lib/utils/latency-regions';
 import { scaleTime, scaleLinear } from '@visx/scale';
 import { LinePath } from '@visx/shape';
 import { Group } from '@visx/group';
@@ -426,6 +439,40 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
   const [refreshingStats, setRefreshingStats] = useState(false);
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [clientLatency, setClientLatency] = useState<number | null>(null);
+  const [measuringClientLatency, setMeasuringClientLatency] = useState(false);
+  const [selectedLatencyRegion, setSelectedLatencyRegion] = useState<string>('us-east'); // Default server region
+
+  // Calculate latency ranking for this node
+  const latencyRanking = useMemo(() => {
+    if (!node || node.latency === undefined || node.latency === null) return null;
+    return calculateLatencyRanking(node.latency, allNodes);
+  }, [node, allNodes]);
+
+  // Get geographic context
+  const latencyContext = useMemo(() => {
+    if (!node) return null;
+    return getLatencyContext(node);
+  }, [node]);
+
+  // Measure client-side latency when modal opens
+  useEffect(() => {
+    if (!node || !isOpen) return;
+    
+    const measureLatency = async () => {
+      setMeasuringClientLatency(true);
+      try {
+        const latency = await measureClientLatency(node);
+        setClientLatency(latency);
+      } catch (error) {
+        // Expected to fail for most nodes
+      } finally {
+        setMeasuringClientLatency(false);
+      }
+    };
+
+    measureLatency();
+  }, [node, isOpen]);
 
   const handleRefresh = async () => {
     if (!node) return;
@@ -523,7 +570,16 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
           console.error('[NodeDetailsModal] History API error:', data.error);
           setHistoricalData([]);
         } else {
-          setHistoricalData(data.data || []);
+          // Add node location to historical data points for region calculations
+          const enrichedData = (data.data || []).map((point: any) => ({
+            ...point,
+            nodeLocation: node?.locationData ? {
+              lat: node.locationData.lat,
+              lon: node.locationData.lon,
+              country: node.locationData.country,
+            } : undefined,
+          }));
+          setHistoricalData(enrichedData);
         }
       } catch (error: any) {
         if (timeoutId) {
@@ -757,9 +813,38 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     <Network className="w-4 h-4 text-foreground/40" />
                   </div>
                   <div className="text-xl sm:text-2xl font-bold text-foreground">
-                    {formatValue(node.latency, (val) => `${val.toFixed(0)}ms`)}
+                    {clientLatency !== null && clientLatency !== undefined ? (
+                      <span 
+                        className="cursor-help" 
+                        title={getLatencyTooltip(clientLatency, latencyRanking, null, latencyContext)}
+                      >
+                        {latencyRanking && (
+                          <span className={`text-sm ${latencyRanking.color} mr-1`}>
+                            [{latencyRanking.label}]
+                          </span>
+                        )}
+                        {clientLatency.toFixed(0)}ms
+                      </span>
+                    ) : measuringClientLatency ? (
+                      <span className="text-sm text-muted-foreground">
+                        Measuring...
+                      </span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground" title="Node pRPC is private (localhost-only). Client-side latency measurement not possible.">
+                        N/A
+                      </span>
+                    )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Response time</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {clientLatency !== null && clientLatency !== undefined ? (
+                      <>
+                        Your latency
+                        {latencyRanking && ` • ${latencyRanking.label}`}
+                      </>
+                    ) : (
+                      'Measured from your browser'
+                    )}
+                  </p>
                 </div>
               </div>
 
@@ -994,52 +1079,116 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     {/* Latency over time - Always show if any latency data exists */}
                     {historicalData.some(d => d.latency !== undefined && d.latency !== null && !isNaN(d.latency)) && (
                       <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-sm font-medium text-foreground">Server Latency History</h3>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">Region:</span>
+                            <select
+                              value={selectedLatencyRegion}
+                              onChange={(e) => setSelectedLatencyRegion(e.target.value)}
+                              className="appearance-none bg-muted/40 border border-border/60 rounded-lg px-3 py-1.5 pr-8 text-xs text-foreground hover:bg-muted/60 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#F0A741]/30 focus:border-[#F0A741]/50"
+                            >
+                              {LATENCY_REGIONS.map((region) => (
+                                <option key={region.id} value={region.id}>
+                                  {region.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
                         <HistoricalLineChart
-                          title="Network Latency"
+                          title=""
                           data={historicalData
                             .filter(d => d.latency !== undefined && d.latency !== null && !isNaN(d.latency))
-                            .map(d => ({
-                              timestamp: d.timestamp,
-                              value: d.latency,
-                            }))}
+                            .map(d => {
+                              // Adjust latency for selected region
+                              const baseLatency = d.latency || 0;
+                              const adjustedLatency = adjustLatencyForRegion(
+                                baseLatency,
+                                d.nodeLocation || node?.locationData || null,
+                                'us-east', // Default server region (where data was collected)
+                                selectedLatencyRegion
+                              );
+                              return {
+                                timestamp: d.timestamp,
+                                value: adjustedLatency,
+                                originalValue: baseLatency,
+                              };
+                            })}
                           height={200}
                           yDomain={(() => {
                             const latencyValues = historicalData
                               .filter(d => d.latency !== undefined && d.latency !== null && !isNaN(d.latency))
-                              .map(d => d.latency || 0);
+                              .map(d => {
+                                const baseLatency = d.latency || 0;
+                                return adjustLatencyForRegion(
+                                  baseLatency,
+                                  d.nodeLocation || node?.locationData || null,
+                                  'us-east',
+                                  selectedLatencyRegion
+                                );
+                              });
                             const maxLatency = latencyValues.length > 0 ? Math.max(...latencyValues) : 1000;
                             return [0, maxLatency * 1.1];
                           })()}
                           strokeColor="#3F8277"
                           yLabel="Latency (ms)"
-                          tooltipFormatter={(d) => (
-                            <div className="text-xs">
-                              <div className="font-semibold text-foreground mb-1">
-                                {new Date(d.timestamp).toLocaleString()}
+                          tooltipFormatter={(d) => {
+                            const region = getRegionById(selectedLatencyRegion);
+                            return (
+                              <div className="text-xs">
+                                <div className="font-semibold text-foreground mb-1">
+                                  {new Date(d.timestamp).toLocaleString()}
+                                </div>
+                                <div className="text-foreground/80">
+                                  {d.value}ms
+                                </div>
+                                {region && (
+                                  <div className="text-muted-foreground mt-1">
+                                    From {region.name}
+                                  </div>
+                                )}
                               </div>
-                              <div className="text-foreground/80">
-                                {d.value}ms
-                              </div>
-                            </div>
-                          )}
+                            );
+                          }}
                           headerContent={
                             <div className="text-xs text-muted-foreground">
                               {(() => {
-                                const latencyData = historicalData.filter(d => d.latency !== undefined && d.latency !== null && !isNaN(d.latency));
+                                const latencyData = historicalData
+                                  .filter(d => d.latency !== undefined && d.latency !== null && !isNaN(d.latency))
+                                  .map(d => {
+                                    const baseLatency = d.latency || 0;
+                                    return adjustLatencyForRegion(
+                                      baseLatency,
+                                      d.nodeLocation || node?.locationData || null,
+                                      'us-east',
+                                      selectedLatencyRegion
+                                    );
+                                  });
                                 if (latencyData.length === 0) return null;
-                                const avgLatency = latencyData.reduce((sum, d) => sum + (d.latency || 0), 0) / latencyData.length;
+                                const avgLatency = latencyData.reduce((sum, d) => sum + d, 0) / latencyData.length;
                                 if (isNaN(avgLatency)) return null;
+                                const region = getRegionById(selectedLatencyRegion);
                                 return (
                                   <>
                                     Avg: <span className="text-foreground font-semibold">
                                       {Math.round(avgLatency)}ms
                                     </span>
+                                    {region && (
+                                      <span className="ml-2 text-muted-foreground">
+                                        ({region.name})
+                                      </span>
+                                    )}
                                   </>
                                 );
                               })()}
                             </div>
                           }
                         />
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Server latency measured from {getRegionById(selectedLatencyRegion)?.name || 'server'} region. 
+                          Values are adjusted based on geographic distance.
+                        </p>
                       </div>
                     )}
 

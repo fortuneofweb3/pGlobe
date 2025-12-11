@@ -215,9 +215,10 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
                       })}
                     </Group>
                     <AxisBottom
-                      top={innerHeight + margin.top}
+                      top={margin.top + innerHeight}
                       left={margin.left}
                       scale={xScale}
+                      numTicks={data.length}
                       tickFormat={(d) => d}
                       tickLabelProps={() => ({
                         fill: '#9CA3AF',
@@ -227,7 +228,9 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
                     />
                     <AxisLeft
                       left={margin.left}
+                      top={margin.top}
                       scale={yScale}
+                      numTicks={5}
                       tickFormat={(d) => String(d)}
                       tickLabelProps={() => ({
                         fill: '#9CA3AF',

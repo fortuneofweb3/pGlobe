@@ -76,16 +76,30 @@ export async function GET(request: Request) {
       }
     );
   } catch (error: any) {
-    console.error('[VercelProxy] ❌ Failed to proxy to Render:', error);
+    const errorMessage = error?.message || 'Failed to fetch nodes';
+    const errorCode = error?.code || 'UNKNOWN';
+    
+    console.error('[VercelProxy] ❌ Failed to proxy to Render:', {
+      error: errorMessage,
+      code: errorCode,
+      url: RENDER_API_URL,
+      hint: errorCode === 'UND_ERR_SOCKET' 
+        ? 'Connection closed. Is the Render API server running on port 3001? Run: npm run dev:api'
+        : 'Check RENDER_API_URL in .env.local and ensure the API server is running',
+    });
     
     return NextResponse.json(
       {
-        error: error?.message || 'Failed to fetch nodes',
+        error: errorMessage,
+        errorCode,
+        hint: errorCode === 'UND_ERR_SOCKET'
+          ? 'Render API server connection failed. Make sure the backend server is running: npm run dev:api'
+          : 'Failed to connect to Render API server. Check RENDER_API_URL in .env.local',
         nodes: [],
         timestamp: Date.now(),
         totalNodes: 0,
       },
-      { status: 500 }
+      { status: 503 } // Service Unavailable
     );
   }
 }

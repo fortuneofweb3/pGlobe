@@ -222,15 +222,10 @@ function HomeContent() {
         }, 0) / nodesWithRAM.length
       : 0;
     
-    // Latency metrics - only include nodes seen in gossip (active nodes)
-    const nodesWithLatency = nodes.filter(n => 
-      n.latency !== undefined && 
-      n.latency !== null && 
-      n.seenInGossip !== false // Exclude nodes not seen in gossip (offline)
-    );
-    const avgLatency = nodesWithLatency.length > 0
-      ? nodesWithLatency.reduce((sum, n) => sum + (n.latency || 0), 0) / nodesWithLatency.length
-      : 0;
+    // Latency metrics - removed server-side latency average
+    // Latency is now measured client-side (from user's browser) and shown per-node
+    // Network-wide averages are not meaningful since most nodes have private pRPC
+    const avgLatency = 0; // Not applicable - latency is user-specific
     
     // Network metrics
     const totalPacketsReceived = nodes.reduce((sum, n) => sum + (n.packetsReceived || 0), 0);
@@ -433,8 +428,8 @@ function HomeContent() {
                 />
                 <MetricRow
                   label="Avg Latency"
-                  value={stats.avgLatency > 0 ? `${stats.avgLatency.toFixed(0)}ms` : 'N/A'}
-                  tooltip="Average pRPC response time measured server-side when fetching node stats. Lower is better - indicates faster network communication between nodes."
+                  value="N/A"
+                  tooltip="Latency is now measured client-side (from your browser) and shown per-node. Network-wide averages are not available since most nodes keep pRPC private for security."
                 />
             </div>
           </div>
