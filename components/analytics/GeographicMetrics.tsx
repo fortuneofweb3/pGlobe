@@ -34,12 +34,23 @@ type TooltipData = {
 
 const CustomTooltip = ({ tooltipData }: { tooltipData?: TooltipData }) => {
   if (!tooltipData) return null;
+  
+  // Format storage value using formatStorageBytes when metric is storage
+  const formatValue = () => {
+    if (tooltipData.label === 'Storage') {
+      // Convert GB back to bytes for formatting
+      const bytes = tooltipData.storageGB * (1024 ** 3);
+      return formatStorageBytes(bytes);
+    }
+    return `${tooltipData.value.toFixed(1)}${tooltipData.unit}`;
+  };
+  
   return (
     <div className="bg-black/95 backdrop-blur-md border border-white/10 rounded-lg p-3 shadow-xl">
       <p className="text-sm font-semibold text-[#E5E7EB] mb-2">{`Country: ${tooltipData.fullCountry}`}</p>
       <div className="space-y-1">
         <p className="text-xs text-[#E5E7EB]">
-          <span className="font-mono font-semibold">{tooltipData.value.toFixed(1)}{tooltipData.unit}</span>
+          <span className="font-mono font-semibold">{formatValue()}</span>
         </p>
         <p className="text-xs text-[#9CA3AF]">
           {tooltipData.label}
@@ -342,7 +353,14 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
                     left={margin.left}
                     scale={xScale}
                       numTicks={5}
-                    tickFormat={(d) => String(d)}
+                    tickFormat={(d) => {
+                      if (selectedMetric === 'storage' && typeof d === 'number') {
+                        // Convert GB back to bytes for formatting
+                        const bytes = d * (1024 ** 3);
+                        return formatStorageBytes(bytes);
+                      }
+                      return String(d);
+                    }}
                     tickLabelProps={() => ({
                       fill: '#9CA3AF',
                       fontSize: 12,

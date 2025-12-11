@@ -55,13 +55,17 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
   }, [nodes]);
 
   const formatIdentifier = (node: PNode) => {
+    // Use gossip address as primary identifier
+    if (node.address) {
+      return node.address;
+    }
+    // Fallback to pubkey/publicKey if address not available
     const key = node.pubkey || node.publicKey;
     if (key) {
       if (key.length <= 12) return key;
       return `${key.slice(0, 6)}...${key.slice(-4)}`;
     }
-    const ip = node.address?.split(':')[0];
-    if (ip) return ip;
+    // Final fallback
     if (node.id) return node.id;
     return 'Unknown';
   };
