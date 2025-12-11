@@ -1,7 +1,7 @@
 'use client';
 
 import { PNode } from '@/lib/types/pnode';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { scaleBand, scaleLinear } from '@visx/scale';
 import { Group } from '@visx/group';
 import { Bar } from '@visx/shape';
@@ -12,6 +12,7 @@ import { localPoint } from '@visx/event';
 import ParentSize from '@visx/responsive/lib/components/ParentSize';
 import { Globe, ChevronDown } from 'lucide-react';
 import { formatStorageBytes } from '@/lib/utils/storage';
+import { getCachedNodesLatencies, measureNodesLatency } from '@/lib/utils/client-latency';
 
 type MetricType = 'nodeCount' | 'latency' | 'storage' | 'onlineRate' | 'uptime';
 
@@ -63,6 +64,53 @@ const CustomTooltip = ({ tooltipData }: { tooltipData?: TooltipData }) => {
 export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('nodeCount');
   const { tooltipData, tooltipLeft, tooltipTop, tooltipOpen, showTooltip, hideTooltip } = useTooltip<TooltipData>();
+  const [clientLatencies, setClientLatencies] = useState<Record<string, number | null>>({});
+
+  // Load and measure client-side latencies when latency metric is selected
+  useEffect(() => {
+    if (selectedMetric !== 'latency') return;
+    
+    let mounted = true;
+    
+    const loadLatencies = async () => {
+      // Load cached values first
+      const cached = getCachedNodesLatencies(nodes);
+      if (mounted) {
+        setClientLatencies(cached);
+      }
+      
+      // Check if we need to measure any nodes
+      const uncachedNodes = nodes.filter(node => cached[node.id] === undefined);
+      if (uncachedNodes.length === 0) {
+        return;
+      }
+      
+      // Measure uncached nodes
+      try {
+        const newLatencies = await measureNodesLatency(uncachedNodes, 10, 2000);
+        if (mounted) {
+          setClientLatencies(prev => ({ ...prev, ...newLatencies }));
+        }
+      } catch (error) {
+        console.warn('[GeographicMetrics] Failed to measure node latencies:', error);
+      }
+    };
+    
+    // Defer measurement to avoid blocking UI
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      requestIdleCallback(() => {
+        if (mounted) loadLatencies();
+      }, { timeout: 2000 });
+    } else {
+      setTimeout(() => {
+        if (mounted) loadLatencies();
+      }, 100);
+    }
+    
+    return () => {
+      mounted = false;
+    };
+  }, [nodes, selectedMetric]);
 
   const metricOptions = [
     { value: 'nodeCount' as MetricType, label: 'Node Count' },
@@ -100,10 +148,17 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
       entry.count++;
       entry.nodes.push(node);
       
-      // Note: GeographicMetrics shows geographic distribution patterns
-      // Individual node displays use client-side latency measurements
-      if (node.latency !== undefined && node.latency !== null && node.latency > 0) {
-        entry.latencies.push(node.latency);
+      // Use client-side latency when latency metric is selected, otherwise use server-side
+      if (selectedMetric === 'latency') {
+        const clientLatency = clientLatencies[node.id];
+        if (clientLatency !== undefined && clientLatency !== null && clientLatency > 0) {
+          entry.latencies.push(clientLatency);
+        }
+      } else {
+        // For other metrics, use server-side latency if available
+        if (node.latency !== undefined && node.latency !== null && node.latency > 0) {
+          entry.latencies.push(node.latency);
+        }
       }
       
       if (node.storageCapacity && node.storageCapacity > 0) {
@@ -195,7 +250,7 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
       })
       .sort((a, b) => b.value - a.value)
       .slice(0, 12);
-  }, [nodes, selectedMetric]);
+  }, [nodes, selectedMetric, clientLatencies]);
 
   const getColor = (entry: TooltipData) => {
     switch (selectedMetric) {
