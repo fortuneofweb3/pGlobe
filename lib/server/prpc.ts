@@ -13,7 +13,7 @@
  */
 
 import { PNode } from '../types/pnode';
-import http from 'http';
+import * as http from 'http';
 
 /**
  * Make HTTP request using Node.js native http module
@@ -309,6 +309,8 @@ async function callPRPC(
         return null;
       }
       return data.result || null;
+    } else {
+      return null;
     }
   } catch (error: any) {
     // Silent fail - most nodes don't have public pRPC (localhost-only by default)
@@ -1334,8 +1336,8 @@ async function enrichNodesWithStats(nodesMap: Map<string, PNode>): Promise<PNode
           nodesMap.set(key, enrichedNode);
           if (enrichedNode.latency !== undefined) {
             successCount++;
+          }
         }
-      }
       }
     }
     if (i % (BATCH_SIZE * 5) === 0) {
@@ -1370,17 +1372,17 @@ async function enrichFromKnownPublicEndpoints(nodesMap: Map<string, PNode>): Pro
       // Try each port until we get a successful response
       for (const port of portsToTry) {
         const rpcUrl = `http://${ip}:${port}/rpc`;
-      
-      // Use Node.js http module directly (not fetch - it fails on HTTP)
-      const statsPayload = { jsonrpc: '2.0', id: 1, method: 'get-stats', params: [] };
-      const versionPayload = { jsonrpc: '2.0', id: 2, method: 'get-version', params: [] };
-      
-      // Measure latency
-      const startTime = Date.now();
+        
+        // Use Node.js http module directly (not fetch - it fails on HTTP)
+        const statsPayload = { jsonrpc: '2.0', id: 1, method: 'get-stats', params: [] };
+        const versionPayload = { jsonrpc: '2.0', id: 2, method: 'get-version', params: [] };
+        
+        // Measure latency
+        const startTime = Date.now();
         const [statsResp, versionResp] = await Promise.all([
-        httpPost(rpcUrl, statsPayload, 5000),
-        httpPost(rpcUrl, versionPayload, 3000),
-      ]);
+          httpPost(rpcUrl, statsPayload, 5000),
+          httpPost(rpcUrl, versionPayload, 3000),
+        ]);
         const respLatency = Date.now() - startTime;
         
         // If we got a valid stats response, this port works
@@ -1438,7 +1440,7 @@ async function enrichFromKnownPublicEndpoints(nodesMap: Map<string, PNode>): Pro
         lastSeen: existingNode?.lastSeen || Date.now(),
         // Uptime in SECONDS (from flat API response)
         uptime: uptime,
-      uptimePercent: undefined, // API doesn't provide this
+        uptimePercent: undefined, // API doesn't provide this
         // System metrics (from flat API response) - include even if 0
         cpuPercent: stats.cpu_percent ?? undefined,
         ramUsed: stats.ram_used ?? undefined,
@@ -1578,3 +1580,4 @@ export function getMockPNodes(): PNode[] {
     },
   ];
 }
+

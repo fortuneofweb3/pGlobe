@@ -226,11 +226,15 @@ export default function ScanPage() {
           // Use Promise.allSettled with shorter timeout to avoid hanging
           // Use the client-latency utility which includes caching
           const latencyPromises = top20ByDistance.map(async (node) => {
-            if (!node.address) return { ...node, latency: null };
+            // Ensure node has required properties before measuring latency
+            if (!node.address || !node.id || (!node.pubkey && !node.publicKey)) {
+              return { ...node, latency: null };
+            }
             
             try {
               // Use measureNodeLatency which handles caching and uses the API route
-              const latency = await measureNodeLatency(node, 2000);
+              // NodeWithDistance extends Omit<PNode, 'latency'>, so it has all required PNode properties
+              const latency = await measureNodeLatency(node as PNode, 2000);
               
               return {
                 ...node,

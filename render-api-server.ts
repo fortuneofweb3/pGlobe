@@ -11,8 +11,7 @@
  */
 
 // Load environment variables FIRST, before any other imports
-// This must be done with require() to ensure it runs before ES module imports
-const dotenv = require('dotenv');
+import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 dotenv.config(); // Also load .env if it exists
 
