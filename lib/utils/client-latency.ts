@@ -3,12 +3,12 @@
  * Measures latency from user's browser to proxy endpoints and individual nodes
  * This gives accurate latency for each user's actual location
  * 
- * Latency measurements are cached for 6 hours to reduce API calls
+ * Latency measurements are cached for 1 hour to reduce API calls
  */
 
 import { PNode } from '../types/pnode';
 
-const CACHE_DURATION_MS = 6 * 60 * 60 * 1000; // 6 hours
+const CACHE_DURATION_MS = 1 * 60 * 60 * 1000; // 1 hour
 const CACHE_KEY_PREFIX = 'node_latency_';
 
 interface CachedLatency {
@@ -205,7 +205,7 @@ export async function measureAllProxyLatencies(): Promise<Record<string, number>
  * Measure latency to a specific node from client
  * Tries to ping the node's pRPC endpoint directly
  * Returns null if node is not reachable
- * Uses cache if available (6 hour expiration)
+ * Uses cache if available (1 hour expiration)
  */
 export async function measureNodeLatency(node: PNode, timeoutMs: number = 2000): Promise<number | null> {
   if (!node.address) return null;
@@ -287,7 +287,7 @@ export function getCachedNodesLatencies(nodes: PNode[]): Record<string, number |
 /**
  * Measure latency to multiple nodes in parallel (with concurrency limit)
  * Returns a map of node ID to latency
- * Uses cache for nodes that have been measured recently (6 hour expiration)
+ * Uses cache for nodes that have been measured recently (1 hour expiration)
  * Only measures nodes that aren't cached
  */
 export async function measureNodesLatency(

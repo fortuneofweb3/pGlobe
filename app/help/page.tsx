@@ -164,7 +164,7 @@ function QuickStartGuide() {
                 <h4 className="font-medium text-gray-900 dark:text-gray-100">Scan</h4>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Search and filter nodes by various criteria. Export data, view rankings, and compare node performance.
+                Find nodes nearest to your location or a particular IP address. Measure latency and view distance-based rankings.
               </p>
             </div>
             <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
@@ -254,7 +254,7 @@ function QuickStartGuide() {
               <dd className="text-sm text-gray-600 dark:text-gray-400">
                 Response time measured directly from your browser to each node's pRPC endpoint. 
                 This gives you accurate latency based on your location and internet connection. 
-                Latency measurements are cached for 6 hours to improve performance. Lower is better (under 100ms is excellent).
+                Latency measurements are cached for 1 hour to improve performance. Lower is better (under 100ms is excellent).
               </dd>
             </div>
           </dl>
@@ -381,14 +381,6 @@ function DeploymentDocs({ onClose }: { onClose: () => void }) {
               <li>Created new Web Service named <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">pglobe-api-server</code></li>
               <li>Configured build command: <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">npm install --include=dev</code></li>
               <li>Configured start command: <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">npx tsx render-api-server.ts</code></li>
-              <li>Set environment variables:
-                <ul className="list-disc list-inside ml-6 mt-1 space-y-1">
-                  <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">NODE_ENV=production</code></li>
-                  <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">MONGODB_URI</code> (MongoDB Atlas connection string)</li>
-                  <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">API_SECRET</code> (generated with <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">openssl rand -hex 32</code>)</li>
-                  <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">PORT=3001</code></li>
-                </ul>
-              </li>
               <li>Service URL obtained: <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">https://pglobe-api-server.onrender.com</code></li>
             </ol>
           </div>
@@ -398,12 +390,6 @@ function DeploymentDocs({ onClose }: { onClose: () => void }) {
             <ol className="list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
               <li>Created Vercel account and imported GitHub repository</li>
               <li>Vercel auto-detected Next.js configuration</li>
-              <li>Configured environment variables:
-                <ul className="list-disc list-inside ml-6 mt-1 space-y-1">
-                  <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">RENDER_API_URL</code> (Render API server URL)</li>
-                  <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">API_SECRET</code> (same secret as Render)</li>
-                </ul>
-              </li>
               <li>Frontend URL: <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">https://pglobe.vercel.app</code></li>
             </ol>
           </div>
@@ -418,28 +404,6 @@ function DeploymentDocs({ onClose }: { onClose: () => void }) {
             <li>Both services pull from the same GitHub repository</li>
             <li>Deployments are independent - frontend and backend can be updated separately</li>
           </ul>
-        </section>
-
-        <section className="mb-8">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Environment Configuration</h2>
-          
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Render Environment Variables</h3>
-          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 mb-4">
-            <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
-              <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">NODE_ENV</code> = <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">production</code></li>
-              <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">MONGODB_URI</code> = MongoDB Atlas connection string</li>
-              <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">API_SECRET</code> = Shared secret for Vercel authentication</li>
-              <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">PORT</code> = <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">3001</code></li>
-            </ul>
-          </div>
-
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Vercel Environment Variables</h3>
-          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 mb-4">
-            <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
-              <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">RENDER_API_URL</code> = Render API server URL</li>
-              <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">API_SECRET</code> = Same secret as Render (for authentication)</li>
-            </ul>
-          </div>
         </section>
 
         <section className="mb-8">
@@ -604,7 +568,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
               <li>&gt;500ms</li>
             </ul>
             <p className="text-gray-700 dark:text-gray-300 mt-2 text-sm">
-              Latency is measured client-side from your browser to each node's pRPC endpoint. Measurements are cached for 6 hours.
+              Latency is measured client-side from your browser to each node's pRPC endpoint. Measurements are cached for 1 hour.
             </p>
           </div>
 
@@ -704,7 +668,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
           </p>
           <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
             <li>Provides accurate latency based on your location and internet connection</li>
-            <li>Measurements are cached for 6 hours to improve performance</li>
+            <li>Measurements are cached for 1 hour to improve performance</li>
             <li>Only measures nodes that aren't cached or have expired cache</li>
             <li>Uses deferred measurement (requestIdleCallback) to avoid blocking UI</li>
           </ul>
