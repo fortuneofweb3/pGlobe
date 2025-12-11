@@ -968,7 +968,7 @@ export async function fetchNodeStats(node: PNode): Promise<PNode> {
   // If node already has latencyByRegion from batch measurement, use it
   if (node.latencyByRegion && Object.keys(node.latencyByRegion).length > 0) {
     latencyByRegion = node.latencyByRegion;
-    latency = node.latency; // Already set from batch measurement
+    latency = node.latency ?? null; // Already set from batch measurement
     latencyMethod = 'multi-region';
     console.log(`[Latency] ${ip}: Using pre-measured multi-region latency from ${Object.keys(latencyByRegion).length} regions, best: ${latency}ms`);
   }
@@ -994,17 +994,18 @@ export async function fetchNodeStats(node: PNode): Promise<PNode> {
       latencyMethod = 'proxy';
       console.log(`[Latency] ${ip}: Proxy RPC latency = ${latency}ms (from ${bestProxy.endpoint}, tried ${proxyLatencies.length} endpoints)`);
     } else {
-    // Fallback: Try direct pRPC endpoint (port 6000/9000) if proxy measurement failed
-    // This gives us network latency to the specific node, though users don't connect directly
-    if (ip) {
-      const portsToTry = node.rpcPort ? [node.rpcPort, 6000, 9000] : [6000, 9000];
-      for (const port of portsToTry) {
-        const measuredLatency = await measureLatencyTTFB(ip, port, 2000);
-        if (measuredLatency !== null) {
-          latency = measuredLatency;
-          latencyMethod = 'direct-prpc';
-          console.log(`[Latency] ${ip}: Direct pRPC latency = ${latency}ms (port ${port}, TTFB)`);
-          break;
+      // Fallback: Try direct pRPC endpoint (port 6000/9000) if proxy measurement failed
+      // This gives us network latency to the specific node, though users don't connect directly
+      if (ip) {
+        const portsToTry = node.rpcPort ? [node.rpcPort, 6000, 9000] : [6000, 9000];
+        for (const port of portsToTry) {
+          const measuredLatency = await measureLatencyTTFB(ip, port, 2000);
+          if (measuredLatency !== null) {
+            latency = measuredLatency;
+            latencyMethod = 'direct-prpc';
+            console.log(`[Latency] ${ip}: Direct pRPC latency = ${latency}ms (port ${port}, TTFB)`);
+            break;
+          }
         }
       }
     }
@@ -1494,7 +1495,7 @@ async function enrichFromKnownPublicEndpoints(nodesMap: Map<string, PNode>): Pro
  * @param skipEnrichment - Skip get-stats enrichment (faster, most fail anyway)
  * @returns Promise with array of pNode data
  */
-export async function fetchPNodesFromGossip(
+async function fetchPNodesFromGossip(
   rpcEndpoint?: string,
   skipEnrichment: boolean = false // Try enrichment by default - fast timeouts mean it won't take long
 ): Promise<PNode[]> {
@@ -1546,7 +1547,7 @@ export async function fetchPNodesFromGossip(
 // MOCK DATA (for development)
 // ============================================================================
 
-export function getMockPNodes(): PNode[] {
+function getMockPNodes(): PNode[] {
   return [
     {
       id: 'mock-1',
@@ -1581,3 +1582,5 @@ export function getMockPNodes(): PNode[] {
   ];
 }
 
+// Export at the end
+export { fetchPNodesFromGossip, getMockPNodes };
