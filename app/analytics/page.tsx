@@ -9,11 +9,12 @@ import NodeRankings from '@/components/NodeRankings';
 import LatencyDistribution from '@/components/analytics/LatencyDistribution';
 import ResourceUtilization from '@/components/analytics/ResourceUtilization';
 import GeographicMetrics from '@/components/analytics/GeographicMetrics';
+import NodeComparison from '@/components/analytics/NodeComparison';
 import Header from '@/components/Header';
 import NodeDetailsModal from '@/components/NodeDetailsModal';
 import { useNodes } from '@/lib/context/NodesContext';
 import { formatStorageBytes } from '@/lib/utils/storage';
-import { Activity, HardDrive, TrendingUp, Server, BarChart3, Download, FileJson, FileSpreadsheet } from 'lucide-react';
+import { Activity, HardDrive, TrendingUp, Server, BarChart3, Download, FileJson, FileSpreadsheet, ArrowDown } from 'lucide-react';
 
 interface HistoricalDataPoint {
   timestamp: number;
@@ -29,6 +30,7 @@ export default function AnalyticsPage() {
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
   const [selectedNode, setSelectedNode] = useState<PNode | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isComparisonOpen, setIsComparisonOpen] = useState(false);
 
   // Fetch historical data for charts (deferred to avoid blocking initial render)
   useEffect(() => {
@@ -159,44 +161,96 @@ export default function AnalyticsPage() {
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 space-y-3 sm:space-y-4">
           {/* Hero */}
           <div className="bg-card/40 border border-border/60 rounded-2xl p-4 sm:p-5 shadow-lg shadow-black/20">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-                  <BarChart3 className="w-4 h-4 text-foreground/40" />
-                  Network Analytics
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+                    <BarChart3 className="w-4 h-4 text-foreground/40" />
+                    Network Analytics
+                  </div>
+                  <h1 className="text-xl sm:text-2xl font-bold leading-tight">Health, performance, and capacity at a glance</h1>
+                  <p className="text-xs sm:text-sm text-foreground/70">
+                    Real-time view of pNode availability, storage footprint, and version rollout.
+                  </p>
                 </div>
-                <h1 className="text-xl sm:text-2xl font-bold leading-tight">Health, performance, and capacity at a glance</h1>
-                <p className="text-xs sm:text-sm text-foreground/70">
-                  Real-time view of pNode availability, storage footprint, and version rollout.
-                </p>
+                <div className="flex flex-wrap gap-2 sm:gap-3">
+                  <div className="px-3 sm:px-4 py-2 rounded-xl bg-[#3F8277]/10 border border-[#3F8277]/30 text-xs sm:text-sm font-semibold text-[#3F8277]">
+                    {nodes.length} nodes tracked
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={exportToCSV}
+                      disabled={nodes.length === 0}
+                      className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm bg-muted/40 hover:bg-muted/60 text-foreground rounded-lg border border-border/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-2"
+                      title="Export as CSV"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">CSV</span>
+                    </button>
+                    <button
+                      onClick={exportToJSON}
+                      disabled={nodes.length === 0}
+                      className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm bg-muted/40 hover:bg-muted/60 text-foreground rounded-lg border border-border/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-2"
+                      title="Export as JSON"
+                    >
+                      <FileJson className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">JSON</span>
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2 sm:gap-3">
-                <div className="px-3 sm:px-4 py-2 rounded-xl bg-[#3F8277]/10 border border-[#3F8277]/30 text-xs sm:text-sm font-semibold text-[#3F8277]">
-                  {nodes.length} nodes tracked
+            </div>
+          </div>
+
+          {/* Node Comparison Section - Accordion Style */}
+          <div className="bg-card/40 border border-border/60 rounded-xl overflow-hidden">
+            {/* Header - Clickable */}
+            <button
+              onClick={() => {
+                setIsComparisonOpen(!isComparisonOpen);
+              }}
+              className="w-full px-4 py-3 text-left hover:bg-muted/10 transition-colors"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${
+                    isComparisonOpen 
+                      ? 'bg-[#F0A741]/20 text-[#F0A741]' 
+                      : 'bg-muted/40 text-foreground/60'
+                  }`}>
+                    <Server className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <h2 className="text-sm font-semibold text-foreground">
+                        Node Comparison
+                      </h2>
+                      <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-[#F0A741]/10 text-[#F0A741] border border-[#F0A741]/20">
+                        Tool
+                      </span>
+                    </div>
+                    <p className="text-xs text-foreground/60 line-clamp-1">
+                      Compare up to 3 nodes side-by-side to analyze performance metrics and make informed decisions.
+                    </p>
+                  </div>
                 </div>
-                <div className="px-3 sm:px-4 py-2 rounded-xl bg-muted/30 border border-border text-xs sm:text-sm font-mono text-foreground/80">
-                  {lastUpdate ? `Last update ${lastUpdate.toLocaleTimeString()}` : 'Updating...'}
+                <div className="flex-shrink-0">
+                  <ArrowDown className={`w-4 h-4 text-foreground/40 transition-transform duration-300 ${isComparisonOpen ? 'rotate-180' : ''}`} />
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={exportToCSV}
-                    disabled={nodes.length === 0}
-                    className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm bg-muted/40 hover:bg-muted/60 text-foreground rounded-lg border border-border/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-2"
-                    title="Export as CSV"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">CSV</span>
-                  </button>
-                  <button
-                    onClick={exportToJSON}
-                    disabled={nodes.length === 0}
-                    className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm bg-muted/40 hover:bg-muted/60 text-foreground rounded-lg border border-border/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-2"
-                    title="Export as JSON"
-                  >
-                    <FileJson className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">JSON</span>
-                  </button>
-                </div>
+              </div>
+            </button>
+
+            {/* Content - Collapsible */}
+            <div 
+              className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                isComparisonOpen ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'
+              }`}
+            >
+              <div 
+                id="node-comparison" 
+                className="px-4 pb-4 pt-2"
+              >
+                <NodeComparison nodes={nodes} />
               </div>
             </div>
           </div>
