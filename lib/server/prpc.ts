@@ -994,17 +994,17 @@ export async function fetchNodeStats(node: PNode): Promise<PNode> {
       latencyMethod = 'proxy';
       console.log(`[Latency] ${ip}: Proxy RPC latency = ${latency}ms (from ${bestProxy.endpoint}, tried ${proxyLatencies.length} endpoints)`);
     } else {
-      // Fallback: Try direct pRPC endpoint (port 6000/9000) if proxy measurement failed
-      // This gives us network latency to the specific node, though users don't connect directly
-      if (ip) {
-        const portsToTry = node.rpcPort ? [node.rpcPort, 6000, 9000] : [6000, 9000];
-        for (const port of portsToTry) {
-          const measuredLatency = await measureLatencyTTFB(ip, port, 2000);
-          if (measuredLatency !== null) {
-            latency = measuredLatency;
-            latencyMethod = 'direct-prpc';
-            console.log(`[Latency] ${ip}: Direct pRPC latency = ${latency}ms (port ${port}, TTFB)`);
-            break;
+    // Fallback: Try direct pRPC endpoint (port 6000/9000) if proxy measurement failed
+    // This gives us network latency to the specific node, though users don't connect directly
+    if (ip) {
+      const portsToTry = node.rpcPort ? [node.rpcPort, 6000, 9000] : [6000, 9000];
+      for (const port of portsToTry) {
+        const measuredLatency = await measureLatencyTTFB(ip, port, 2000);
+        if (measuredLatency !== null) {
+          latency = measuredLatency;
+          latencyMethod = 'direct-prpc';
+          console.log(`[Latency] ${ip}: Direct pRPC latency = ${latency}ms (port ${port}, TTFB)`);
+          break;
           }
         }
       }
@@ -1337,8 +1337,8 @@ async function enrichNodesWithStats(nodesMap: Map<string, PNode>): Promise<PNode
           nodesMap.set(key, enrichedNode);
           if (enrichedNode.latency !== undefined) {
             successCount++;
-          }
         }
+      }
       }
     }
     if (i % (BATCH_SIZE * 5) === 0) {
@@ -1373,17 +1373,17 @@ async function enrichFromKnownPublicEndpoints(nodesMap: Map<string, PNode>): Pro
       // Try each port until we get a successful response
       for (const port of portsToTry) {
         const rpcUrl = `http://${ip}:${port}/rpc`;
-        
-        // Use Node.js http module directly (not fetch - it fails on HTTP)
-        const statsPayload = { jsonrpc: '2.0', id: 1, method: 'get-stats', params: [] };
-        const versionPayload = { jsonrpc: '2.0', id: 2, method: 'get-version', params: [] };
-        
-        // Measure latency
-        const startTime = Date.now();
+      
+      // Use Node.js http module directly (not fetch - it fails on HTTP)
+      const statsPayload = { jsonrpc: '2.0', id: 1, method: 'get-stats', params: [] };
+      const versionPayload = { jsonrpc: '2.0', id: 2, method: 'get-version', params: [] };
+      
+      // Measure latency
+      const startTime = Date.now();
         const [statsResp, versionResp] = await Promise.all([
-          httpPost(rpcUrl, statsPayload, 5000),
-          httpPost(rpcUrl, versionPayload, 3000),
-        ]);
+        httpPost(rpcUrl, statsPayload, 5000),
+        httpPost(rpcUrl, versionPayload, 3000),
+      ]);
         const respLatency = Date.now() - startTime;
         
         // If we got a valid stats response, this port works
@@ -1441,7 +1441,7 @@ async function enrichFromKnownPublicEndpoints(nodesMap: Map<string, PNode>): Pro
         lastSeen: existingNode?.lastSeen || Date.now(),
         // Uptime in SECONDS (from flat API response)
         uptime: uptime,
-        uptimePercent: undefined, // API doesn't provide this
+      uptimePercent: undefined, // API doesn't provide this
         // System metrics (from flat API response) - include even if 0
         cpuPercent: stats.cpu_percent ?? undefined,
         ramUsed: stats.ram_used ?? undefined,

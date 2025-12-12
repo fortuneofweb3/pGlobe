@@ -250,18 +250,19 @@ export default function ScanPage() {
           const latencyResults = await Promise.allSettled(latencyPromises);
           const nodesWithLatency: NodeWithDistance[] = latencyResults
             .map((result): NodeWithDistance | null => result.status === 'fulfilled' ? result.value : null)
-            .filter((node): node is NodeWithDistance => {
-              // Only include nodes with valid latency (reachable nodes)
-              // Latency is measured client-side from your browser
-              return node !== null && node !== undefined && node.latency !== null && node.latency !== undefined;
-            });
+            .filter((node): node is NodeWithDistance => node !== null && node !== undefined)
+            .map((node) => ({
+              ...node,
+              // Normalize latency to a number so sorting is stable and always numeric
+              latency: node.latency === null || node.latency === undefined ? null : Number(node.latency),
+            }));
           
-          // Sort by latency (lowest first)
-          // Only nodes with valid latency (online) are included
-          const sortedByLatency = nodesWithLatency.sort((a, b) => {
+          // Sort by latency (lowest first) and then by distance as a tiebreaker
+          const sortedByLatency = [...nodesWithLatency].sort((a, b) => {
             const aLatency = a.latency ?? Infinity;
             const bLatency = b.latency ?? Infinity;
-            return aLatency - bLatency;
+            if (aLatency !== bLatency) return aLatency - bLatency;
+            return (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity);
           });
 
           setNodesByLatency(sortedByLatency.slice(0, 20));

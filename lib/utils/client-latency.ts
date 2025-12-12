@@ -3,12 +3,12 @@
  * Measures latency from user's browser to proxy endpoints and individual nodes
  * This gives accurate latency for each user's actual location
  * 
- * Latency measurements are cached for 1 hour to reduce API calls
+ * Latency measurements are cached for 10 minutes to reduce API calls
  */
 
 import { PNode } from '../types/pnode';
 
-const CACHE_DURATION_MS = 1 * 60 * 60 * 1000; // 1 hour
+const CACHE_DURATION_MS = 10 * 60 * 1000; // 10 minutes
 const CACHE_KEY_PREFIX = 'node_latency_';
 
 interface CachedLatency {
