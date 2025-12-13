@@ -7,7 +7,7 @@ import NetworkSelector from './NetworkSelector';
 import { NetworkConfig } from '@/lib/server/network-config';
 
 interface HeaderProps {
-  activePage?: 'overview' | 'nodes' | 'analytics' | 'help' | 'scan' | 'intelligence';
+  activePage?: 'overview' | 'nodes' | 'analytics' | 'help' | 'scan';
   nodeCount?: number;
   lastUpdate?: Date | null;
   loading?: boolean;

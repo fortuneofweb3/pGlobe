@@ -6,7 +6,7 @@ import { Map as MapGL, Marker, Source, Layer, MapRef } from 'react-map-gl/maplib
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { PNode } from '@/lib/types/pnode';
-import { ArrowUp, ArrowDown, RotateCcw, Globe, ChevronLeft, ChevronRight, MapPin, Info } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Globe, ChevronLeft, ChevronRight, MapPin, Info, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface MapLibreGlobeProps {
   nodes: PNode[];
@@ -2628,14 +2628,14 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
             className="p-2 bg-card border border-border rounded hover:bg-muted transition-colors shadow-lg"
             title="Zoom In"
           >
-            <ArrowUp className="w-5 h-5 text-foreground" />
+            <ZoomIn className="w-5 h-5 text-foreground" />
           </button>
           <button
             onClick={handleZoomOut}
             className="p-2 bg-card border border-border rounded hover:bg-muted transition-colors shadow-lg"
             title="Zoom Out"
           >
-            <ArrowDown className="w-5 h-5 text-foreground" />
+            <ZoomOut className="w-5 h-5 text-foreground" />
           </button>
           <button
             onClick={handleResetView}
