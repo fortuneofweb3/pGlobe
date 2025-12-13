@@ -123,7 +123,7 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
 
     // Top 10 nodes by packet transfer rate
     const byPackets: NodeWithPacketRate[] = [...nodes]
-      .map(n => {
+      .map((n): NodeWithPacketRate | null => {
         const rates = packetRates.get(n.id);
         if (rates) {
           return { ...n, rxRate: rates.rxRate, txRate: rates.txRate, totalRate: rates.totalRate };

@@ -9,6 +9,7 @@ import { BookOpen, ChevronRight, X, FileText, Settings, BarChart3, MapPin, Searc
 export default function HelpPage() {
   const { nodes, loading, lastUpdate, availableNetworks, currentNetwork, refreshNodes } = useNodes();
   const [activeDoc, setActiveDoc] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="fixed inset-0 w-full h-full flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
@@ -24,14 +25,36 @@ export default function HelpPage() {
         showNetworkSelector={false}
       />
 
-      <main className="flex-1 overflow-hidden flex">
+      <main className="flex-1 overflow-hidden flex relative">
+        {/* Mobile Sidebar Overlay */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/80 z-40 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
         {/* Sidebar Navigation */}
-        <aside className="w-64 border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 overflow-y-auto flex-shrink-0">
+        <aside className={`${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } md:translate-x-0 fixed md:relative w-64 border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 overflow-y-auto flex-shrink-0 z-50 md:z-auto h-full transition-transform duration-300`}>
           <div className="p-4">
-            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">Documentation</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Documentation</h2>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="md:hidden p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                aria-label="Close sidebar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
             <nav className="space-y-1">
               <button
-                onClick={() => setActiveDoc(null)}
+                onClick={() => {
+                  setActiveDoc(null);
+                  setSidebarOpen(false);
+                }}
                 className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
                   activeDoc === null
                     ? 'bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-medium'
@@ -41,7 +64,10 @@ export default function HelpPage() {
                 Quick Start Guide
               </button>
               <button
-                onClick={() => setActiveDoc('deployment')}
+                onClick={() => {
+                  setActiveDoc('deployment');
+                  setSidebarOpen(false);
+                }}
                 className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${
                   activeDoc === 'deployment'
                     ? 'bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-medium'
@@ -52,7 +78,10 @@ export default function HelpPage() {
                 <ChevronRight className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setActiveDoc('analytics')}
+                onClick={() => {
+                  setActiveDoc('analytics');
+                  setSidebarOpen(false);
+                }}
                 className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${
                   activeDoc === 'analytics'
                     ? 'bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-medium'
@@ -63,7 +92,10 @@ export default function HelpPage() {
                 <ChevronRight className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setActiveDoc('architecture')}
+                onClick={() => {
+                  setActiveDoc('architecture');
+                  setSidebarOpen(false);
+                }}
                 className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${
                   activeDoc === 'architecture'
                     ? 'bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-medium'
@@ -79,6 +111,17 @@ export default function HelpPage() {
 
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto">
+          {/* Mobile Menu Button */}
+          <div className="md:hidden p-4 border-b border-gray-200 dark:border-gray-800">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>Menu</span>
+            </button>
+          </div>
+
           {activeDoc === null ? (
             <QuickStartGuide />
           ) : activeDoc === 'deployment' ? (

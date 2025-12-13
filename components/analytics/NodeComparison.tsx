@@ -6,6 +6,7 @@ import { X, Search, TrendingUp, TrendingDown, Minus, Server, Activity, HardDrive
 import { formatStorageBytes } from '@/lib/utils/storage';
 import { getLatestVersion } from '@/lib/utils/network-health';
 import NodeStatusBadge from '../NodeStatusBadge';
+import { formatPacketRate } from '@/lib/utils/packet-rates';
 
 interface NodeComparisonProps {
   nodes: PNode[];
@@ -152,6 +153,22 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
         return node.ramUsed && node.ramTotal ? (node.ramUsed / node.ramTotal) * 100 : null;
       case 'latency':
         return node.latency ?? null;
+      case 'packetsRx':
+        return node.packetsReceived ?? null;
+      case 'packetsTx':
+        return node.packetsSent ?? null;
+      case 'packetsRxRate':
+        // Estimate rate from cumulative total and uptime
+        if (node.packetsReceived && node.uptime && node.uptime > 0) {
+          return node.packetsReceived / node.uptime;
+        }
+        return null;
+      case 'packetsTxRate':
+        // Estimate rate from cumulative total and uptime
+        if (node.packetsSent && node.uptime && node.uptime > 0) {
+          return node.packetsSent / node.uptime;
+        }
+        return null;
       default:
         return null;
     }
@@ -544,6 +561,130 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                       </span>
                     </td>
                   ))}
+                </tr>
+
+                {/* Packets Received */}
+                <tr className="hover:bg-muted/10 transition-colors">
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-2.5">
+                      <Wifi className="w-4 h-4 text-foreground/50" />
+                      <span className="text-sm font-medium text-foreground/80">Packets Rx (Total)</span>
+                    </div>
+                  </td>
+                  {selectedNodes.map((node) => {
+                    const packetsRx = getComparisonValue(node, 'packetsRx');
+                    const values = selectedNodes.map(n => getComparisonValue(n, 'packetsRx'));
+                    const icon = getComparisonIcon(values);
+                    return (
+                      <td key={node.id} className="px-5 py-3.5 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          {packetsRx !== null ? (
+                            <>
+                              <span className="text-sm font-semibold text-foreground">{packetsRx.toLocaleString()}</span>
+                              {icon === 'up' && <TrendingUp className="w-3.5 h-3.5 text-[#3F8277]" />}
+                              {icon === 'down' && <TrendingDown className="w-3.5 h-3.5 text-[#FF6B6B]" />}
+                              {icon === 'equal' && <Minus className="w-3.5 h-3.5 text-foreground/30" />}
+                            </>
+                          ) : (
+                            <span className="text-sm text-foreground/40">N/A</span>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                {/* Packets Sent */}
+                <tr className="hover:bg-muted/10 transition-colors">
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-2.5">
+                      <Wifi className="w-4 h-4 text-foreground/50" />
+                      <span className="text-sm font-medium text-foreground/80">Packets Tx (Total)</span>
+                    </div>
+                  </td>
+                  {selectedNodes.map((node) => {
+                    const packetsTx = getComparisonValue(node, 'packetsTx');
+                    const values = selectedNodes.map(n => getComparisonValue(n, 'packetsTx'));
+                    const icon = getComparisonIcon(values);
+                    return (
+                      <td key={node.id} className="px-5 py-3.5 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          {packetsTx !== null ? (
+                            <>
+                              <span className="text-sm font-semibold text-foreground">{packetsTx.toLocaleString()}</span>
+                              {icon === 'up' && <TrendingUp className="w-3.5 h-3.5 text-[#3F8277]" />}
+                              {icon === 'down' && <TrendingDown className="w-3.5 h-3.5 text-[#FF6B6B]" />}
+                              {icon === 'equal' && <Minus className="w-3.5 h-3.5 text-foreground/30" />}
+                            </>
+                          ) : (
+                            <span className="text-sm text-foreground/40">N/A</span>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                {/* Packets Rx Rate */}
+                <tr className="hover:bg-muted/10 transition-colors">
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-2.5">
+                      <Activity className="w-4 h-4 text-foreground/50" />
+                      <span className="text-sm font-medium text-foreground/80">Packets Rx Rate</span>
+                    </div>
+                  </td>
+                  {selectedNodes.map((node) => {
+                    const rxRate = getComparisonValue(node, 'packetsRxRate');
+                    const values = selectedNodes.map(n => getComparisonValue(n, 'packetsRxRate'));
+                    const icon = getComparisonIcon(values);
+                    return (
+                      <td key={node.id} className="px-5 py-3.5 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          {rxRate !== null && rxRate > 0 ? (
+                            <>
+                              <span className="text-sm font-semibold text-foreground">{formatPacketRate(rxRate)}</span>
+                              {icon === 'up' && <TrendingUp className="w-3.5 h-3.5 text-[#3F8277]" />}
+                              {icon === 'down' && <TrendingDown className="w-3.5 h-3.5 text-[#FF6B6B]" />}
+                              {icon === 'equal' && <Minus className="w-3.5 h-3.5 text-foreground/30" />}
+                            </>
+                          ) : (
+                            <span className="text-sm text-foreground/40">N/A</span>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                {/* Packets Tx Rate */}
+                <tr className="hover:bg-muted/10 transition-colors">
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-2.5">
+                      <Activity className="w-4 h-4 text-foreground/50" />
+                      <span className="text-sm font-medium text-foreground/80">Packets Tx Rate</span>
+                    </div>
+                  </td>
+                  {selectedNodes.map((node) => {
+                    const txRate = getComparisonValue(node, 'packetsTxRate');
+                    const values = selectedNodes.map(n => getComparisonValue(n, 'packetsTxRate'));
+                    const icon = getComparisonIcon(values);
+                    return (
+                      <td key={node.id} className="px-5 py-3.5 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          {txRate !== null && txRate > 0 ? (
+                            <>
+                              <span className="text-sm font-semibold text-foreground">{formatPacketRate(txRate)}</span>
+                              {icon === 'up' && <TrendingUp className="w-3.5 h-3.5 text-[#3F8277]" />}
+                              {icon === 'down' && <TrendingDown className="w-3.5 h-3.5 text-[#FF6B6B]" />}
+                              {icon === 'equal' && <Minus className="w-3.5 h-3.5 text-foreground/30" />}
+                            </>
+                          ) : (
+                            <span className="text-sm text-foreground/40">N/A</span>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
                 </tr>
 
                 {/* Registered */}
