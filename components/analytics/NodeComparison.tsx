@@ -4,6 +4,7 @@ import { PNode } from '@/lib/types/pnode';
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { X, Search, TrendingUp, TrendingDown, Minus, Server, Activity, HardDrive, Cpu, MemoryStick, Wifi, MapPin, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { formatStorageBytes } from '@/lib/utils/storage';
+import { getLatestVersion } from '@/lib/utils/network-health';
 import NodeStatusBadge from '../NodeStatusBadge';
 
 interface NodeComparisonProps {
@@ -132,10 +133,10 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
     return comparisonNodes.map(c => c.node).filter((n): n is PNode => n !== null);
   }, [comparisonNodes]);
 
-  // Get latest version for badges
+  // Get latest version for badges (excluding trynet versions)
   const latestVersion = useMemo(() => {
     const versions = nodes.map(n => n.version).filter((v): v is string => !!v);
-    return versions.sort().reverse()[0];
+    return getLatestVersion(versions) || versions.sort().reverse()[0];
   }, [nodes]);
 
   // Comparison metrics

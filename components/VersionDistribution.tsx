@@ -26,20 +26,28 @@ export default function VersionDistribution({ nodes }: VersionDistributionProps)
       }))
       .sort((a, b) => b.count - a.count);
 
-    // Latest version is the one with highest semantic version
-    const latestVersion = sorted
-      .filter(v => v.version !== 'Unknown')
-      .sort((a, b) => {
-        // Try semantic version comparison
-        const aParts = a.version.replace('v', '').split('.').map(Number);
-        const bParts = b.version.replace('v', '').split('.').map(Number);
-        for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
-          const aVal = aParts[i] || 0;
-          const bVal = bParts[i] || 0;
-          if (aVal !== bVal) return bVal - aVal;
-        }
-        return 0;
-      })[0]?.version;
+    // Latest version is the one with highest semantic version (excluding trynet versions)
+    // Filter out trynet versions when determining "current"
+    const nonTrynetVersions = sorted.filter(v => 
+      v.version !== 'Unknown' && !v.version.includes('-trynet')
+    );
+    
+    const latestVersion = nonTrynetVersions.length > 0
+      ? nonTrynetVersions.sort((a, b) => {
+          // Try semantic version comparison
+          // Extract base version (before any dashes)
+          const aBase = a.version.replace('v', '').split('-')[0];
+          const bBase = b.version.replace('v', '').split('-')[0];
+          const aParts = aBase.split('.').map(Number);
+          const bParts = bBase.split('.').map(Number);
+          for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+            const aVal = aParts[i] || 0;
+            const bVal = bParts[i] || 0;
+            if (aVal !== bVal) return bVal - aVal;
+          }
+          return 0;
+        })[0]?.version
+      : null;
 
     return { versions: sorted, latestVersion };
   }, [nodes]);

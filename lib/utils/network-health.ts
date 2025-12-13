@@ -7,15 +7,24 @@ import { PNode } from '@/lib/types/pnode';
 export function getLatestVersion(versions: string[]): string | null {
   if (versions.length === 0) return null;
   
-  // Filter out unknown/invalid versions
-  const validVersions = versions.filter(v => v && v !== 'Unknown' && v !== 'unknown');
+  // Filter out unknown/invalid versions and trynet versions
+  // Trynet versions should not be considered as "latest" - only stable releases
+  const validVersions = versions.filter(v => 
+    v && 
+    v !== 'Unknown' && 
+    v !== 'unknown' && 
+    !v.includes('-trynet')
+  );
   if (validVersions.length === 0) return null;
   
   // Sort by semantic version (highest first)
   const sorted = [...validVersions].sort((a, b) => {
     // Try semantic version comparison
-    const aParts = a.replace('v', '').split('.').map(Number);
-    const bParts = b.replace('v', '').split('.').map(Number);
+    // Extract base version (before any dashes)
+    const aBase = a.replace('v', '').split('-')[0];
+    const bBase = b.replace('v', '').split('-')[0];
+    const aParts = aBase.split('.').map(Number);
+    const bParts = bBase.split('.').map(Number);
     for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
       const aVal = aParts[i] || 0;
       const bVal = bParts[i] || 0;

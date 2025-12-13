@@ -3,6 +3,7 @@
 import { PNode } from '@/lib/types/pnode';
 import { useMemo } from 'react';
 import { AlertCircle, CheckCircle, TrendingUp, AlertTriangle, Info } from 'lucide-react';
+import { getLatestVersion } from '@/lib/utils/network-health';
 
 interface NetworkInsightsProps {
   nodes: PNode[];
@@ -52,10 +53,10 @@ export default function NetworkInsights({ nodes }: NetworkInsightsProps) {
       });
     }
 
-    // 2. Version Health
+    // 2. Version Health (excluding trynet versions)
     const versions = nodes.map(n => n.version).filter((v): v is string => !!v);
-    const latestVersion = versions.sort().reverse()[0];
-    const latestVersionNodes = nodes.filter(n => n.version === latestVersion).length;
+    const latestVersion = getLatestVersion(versions) || versions.sort().reverse()[0];
+    const latestVersionNodes = latestVersion ? nodes.filter(n => n.version === latestVersion).length : 0;
     const versionHealthPercent = (latestVersionNodes / nodes.length) * 100;
 
     if (versionHealthPercent === 100) {

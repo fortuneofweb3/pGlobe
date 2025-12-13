@@ -3,6 +3,7 @@
 import { PNode } from '@/lib/types/pnode';
 import { useMemo, useState } from 'react';
 import { formatStorageBytes } from '@/lib/utils/storage';
+import { getLatestVersion } from '@/lib/utils/network-health';
 import NodeStatusBadge from './NodeStatusBadge';
 
 interface NodeRankingsProps {
@@ -73,10 +74,10 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
   const currentRankings = activeTab === 'uptime' ? rankings.byUptime : rankings.byStorage;
   const hasData = currentRankings.length > 0;
 
-  // Get latest version for status badges
+  // Get latest version for status badges (excluding trynet versions)
   const latestVersion = useMemo(() => {
     const versions = nodes.map(n => n.version).filter((v): v is string => !!v);
-    return versions.sort().reverse()[0];
+    return getLatestVersion(versions) || versions.sort().reverse()[0];
   }, [nodes]);
 
   return (
