@@ -234,6 +234,28 @@ export async function performRefresh(): Promise<void> {
     console.log(`[BackgroundRefresh] Fetched on-chain data for ${balanceMap.size}/${allPubkeys.length} pubkeys (${nodesWithBalance} with balance > 0)`);
     console.log(`[BackgroundRefresh] Fetched account creation dates for ${nodesWithCreationDate} nodes`);
 
+    // STEP 4.5: Fetch pod credits
+    console.log(`[BackgroundRefresh] Fetching pod credits...`);
+    const creditsMap = new Map<string, number>();
+    try {
+      const POD_CREDITS_API = 'https://podcredits.xandeum.network/api/pods-credits';
+      const response = await fetch(POD_CREDITS_API, {
+        signal: AbortSignal.timeout(10000), // 10 second timeout
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.status === 'success' && data.pods_credits) {
+          for (const pod of data.pods_credits) {
+            creditsMap.set(pod.pod_id, pod.credits);
+          }
+          console.log(`[BackgroundRefresh] ✅ Fetched credits for ${creditsMap.size} pods`);
+        }
+      }
+    } catch (error) {
+      console.warn(`[BackgroundRefresh] ⚠️  Failed to fetch pod credits:`, error instanceof Error ? error.message : String(error));
+    }
+
     // STEP 5: Re-enrich nodes with null values (especially those with uptime but missing stats)
     // Use existingNodesMap from STEP 4 (already fetched)
     const nodesNeedingReEnrichment: PNode[] = [];
@@ -424,6 +446,15 @@ export async function performRefresh(): Promise<void> {
 
       // Always set isRegistered based on balance (update during sync)
       enrichedNode.isRegistered = isRegistered;
+
+      // Set credits from pod credits API (match by pubkey)
+      const credits = pk ? creditsMap.get(pk) : undefined;
+      if (credits !== undefined) {
+        enrichedNode.credits = credits;
+      } else if (existingNode?.credits !== undefined && existingNode.credits !== null) {
+        // Preserve existing credits if API fetch failed
+        enrichedNode.credits = existingNode.credits;
+      }
 
       return enrichedNode;
     });

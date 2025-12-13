@@ -599,6 +599,11 @@ function HomeContent() {
                   valueColor="text-[#F0A741]"
                   tooltip="Average packet transfer rate (Rx + Tx) across nodes. Estimated from cumulative totals divided by uptime."
                 />
+                <MetricRow
+                  label="Total Credits"
+                  value={stats.totalCredits > 0 ? stats.totalCredits.toLocaleString() : 'N/A'}
+                  tooltip="Total credits earned across all nodes"
+                />
               </div>
                   </div>
                 </div>

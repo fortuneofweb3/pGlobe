@@ -18,6 +18,8 @@ function NodesPageContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [versionFilter, setVersionFilter] = useState<string>('all');
+  const [creditsFilter, setCreditsFilter] = useState<string>('all');
+  const [packetsFilter, setPacketsFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('reputation');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedNode, setSelectedNode] = useState<PNode | null>(null);
@@ -66,6 +68,28 @@ function NodesPageContent() {
 
     if (versionFilter !== 'all') {
       filtered = filtered.filter((node) => node.version === versionFilter);
+    }
+
+    if (creditsFilter !== 'all') {
+      if (creditsFilter === 'with') {
+        filtered = filtered.filter((node) => node.credits !== undefined && node.credits !== null && node.credits > 0);
+      } else if (creditsFilter === 'without') {
+        filtered = filtered.filter((node) => node.credits === undefined || node.credits === null || node.credits === 0);
+      }
+    }
+
+    if (packetsFilter !== 'all') {
+      if (packetsFilter === 'with') {
+        filtered = filtered.filter((node) => 
+          (node.packetsReceived !== undefined && node.packetsReceived !== null && node.packetsReceived > 0) ||
+          (node.packetsSent !== undefined && node.packetsSent !== null && node.packetsSent > 0)
+        );
+      } else if (packetsFilter === 'without') {
+        filtered = filtered.filter((node) => 
+          (!node.packetsReceived || node.packetsReceived === 0) &&
+          (!node.packetsSent || node.packetsSent === 0)
+        );
+      }
     }
 
     // Calculate "completeness score" - nodes with more complete details get higher score
@@ -134,7 +158,7 @@ function NodesPageContent() {
     });
 
     return filtered;
-  }, [nodes, searchQuery, statusFilter, versionFilter, sortBy, sortOrder]);
+  }, [nodes, searchQuery, statusFilter, versionFilter, creditsFilter, packetsFilter, sortBy, sortOrder]);
 
   const versions = useMemo(() => {
     const versionSet = new Set<string>();
@@ -150,6 +174,29 @@ function NodesPageContent() {
       all: nodes.length,
       online: nodes.filter(n => n.status === 'online').length,
       offline: nodes.filter(n => n.status === 'offline' || n.status === 'syncing' || !n.status).length,
+    };
+  }, [nodes]);
+
+  // Calculate credits and packets counts for filters
+  const creditsCounts = useMemo(() => {
+    return {
+      all: nodes.length,
+      with: nodes.filter(n => n.credits !== undefined && n.credits !== null && n.credits > 0).length,
+      without: nodes.filter(n => n.credits === undefined || n.credits === null || n.credits === 0).length,
+    };
+  }, [nodes]);
+
+  const packetsCounts = useMemo(() => {
+    return {
+      all: nodes.length,
+      with: nodes.filter(n => 
+        (n.packetsReceived !== undefined && n.packetsReceived !== null && n.packetsReceived > 0) ||
+        (n.packetsSent !== undefined && n.packetsSent !== null && n.packetsSent > 0)
+      ).length,
+      without: nodes.filter(n => 
+        (!n.packetsReceived || n.packetsReceived === 0) &&
+        (!n.packetsSent || n.packetsSent === 0)
+      ).length,
     };
   }, [nodes]);
 
@@ -228,23 +275,30 @@ function NodesPageContent() {
                   <ChevronDown className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-foreground/40 pointer-events-none" />
                 </div>
 
-                {/* Sort Dropdown */}
-                <div className="relative flex-1 min-w-[120px] sm:w-auto sm:flex-none">
+                {/* Credits Filter Dropdown */}
+                <div className="relative flex-1 min-w-[100px] sm:w-auto sm:flex-none">
                   <select
-                    value={`${sortBy}-${sortOrder}`}
-                    onChange={(e) => {
-                      const [field, order] = e.target.value.split('-');
-                      setSortBy(field);
-                      setSortOrder(order as 'asc' | 'desc');
-                    }}
+                    value={creditsFilter}
+                    onChange={(e) => setCreditsFilter(e.target.value)}
                     className="w-full appearance-none pl-3 sm:pl-4 pr-8 sm:pr-10 py-2 sm:py-2.5 bg-card/50 border border-border/60 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-border transition-all cursor-pointer text-xs sm:text-sm"
                   >
-                    <option value="reputation-desc">Reputation (High to Low)</option>
-                    <option value="reputation-asc">Reputation (Low to High)</option>
-                    <option value="uptime-desc">Uptime (High to Low)</option>
-                    <option value="uptime-asc">Uptime (Low to High)</option>
-                    <option value="storageUsed-desc">Storage (High to Low)</option>
-                    <option value="storageUsed-asc">Storage (Low to High)</option>
+                    <option value="all">All Credits ({creditsCounts.all})</option>
+                    <option value="with">With Credits ({creditsCounts.with})</option>
+                    <option value="without">No Credits ({creditsCounts.without})</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-foreground/40 pointer-events-none" />
+                </div>
+
+                {/* Packets Filter Dropdown */}
+                <div className="relative flex-1 min-w-[100px] sm:w-auto sm:flex-none">
+                  <select
+                    value={packetsFilter}
+                    onChange={(e) => setPacketsFilter(e.target.value)}
+                    className="w-full appearance-none pl-3 sm:pl-4 pr-8 sm:pr-10 py-2 sm:py-2.5 bg-card/50 border border-border/60 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-border transition-all cursor-pointer text-xs sm:text-sm"
+                  >
+                    <option value="all">All Packets ({packetsCounts.all})</option>
+                    <option value="with">With Packets ({packetsCounts.with})</option>
+                    <option value="without">No Packets ({packetsCounts.without})</option>
                   </select>
                   <ChevronDown className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-foreground/40 pointer-events-none" />
                 </div>
@@ -255,9 +309,14 @@ function NodesPageContent() {
                 <div className="text-xs sm:text-sm text-muted-foreground">
                   Showing <span className="text-foreground font-medium">{filteredAndSortedNodes.length}</span> of <span className="text-foreground font-medium">{nodes.length}</span> nodes
                 </div>
-                {statusFilter !== 'all' && (
+                {(statusFilter !== 'all' || versionFilter !== 'all' || creditsFilter !== 'all' || packetsFilter !== 'all') && (
                   <button
-                    onClick={() => setStatusFilter('all')}
+                    onClick={() => {
+                      setStatusFilter('all');
+                      setVersionFilter('all');
+                      setCreditsFilter('all');
+                      setPacketsFilter('all');
+                    }}
                     className="text-xs text-foreground/60 hover:text-foreground transition-colors"
                   >
                     Clear filters
@@ -279,6 +338,18 @@ function NodesPageContent() {
                 onNodeClick={(node) => {
                   setSelectedNode(node);
                   setIsModalOpen(true);
+                }}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={(field) => {
+                  if (sortBy === field) {
+                    // Toggle order if clicking same field
+                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                  } else {
+                    // Set new field with default descending order
+                    setSortBy(field);
+                    setSortOrder('desc');
+                  }
                 }}
               />
             </div>

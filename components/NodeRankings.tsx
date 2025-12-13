@@ -12,7 +12,7 @@ interface NodeRankingsProps {
   onNodeClick?: (node: PNode) => void;
 }
 
-type RankingTab = 'uptime' | 'storage' | 'packets';
+type RankingTab = 'uptime' | 'storage' | 'packets' | 'credits';
 
 interface NodeWithPacketRate extends PNode {
   rxRate?: number;
@@ -143,7 +143,13 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
       .sort((a, b) => (b.totalRate || 0) - (a.totalRate || 0))
       .slice(0, 10);
 
-    return { byUptime, byStorage, byPackets };
+    // Top 10 nodes by credits
+    const byCredits = [...nodes]
+      .filter(n => n.credits !== undefined && n.credits !== null && n.credits > 0)
+      .sort((a, b) => (b.credits || 0) - (a.credits || 0))
+      .slice(0, 10);
+
+    return { byUptime, byStorage, byPackets, byCredits };
   }, [nodes, packetRates]);
 
   const formatIdentifier = (node: PNode) => {
@@ -166,7 +172,9 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
     ? rankings.byUptime 
     : activeTab === 'storage'
     ? rankings.byStorage
-    : rankings.byPackets;
+    : activeTab === 'packets'
+    ? rankings.byPackets
+    : rankings.byCredits;
   const hasData = currentRankings.length > 0;
 
   // Get latest version for status badges (excluding trynet versions)
@@ -210,6 +218,16 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
           }`}
         >
           Top by Packets
+        </button>
+        <button
+          onClick={() => setActiveTab('credits')}
+          className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+            activeTab === 'credits'
+              ? 'bg-[#F0A741]/20 text-[#F0A741]'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Top by Credits
         </button>
       </div>
 
@@ -270,6 +288,10 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
                   ? `${(node.uptimePercent || 0).toFixed(1)}%`
                   : activeTab === 'storage'
                   ? formatStorageBytes(node.storageUsed || 0)
+                  : activeTab === 'credits'
+                  ? (node.credits !== undefined && node.credits !== null)
+                    ? node.credits.toLocaleString()
+                    : 'N/A'
                   : (() => {
                       const nodeWithRate = node as NodeWithPacketRate;
                       return nodeWithRate.totalRate 

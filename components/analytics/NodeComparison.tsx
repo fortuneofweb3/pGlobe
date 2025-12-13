@@ -169,6 +169,8 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
           return node.packetsSent / node.uptime;
         }
         return null;
+      case 'credits':
+        return node.credits ?? null;
       default:
         return null;
     }
@@ -218,41 +220,60 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
           <div key={index} className="relative">
             {comparison.node ? (
               /* Selected Node Card */
-              <div className="group relative bg-gradient-to-br from-card/80 to-card/40 border-2 border-[#F0A741]/40 rounded-xl p-4 shadow-lg shadow-[#F0A741]/5 hover:shadow-[#F0A741]/10 hover:border-[#F0A741]/60 transition-all duration-200">
-                <div className="absolute top-3 right-3">
-                  <button
-                    onClick={() => clearNode(index)}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-foreground hover:bg-red-500/10 rounded-md transition-all"
-                    title="Remove node"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+              <div className="group relative bg-card border border-[#F0A741]/30 rounded-xl p-3 hover:border-[#F0A741]/50 transition-all duration-200 overflow-hidden">
+                {/* Remove button */}
+                <button
+                  onClick={() => clearNode(index)}
+                  className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 p-1.5 text-foreground/40 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-all duration-200"
+                  title="Remove node"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
                 
-                <div className="space-y-3 pr-8">
-                  <div className="flex items-start gap-3">
+                <div className="relative space-y-2 pr-8">
+                  {/* Header with identifier and status */}
+                  <div className="flex items-start gap-2">
                     <div className="mt-0.5 w-2 h-2 rounded-full bg-[#F0A741] flex-shrink-0 animate-pulse"></div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-mono text-sm font-semibold text-foreground truncate mb-1.5">
+                      <div className="font-mono text-sm font-semibold text-foreground truncate mb-1 tracking-tight">
                         {formatIdentifier(comparison.node)}
                       </div>
                       <NodeStatusBadge node={comparison.node} latestVersion={latestVersion} showLabel={true} />
                     </div>
                   </div>
                   
-                  {comparison.node.locationData?.city && (
-                    <div className="flex items-center gap-1.5 text-xs text-foreground/60">
-                      <MapPin className="w-3 h-3 flex-shrink-0" />
-                      <span className="truncate">{comparison.node.locationData.city}, {comparison.node.locationData.country}</span>
-                    </div>
-                  )}
-                  
-                  {comparison.node.version && (
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="text-foreground/50">Version</span>
-                      <span className="font-mono font-medium text-foreground">v{comparison.node.version}</span>
-                    </div>
-                  )}
+                  {/* Quick stats grid */}
+                  <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-border/30">
+                    {comparison.node.locationData?.city && (
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <MapPin className="w-3 h-3 text-[#F0A741] flex-shrink-0" />
+                        <span className="text-foreground/70 truncate">{comparison.node.locationData.city}</span>
+                      </div>
+                    )}
+                    
+                    {comparison.node.version && (
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <Server className="w-3 h-3 text-foreground/40 flex-shrink-0" />
+                        <span className="font-mono font-medium text-foreground/80">v{comparison.node.version}</span>
+                      </div>
+                    )}
+                    
+                    {comparison.node.credits !== undefined && comparison.node.credits !== null && (
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <Activity className="w-3 h-3 text-[#3F8277] flex-shrink-0" />
+                        <span className="font-semibold text-foreground/80">{comparison.node.credits.toLocaleString()}</span>
+                        <span className="text-foreground/50">credits</span>
+                      </div>
+                    )}
+                    
+                    {comparison.node.uptimePercent !== undefined && (
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <Clock className="w-3 h-3 text-foreground/40 flex-shrink-0" />
+                        <span className="font-semibold text-foreground/80">{comparison.node.uptimePercent.toFixed(1)}%</span>
+                        <span className="text-foreground/50">uptime</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ) : (
@@ -339,50 +360,61 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
 
       {/* Comparison Table */}
       {selectedNodes.length >= 2 && (
-        <div className="bg-card/30 border border-border/50 rounded-xl overflow-hidden">
+        <div className="bg-gradient-to-br from-card/40 via-card/30 to-card/40 border border-border/40 rounded-2xl overflow-hidden shadow-xl shadow-black/10">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-border/30 bg-muted/20">
-                  <th className="px-5 py-3.5 text-left">
-                    <span className="text-xs font-semibold text-foreground/60 uppercase tracking-wider">Metric</span>
+                <tr className="border-b-2 border-border/40 bg-gradient-to-r from-muted/30 via-muted/20 to-muted/30">
+                  <th className="px-6 py-4 text-left">
+                    <span className="text-xs font-bold text-foreground/70 uppercase tracking-widest">Metric</span>
                   </th>
-                  {selectedNodes.map((node) => (
-                    <th key={node.id} className="px-5 py-3.5 text-center min-w-[180px]">
-                      <div className="font-mono text-xs font-semibold text-foreground/80 truncate">
-                        {formatIdentifier(node)}
+                  {selectedNodes.map((node, idx) => (
+                    <th key={node.id} className="px-6 py-4 text-center min-w-[200px] bg-gradient-to-b from-[#F0A741]/5 to-transparent">
+                      <div className="space-y-1">
+                        <div className="font-mono text-sm font-bold text-foreground truncate">
+                          {formatIdentifier(node)}
+                        </div>
+                        {node.locationData?.city && (
+                          <div className="text-xs text-foreground/50 truncate">
+                            {node.locationData.city}
+                          </div>
+                        )}
                       </div>
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/20">
+              <tbody className="divide-y divide-border/30">
                 {/* Status */}
-                <tr className="hover:bg-muted/10 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <Activity className="w-4 h-4 text-foreground/50" />
-                      <span className="text-sm font-medium text-foreground/80">Status</span>
+                <tr className="hover:bg-muted/20 transition-colors bg-gradient-to-r from-transparent via-muted/5 to-transparent">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-lg bg-[#F0A741]/10">
+                        <Activity className="w-4 h-4 text-[#F0A741]" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">Status</span>
                     </div>
                   </td>
                   {selectedNodes.map((node) => (
-                    <td key={node.id} className="px-5 py-3.5 text-center">
+                    <td key={node.id} className="px-6 py-4 text-center">
                       <NodeStatusBadge node={node} latestVersion={latestVersion} showLabel={true} />
                     </td>
                   ))}
                 </tr>
 
                 {/* Version */}
-                <tr className="hover:bg-muted/10 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <Server className="w-4 h-4 text-foreground/50" />
-                      <span className="text-sm font-medium text-foreground/80">Version</span>
+                <tr className="hover:bg-muted/20 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-lg bg-foreground/5">
+                        <Server className="w-4 h-4 text-foreground/60" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">Version</span>
                     </div>
                   </td>
                   {selectedNodes.map((node) => (
-                    <td key={node.id} className="px-5 py-3.5 text-center">
-                      <span className="text-sm font-mono font-medium text-foreground">
+                    <td key={node.id} className="px-6 py-4 text-center">
+                      <span className="text-sm font-mono font-semibold text-foreground bg-muted/30 px-3 py-1 rounded-lg inline-block">
                         {node.version ? `v${node.version}` : <span className="text-foreground/40">N/A</span>}
                       </span>
                     </td>
@@ -390,11 +422,13 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Uptime */}
-                <tr className="hover:bg-muted/10 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <Clock className="w-4 h-4 text-foreground/50" />
-                      <span className="text-sm font-medium text-foreground/80">Uptime</span>
+                <tr className="hover:bg-muted/20 transition-colors bg-gradient-to-r from-transparent via-muted/5 to-transparent">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-lg bg-[#3F8277]/10">
+                        <Clock className="w-4 h-4 text-[#3F8277]" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">Uptime</span>
                     </div>
                   </td>
                   {selectedNodes.map((node) => {
@@ -402,14 +436,14 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                     const values = selectedNodes.map(n => getComparisonValue(n, 'uptime'));
                     const icon = getComparisonIcon(values);
                     return (
-                      <td key={node.id} className="px-5 py-3.5 text-center">
+                      <td key={node.id} className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           {uptime !== null ? (
                             <>
-                              <span className="text-sm font-semibold text-foreground">{uptime.toFixed(1)}%</span>
-                              {icon === 'up' && <TrendingUp className="w-3.5 h-3.5 text-[#3F8277]" />}
-                              {icon === 'down' && <TrendingDown className="w-3.5 h-3.5 text-[#FF6B6B]" />}
-                              {icon === 'equal' && <Minus className="w-3.5 h-3.5 text-foreground/30" />}
+                              <span className="text-base font-bold text-foreground">{uptime.toFixed(1)}%</span>
+                              {icon === 'up' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
+                              {icon === 'down' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
+                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
                             </>
                           ) : (
                             <span className="text-sm text-foreground/40">N/A</span>
@@ -421,11 +455,13 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Storage Used */}
-                <tr className="hover:bg-muted/10 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <HardDrive className="w-4 h-4 text-foreground/50" />
-                      <span className="text-sm font-medium text-foreground/80">Storage</span>
+                <tr className="hover:bg-muted/20 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-lg bg-foreground/5">
+                        <HardDrive className="w-4 h-4 text-foreground/60" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">Storage</span>
                     </div>
                   </td>
                   {selectedNodes.map((node) => {
@@ -433,14 +469,14 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                     const values = selectedNodes.map(n => getComparisonValue(n, 'storage'));
                     const icon = getComparisonIcon(values);
                     return (
-                      <td key={node.id} className="px-5 py-3.5 text-center">
+                      <td key={node.id} className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           {storage !== null ? (
                             <>
-                              <span className="text-sm font-semibold text-foreground">{formatStorageBytes(storage)}</span>
-                              {icon === 'up' && <TrendingUp className="w-3.5 h-3.5 text-[#3F8277]" />}
-                              {icon === 'down' && <TrendingDown className="w-3.5 h-3.5 text-[#FF6B6B]" />}
-                              {icon === 'equal' && <Minus className="w-3.5 h-3.5 text-foreground/30" />}
+                              <span className="text-base font-bold text-foreground">{formatStorageBytes(storage)}</span>
+                              {icon === 'up' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
+                              {icon === 'down' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
+                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
                             </>
                           ) : (
                             <span className="text-sm text-foreground/40">N/A</span>
@@ -452,11 +488,13 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* CPU Usage */}
-                <tr className="hover:bg-muted/10 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <Cpu className="w-4 h-4 text-foreground/50" />
-                      <span className="text-sm font-medium text-foreground/80">CPU</span>
+                <tr className="hover:bg-muted/20 transition-colors bg-gradient-to-r from-transparent via-muted/5 to-transparent">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-lg bg-[#F0A741]/10">
+                        <Cpu className="w-4 h-4 text-[#F0A741]" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">CPU</span>
                     </div>
                   </td>
                   {selectedNodes.map((node) => {
@@ -464,14 +502,14 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                     const values = selectedNodes.map(n => getComparisonValue(n, 'cpu'));
                     const icon = getComparisonIcon(values);
                     return (
-                      <td key={node.id} className="px-5 py-3.5 text-center">
+                      <td key={node.id} className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           {cpu !== null ? (
                             <>
-                              <span className="text-sm font-semibold text-foreground">{cpu.toFixed(1)}%</span>
-                              {icon === 'up' && <TrendingDown className="w-3.5 h-3.5 text-[#FF6B6B]" />}
-                              {icon === 'down' && <TrendingUp className="w-3.5 h-3.5 text-[#3F8277]" />}
-                              {icon === 'equal' && <Minus className="w-3.5 h-3.5 text-foreground/30" />}
+                              <span className="text-base font-bold text-foreground">{cpu.toFixed(1)}%</span>
+                              {icon === 'up' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
+                              {icon === 'down' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
+                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
                             </>
                           ) : (
                             <span className="text-sm text-foreground/40">N/A</span>
@@ -483,11 +521,13 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* RAM Usage */}
-                <tr className="hover:bg-muted/10 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <MemoryStick className="w-4 h-4 text-foreground/50" />
-                      <span className="text-sm font-medium text-foreground/80">RAM</span>
+                <tr className="hover:bg-muted/20 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-lg bg-foreground/5">
+                        <MemoryStick className="w-4 h-4 text-foreground/60" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">RAM</span>
                     </div>
                   </td>
                   {selectedNodes.map((node) => {
@@ -495,14 +535,14 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                     const values = selectedNodes.map(n => getComparisonValue(n, 'ram'));
                     const icon = getComparisonIcon(values);
                     return (
-                      <td key={node.id} className="px-5 py-3.5 text-center">
+                      <td key={node.id} className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           {ram !== null ? (
                             <>
-                              <span className="text-sm font-semibold text-foreground">{ram.toFixed(1)}%</span>
-                              {icon === 'up' && <TrendingDown className="w-3.5 h-3.5 text-[#FF6B6B]" />}
-                              {icon === 'down' && <TrendingUp className="w-3.5 h-3.5 text-[#3F8277]" />}
-                              {icon === 'equal' && <Minus className="w-3.5 h-3.5 text-foreground/30" />}
+                              <span className="text-base font-bold text-foreground">{ram.toFixed(1)}%</span>
+                              {icon === 'up' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
+                              {icon === 'down' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
+                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
                             </>
                           ) : (
                             <span className="text-sm text-foreground/40">N/A</span>
@@ -514,11 +554,13 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Latency */}
-                <tr className="hover:bg-muted/10 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <Wifi className="w-4 h-4 text-foreground/50" />
-                      <span className="text-sm font-medium text-foreground/80">Latency</span>
+                <tr className="hover:bg-muted/20 transition-colors bg-gradient-to-r from-transparent via-muted/5 to-transparent">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-lg bg-foreground/5">
+                        <Wifi className="w-4 h-4 text-foreground/60" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">Latency</span>
                     </div>
                   </td>
                   {selectedNodes.map((node) => {
@@ -526,14 +568,14 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                     const values = selectedNodes.map(n => getComparisonValue(n, 'latency'));
                     const icon = getComparisonIcon(values);
                     return (
-                      <td key={node.id} className="px-5 py-3.5 text-center">
+                      <td key={node.id} className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           {latency !== null ? (
                             <>
-                              <span className="text-sm font-semibold text-foreground">{Math.round(latency)}ms</span>
-                              {icon === 'up' && <TrendingDown className="w-3.5 h-3.5 text-[#FF6B6B]" />}
-                              {icon === 'down' && <TrendingUp className="w-3.5 h-3.5 text-[#3F8277]" />}
-                              {icon === 'equal' && <Minus className="w-3.5 h-3.5 text-foreground/30" />}
+                              <span className="text-base font-bold text-foreground">{Math.round(latency)}ms</span>
+                              {icon === 'up' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
+                              {icon === 'down' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
+                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
                             </>
                           ) : (
                             <span className="text-sm text-foreground/40">N/A</span>
@@ -545,16 +587,18 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Location */}
-                <tr className="hover:bg-muted/10 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <MapPin className="w-4 h-4 text-foreground/50" />
-                      <span className="text-sm font-medium text-foreground/80">Location</span>
+                <tr className="hover:bg-muted/20 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-lg bg-foreground/5">
+                        <MapPin className="w-4 h-4 text-foreground/60" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">Location</span>
                     </div>
                   </td>
                   {selectedNodes.map((node) => (
-                    <td key={node.id} className="px-5 py-3.5 text-center">
-                      <span className="text-sm text-foreground">
+                    <td key={node.id} className="px-6 py-4 text-center">
+                      <span className="text-sm font-medium text-foreground">
                         {node.locationData?.city && node.locationData?.country
                           ? `${node.locationData.city}, ${node.locationData.country}`
                           : <span className="text-foreground/40">N/A</span>}
@@ -564,11 +608,13 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Packets Received */}
-                <tr className="hover:bg-muted/10 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <Wifi className="w-4 h-4 text-foreground/50" />
-                      <span className="text-sm font-medium text-foreground/80">Packets Rx (Total)</span>
+                <tr className="hover:bg-muted/20 transition-colors bg-gradient-to-r from-transparent via-muted/5 to-transparent">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-lg bg-[#3F8277]/10">
+                        <Wifi className="w-4 h-4 text-[#3F8277]" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">Packets Rx (Total)</span>
                     </div>
                   </td>
                   {selectedNodes.map((node) => {
@@ -576,14 +622,14 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                     const values = selectedNodes.map(n => getComparisonValue(n, 'packetsRx'));
                     const icon = getComparisonIcon(values);
                     return (
-                      <td key={node.id} className="px-5 py-3.5 text-center">
+                      <td key={node.id} className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           {packetsRx !== null ? (
                             <>
-                              <span className="text-sm font-semibold text-foreground">{packetsRx.toLocaleString()}</span>
-                              {icon === 'up' && <TrendingUp className="w-3.5 h-3.5 text-[#3F8277]" />}
-                              {icon === 'down' && <TrendingDown className="w-3.5 h-3.5 text-[#FF6B6B]" />}
-                              {icon === 'equal' && <Minus className="w-3.5 h-3.5 text-foreground/30" />}
+                              <span className="text-base font-bold text-foreground">{packetsRx.toLocaleString()}</span>
+                              {icon === 'up' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
+                              {icon === 'down' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
+                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
                             </>
                           ) : (
                             <span className="text-sm text-foreground/40">N/A</span>
@@ -595,11 +641,13 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Packets Sent */}
-                <tr className="hover:bg-muted/10 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <Wifi className="w-4 h-4 text-foreground/50" />
-                      <span className="text-sm font-medium text-foreground/80">Packets Tx (Total)</span>
+                <tr className="hover:bg-muted/20 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-lg bg-[#3F8277]/10">
+                        <Wifi className="w-4 h-4 text-[#3F8277]" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">Packets Tx (Total)</span>
                     </div>
                   </td>
                   {selectedNodes.map((node) => {
@@ -607,14 +655,14 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                     const values = selectedNodes.map(n => getComparisonValue(n, 'packetsTx'));
                     const icon = getComparisonIcon(values);
                     return (
-                      <td key={node.id} className="px-5 py-3.5 text-center">
+                      <td key={node.id} className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           {packetsTx !== null ? (
                             <>
-                              <span className="text-sm font-semibold text-foreground">{packetsTx.toLocaleString()}</span>
-                              {icon === 'up' && <TrendingUp className="w-3.5 h-3.5 text-[#3F8277]" />}
-                              {icon === 'down' && <TrendingDown className="w-3.5 h-3.5 text-[#FF6B6B]" />}
-                              {icon === 'equal' && <Minus className="w-3.5 h-3.5 text-foreground/30" />}
+                              <span className="text-base font-bold text-foreground">{packetsTx.toLocaleString()}</span>
+                              {icon === 'up' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
+                              {icon === 'down' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
+                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
                             </>
                           ) : (
                             <span className="text-sm text-foreground/40">N/A</span>
@@ -626,11 +674,13 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Packets Rx Rate */}
-                <tr className="hover:bg-muted/10 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <Activity className="w-4 h-4 text-foreground/50" />
-                      <span className="text-sm font-medium text-foreground/80">Packets Rx Rate</span>
+                <tr className="hover:bg-muted/20 transition-colors bg-gradient-to-r from-transparent via-muted/5 to-transparent">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-lg bg-[#3F8277]/10">
+                        <Activity className="w-4 h-4 text-[#3F8277]" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">Packets Rx Rate</span>
                     </div>
                   </td>
                   {selectedNodes.map((node) => {
@@ -638,14 +688,14 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                     const values = selectedNodes.map(n => getComparisonValue(n, 'packetsRxRate'));
                     const icon = getComparisonIcon(values);
                     return (
-                      <td key={node.id} className="px-5 py-3.5 text-center">
+                      <td key={node.id} className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           {rxRate !== null && rxRate > 0 ? (
                             <>
-                              <span className="text-sm font-semibold text-foreground">{formatPacketRate(rxRate)}</span>
-                              {icon === 'up' && <TrendingUp className="w-3.5 h-3.5 text-[#3F8277]" />}
-                              {icon === 'down' && <TrendingDown className="w-3.5 h-3.5 text-[#FF6B6B]" />}
-                              {icon === 'equal' && <Minus className="w-3.5 h-3.5 text-foreground/30" />}
+                              <span className="text-base font-bold text-foreground">{formatPacketRate(rxRate)}</span>
+                              {icon === 'up' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
+                              {icon === 'down' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
+                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
                             </>
                           ) : (
                             <span className="text-sm text-foreground/40">N/A</span>
@@ -657,11 +707,13 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Packets Tx Rate */}
-                <tr className="hover:bg-muted/10 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <Activity className="w-4 h-4 text-foreground/50" />
-                      <span className="text-sm font-medium text-foreground/80">Packets Tx Rate</span>
+                <tr className="hover:bg-muted/20 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-lg bg-[#3F8277]/10">
+                        <Activity className="w-4 h-4 text-[#3F8277]" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">Packets Tx Rate</span>
                     </div>
                   </td>
                   {selectedNodes.map((node) => {
@@ -669,14 +721,47 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                     const values = selectedNodes.map(n => getComparisonValue(n, 'packetsTxRate'));
                     const icon = getComparisonIcon(values);
                     return (
-                      <td key={node.id} className="px-5 py-3.5 text-center">
+                      <td key={node.id} className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           {txRate !== null && txRate > 0 ? (
                             <>
-                              <span className="text-sm font-semibold text-foreground">{formatPacketRate(txRate)}</span>
-                              {icon === 'up' && <TrendingUp className="w-3.5 h-3.5 text-[#3F8277]" />}
-                              {icon === 'down' && <TrendingDown className="w-3.5 h-3.5 text-[#FF6B6B]" />}
-                              {icon === 'equal' && <Minus className="w-3.5 h-3.5 text-foreground/30" />}
+                              <span className="text-base font-bold text-foreground">{formatPacketRate(txRate)}</span>
+                              {icon === 'up' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
+                              {icon === 'down' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
+                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
+                            </>
+                          ) : (
+                            <span className="text-sm text-foreground/40">N/A</span>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                {/* Credits */}
+                <tr className="hover:bg-muted/20 transition-colors bg-gradient-to-r from-transparent via-muted/5 to-transparent">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-lg bg-[#3F8277]/10">
+                        <Activity className="w-4 h-4 text-[#3F8277]" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">Credits</span>
+                    </div>
+                  </td>
+                  {selectedNodes.map((node) => {
+                    const credits = getComparisonValue(node, 'credits');
+                    const values = selectedNodes.map(n => getComparisonValue(n, 'credits'));
+                    const icon = getComparisonIcon(values);
+                    return (
+                      <td key={node.id} className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          {credits !== null ? (
+                            <>
+                              <span className="text-base font-bold text-foreground">{credits.toLocaleString()}</span>
+                              {icon === 'up' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
+                              {icon === 'down' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
+                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
                             </>
                           ) : (
                             <span className="text-sm text-foreground/40">N/A</span>
@@ -688,19 +773,25 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Registered */}
-                <tr className="hover:bg-muted/10 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <CheckCircle2 className="w-4 h-4 text-foreground/50" />
-                      <span className="text-sm font-medium text-foreground/80">Registered</span>
+                <tr className="hover:bg-muted/20 transition-colors bg-gradient-to-r from-transparent via-muted/5 to-transparent">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-lg bg-foreground/5">
+                        <CheckCircle2 className="w-4 h-4 text-foreground/60" />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">Registered</span>
                     </div>
                   </td>
                   {selectedNodes.map((node) => (
-                    <td key={node.id} className="px-5 py-3.5 text-center">
+                    <td key={node.id} className="px-6 py-4 text-center">
                       {node.isRegistered ? (
-                        <CheckCircle2 className="w-4 h-4 text-[#3F8277] mx-auto" />
+                        <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#3F8277]/10">
+                          <CheckCircle2 className="w-5 h-5 text-[#3F8277]" />
+                        </div>
                       ) : (
-                        <XCircle className="w-4 h-4 text-foreground/30 mx-auto" />
+                        <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-foreground/5">
+                          <XCircle className="w-5 h-5 text-foreground/30" />
+                        </div>
                       )}
                     </td>
                   ))}

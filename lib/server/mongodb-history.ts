@@ -62,6 +62,7 @@ export interface HistoricalSnapshot {
     uptimePercent?: number; // calculated from uptime
     storageUsed?: number; // bytes - can grow over time
     storageCapacity?: number; // bytes - usually static but can change
+    credits?: number; // cumulative credits earned - changes over time
     // Static-ish metadata (for context)
     version?: string; // changes occasionally
     isRegistered?: boolean; // changes occasionally
@@ -294,6 +295,7 @@ export async function getNodeHistory(
           uptimePercent: '$nodeSnapshots.uptimePercent',
           storageUsed: '$nodeSnapshots.storageUsed',
           storageCapacity: '$nodeSnapshots.storageCapacity',
+          credits: '$nodeSnapshots.credits',
           version: '$nodeSnapshots.version',
           isRegistered: '$nodeSnapshots.isRegistered',
           location: '$nodeSnapshots.location',
@@ -619,6 +621,7 @@ function createNodeSnapshots(nodes: PNode[]): HistoricalSnapshot['nodeSnapshots'
       uptimePercent: node.uptimePercent !== undefined && node.uptimePercent !== null ? node.uptimePercent : undefined,
       storageUsed: node.storageUsed !== undefined && node.storageUsed !== null ? node.storageUsed : undefined,
       storageCapacity: node.storageCapacity !== undefined && node.storageCapacity !== null ? node.storageCapacity : undefined,
+      credits: node.credits !== undefined && node.credits !== null ? node.credits : undefined,
       // Static-ish metadata (for context)
       version: node.version || undefined,
       isRegistered: node.isRegistered !== undefined ? node.isRegistered : undefined,

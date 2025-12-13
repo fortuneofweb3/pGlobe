@@ -13,11 +13,14 @@ import { measureNodesLatency, getCachedNodesLatencies } from '@/lib/utils/client
 import { fetchNodeBalance } from '@/lib/utils/balance';
 import BalanceDisplay from './BalanceDisplay';
 import { formatBytes, formatStorageBytes } from '@/lib/utils/storage';
-import { Check, X } from 'lucide-react';
+import { Check, X, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface PNodeTableProps {
   nodes: PNode[];
   onNodeClick?: (node: PNode) => void;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  onSort?: (field: string) => void;
 }
 
 /**
@@ -155,7 +158,7 @@ function VersionTooltip({ version, abbreviated }: { version: string; abbreviated
   );
 }
 
-export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
+export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSort }: PNodeTableProps) {
   const router = useRouter();
   const [balances, setBalances] = useState<Record<string, number | null>>({});
   const [fetchingBalances, setFetchingBalances] = useState<Set<string>>(new Set());
@@ -392,17 +395,19 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
         <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0" style={{ margin: 0, padding: 0, marginTop: '-1px' }}>
           <table className="min-w-full border-collapse m-0 border-spacing-0" style={{ minWidth: '800px', borderCollapse: 'collapse', margin: 0, padding: 0 }}>
             <colgroup>
-              <col className="w-[11%]" />
-              <col className="w-[14%]" />
-              <col className="w-[7%]" />
               <col className="w-[9%]" />
-              <col className="w-[11%]" />
-              <col className="w-[11%]" />
+              <col className="w-[12%]" />
+              <col className="w-[6%]" />
+              <col className="w-[8%]" />
               <col className="w-[9%]" />
-              <col className="w-[7%]" />
-              <col className="w-[7%]" />
               <col className="w-[9%]" />
-              <col className="w-[5%]" />
+              <col className="w-[8%]" />
+              <col className="w-[6%]" />
+              <col className="w-[6%]" />
+              <col className="w-[8%]" />
+              <col className="w-[6%]" />
+              <col className="w-[6%]" />
+              <col className="w-[7%]" />
             </colgroup>
             <thead className="sticky top-0 z-10 bg-muted border-b border-border/60" style={{ margin: 0, padding: 0 }}>
               <tr>
@@ -415,36 +420,165 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
                 <th className="px-2 sm:px-4 py-3 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   Registered
                 </th>
-                <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                  Uptime
-                </th>
-                <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                  Storage
-                </th>
-                <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                  Location
-                </th>
-                <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                  Last Seen
-                </th>
-                <th className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                  Latency
-                </th>
-                <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                  CPU
-                </th>
-                <th className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                  Balance
-                </th>
-                <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                  Version
-                </th>
+                {onSort ? (
+                  <>
+                    <th 
+                      className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                      onClick={() => onSort('uptime')}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Uptime</span>
+                        {sortBy === 'uptime' ? (
+                          sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
+                        ) : (
+                          <ArrowDown className="w-3 h-3 text-foreground/30" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                      onClick={() => onSort('storageUsed')}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Storage</span>
+                        {sortBy === 'storageUsed' ? (
+                          sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
+                        ) : (
+                          <ArrowDown className="w-3 h-3 text-foreground/30" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      Location
+                    </th>
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      Last Seen
+                    </th>
+                    <th 
+                      className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                      onClick={() => onSort('latency')}
+                    >
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span>Latency</span>
+                        {sortBy === 'latency' ? (
+                          sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
+                        ) : (
+                          <ArrowDown className="w-3 h-3 text-foreground/30" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                      onClick={() => onSort('cpuPercent')}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>CPU</span>
+                        {sortBy === 'cpuPercent' ? (
+                          sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
+                        ) : (
+                          <ArrowDown className="w-3 h-3 text-foreground/30" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                      onClick={() => onSort('balance')}
+                    >
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span>Balance</span>
+                        {sortBy === 'balance' ? (
+                          sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
+                        ) : (
+                          <ArrowDown className="w-3 h-3 text-foreground/30" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                      onClick={() => onSort('credits')}
+                    >
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span>Credits</span>
+                        {sortBy === 'credits' ? (
+                          sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
+                        ) : (
+                          <ArrowDown className="w-3 h-3 text-foreground/30" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                      onClick={() => onSort('packetsReceived')}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Packets Rx</span>
+                        {sortBy === 'packetsReceived' ? (
+                          sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
+                        ) : (
+                          <ArrowDown className="w-3 h-3 text-foreground/30" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                      onClick={() => onSort('packetsSent')}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Packets Tx</span>
+                        {sortBy === 'packetsSent' ? (
+                          sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
+                        ) : (
+                          <ArrowDown className="w-3 h-3 text-foreground/30" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      Version
+                    </th>
+                  </>
+                ) : (
+                  <>
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      Uptime
+                    </th>
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      Storage
+                    </th>
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      Location
+                    </th>
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      Last Seen
+                    </th>
+                    <th className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      Latency
+                    </th>
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      CPU
+                    </th>
+                    <th className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      Balance
+                    </th>
+                    <th className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      Credits
+                    </th>
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      Packets Rx
+                    </th>
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      Packets Tx
+                    </th>
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      Version
+                    </th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-border/40">
               {nodes.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="px-4 py-12 text-center text-foreground/50">
+                  <td colSpan={13} className="px-4 py-12 text-center text-foreground/50">
                     No pNodes found
                   </td>
                 </tr>
@@ -605,6 +739,33 @@ export default function PNodeTable({ nodes, onNodeClick }: PNodeTableProps) {
                           
                           return renderEmptyCell();
                         })()}
+                      </td>
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-right">
+                        {node.credits !== undefined && node.credits !== null ? (
+                          <span className="text-xs sm:text-sm font-mono text-foreground/80">
+                            {node.credits.toLocaleString()}
+                          </span>
+                        ) : (
+                          renderEmptyCell()
+                        )}
+                      </td>
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                        {node.packetsReceived !== undefined && node.packetsReceived !== null ? (
+                          <span className="text-xs sm:text-sm font-mono text-foreground/80">
+                            {node.packetsReceived.toLocaleString()}
+                          </span>
+                        ) : (
+                          renderEmptyCell()
+                        )}
+                      </td>
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                        {node.packetsSent !== undefined && node.packetsSent !== null ? (
+                          <span className="text-xs sm:text-sm font-mono text-foreground/80">
+                            {node.packetsSent.toLocaleString()}
+                          </span>
+                        ) : (
+                          renderEmptyCell()
+                        )}
                       </td>
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
                         {node.version ? (

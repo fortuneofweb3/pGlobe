@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, ReactNode } from 'react';
 import { PNode } from '@/lib/types/pnode';
 import { NetworkConfig } from '@/lib/server/network-config';
 
@@ -26,6 +26,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   const [selectedNetwork, setSelectedNetwork] = useState<string>('devnet1');
   const [availableNetworks, setAvailableNetworks] = useState<NetworkConfig[]>([]);
   const [currentNetwork, setCurrentNetwork] = useState<NetworkConfig | null>(null);
+  const [podCredits, setPodCredits] = useState<Record<string, number>>({});
   
   // Request deduplication - prevent multiple simultaneous requests
   const fetchingRef = useRef(false);
@@ -285,10 +286,63 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     }
   }, [selectedNetwork, refreshNodes]);
 
+  // Fetch pod credits when nodes are loaded
+  useEffect(() => {
+    const fetchCredits = async () => {
+      try {
+        const response = await fetch('/api/pod-credits');
+        const data = await response.json();
+        if (data.credits) {
+          console.log('[NodesContext] Fetched pod credits:', Object.keys(data.credits).length, 'pods');
+          setPodCredits(data.credits);
+        }
+      } catch (error) {
+        console.error('[NodesContext] Failed to fetch pod credits:', error);
+      }
+    };
+    
+    if (nodes.length > 0) {
+      fetchCredits();
+    }
+  }, [nodes.length]);
+
+  // Merge credits into nodes before providing to context
+  const nodesWithCredits = useMemo(() => {
+    if (Object.keys(podCredits).length === 0) {
+      // No credits data yet, return nodes as-is
+      return nodes;
+    }
+    
+    return nodes.map(node => {
+      // Try multiple ways to match the pod_id
+      // The pod_id from API is a Solana public key (base58)
+      const pubkey = node.pubkey || node.publicKey || '';
+      
+      // Direct match
+      let credits = podCredits[pubkey];
+      
+      // If no match, try case-insensitive (though Solana keys are case-sensitive)
+      if (!credits && pubkey) {
+        const matchingKey = Object.keys(podCredits).find(key => 
+          key.toLowerCase() === pubkey.toLowerCase()
+        );
+        if (matchingKey) {
+          credits = podCredits[matchingKey];
+        }
+      }
+      
+      // Fallback to existing credits if no match found
+      return {
+        ...node,
+        credits: credits ?? node.credits,
+      };
+    });
+  }, [nodes, podCredits]);
+
   return (
     <NodesContext.Provider
       value={{
-        nodes,
+        nodes: nodesWithCredits,
         loading,
         error,
         lastUpdate,

@@ -219,6 +219,7 @@ export interface NodeDocument {
   
   // On-chain data (from Solana blockchain - static)
   balance?: number; // SOL balance
+  credits?: number; // Credits earned (from pod credits API)
   isRegistered?: boolean; // Is node registered on-chain?
   managerPDA?: string; // Manager PDA address
   
@@ -314,6 +315,7 @@ function nodeToDocument(node: PNode): NodeDocument {
     locationCountry: node.locationData?.country || undefined,
     locationCountryCode: node.locationData?.countryCode || undefined,
     balance: node.balance !== undefined && node.balance !== null ? node.balance : undefined,
+    credits: node.credits !== undefined && node.credits !== null ? node.credits : undefined,
     isRegistered: node.isRegistered !== undefined ? node.isRegistered : undefined,
     managerPDA: node.managerPDA || undefined,
     accountCreatedAt: node.accountCreatedAt || undefined,
@@ -379,7 +381,7 @@ export function documentToNode(doc: NodeDocument): PNode {
     peerCount: doc.peerCount,
     peers: doc.peers ? JSON.parse(doc.peers) : undefined,
     balance: doc.balance,
-    credits: undefined, // Credits not stored in DB (would come from on-chain or heartbeat)
+    credits: doc.credits,
     isRegistered: doc.isRegistered,
     managerPDA: doc.managerPDA,
     accountCreatedAt: doc.accountCreatedAt,

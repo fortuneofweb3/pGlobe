@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PNode } from '@/lib/types/pnode';
 import { X, Copy, Check, RefreshCw, HardDrive, Cpu, MemoryStick, Network, MapPin, Clock, CheckCircle2, XCircle, Globe, TrendingUp, Server, Activity } from 'lucide-react';
@@ -37,6 +37,7 @@ interface HistoricalDataPoint {
   activeStreams?: number;
   uptime?: number;
   uptimePercent?: number;
+  credits?: number;
 }
 
 // Helper functions for formatting
@@ -92,7 +93,7 @@ function HistoricalLineChart({
   yTicks?: number[]; // Custom tick values
 }) {
   const { tooltipData, tooltipLeft, tooltipTop, tooltipOpen, showTooltip, hideTooltip } = useTooltip<any>();
-  const margin = { top: 20, right: 20, left: 50, bottom: 60 };
+  const margin = { top: 30, right: 30, left: 60, bottom: 70 };
 
   // Interpolate missing data points to fill gaps smoothly
   const chartData = useMemo(() => {
@@ -194,23 +195,27 @@ function HistoricalLineChart({
   }, [yDomain, yTickFormatter]);
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium text-foreground">{title}</h3>
-        {headerContent}
+        <div className="flex items-center gap-3">
+          {headerContent}
+        </div>
       </div>
-      <div style={{ width: '100%', height, position: 'relative' }}>
+      <div style={{ width: '100%', height, position: 'relative' }} className="bg-muted/10 rounded-lg p-3">
         <ParentSize>
           {({ width: parentWidth = 800 }) => {
             const width = parentWidth;
             const xMax = width - margin.left - margin.right;
             const yMax = height - margin.top - margin.bottom;
 
+            const initialXDomain = chartData.length > 0
+              ? [Math.min(...chartData.map(d => d.timestamp)), Math.max(...chartData.map(d => d.timestamp))]
+              : [Date.now() - 3600000, Date.now()];
+
             const xScale = scaleTime<number>({
               range: [0, xMax],
-              domain: chartData.length > 0
-                ? [Math.min(...chartData.map(d => d.timestamp)), Math.max(...chartData.map(d => d.timestamp))]
-                : [Date.now() - 3600000, Date.now()],
+              domain: initialXDomain,
             });
 
             const yScale = scaleLinear<number>({
@@ -224,7 +229,6 @@ function HistoricalLineChart({
               if (!coords) return;
 
               const x = coords.x - margin.left;
-              const x0 = xScale.invert(x);
               
               // Find the closest data point
               let closestIndex = 0;
@@ -252,149 +256,153 @@ function HistoricalLineChart({
 
             return (
               <>
-                <svg width={width} height={height} onMouseMove={handleMouseMove} onMouseLeave={hideTooltip}>
-                  <rect x={0} y={0} width={width} height={height} fill="transparent" />
-                  <Group transform={`translate(${margin.left},${margin.top})`}>
-                    <GridRows
-                      scale={yScale}
-                      width={xMax}
-                      strokeDasharray="3,3"
-                      stroke="#333"
-                      opacity={0.3}
-                    />
-                    <GridColumns
-                      scale={xScale}
-                      height={yMax}
-                      strokeDasharray="3,3"
-                      stroke="#333"
-                      opacity={0.3}
-                    />
-
-                    {multiLine ? (
-                      multiLine.map((line) => {
-                        // Filter out points with invalid values for this line
-                        const validData = chartData.filter(d => {
-                          const val = d[line.key];
-                          return val !== undefined && val !== null && !isNaN(val);
-                        });
-                        return (
-                          <LinePath
-                            key={line.key}
-                            data={validData}
-                            x={(d) => xScale(d.timestamp)}
-                            y={(d) => yScale(d[line.key] ?? 0)}
-                            stroke={line.color}
-                            strokeWidth={3}
-                            curve={curveMonotoneX}
+                <svg
+                  width={width}
+                  height={height}
+                  onMouseMove={handleMouseMove}
+                  onMouseLeave={hideTooltip}
+                >
+                        <Group transform={`translate(${margin.left},${margin.top})`}>
+                          <GridRows
+                            scale={yScale}
+                            width={xMax}
+                            strokeDasharray="3,3"
+                            stroke="#333"
+                            opacity={0.3}
                           />
-                        );
-                      })
-                    ) : (
-                      (() => {
-                        // Filter out points with invalid values
-                        const validData = chartData.filter(d => {
-                          const val = d.value;
-                          return val !== undefined && val !== null && !isNaN(val);
-                        });
-                        return (
-                          <LinePath
-                            data={validData}
-                            x={(d) => xScale(d.timestamp)}
-                            y={(d) => yScale(d.value ?? 0)}
-                            stroke={strokeColor}
-                            strokeWidth={3}
-                            curve={curveMonotoneX}
+                          <GridColumns
+                            scale={xScale}
+                            height={yMax}
+                            strokeDasharray="3,3"
+                            stroke="#333"
+                            opacity={0.3}
                           />
-                        );
-                      })()
-                    )}
 
-                    {/* Vertical line and dots on hover */}
-                    {tooltipOpen && tooltipData && (
-                      <>
-                        {/* Vertical line */}
-                        <line
-                          x1={xScale(tooltipData.timestamp)}
-                          x2={xScale(tooltipData.timestamp)}
-                          y1={0}
-                          y2={yMax}
-                          stroke="#9CA3AF"
-                          strokeWidth={1}
-                          strokeDasharray="4,4"
-                          opacity={0.5}
-                          pointerEvents="none"
-                        />
-                        {/* Dots at intersection points */}
-                        {multiLine ? (
-                          multiLine.map((line) => {
-                            const value = tooltipData[line.key];
-                            if (value === undefined || value === null || isNaN(value)) return null;
-                            return (
-                              <Circle
-                                key={line.key}
-                                cx={xScale(tooltipData.timestamp)}
-                                cy={yScale(value)}
-                                r={5}
-                                fill={line.color}
-                                stroke="#fff"
-                                strokeWidth={2}
+                          {multiLine ? (
+                            multiLine.map((line) => {
+                              // Filter out points with invalid values for this line
+                              const validData = chartData.filter(d => {
+                                const val = d[line.key];
+                                return val !== undefined && val !== null && !isNaN(val);
+                              });
+                              return (
+                                <LinePath
+                                  key={line.key}
+                                  data={validData}
+                                  x={(d) => xScale(d.timestamp)}
+                                  y={(d) => yScale(d[line.key] ?? 0)}
+                                  stroke={line.color}
+                                  strokeWidth={3}
+                                  curve={curveMonotoneX}
+                                />
+                              );
+                            })
+                          ) : (
+                            (() => {
+                              // Filter out points with invalid values
+                              const validData = chartData.filter(d => {
+                                const val = d.value;
+                                return val !== undefined && val !== null && !isNaN(val);
+                              });
+                              return (
+                                <LinePath
+                                  data={validData}
+                                  x={(d) => xScale(d.timestamp)}
+                                  y={(d) => yScale(d.value ?? 0)}
+                                  stroke={strokeColor}
+                                  strokeWidth={3}
+                                  curve={curveMonotoneX}
+                                />
+                              );
+                            })()
+                          )}
+
+                          {/* Vertical line and dots on hover */}
+                          {tooltipOpen && tooltipData && (
+                            <>
+                              {/* Vertical line */}
+                              <line
+                                x1={xScale(tooltipData.timestamp)}
+                                x2={xScale(tooltipData.timestamp)}
+                                y1={0}
+                                y2={yMax}
+                                stroke="#9CA3AF"
+                                strokeWidth={1}
+                                strokeDasharray="4,4"
+                                opacity={0.5}
                                 pointerEvents="none"
                               />
-                            );
-                          })
-                        ) : (
-                          <Circle
-                            cx={xScale(tooltipData.timestamp)}
-                            cy={yScale(tooltipData.value ?? 0)}
-                            r={5}
-                            fill={strokeColor}
-                            stroke="#fff"
-                            strokeWidth={2}
-                            pointerEvents="none"
-                          />
-                        )}
-                      </>
-                    )}
+                              {/* Dots at intersection points */}
+                              {multiLine ? (
+                                multiLine.map((line) => {
+                                  const value = tooltipData[line.key];
+                                  if (value === undefined || value === null || isNaN(value)) return null;
+                                  return (
+                                    <Circle
+                                      key={line.key}
+                                      cx={xScale(tooltipData.timestamp)}
+                                      cy={yScale(value)}
+                                      r={5}
+                                      fill={line.color}
+                                      stroke="#fff"
+                                      strokeWidth={2}
+                                      pointerEvents="none"
+                                    />
+                                  );
+                                })
+                              ) : (
+                                <Circle
+                                  cx={xScale(tooltipData.timestamp)}
+                                  cy={yScale(tooltipData.value ?? 0)}
+                                  r={5}
+                                  fill={strokeColor}
+                                  stroke="#fff"
+                                  strokeWidth={2}
+                                  pointerEvents="none"
+                                />
+                              )}
+                            </>
+                          )}
 
-                    <AxisBottom
-                      top={yMax}
-                      scale={xScale}
-                      numTicks={Math.min(6, Math.floor(xMax / 100))}
-                      tickFormat={(d) => {
-                        const date = d as Date;
-                        return formatDateAxis(date, chartData);
-                      }}
-                      stroke="#6B7280"
-                      tickStroke="#6B7280"
-                      tickLabelProps={() => ({
-                        fill: '#9CA3AF',
-                        fontSize: 11,
-                        textAnchor: 'middle',
-                        angle: 0,
-                        dy: 10,
-                      })}
-                    />
-                    <AxisLeft
-                      scale={yScale}
-                      label={yLabel}
-                      labelProps={{
-                        fill: '#9CA3AF',
-                        fontSize: 11,
-                      }}
-                      stroke="#6B7280"
-                      tickStroke="#6B7280"
-                      tickFormat={smartYFormatter}
-                      numTicks={yTicks ? yTicks.length : 5}
-                      tickValues={yTicks}
-                      tickLabelProps={() => ({
-                        fill: '#9CA3AF',
-                        fontSize: 11,
-                        textAnchor: 'end',
-                        dx: -5,
-                      })}
-                    />
-                  </Group>
-                </svg>
+                          <AxisBottom
+                            top={yMax}
+                            scale={xScale}
+                            numTicks={Math.min(6, Math.floor(xMax / 100))}
+                            tickFormat={(d) => {
+                              const date = d as Date;
+                              return formatDateAxis(date, chartData);
+                            }}
+                            stroke="#6B7280"
+                            tickStroke="#6B7280"
+                            tickLabelProps={() => ({
+                              fill: '#9CA3AF',
+                              fontSize: 11,
+                              textAnchor: 'middle',
+                              angle: 0,
+                              dy: 10,
+                            })}
+                          />
+                          <AxisLeft
+                            scale={yScale}
+                            label={yLabel}
+                            labelProps={{
+                              fill: '#9CA3AF',
+                              fontSize: 11,
+                            }}
+                            stroke="#6B7280"
+                            tickStroke="#6B7280"
+                            tickFormat={smartYFormatter}
+                            numTicks={yTicks ? yTicks.length : 5}
+                            tickValues={yTicks}
+                            tickLabelProps={() => ({
+                              fill: '#9CA3AF',
+                              fontSize: 11,
+                              textAnchor: 'end',
+                              dx: -5,
+                            })}
+                          />
+                        </Group>
+                    </svg>
                 {tooltipOpen && tooltipData && (
                   <TooltipWithBounds
                     top={tooltipTop}
@@ -405,6 +413,7 @@ function HistoricalLineChart({
                       border: '1px solid rgba(255, 255, 255, 0.1)',
                       borderRadius: '8px',
                       padding: '8px 12px',
+                      zIndex: 1000,
                     }}
                   >
                     {tooltipFormatter(tooltipData)}
@@ -426,6 +435,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
   const [refreshingStats, setRefreshingStats] = useState(false);
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [timeRange, setTimeRange] = useState<'30m' | '1h' | '24h' | '1w'>('24h');
   // Load cached latency immediately if available
   const [nodeLatency, setNodeLatency] = useState<number | null>(() => {
     if (!node) return null;
@@ -1037,6 +1047,12 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                         )}
                       </div>
                     </div>
+                    {node.credits !== undefined && node.credits !== null && (
+                      <div className="flex justify-between">
+                        <span className="text-foreground/60">Credits</span>
+                        <span className="text-foreground/80 font-semibold">{node.credits.toLocaleString()}</span>
+                      </div>
+                    )}
                     {node.balance !== undefined && node.balance !== null && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Balance</span>
@@ -1057,23 +1073,53 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
               </div>
 
               {/* Historical Data Section */}
-              {historicalData.length > 0 && (
-                <div className="bg-card/50 border border-border rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <TrendingUp className="w-4 h-4 text-foreground/40" />
-                    <h2 className="text-base font-semibold text-foreground">Historical Performance (Last 7 Days)</h2>
-                  </div>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Status over time */}
-                    <div>
-                      <HistoricalLineChart
-                        title="Node Status"
-                        data={historicalData.map(d => ({
+              {historicalData.length > 0 && (() => {
+                // Filter historical data based on selected time range
+                const now = Date.now();
+                const timeRangeMs = {
+                  '30m': 30 * 60 * 1000,
+                  '1h': 60 * 60 * 1000,
+                  '24h': 24 * 60 * 60 * 1000,
+                  '1w': 7 * 24 * 60 * 60 * 1000,
+                };
+                const cutoffTime = now - timeRangeMs[timeRange];
+                const filteredData = historicalData.filter(d => d.timestamp >= cutoffTime);
+
+                return (
+                  <div className="bg-card/50 border border-border rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-foreground/40" />
+                        <h2 className="text-base font-semibold text-foreground">Historical Performance</h2>
+                      </div>
+                      {/* Time Range Toggle */}
+                      <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
+                        {(['30m', '1h', '24h', '1w'] as const).map((range) => (
+                          <button
+                            key={range}
+                            onClick={() => setTimeRange(range)}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                              timeRange === range
+                                ? 'bg-card text-foreground shadow-sm'
+                                : 'text-foreground/60 hover:text-foreground'
+                            }`}
+                          >
+                            {range === '30m' ? '30m' : range === '1h' ? '1h' : range === '24h' ? '24h' : '1w'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                      {/* Status over time */}
+                      <div className="space-y-4">
+                        <HistoricalLineChart
+                          title="Node Status"
+                          data={filteredData.map(d => ({
                           timestamp: d.timestamp,
                           value: d.status === 'online' ? 2 : d.status === 'syncing' ? 1 : 0,
                           label: d.status || 'offline',
                         }))}
-                        height={200}
+                        height={250}
                         yDomain={[0, 2]}
                         strokeColor="#F0A741"
                         yTicks={[0, 1, 2]}
@@ -1119,16 +1165,16 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     </div>
 
                     {/* CPU & RAM over time */}
-                    {(historicalData.some(d => d.cpuPercent !== undefined) || historicalData.some(d => d.ramPercent !== undefined)) && (
-                      <div>
+                    {(filteredData.some(d => d.cpuPercent !== undefined) || filteredData.some(d => d.ramPercent !== undefined)) && (
+                      <div className="space-y-4">
                         <HistoricalLineChart
                           title="Resource Utilization"
-                          data={historicalData.map(d => ({
+                          data={filteredData.map(d => ({
                             timestamp: d.timestamp,
                             cpu: d.cpuPercent,
                             ram: d.ramPercent,
                           }))}
-                          height={200}
+                          height={250}
                           yDomain={[0, 100]}
                           strokeColor="#F0A741"
                           yLabel="Usage (%)"
@@ -1154,7 +1200,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                           headerContent={
                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
                               {(() => {
-                                const cpuData = historicalData.filter(d => d.cpuPercent !== undefined && d.cpuPercent !== null && !isNaN(d.cpuPercent));
+                                const cpuData = filteredData.filter(d => d.cpuPercent !== undefined && d.cpuPercent !== null && !isNaN(d.cpuPercent));
                                 if (cpuData.length === 0) return null;
                                 const cpuAvg = cpuData.reduce((sum, d) => sum + (d.cpuPercent || 0), 0) / cpuData.length;
                                 if (isNaN(cpuAvg)) return null;
@@ -1166,7 +1212,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                                 );
                               })()}
                               {(() => {
-                                const ramData = historicalData.filter(d => d.ramPercent !== undefined && d.ramPercent !== null && !isNaN(d.ramPercent));
+                                const ramData = filteredData.filter(d => d.ramPercent !== undefined && d.ramPercent !== null && !isNaN(d.ramPercent));
                                 if (ramData.length === 0) return null;
                                 const ramAvg = ramData.reduce((sum, d) => sum + (d.ramPercent || 0), 0) / ramData.length;
                                 if (isNaN(ramAvg)) return null;
@@ -1183,93 +1229,214 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                       </div>
                     )}
 
-                    {/* Packets over time */}
-                    {(historicalData.some(d => d.packetsReceived !== undefined) || historicalData.some(d => d.packetsSent !== undefined)) && (() => {
-                      const packetData = historicalData.map(d => ({
-                        timestamp: d.timestamp,
-                        received: d.packetsReceived,
-                        sent: d.packetsSent,
-                      }));
-                      const maxPackets = Math.max(
-                        ...packetData.map(d => Math.max(d.received || 0, d.sent || 0))
+                    {/* Packets over time - showing rates */}
+                    {(filteredData.some(d => d.packetsReceived !== undefined) || filteredData.some(d => d.packetsSent !== undefined)) && (() => {
+                      // Calculate rates for each snapshot (5-minute window)
+                      const sorted = [...filteredData].sort((a, b) => a.timestamp - b.timestamp);
+                      const FIVE_MINUTES_MS = 5 * 60 * 1000;
+                      
+                      const packetRateData = sorted.map((current, index) => {
+                        // Find the snapshot 5 minutes earlier (or previous snapshot if less than 5 minutes)
+                        let previousIndex = index - 1;
+                        let previous = sorted[previousIndex];
+                        
+                        // Try to find a snapshot approximately 5 minutes earlier
+                        const targetTime = current.timestamp - FIVE_MINUTES_MS;
+                        for (let i = index - 1; i >= 0; i--) {
+                          if (sorted[i].timestamp <= targetTime) {
+                            previous = sorted[i];
+                            previousIndex = i;
+                            break;
+                          }
+                        }
+                        
+                        // Calculate rates if we have a previous snapshot
+                        let rxRate = 0;
+                        let txRate = 0;
+                        
+                        if (previous && previousIndex >= 0) {
+                          const timeDiff = (current.timestamp - previous.timestamp) / 1000; // seconds
+                          if (timeDiff > 0) {
+                            const rxDiff = (current.packetsReceived || 0) - (previous.packetsReceived || 0);
+                            const txDiff = (current.packetsSent || 0) - (previous.packetsSent || 0);
+                            
+                            rxRate = Math.max(0, rxDiff / timeDiff);
+                            txRate = Math.max(0, txDiff / timeDiff);
+                          }
+                        }
+                        
+                        // Calculate total rate (Rx + Tx)
+                        const totalRate = rxRate + txRate;
+                        
+                        return {
+                          timestamp: current.timestamp,
+                          value: totalRate,
+                          // Store original values for tooltip
+                          _rxRate: rxRate,
+                          _txRate: txRate,
+                          _originalReceived: current.packetsReceived,
+                          _originalSent: current.packetsSent,
+                        };
+                      });
+                      
+                      // Fix first point: if it's 0, use the next available non-zero rate
+                      if (packetRateData.length > 0 && packetRateData[0].value === 0) {
+                        const firstNonZero = packetRateData.find(d => d.value > 0);
+                        if (firstNonZero) {
+                          packetRateData[0].value = firstNonZero.value;
+                          packetRateData[0]._rxRate = firstNonZero._rxRate;
+                          packetRateData[0]._txRate = firstNonZero._txRate;
+                        }
+                      }
+                      
+                      const maxRate = Math.max(
+                        ...packetRateData.map(d => d.value || 0)
                       );
+                      
                       return (
-                        <div>
+                        <div className="space-y-4">
                           <HistoricalLineChart
                             title="Network Activity"
-                            data={packetData}
-                            height={200}
-                            yDomain={[0, maxPackets * 1.1]}
+                            data={packetRateData}
+                            height={250}
+                            yDomain={[0, maxRate * 1.1 || 1]}
                             strokeColor="#3F8277"
-                            yLabel="Packets (cumulative)"
+                            yLabel="Packets/s"
                             yTickFormatter={(v) => formatNumber(v)}
-                            multiLine={[
-                              { key: 'received', color: '#3F8277', label: 'Received' },
-                              { key: 'sent', color: '#F0A741', label: 'Sent' },
-                            ]}
                             tooltipFormatter={(d) => (
                               <div className="text-xs">
                                 <div className="font-semibold text-foreground mb-1">
                                   {new Date(d.timestamp).toLocaleString()}
                                 </div>
                                 <div className="text-foreground/80 space-y-1">
-                                  {d.received !== undefined && d.received !== null && (
-                                    <div>Received (Total): {d.received.toLocaleString()}</div>
+                                  <div>Total Rate: <span className="font-semibold">{formatNumber(d.value || 0)}/s</span></div>
+                                  {d._rxRate !== undefined && d._rxRate !== null && (
+                                    <div className="text-foreground/60">Rx: {formatNumber(d._rxRate)}/s</div>
                                   )}
-                                  {d.sent !== undefined && d.sent !== null && (
-                                    <div>Sent (Total): {d.sent.toLocaleString()}</div>
+                                  {d._txRate !== undefined && d._txRate !== null && (
+                                    <div className="text-foreground/60">Tx: {formatNumber(d._txRate)}/s</div>
                                   )}
                                 </div>
                               </div>
                             )}
                             headerContent={
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                {(() => {
-                                  // Calculate actual packet rates from historical snapshots
-                                  if (historicalData.length >= 2) {
-                                    const sorted = [...historicalData].sort((a, b) => a.timestamp - b.timestamp);
-                                    const latest = sorted[sorted.length - 1];
-                                    const previous = sorted[0];
-                                    
-                                    const timeDiff = (latest.timestamp - previous.timestamp) / 1000; // seconds
-                                    if (timeDiff > 0) {
-                                      const rxDiff = (latest.packetsReceived || 0) - (previous.packetsReceived || 0);
-                                      const txDiff = (latest.packetsSent || 0) - (previous.packetsSent || 0);
-                                      
-                                      const rxRate = rxDiff / timeDiff;
-                                      const txRate = txDiff / timeDiff;
-                                      
-                                      return (
-                                        <>
-                                          {rxRate > 0 && (
-                                            <div>
-                                              <span>Rx Rate: <span className="text-foreground font-semibold">
-                                                {formatNumber(rxRate)}/s
-                                              </span></span>
-                                            </div>
-                                          )}
-                                          {txRate > 0 && (
-                                            <div>
-                                              <span>Tx Rate: <span className="text-foreground font-semibold">
-                                                {formatNumber(txRate)}/s
-                                              </span></span>
-                                            </div>
-                                          )}
-                                        </>
-                                      );
-                                    }
-                                  }
-                                  return null;
-                                })()}
+                                <span>Total packet rate (Rx + Tx) calculated over 5-minute windows</span>
                               </div>
                             }
                           />
                         </div>
                       );
                     })()}
+
+                    {/* Credits over time - showing earning rate */}
+                    {(filteredData.some(d => d.credits !== undefined) || (node.credits !== undefined && node.credits !== null)) && (() => {
+                      // Calculate credits earning rate from historical data
+                      const sorted = [...filteredData].sort((a, b) => a.timestamp - b.timestamp);
+                      const FIVE_MINUTES_MS = 5 * 60 * 1000;
+                      
+                      const creditsData = sorted.map((current, index) => {
+                        // Find the snapshot 5 minutes earlier (or previous snapshot if less than 5 minutes)
+                        let previousIndex = index - 1;
+                        let previous = sorted[previousIndex];
+                        
+                        // Try to find a snapshot approximately 5 minutes earlier
+                        const targetTime = current.timestamp - FIVE_MINUTES_MS;
+                        for (let i = index - 1; i >= 0; i--) {
+                          if (sorted[i].timestamp <= targetTime) {
+                            previous = sorted[i];
+                            previousIndex = i;
+                            break;
+                          }
+                        }
+                        
+                        // Calculate earning rate if we have a previous snapshot with credits data
+                        let earningRate = 0;
+                        
+                        if (previous && previousIndex >= 0) {
+                          // Both must have credits defined to calculate rate
+                          const prevCredits = previous.credits;
+                          const currCredits = current.credits;
+                          
+                          if (prevCredits !== undefined && prevCredits !== null && 
+                              currCredits !== undefined && currCredits !== null) {
+                            const timeDiff = (current.timestamp - previous.timestamp) / 1000; // seconds
+                            if (timeDiff > 0) {
+                              const creditsDiff = currCredits - prevCredits;
+                              earningRate = Math.max(0, creditsDiff / timeDiff); // credits per second
+                            }
+                          }
+                        }
+                        
+                        return {
+                          timestamp: current.timestamp,
+                          value: earningRate,
+                          // Store original credits for tooltip
+                          _credits: current.credits,
+                          _originalCredits: current.credits,
+                        };
+                      });
+                      
+                      // Fix first point: if it's 0, use the next available non-zero rate
+                      if (creditsData.length > 0 && creditsData[0].value === 0) {
+                        const firstNonZero = creditsData.find(d => d.value > 0);
+                        if (firstNonZero) {
+                          creditsData[0].value = firstNonZero.value;
+                        }
+                      }
+                      
+                      // If we have current credits but no historical data, estimate rate from uptime
+                      if (creditsData.length === 0 && node.credits !== undefined && node.credits !== null && node.uptime && node.uptime > 0) {
+                        const estimatedRate = node.credits / node.uptime; // credits per second
+                        creditsData.push({
+                          timestamp: Date.now(),
+                          value: estimatedRate,
+                          _credits: node.credits,
+                          _originalCredits: node.credits,
+                        });
+                      }
+                      
+                      const maxRate = Math.max(
+                        ...creditsData.map(d => d.value || 0),
+                        1
+                      );
+                      
+                      return (
+                        <div className="space-y-4">
+                          <HistoricalLineChart
+                            title="Credits Earning Rate"
+                            data={creditsData}
+                            height={250}
+                            yDomain={[0, maxRate * 1.1 || 1]}
+                            strokeColor="#F0A741"
+                            yLabel="Credits/s"
+                            yTickFormatter={(v) => formatNumber(v)}
+                            tooltipFormatter={(d) => (
+                              <div className="text-xs">
+                                <div className="font-semibold text-foreground mb-1">
+                                  {new Date(d.timestamp).toLocaleString()}
+                                </div>
+                                <div className="text-foreground/80 space-y-1">
+                                  <div>Earning Rate: <span className="font-semibold">{formatNumber(d.value || 0)}/s</span></div>
+                                  {d._credits !== undefined && d._credits !== null && (
+                                    <div className="text-foreground/60">Total Credits: {d._credits.toLocaleString()}</div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            headerContent={
+                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                <span>Credits earning rate calculated over 5-minute windows</span>
+                              </div>
+                            }
+                          />
+                        </div>
+                      );
+                    })()}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {loadingHistory && (
                 <div className="bg-card/50 border border-border rounded-xl p-4">
