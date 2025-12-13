@@ -123,7 +123,8 @@ export default function AnalyticsPage() {
     const onlineNodes = nodes.filter(n => n.status === 'online').length;
     const offlineNodes = nodes.filter(n => n.status === 'offline').length;
     const syncingNodes = nodes.filter(n => n.status === 'syncing').length;
-    const totalStorage = nodes.reduce((sum, n) => sum + (n.storageUsed || 0), 0);
+    const totalStorageUsed = nodes.reduce((sum, n) => sum + (n.storageUsed || 0), 0);
+    const totalStorageCapacity = nodes.reduce((sum, n) => sum + (n.storageCapacity || n.storageCommitted || 0), 0);
     const nodesWithStorage = nodes.filter(n => n.storageUsed && n.storageUsed > 0).length;
     const avgUptime = nodes
       .filter(n => n.uptime && n.uptime > 0)
@@ -134,7 +135,8 @@ export default function AnalyticsPage() {
       onlineNodes,
       offlineNodes,
       syncingNodes,
-      totalStorage,
+      totalStorageUsed,
+      totalStorageCapacity,
       nodesWithStorage,
       avgUptime,
     };
@@ -286,14 +288,30 @@ export default function AnalyticsPage() {
 
             <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Storage</span>
+                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Storage</span>
                 <HardDrive className="w-4 h-4 text-foreground/40" />
               </div>
-              <div className="text-xl sm:text-2xl font-bold text-foreground">
-                {stats.totalStorage > 0 ? formatStorageBytes(stats.totalStorage) : 'N/A'}
+              <div className="grid grid-cols-2 gap-3 mb-2">
+                <div>
+                  <div className="text-xs text-foreground/60 mb-0.5">Used</div>
+                  <div className="text-xl sm:text-2xl font-bold text-foreground">
+                    {stats.totalStorageUsed > 0 ? formatStorageBytes(stats.totalStorageUsed) : 'N/A'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-foreground/60 mb-0.5">Capacity</div>
+                  <div className="text-xl sm:text-2xl font-bold text-foreground">
+                    {stats.totalStorageCapacity > 0 ? formatStorageBytes(stats.totalStorageCapacity) : 'N/A'}
+                  </div>
+                </div>
               </div>
-              <div className="text-xs text-foreground/50 mt-1">
-                {stats.nodesWithStorage} nodes reporting
+              <div className="flex items-center justify-between text-xs text-foreground/50">
+                {stats.totalStorageCapacity > 0 && stats.totalStorageUsed > 0 ? (
+                  <span>{((stats.totalStorageUsed / stats.totalStorageCapacity) * 100).toFixed(1)}% utilized</span>
+                ) : (
+                  <span></span>
+                )}
+                <span>{stats.nodesWithStorage} nodes reporting</span>
               </div>
             </div>
 

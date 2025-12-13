@@ -22,6 +22,7 @@ import Header from '@/components/Header';
 import InfoTooltip, { MetricRow } from '@/components/InfoTooltip';
 import { enrichNodesWithGeo } from '@/lib/utils/geo';
 import { formatStorageBytes } from '@/lib/utils/storage';
+import { formatPacketRate } from '@/lib/utils/packet-rates';
 import { Activity, Server, HardDrive, TrendingUp, RefreshCw, BarChart3, Network, Award, Clock, Zap, Info } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 import { NetworkConfig } from '@/lib/server/network-config';
@@ -310,6 +311,19 @@ function HomeContent() {
     const totalPacketsSent = nodes.reduce((sum, n) => sum + (n.packetsSent || 0), 0);
     const totalActiveStreams = nodes.reduce((sum, n) => sum + (n.activeStreams || 0), 0);
     
+    // Calculate average packet rates (estimate from cumulative totals and uptime)
+    const nodesWithPacketsAndUptime = nodes.filter(n => 
+      (n.packetsReceived !== undefined && n.packetsReceived > 0 || n.packetsSent !== undefined && n.packetsSent > 0) &&
+      n.uptime && n.uptime > 0
+    );
+    const avgPacketRate = nodesWithPacketsAndUptime.length > 0
+      ? nodesWithPacketsAndUptime.reduce((sum, n) => {
+          const rxRate = (n.packetsReceived || 0) / (n.uptime || 1);
+          const txRate = (n.packetsSent || 0) / (n.uptime || 1);
+          return sum + rxRate + txRate;
+        }, 0) / nodesWithPacketsAndUptime.length
+      : 0;
+    
     // Credits (from on-chain or heartbeat system)
     const nodesWithCredits = nodes.filter(n => n.credits !== undefined);
     const totalCredits = nodesWithCredits.reduce((sum, n) => sum + (n.credits || 0), 0);
@@ -334,6 +348,7 @@ function HomeContent() {
       totalPacketsReceived,
       totalPacketsSent,
       totalActiveStreams,
+      avgPacketRate,
       totalCredits,
       avgCredits,
     };
@@ -570,13 +585,19 @@ function HomeContent() {
                 />
                 <MetricRow
                   label="Packets Received"
-                  value={stats.totalPacketsReceived > 0 ? `${stats.totalPacketsReceived.toLocaleString()}/s` : 'N/A'}
-                  tooltip="Current network packets received per second across all reporting nodes (rate, not all-time total)."
+                  value={stats.totalPacketsReceived > 0 ? `${stats.totalPacketsReceived.toLocaleString()}` : 'N/A'}
+                  tooltip="Total cumulative packets received across all reporting nodes since they started."
                 />
                 <MetricRow
                   label="Packets Sent"
-                  value={stats.totalPacketsSent > 0 ? `${stats.totalPacketsSent.toLocaleString()}/s` : 'N/A'}
-                  tooltip="Current network packets sent per second across all reporting nodes (rate, not all-time total)."
+                  value={stats.totalPacketsSent > 0 ? `${stats.totalPacketsSent.toLocaleString()}` : 'N/A'}
+                  tooltip="Total cumulative packets sent across all reporting nodes since they started."
+                />
+                <MetricRow
+                  label="Avg Packet Rate"
+                  value={stats.avgPacketRate > 0 ? formatPacketRate(stats.avgPacketRate) : 'N/A'}
+                  valueColor="text-[#F0A741]"
+                  tooltip="Average packet transfer rate (Rx + Tx) across nodes. Estimated from cumulative totals divided by uptime."
                 />
               </div>
                   </div>

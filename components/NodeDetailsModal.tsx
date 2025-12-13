@@ -926,16 +926,51 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     )}
                     {node.packetsReceived !== undefined && node.packetsReceived !== null && (
                       <div className="flex justify-between">
-                        <span className="text-foreground/60">Packets Rx</span>
-                        <span className="font-mono text-foreground/80">{node.packetsReceived.toLocaleString()}/s</span>
+                        <span className="text-foreground/60">Packets Rx (Total)</span>
+                        <span className="font-mono text-foreground/80">{node.packetsReceived.toLocaleString()}</span>
                       </div>
                     )}
                     {node.packetsSent !== undefined && node.packetsSent !== null && (
                       <div className="flex justify-between">
-                        <span className="text-foreground/60">Packets Tx</span>
-                        <span className="font-mono text-foreground/80">{node.packetsSent.toLocaleString()}/s</span>
+                        <span className="text-foreground/60">Packets Tx (Total)</span>
+                        <span className="font-mono text-foreground/80">{node.packetsSent.toLocaleString()}</span>
                       </div>
                     )}
+                    {(() => {
+                      // Calculate packet rates from historical data
+                      if (historicalData.length >= 2) {
+                        const sorted = [...historicalData].sort((a, b) => a.timestamp - b.timestamp);
+                        const latest = sorted[sorted.length - 1];
+                        const previous = sorted[sorted.length - 2];
+                        
+                        const timeDiff = (latest.timestamp - previous.timestamp) / 1000; // seconds
+                        const rxDiff = (latest.packetsReceived || 0) - (previous.packetsReceived || 0);
+                        const txDiff = (latest.packetsSent || 0) - (previous.packetsSent || 0);
+                        
+                        const rxRate = timeDiff > 0 ? rxDiff / timeDiff : 0;
+                        const txRate = timeDiff > 0 ? txDiff / timeDiff : 0;
+                        
+                        if (rxRate > 0 || txRate > 0) {
+                          return (
+                            <>
+                              {rxRate > 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-foreground/60">Packets Rx Rate</span>
+                                  <span className="font-mono text-foreground/80">{formatNumber(rxRate)}/s</span>
+                                </div>
+                              )}
+                              {txRate > 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-foreground/60">Packets Tx Rate</span>
+                                  <span className="font-mono text-foreground/80">{formatNumber(txRate)}/s</span>
+                                </div>
+                              )}
+                            </>
+                          );
+                        }
+                      }
+                      return null;
+                    })()}
                     {node.activeStreams !== undefined && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Active Streams</span>
@@ -1166,7 +1201,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                             height={200}
                             yDomain={[0, maxPackets * 1.1]}
                             strokeColor="#3F8277"
-                            yLabel="Packets/s"
+                            yLabel="Packets (cumulative)"
                             yTickFormatter={(v) => formatNumber(v)}
                             multiLine={[
                               { key: 'received', color: '#3F8277', label: 'Received' },
@@ -1179,10 +1214,10 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                                 </div>
                                 <div className="text-foreground/80 space-y-1">
                                   {d.received !== undefined && d.received !== null && (
-                                    <div>Received: {d.received.toLocaleString()}/s</div>
+                                    <div>Received (Total): {d.received.toLocaleString()}</div>
                                   )}
                                   {d.sent !== undefined && d.sent !== null && (
-                                    <div>Sent: {d.sent.toLocaleString()}/s</div>
+                                    <div>Sent (Total): {d.sent.toLocaleString()}</div>
                                   )}
                                 </div>
                               </div>
@@ -1190,30 +1225,41 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                             headerContent={
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                 {(() => {
-                                  const rxData = historicalData.filter(d => d.packetsReceived !== undefined && d.packetsReceived !== null && !isNaN(d.packetsReceived));
-                                  if (rxData.length === 0) return null;
-                                  const rxAvg = rxData.reduce((sum, d) => sum + (d.packetsReceived || 0), 0) / rxData.length;
-                                  if (isNaN(rxAvg)) return null;
-                                  return (
-                                    <div>
-                                      <span>Rx: <span className="text-foreground font-semibold">
-                                        {Math.round(rxAvg).toLocaleString()}/s
-                                      </span></span>
-                                    </div>
-                                  );
-                                })()}
-                                {(() => {
-                                  const txData = historicalData.filter(d => d.packetsSent !== undefined && d.packetsSent !== null && !isNaN(d.packetsSent));
-                                  if (txData.length === 0) return null;
-                                  const txAvg = txData.reduce((sum, d) => sum + (d.packetsSent || 0), 0) / txData.length;
-                                  if (isNaN(txAvg)) return null;
-                                  return (
-                                    <div>
-                                      <span>Tx: <span className="text-foreground font-semibold">
-                                        {Math.round(txAvg).toLocaleString()}/s
-                                      </span></span>
-                                    </div>
-                                  );
+                                  // Calculate actual packet rates from historical snapshots
+                                  if (historicalData.length >= 2) {
+                                    const sorted = [...historicalData].sort((a, b) => a.timestamp - b.timestamp);
+                                    const latest = sorted[sorted.length - 1];
+                                    const previous = sorted[0];
+                                    
+                                    const timeDiff = (latest.timestamp - previous.timestamp) / 1000; // seconds
+                                    if (timeDiff > 0) {
+                                      const rxDiff = (latest.packetsReceived || 0) - (previous.packetsReceived || 0);
+                                      const txDiff = (latest.packetsSent || 0) - (previous.packetsSent || 0);
+                                      
+                                      const rxRate = rxDiff / timeDiff;
+                                      const txRate = txDiff / timeDiff;
+                                      
+                                      return (
+                                        <>
+                                          {rxRate > 0 && (
+                                            <div>
+                                              <span>Rx Rate: <span className="text-foreground font-semibold">
+                                                {formatNumber(rxRate)}/s
+                                              </span></span>
+                                            </div>
+                                          )}
+                                          {txRate > 0 && (
+                                            <div>
+                                              <span>Tx Rate: <span className="text-foreground font-semibold">
+                                                {formatNumber(txRate)}/s
+                                              </span></span>
+                                            </div>
+                                          )}
+                                        </>
+                                      );
+                                    }
+                                  }
+                                  return null;
                                 })()}
                               </div>
                             }

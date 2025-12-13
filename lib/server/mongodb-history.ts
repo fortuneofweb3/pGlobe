@@ -31,8 +31,8 @@ export interface HistoricalSnapshot {
   // Variable metrics (change frequently)
   avgCpuPercent: number; // Average CPU usage %
   avgRamPercent: number; // Average RAM usage %
-  avgPacketsReceived: number; // Average packets received per second
-  avgPacketsSent: number; // Average packets sent per second
+  avgPacketsReceived: number; // Average cumulative packets received
+  avgPacketsSent: number; // Average cumulative packets sent
   avgActiveStreams: number; // Average active network streams
   // Cumulative metrics (track behavior over time)
   avgUptime: number; // Average uptime in seconds (cumulative, but tracks if nodes stay online)
@@ -54,8 +54,8 @@ export interface HistoricalSnapshot {
     status: 'online' | 'offline' | 'syncing';
     cpuPercent?: number; // % - changes frequently
     ramPercent?: number; // % - changes frequently
-    packetsReceived?: number; // per second - changes frequently
-    packetsSent?: number; // per second - changes frequently
+    packetsReceived?: number; // cumulative total - changes frequently
+    packetsSent?: number; // cumulative total - changes frequently
     activeStreams?: number; // changes frequently
     // Cumulative metrics (track to see behavior over time)
     uptime?: number; // seconds - cumulative, but tracks if node stays online
