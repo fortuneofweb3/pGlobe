@@ -300,6 +300,21 @@ function QuickStartGuide() {
                 Latency measurements are cached for 1 hour to improve performance. Lower is better (under 100ms is excellent).
               </dd>
             </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Credits</dt>
+              <dd className="text-sm text-gray-600 dark:text-gray-400">
+                Reputation credits earned by the node. Credits are calculated as follows:
+              </dd>
+              <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 ml-4 mt-2 space-y-1">
+                <li><strong>+1 credit</strong> per heartbeat request responded to (~30 second intervals)</li>
+                <li><strong>-100 credits</strong> for failing to respond to a data request</li>
+                <li>Credits <strong>reset monthly</strong> (tracked via creditsResetMonth field)</li>
+              </ul>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                Credits are fetched from the Xandeum pod credits API and represent the node's reputation and reliability. 
+                Higher credits indicate a more reliable node that consistently responds to network requests.
+              </p>
+            </div>
           </dl>
 
           <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">Network Health Score</h3>
@@ -657,11 +672,31 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
           <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
             <li><strong>Uptime Over Time:</strong> Line chart showing uptime percentage trends</li>
             <li><strong>Storage Over Time:</strong> Line chart showing storage usage trends</li>
+            <li><strong>Packets Earned Over Time:</strong> Line chart showing packets earned per time interval (difference between consecutive snapshots)</li>
+            <li><strong>Credits Earned Over Time:</strong> Line chart showing credits earned per time interval (difference between consecutive snapshots)</li>
           </ul>
           <p className="text-gray-700 dark:text-gray-300 mb-4">
-            Historical data is stored hourly in MongoDB. Charts use visx library with smooth interpolation between data points. 
+            Historical data is stored in MongoDB at ~10-minute intervals. Charts use visx library with smooth interpolation between data points. 
             X-axis labels are horizontal and automatically skip labels to prevent overlap.
           </p>
+          
+          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 mb-4">
+            <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Understanding Earned Charts</h4>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+              The <strong>Packets Earned</strong> and <strong>Credits Earned</strong> charts show the amount earned in each time interval, 
+              not cumulative totals. This means:
+            </p>
+            <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1 ml-4">
+              <li>Each data point shows the <strong>difference</strong> between two consecutive snapshots</li>
+              <li>If nothing is earned in an interval, the chart line drops to 0</li>
+              <li>The time period label (per minute/hour/day/week) depends on the selected time range</li>
+              <li>Tooltips show both "Earned in this interval" and "Cumulative" values for context</li>
+            </ul>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">
+              This approach gives you a clear view of earning activity patterns over time, showing when nodes are actively 
+              processing requests versus idle periods.
+            </p>
+          </div>
 
           <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Real-time Metrics</h3>
           <p className="text-gray-700 dark:text-gray-300 mb-4">
