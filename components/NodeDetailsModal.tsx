@@ -1319,12 +1319,12 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                                   {d._txEarned !== undefined && d._txEarned !== null && (
                                     <div className="text-foreground/60">Tx: {formatNumber(d._txEarned)} packets</div>
                                   )}
-                                  {d._originalReceived !== undefined && (
+                                  {d._originalReceived !== undefined && d._originalReceived !== null && (
                                     <div className="text-foreground/50 mt-1 pt-1 border-t border-border/50">
                                       Total Rx: {d._originalReceived.toLocaleString()}
                                     </div>
                                   )}
-                                  {d._originalSent !== undefined && (
+                                  {d._originalSent !== undefined && d._originalSent !== null && (
                                     <div className="text-foreground/50">Total Tx: {d._originalSent.toLocaleString()}</div>
                                   )}
                                 </div>
@@ -1389,9 +1389,9 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                         return {
                           timestamp: current.timestamp,
                           value: creditsEarned,
-                          // Store original credits for tooltip
-                          _credits: current.credits,
-                          _originalCredits: current.credits,
+                          // Store original credits for tooltip (only if defined)
+                          _credits: current.credits !== undefined && current.credits !== null ? current.credits : undefined,
+                          _originalCredits: current.credits !== undefined && current.credits !== null ? current.credits : undefined,
                         };
                       });
                       
@@ -1440,7 +1440,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                                 </div>
                                 <div className="text-foreground/80 space-y-1">
                                   <div>Credits Earned: <span className="font-semibold">{formatNumber(d.value || 0)}</span></div>
-                                  {d._credits !== undefined && d._credits !== null && (
+                                  {d._credits !== undefined && d._credits !== null && typeof d._credits === 'number' && (
                                     <div className="text-foreground/60 mt-1 pt-1 border-t border-border/50">
                                       Total Credits: {d._credits.toLocaleString()}
                                     </div>
