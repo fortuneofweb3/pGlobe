@@ -299,9 +299,10 @@ function HistoricalLineChart({
                             })
                           ) : (
                             (() => {
-                              // Filter out points with invalid values
+                              // Filter out points with invalid values, but keep zeros (0 is a valid value)
                               const validData = chartData.filter(d => {
                                 const val = d.value;
+                                // Include 0 as a valid value - it means nothing was earned in that period
                                 return val !== undefined && val !== null && !isNaN(val);
                               });
                               return (
@@ -367,7 +368,7 @@ function HistoricalLineChart({
                           <AxisBottom
                             top={yMax}
                             scale={xScale}
-                            numTicks={Math.min(6, Math.floor(xMax / 100))}
+                            numTicks={Math.min(4, Math.floor(xMax / 150))}
                             tickFormat={(d) => {
                               const date = d as Date;
                               return formatDateAxis(date, chartData);
@@ -392,7 +393,7 @@ function HistoricalLineChart({
                             stroke="#6B7280"
                             tickStroke="#6B7280"
                             tickFormat={smartYFormatter}
-                            numTicks={yTicks ? yTicks.length : 5}
+                            numTicks={yTicks ? yTicks.length : 4}
                             tickValues={yTicks}
                             tickLabelProps={() => ({
                               fill: '#9CA3AF',
@@ -1258,6 +1259,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                           const txDiff = (current.packetsSent || 0) - (previous.packetsSent || 0);
                           
                           // Only count positive differences (earned packets)
+                          // Negative values indicate counter reset or error, show as 0
                           rxEarned = Math.max(0, rxDiff);
                           txEarned = Math.max(0, txDiff);
                         }
@@ -1276,13 +1278,23 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                         };
                       });
                       
-                      // Filter out first point if it's 0 (no previous data to compare)
-                      const filteredPacketData = packetEarnedData.filter((d, index) => index > 0 || d.value > 0);
+                      // Keep all data points including zeros - only skip first point if we can't calculate (no previous)
+                      const filteredPacketData = packetEarnedData.filter((d, index) => {
+                        // Skip first point only if we have no previous data to compare against
+                        if (index === 0) {
+                          // Keep first point if it has packet data, otherwise skip
+                          return d._originalReceived !== undefined || d._originalSent !== undefined;
+                        }
+                        // Keep all other points, including zeros - this ensures the line goes down to 0
+                        return true;
+                      });
                       
-                      const maxEarned = Math.max(
-                        ...filteredPacketData.map(d => d.value || 0),
-                        1
-                      );
+                      // Calculate max, but ensure it's at least 1 to show the chart properly
+                      // If all values are 0, we still want to show the chart with a small range
+                      const allValues = filteredPacketData.map(d => d.value || 0);
+                      const maxEarned = allValues.length > 0 && Math.max(...allValues) > 0
+                        ? Math.max(...allValues) * 1.1
+                        : 1;
                       
                       return (
                         <div className="space-y-4">
@@ -1320,7 +1332,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                             )}
                             headerContent={
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span>Packets earned {timePeriod.label} (difference between consecutive snapshots)</span>
+                                <span>Packets earned {timePeriod.label}</span>
                               </div>
                             }
                           />
@@ -1344,22 +1356,32 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                       const timePeriod = getTimePeriod();
                       const sorted = [...filteredData].sort((a, b) => a.timestamp - b.timestamp);
                       
-                      const creditsEarnedData = sorted.map((current, index) => {
-                        // Find the previous snapshot
-                        let previous = index > 0 ? sorted[index - 1] : null;
+                      // Filter to only data points that have credits defined
+                      const creditsDataPoints = sorted.filter(d => 
+                        d.credits !== undefined && d.credits !== null
+                      );
+                      
+                      const creditsEarnedData = creditsDataPoints.map((current, index) => {
+                        // Find the previous snapshot with credits
+                        let previous = null;
+                        for (let i = index - 1; i >= 0; i--) {
+                          if (creditsDataPoints[i].credits !== undefined && creditsDataPoints[i].credits !== null) {
+                            previous = creditsDataPoints[i];
+                            break;
+                          }
+                        }
                         
                         // Calculate earned credits if we have a previous snapshot with credits data
                         let creditsEarned = 0;
                         
-                        if (previous) {
+                        if (previous && previous.credits !== undefined && previous.credits !== null) {
                           const prevCredits = previous.credits;
                           const currCredits = current.credits;
                           
-                          if (prevCredits !== undefined && prevCredits !== null && 
-                              currCredits !== undefined && currCredits !== null) {
+                          if (currCredits !== undefined && currCredits !== null) {
                             const creditsDiff = currCredits - prevCredits;
                             // Only count positive differences (earned credits)
-                            // Note: Negative values might indicate monthly reset, so we allow them but show as 0
+                            // Note: Negative values might indicate monthly reset, so we show as 0
                             creditsEarned = Math.max(0, creditsDiff);
                           }
                         }
@@ -1373,23 +1395,33 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                         };
                       });
                       
-                      // Filter out first point if it's 0 (no previous data to compare)
-                      const filteredCreditsData = creditsEarnedData.filter((d, index) => index > 0 || d.value > 0);
+                      // Keep all data points including zeros - only skip first point if we can't calculate (no previous)
+                      const filteredCreditsData = creditsEarnedData.filter((d, index) => {
+                        // Skip first point only if we have no previous data to compare against
+                        if (index === 0) {
+                          // Keep first point if it has credits value
+                          return d._credits !== undefined && d._credits !== null;
+                        }
+                        // Keep all other points, including zeros - this ensures the line goes down to 0
+                        return true;
+                      });
                       
                       // If we have current credits but no historical data, show current credits
                       if (filteredCreditsData.length === 0 && node.credits !== undefined && node.credits !== null) {
                         filteredCreditsData.push({
                           timestamp: Date.now(),
-                          value: node.credits,
+                          value: 0, // Can't calculate earned without previous data
                           _credits: node.credits,
                           _originalCredits: node.credits,
                         });
                       }
                       
-                      const maxEarned = Math.max(
-                        ...filteredCreditsData.map(d => d.value || 0),
-                        1
-                      );
+                      // Calculate max, but ensure it's at least 1 to show the chart properly
+                      // If all values are 0, we still want to show the chart with a small range
+                      const allCreditsValues = filteredCreditsData.map(d => d.value || 0);
+                      const maxEarned = allCreditsValues.length > 0 && Math.max(...allCreditsValues) > 0
+                        ? Math.max(...allCreditsValues) * 1.1
+                        : 1;
                       
                       return (
                         <div className="space-y-4">
@@ -1418,7 +1450,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                             )}
                             headerContent={
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span>Credits earned {timePeriod.label} (difference between consecutive snapshots)</span>
+                                <span>Credits earned {timePeriod.label}</span>
                               </div>
                             }
                           />
