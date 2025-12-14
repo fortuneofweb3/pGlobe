@@ -1371,8 +1371,8 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                           }
                         }
                         
-                        // Calculate earned credits if we have a previous snapshot with credits data
-                        let creditsEarned = 0;
+                        // Calculate credits change (can be positive or negative)
+                        let creditsChange = 0;
                         
                         if (previous && previous.credits !== undefined && previous.credits !== null) {
                           const prevCredits = previous.credits;
@@ -1380,15 +1380,15 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                           
                           if (currCredits !== undefined && currCredits !== null) {
                             const creditsDiff = currCredits - prevCredits;
-                            // Only count positive differences (earned credits)
-                            // Note: Negative values might indicate monthly reset, so we show as 0
-                            creditsEarned = Math.max(0, creditsDiff);
+                            // Allow negative values - negative means credits were lost (e.g., -100 for failed data request)
+                            // Positive means credits were earned (e.g., +1 per heartbeat)
+                            creditsChange = creditsDiff;
                           }
                         }
                         
                         return {
                           timestamp: current.timestamp,
-                          value: creditsEarned,
+                          value: creditsChange,
                           // Store original credits for tooltip (only if defined)
                           _credits: current.credits !== undefined && current.credits !== null ? current.credits : undefined,
                           _originalCredits: current.credits !== undefined && current.credits !== null ? current.credits : undefined,
@@ -1416,41 +1416,57 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                         });
                       }
                       
-                      // Calculate max, but ensure it's at least 1 to show the chart properly
-                      // If all values are 0, we still want to show the chart with a small range
+                      // Calculate min and max to support negative values (credits lost)
                       const allCreditsValues = filteredCreditsData.map(d => d.value || 0);
-                      const maxEarned = allCreditsValues.length > 0 && Math.max(...allCreditsValues) > 0
-                        ? Math.max(...allCreditsValues) * 1.1
-                        : 1;
+                      const minValue = allCreditsValues.length > 0 ? Math.min(...allCreditsValues) : 0;
+                      const maxValue = allCreditsValues.length > 0 ? Math.max(...allCreditsValues) : 0;
+                      
+                      // Set yDomain to accommodate both positive and negative values
+                      // Add padding (10% on each side) and ensure we show at least some range
+                      const range = Math.max(Math.abs(minValue), Math.abs(maxValue), 1);
+                      const yDomainMin = minValue < 0 ? minValue * 1.1 - (range * 0.1) : -range * 0.1;
+                      const yDomainMax = maxValue > 0 ? maxValue * 1.1 + (range * 0.1) : range * 0.1;
                       
                       return (
                         <div className="space-y-4">
                           <HistoricalLineChart
-                            title="Credits Earned Over Time"
+                            title="Credits Change Over Time"
                             data={filteredCreditsData}
                             height={250}
-                            yDomain={[0, maxEarned * 1.1 || 1]}
+                            yDomain={[yDomainMin, yDomainMax]}
                             strokeColor="#F0A741"
                             yLabel={`Credits ${timePeriod.label}`}
-                            yTickFormatter={(v) => formatNumber(v)}
-                            tooltipFormatter={(d) => (
-                              <div className="text-xs">
-                                <div className="font-semibold text-foreground mb-1">
-                                  {new Date(d.timestamp).toLocaleString()}
-                                </div>
-                                <div className="text-foreground/80 space-y-1">
-                                  <div>Earned in this interval: <span className="font-semibold">{formatNumber(d.value || 0)} credits</span></div>
-                                  {d._credits !== undefined && d._credits !== null && typeof d._credits === 'number' && (
-                                    <div className="text-foreground/60 mt-1 pt-1 border-t border-border/50">
-                                      Cumulative Credits: {d._credits.toLocaleString()}
+                            yTickFormatter={(v) => {
+                              // Show negative sign for negative values
+                              const val = typeof v === 'number' ? v : v.valueOf();
+                              return val < 0 ? `-${formatNumber(Math.abs(val))}` : formatNumber(val);
+                            }}
+                            tooltipFormatter={(d) => {
+                              const change = d.value || 0;
+                              const isNegative = change < 0;
+                              return (
+                                <div className="text-xs">
+                                  <div className="font-semibold text-foreground mb-1">
+                                    {new Date(d.timestamp).toLocaleString()}
+                                  </div>
+                                  <div className="text-foreground/80 space-y-1">
+                                    <div>
+                                      {isNegative ? 'Lost' : 'Earned'} in this interval: <span className={`font-semibold ${isNegative ? 'text-red-400' : 'text-green-400'}`}>
+                                        {isNegative ? '-' : '+'}{formatNumber(Math.abs(change))} credits
+                                      </span>
                                     </div>
-                                  )}
+                                    {d._credits !== undefined && d._credits !== null && typeof d._credits === 'number' && (
+                                      <div className="text-foreground/60 mt-1 pt-1 border-t border-border/50">
+                                        Cumulative Credits: {d._credits.toLocaleString()}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              );
+                            }}
                             headerContent={
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span>Credits earned {timePeriod.label}</span>
+                                <span>Credits change {timePeriod.label} (positive = earned, negative = lost)</span>
                               </div>
                             }
                           />
