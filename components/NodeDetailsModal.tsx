@@ -1312,7 +1312,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                                   {new Date(d.timestamp).toLocaleString()}
                                 </div>
                                 <div className="text-foreground/80 space-y-1">
-                                  <div>Total Earned: <span className="font-semibold">{formatNumber(d.value || 0)} packets</span></div>
+                                  <div>Earned in this interval: <span className="font-semibold">{formatNumber(d.value || 0)} packets</span></div>
                                   {d._rxEarned !== undefined && d._rxEarned !== null && (
                                     <div className="text-foreground/60">Rx: {formatNumber(d._rxEarned)} packets</div>
                                   )}
@@ -1321,11 +1321,11 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                                   )}
                                   {d._originalReceived !== undefined && d._originalReceived !== null && (
                                     <div className="text-foreground/50 mt-1 pt-1 border-t border-border/50">
-                                      Total Rx: {d._originalReceived.toLocaleString()}
+                                      Cumulative Rx: {d._originalReceived.toLocaleString()}
                                     </div>
                                   )}
                                   {d._originalSent !== undefined && d._originalSent !== null && (
-                                    <div className="text-foreground/50">Total Tx: {d._originalSent.toLocaleString()}</div>
+                                    <div className="text-foreground/50">Cumulative Tx: {d._originalSent.toLocaleString()}</div>
                                   )}
                                 </div>
                               </div>
@@ -1439,10 +1439,10 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                                   {new Date(d.timestamp).toLocaleString()}
                                 </div>
                                 <div className="text-foreground/80 space-y-1">
-                                  <div>Credits Earned: <span className="font-semibold">{formatNumber(d.value || 0)}</span></div>
+                                  <div>Earned in this interval: <span className="font-semibold">{formatNumber(d.value || 0)} credits</span></div>
                                   {d._credits !== undefined && d._credits !== null && typeof d._credits === 'number' && (
                                     <div className="text-foreground/60 mt-1 pt-1 border-t border-border/50">
-                                      Total Credits: {d._credits.toLocaleString()}
+                                      Cumulative Credits: {d._credits.toLocaleString()}
                                     </div>
                                   )}
                                 </div>
