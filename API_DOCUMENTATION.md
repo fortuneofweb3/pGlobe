@@ -92,6 +92,8 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
       "lastSeen": 1704067200000,
       "peerCount": 42,
       "balance": 1.5,
+      "credits": 2880,
+      "creditsResetMonth": "2025-01",
       "isPublic": true,
       "rpcPort": 6000
     }
@@ -104,6 +106,18 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
   }
 }
 ```
+
+**Node Fields - Credits:**
+
+The `credits` field represents reputation credits earned by a pNode. Credits are calculated as follows:
+
+- **+1 credit** per heartbeat request responded to (~30 second intervals)
+- **-100 credits** for failing to respond to a data request
+- Credits **reset monthly** (tracked via `creditsResetMonth` field in YYYY-MM format)
+
+Credits are fetched from the Xandeum pod credits API: `https://podcredits.xandeum.network/api/pods-credits`
+
+The `creditsResetMonth` field indicates which month the current credits are for (e.g., "2025-01"). This helps track when credits reset each month.
 
 ---
 

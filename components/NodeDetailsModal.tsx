@@ -1229,79 +1229,70 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                       </div>
                     )}
 
-                    {/* Packets over time - showing rates */}
+                    {/* Packets over time - showing earned amounts per time period */}
                     {(filteredData.some(d => d.packetsReceived !== undefined) || filteredData.some(d => d.packetsSent !== undefined)) && (() => {
-                      // Calculate rates for each snapshot (5-minute window)
-                      const sorted = [...filteredData].sort((a, b) => a.timestamp - b.timestamp);
-                      const FIVE_MINUTES_MS = 5 * 60 * 1000;
+                      // Determine time period based on selected time range
+                      const getTimePeriod = () => {
+                        switch (timeRange) {
+                          case '30m': return { label: 'per minute', ms: 60 * 1000, period: 'minute' };
+                          case '1h': return { label: 'per minute', ms: 60 * 1000, period: 'minute' };
+                          case '24h': return { label: 'per hour', ms: 60 * 60 * 1000, period: 'hour' };
+                          case '1w': return { label: 'per day', ms: 24 * 60 * 60 * 1000, period: 'day' };
+                          default: return { label: 'per hour', ms: 60 * 60 * 1000, period: 'hour' };
+                        }
+                      };
                       
-                      const packetRateData = sorted.map((current, index) => {
-                        // Find the snapshot 5 minutes earlier (or previous snapshot if less than 5 minutes)
-                        let previousIndex = index - 1;
-                        let previous = sorted[previousIndex];
+                      const timePeriod = getTimePeriod();
+                      const sorted = [...filteredData].sort((a, b) => a.timestamp - b.timestamp);
+                      
+                      const packetEarnedData = sorted.map((current, index) => {
+                        // Find the previous snapshot
+                        let previous = index > 0 ? sorted[index - 1] : null;
                         
-                        // Try to find a snapshot approximately 5 minutes earlier
-                        const targetTime = current.timestamp - FIVE_MINUTES_MS;
-                        for (let i = index - 1; i >= 0; i--) {
-                          if (sorted[i].timestamp <= targetTime) {
-                            previous = sorted[i];
-                            previousIndex = i;
-                            break;
-                          }
+                        // Calculate earned packets if we have a previous snapshot
+                        let rxEarned = 0;
+                        let txEarned = 0;
+                        
+                        if (previous) {
+                          const rxDiff = (current.packetsReceived || 0) - (previous.packetsReceived || 0);
+                          const txDiff = (current.packetsSent || 0) - (previous.packetsSent || 0);
+                          
+                          // Only count positive differences (earned packets)
+                          rxEarned = Math.max(0, rxDiff);
+                          txEarned = Math.max(0, txDiff);
                         }
                         
-                        // Calculate rates if we have a previous snapshot
-                        let rxRate = 0;
-                        let txRate = 0;
-                        
-                        if (previous && previousIndex >= 0) {
-                          const timeDiff = (current.timestamp - previous.timestamp) / 1000; // seconds
-                          if (timeDiff > 0) {
-                            const rxDiff = (current.packetsReceived || 0) - (previous.packetsReceived || 0);
-                            const txDiff = (current.packetsSent || 0) - (previous.packetsSent || 0);
-                            
-                            rxRate = Math.max(0, rxDiff / timeDiff);
-                            txRate = Math.max(0, txDiff / timeDiff);
-                          }
-                        }
-                        
-                        // Calculate total rate (Rx + Tx)
-                        const totalRate = rxRate + txRate;
+                        // Calculate total earned (Rx + Tx)
+                        const totalEarned = rxEarned + txEarned;
                         
                         return {
                           timestamp: current.timestamp,
-                          value: totalRate,
+                          value: totalEarned,
                           // Store original values for tooltip
-                          _rxRate: rxRate,
-                          _txRate: txRate,
+                          _rxEarned: rxEarned,
+                          _txEarned: txEarned,
                           _originalReceived: current.packetsReceived,
                           _originalSent: current.packetsSent,
                         };
                       });
                       
-                      // Fix first point: if it's 0, use the next available non-zero rate
-                      if (packetRateData.length > 0 && packetRateData[0].value === 0) {
-                        const firstNonZero = packetRateData.find(d => d.value > 0);
-                        if (firstNonZero) {
-                          packetRateData[0].value = firstNonZero.value;
-                          packetRateData[0]._rxRate = firstNonZero._rxRate;
-                          packetRateData[0]._txRate = firstNonZero._txRate;
-                        }
-                      }
+                      // Filter out first point if it's 0 (no previous data to compare)
+                      const filteredPacketData = packetEarnedData.filter((d, index) => index > 0 || d.value > 0);
                       
-                      const maxRate = Math.max(
-                        ...packetRateData.map(d => d.value || 0)
+                      const maxEarned = Math.max(
+                        ...filteredPacketData.map(d => d.value || 0),
+                        1
                       );
                       
                       return (
                         <div className="space-y-4">
                           <HistoricalLineChart
-                            title="Network Activity"
-                            data={packetRateData}
+                            title="Packets Earned Over Time"
+                            data={filteredPacketData}
                             height={250}
-                            yDomain={[0, maxRate * 1.1 || 1]}
+                            yDomain={[0, maxEarned * 1.1 || 1]}
                             strokeColor="#3F8277"
-                            yLabel="Packets/s"
+                            yLabel={`Packets ${timePeriod.label}`}
                             yTickFormatter={(v) => formatNumber(v)}
                             tooltipFormatter={(d) => (
                               <div className="text-xs">
@@ -1309,19 +1300,27 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                                   {new Date(d.timestamp).toLocaleString()}
                                 </div>
                                 <div className="text-foreground/80 space-y-1">
-                                  <div>Total Rate: <span className="font-semibold">{formatNumber(d.value || 0)}/s</span></div>
-                                  {d._rxRate !== undefined && d._rxRate !== null && (
-                                    <div className="text-foreground/60">Rx: {formatNumber(d._rxRate)}/s</div>
+                                  <div>Total Earned: <span className="font-semibold">{formatNumber(d.value || 0)} packets</span></div>
+                                  {d._rxEarned !== undefined && d._rxEarned !== null && (
+                                    <div className="text-foreground/60">Rx: {formatNumber(d._rxEarned)} packets</div>
                                   )}
-                                  {d._txRate !== undefined && d._txRate !== null && (
-                                    <div className="text-foreground/60">Tx: {formatNumber(d._txRate)}/s</div>
+                                  {d._txEarned !== undefined && d._txEarned !== null && (
+                                    <div className="text-foreground/60">Tx: {formatNumber(d._txEarned)} packets</div>
+                                  )}
+                                  {d._originalReceived !== undefined && (
+                                    <div className="text-foreground/50 mt-1 pt-1 border-t border-border/50">
+                                      Total Rx: {d._originalReceived.toLocaleString()}
+                                    </div>
+                                  )}
+                                  {d._originalSent !== undefined && (
+                                    <div className="text-foreground/50">Total Tx: {d._originalSent.toLocaleString()}</div>
                                   )}
                                 </div>
                               </div>
                             )}
                             headerContent={
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span>Total packet rate (Rx + Tx) calculated over 5-minute windows</span>
+                                <span>Packets earned {timePeriod.label} (difference between consecutive snapshots)</span>
                               </div>
                             }
                           />
@@ -1329,87 +1328,78 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                       );
                     })()}
 
-                    {/* Credits over time - showing earning rate */}
+                    {/* Credits over time - showing earned amounts per time period */}
                     {(filteredData.some(d => d.credits !== undefined) || (node.credits !== undefined && node.credits !== null)) && (() => {
-                      // Calculate credits earning rate from historical data
-                      const sorted = [...filteredData].sort((a, b) => a.timestamp - b.timestamp);
-                      const FIVE_MINUTES_MS = 5 * 60 * 1000;
-                      
-                      const creditsData = sorted.map((current, index) => {
-                        // Find the snapshot 5 minutes earlier (or previous snapshot if less than 5 minutes)
-                        let previousIndex = index - 1;
-                        let previous = sorted[previousIndex];
-                        
-                        // Try to find a snapshot approximately 5 minutes earlier
-                        const targetTime = current.timestamp - FIVE_MINUTES_MS;
-                        for (let i = index - 1; i >= 0; i--) {
-                          if (sorted[i].timestamp <= targetTime) {
-                            previous = sorted[i];
-                            previousIndex = i;
-                            break;
-                          }
+                      // Determine time period based on selected time range
+                      const getTimePeriod = () => {
+                        switch (timeRange) {
+                          case '30m': return { label: 'per minute', ms: 60 * 1000, period: 'minute' };
+                          case '1h': return { label: 'per minute', ms: 60 * 1000, period: 'minute' };
+                          case '24h': return { label: 'per hour', ms: 60 * 60 * 1000, period: 'hour' };
+                          case '1w': return { label: 'per day', ms: 24 * 60 * 60 * 1000, period: 'day' };
+                          default: return { label: 'per hour', ms: 60 * 60 * 1000, period: 'hour' };
                         }
+                      };
+                      
+                      const timePeriod = getTimePeriod();
+                      const sorted = [...filteredData].sort((a, b) => a.timestamp - b.timestamp);
+                      
+                      const creditsEarnedData = sorted.map((current, index) => {
+                        // Find the previous snapshot
+                        let previous = index > 0 ? sorted[index - 1] : null;
                         
-                        // Calculate earning rate if we have a previous snapshot with credits data
-                        let earningRate = 0;
+                        // Calculate earned credits if we have a previous snapshot with credits data
+                        let creditsEarned = 0;
                         
-                        if (previous && previousIndex >= 0) {
-                          // Both must have credits defined to calculate rate
+                        if (previous) {
                           const prevCredits = previous.credits;
                           const currCredits = current.credits;
                           
                           if (prevCredits !== undefined && prevCredits !== null && 
                               currCredits !== undefined && currCredits !== null) {
-                            const timeDiff = (current.timestamp - previous.timestamp) / 1000; // seconds
-                            if (timeDiff > 0) {
-                              const creditsDiff = currCredits - prevCredits;
-                              earningRate = Math.max(0, creditsDiff / timeDiff); // credits per second
-                            }
+                            const creditsDiff = currCredits - prevCredits;
+                            // Only count positive differences (earned credits)
+                            // Note: Negative values might indicate monthly reset, so we allow them but show as 0
+                            creditsEarned = Math.max(0, creditsDiff);
                           }
                         }
                         
                         return {
                           timestamp: current.timestamp,
-                          value: earningRate,
+                          value: creditsEarned,
                           // Store original credits for tooltip
                           _credits: current.credits,
                           _originalCredits: current.credits,
                         };
                       });
                       
-                      // Fix first point: if it's 0, use the next available non-zero rate
-                      if (creditsData.length > 0 && creditsData[0].value === 0) {
-                        const firstNonZero = creditsData.find(d => d.value > 0);
-                        if (firstNonZero) {
-                          creditsData[0].value = firstNonZero.value;
-                        }
-                      }
+                      // Filter out first point if it's 0 (no previous data to compare)
+                      const filteredCreditsData = creditsEarnedData.filter((d, index) => index > 0 || d.value > 0);
                       
-                      // If we have current credits but no historical data, estimate rate from uptime
-                      if (creditsData.length === 0 && node.credits !== undefined && node.credits !== null && node.uptime && node.uptime > 0) {
-                        const estimatedRate = node.credits / node.uptime; // credits per second
-                        creditsData.push({
+                      // If we have current credits but no historical data, show current credits
+                      if (filteredCreditsData.length === 0 && node.credits !== undefined && node.credits !== null) {
+                        filteredCreditsData.push({
                           timestamp: Date.now(),
-                          value: estimatedRate,
+                          value: node.credits,
                           _credits: node.credits,
                           _originalCredits: node.credits,
                         });
                       }
                       
-                      const maxRate = Math.max(
-                        ...creditsData.map(d => d.value || 0),
+                      const maxEarned = Math.max(
+                        ...filteredCreditsData.map(d => d.value || 0),
                         1
                       );
                       
                       return (
                         <div className="space-y-4">
                           <HistoricalLineChart
-                            title="Credits Earning Rate"
-                            data={creditsData}
+                            title="Credits Earned Over Time"
+                            data={filteredCreditsData}
                             height={250}
-                            yDomain={[0, maxRate * 1.1 || 1]}
+                            yDomain={[0, maxEarned * 1.1 || 1]}
                             strokeColor="#F0A741"
-                            yLabel="Credits/s"
+                            yLabel={`Credits ${timePeriod.label}`}
                             yTickFormatter={(v) => formatNumber(v)}
                             tooltipFormatter={(d) => (
                               <div className="text-xs">
@@ -1417,16 +1407,18 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                                   {new Date(d.timestamp).toLocaleString()}
                                 </div>
                                 <div className="text-foreground/80 space-y-1">
-                                  <div>Earning Rate: <span className="font-semibold">{formatNumber(d.value || 0)}/s</span></div>
+                                  <div>Credits Earned: <span className="font-semibold">{formatNumber(d.value || 0)}</span></div>
                                   {d._credits !== undefined && d._credits !== null && (
-                                    <div className="text-foreground/60">Total Credits: {d._credits.toLocaleString()}</div>
+                                    <div className="text-foreground/60 mt-1 pt-1 border-t border-border/50">
+                                      Total Credits: {d._credits.toLocaleString()}
+                                    </div>
                                   )}
                                 </div>
                               </div>
                             )}
                             headerContent={
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span>Credits earning rate calculated over 5-minute windows</span>
+                                <span>Credits earned {timePeriod.label} (difference between consecutive snapshots)</span>
                               </div>
                             }
                           />

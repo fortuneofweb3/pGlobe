@@ -219,7 +219,12 @@ export interface NodeDocument {
   
   // On-chain data (from Solana blockchain - static)
   balance?: number; // SOL balance
-  credits?: number; // Credits earned (from pod credits API)
+  credits?: number; // Credits earned (from pod credits API at https://podcredits.xandeum.network/api/pods-credits)
+  // Credit calculation rules:
+  // - +1 credit per heartbeat request responded to (~30 second intervals)
+  // - -100 credits for failing to respond to a data request
+  // - Credits reset monthly (tracked via creditsResetMonth)
+  creditsResetMonth?: string; // YYYY-MM format to track which month these credits are for (e.g., "2025-01")
   isRegistered?: boolean; // Is node registered on-chain?
   managerPDA?: string; // Manager PDA address
   
@@ -316,6 +321,7 @@ function nodeToDocument(node: PNode): NodeDocument {
     locationCountryCode: node.locationData?.countryCode || undefined,
     balance: node.balance !== undefined && node.balance !== null ? node.balance : undefined,
     credits: node.credits !== undefined && node.credits !== null ? node.credits : undefined,
+    creditsResetMonth: node.creditsResetMonth || undefined,
     isRegistered: node.isRegistered !== undefined ? node.isRegistered : undefined,
     managerPDA: node.managerPDA || undefined,
     accountCreatedAt: node.accountCreatedAt || undefined,
@@ -382,6 +388,7 @@ export function documentToNode(doc: NodeDocument): PNode {
     peers: doc.peers ? JSON.parse(doc.peers) : undefined,
     balance: doc.balance,
     credits: doc.credits,
+    creditsResetMonth: doc.creditsResetMonth,
     isRegistered: doc.isRegistered,
     managerPDA: doc.managerPDA,
     accountCreatedAt: doc.accountCreatedAt,

@@ -54,7 +54,12 @@ export interface PNode {
   latency?: number; // Latency in ms (from ping test) - primary latency from server region
   latencyByRegion?: Record<string, number>; // Latency measurements from different regions { 'us-east': 50, 'eu-west': 120, ... }
   balance?: number; // SOL balance (from Solana on-chain)
-  credits?: number; // Credits (from on-chain or heartbeat system, NOT from get-stats)
+  credits?: number; // Credits (from pod credits API at https://podcredits.xandeum.network/api/pods-credits)
+  // Credit calculation rules:
+  // - +1 credit per heartbeat request responded to (~30 second intervals)
+  // - -100 credits for failing to respond to a data request
+  // - Credits reset monthly (tracked via creditsResetMonth)
+  creditsResetMonth?: string; // YYYY-MM format to track which month these credits are for (e.g., "2025-01")
   isRegistered?: boolean; // Is node registered on-chain? (balance > 0)
   managerPDA?: string; // Manager PDA address (from on-chain)
   

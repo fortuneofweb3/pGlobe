@@ -448,12 +448,48 @@ export async function performRefresh(): Promise<void> {
       enrichedNode.isRegistered = isRegistered;
 
       // Set credits from pod credits API (match by pubkey)
+      // Credit calculation rules:
+      // - +1 credit per heartbeat request responded to (~30 second intervals)
+      // - -100 credits for failing to respond to a data request
+      // - Credits reset monthly (tracked via creditsResetMonth)
       const credits = pk ? creditsMap.get(pk) : undefined;
+      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
+      
       if (credits !== undefined) {
         enrichedNode.credits = credits;
+        
+        // Detect monthly credit reset: if credits dropped significantly (more than 50% decrease)
+        // or if we don't have a reset month tracked yet, update it
+        const existingCredits = existingNode?.credits;
+        const existingResetMonth = existingNode?.creditsResetMonth;
+        
+        if (existingCredits !== undefined && existingCredits !== null && existingCredits > 0) {
+          // Check if credits dropped significantly (likely monthly reset)
+          const creditsDropPercent = ((existingCredits - credits) / existingCredits) * 100;
+          if (creditsDropPercent > 50 && credits < existingCredits) {
+            // Significant drop detected - likely monthly reset
+            enrichedNode.creditsResetMonth = currentMonth;
+            console.log(`[BackgroundRefresh] Detected monthly credit reset for ${pk}: ${existingCredits} -> ${credits} (${creditsDropPercent.toFixed(1)}% drop)`);
+          } else if (existingResetMonth && existingResetMonth !== currentMonth) {
+            // Month changed but credits didn't drop - might be a new month with continued earning
+            // Keep existing month if credits are still increasing, otherwise update
+            if (credits < existingCredits) {
+              enrichedNode.creditsResetMonth = currentMonth;
+            } else {
+              enrichedNode.creditsResetMonth = existingResetMonth;
+            }
+          } else {
+            // Preserve existing reset month or set to current month if not set
+            enrichedNode.creditsResetMonth = existingResetMonth || currentMonth;
+          }
+        } else {
+          // First time seeing credits for this node - set current month
+          enrichedNode.creditsResetMonth = currentMonth;
+        }
       } else if (existingNode?.credits !== undefined && existingNode.credits !== null) {
         // Preserve existing credits if API fetch failed
         enrichedNode.credits = existingNode.credits;
+        enrichedNode.creditsResetMonth = existingNode.creditsResetMonth;
       }
 
       return enrichedNode;

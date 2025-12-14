@@ -1,5 +1,17 @@
 import { NextResponse } from 'next/server';
 
+/**
+ * Pod Credits API Route
+ * 
+ * Fetches reputation credits from the Xandeum pod credits API.
+ * 
+ * Credit Calculation Rules:
+ * - +1 credit per heartbeat request responded to (~30 second intervals)
+ * - -100 credits for failing to respond to a data request
+ * - Credits reset monthly (tracked via creditsResetMonth field in database)
+ * 
+ * API Endpoint: https://podcredits.xandeum.network/api/pods-credits
+ */
 const POD_CREDITS_API = 'https://podcredits.xandeum.network/api/pods-credits';
 
 export async function GET() {
