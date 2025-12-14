@@ -1436,7 +1436,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                             yDomain={[yDomainMin, yDomainMax]}
                             strokeColor="#F0A741"
                             yLabel={`Credits ${timePeriod.label}`}
-                            yTickFormatter={(v) => {
+                            yTickFormatter={(v: any) => {
                               // Show negative sign for negative values
                               const val = typeof v === 'number' ? v : v.valueOf();
                               return val < 0 ? `-${formatNumber(Math.abs(val))}` : formatNumber(val);
