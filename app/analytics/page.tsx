@@ -52,7 +52,7 @@ export default function AnalyticsPage() {
             const transformed = data.data.map((snapshot: any) => ({
               timestamp: snapshot.timestamp,
               avgUptime: snapshot.avgUptimePercent || 0,
-              onlineCount: snapshot.onlineCount || 0,
+              onlineCount: snapshot.onlineNodes || 0, // Fixed: snapshot stores 'onlineNodes', not 'onlineCount'
               totalNodes: snapshot.totalNodes || 0,
             }));
             setHistoricalData(transformed);
