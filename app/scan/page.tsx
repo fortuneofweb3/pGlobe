@@ -57,6 +57,7 @@ export default function ScanPage() {
   const [closestNodes, setClosestNodes] = useState<NodeWithDistance[]>([]);
   const [selectedNode, setSelectedNode] = useState<PNode | null>(null);
   const [isNodeModalOpen, setIsNodeModalOpen] = useState(false);
+  const [navigateToNodeId, setNavigateToNodeId] = useState<string | null>(null);
 
   // Geo enrichment for map display (runs when nodes update from context)
   useEffect(() => {
@@ -367,9 +368,8 @@ export default function ScanPage() {
                       key={node.id}
                       className="p-3 bg-muted/30 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer"
                       onClick={() => {
-                        // Open node details modal
-                        setSelectedNode(node as PNode);
-                        setIsNodeModalOpen(true);
+                        // Navigate globe to this node
+                        setNavigateToNodeId(node.id);
                       }}
                     >
                       <div className="flex items-start justify-between mb-1">
@@ -459,8 +459,15 @@ export default function ScanPage() {
                   return hasLocation;
                 }) : undefined}
               autoRotate={false}
+              navigateToNodeId={navigateToNodeId}
               onNodeClick={(node) => {
-                // Open node details modal when node is clicked (don't redirect)
+                // Navigate globe to clicked node (prevents redirect to overview)
+                setNavigateToNodeId(node.id);
+                // Clear navigation after a moment so clicking the same node again works
+                setTimeout(() => setNavigateToNodeId(null), 100);
+              }}
+              onPopupClick={(node) => {
+                // Open node details modal when popup is clicked
                 setSelectedNode(node);
                 setIsNodeModalOpen(true);
               }}

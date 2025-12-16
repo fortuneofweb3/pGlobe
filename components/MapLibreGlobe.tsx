@@ -1037,7 +1037,17 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
 
   const handleMarkerClick = (nodeId: string, index: number) => {
     navigateToNode(index);
-    router.push(`/nodes/${nodeId}`);
+    
+    // If onNodeClick callback is provided (e.g., in Scan page), use it instead of navigating
+    if (onNodeClick) {
+      const node = navigableNodes[index];
+      if (node) {
+        onNodeClick(node);
+      }
+    } else {
+      // Only navigate to /nodes page if no callback provided (e.g., in Overview page)
+      router.push(`/nodes/${nodeId}`);
+    }
   };
 
 
