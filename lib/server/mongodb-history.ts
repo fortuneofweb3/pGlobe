@@ -1,9 +1,9 @@
 /**
  * MongoDB Historical Data Storage
  * Stores 10-minute interval snapshots of VARIABLE node metrics for trend analysis
- * Each snapshot includes network-level aggregates AND per-node snapshots with status, latency, CPU, RAM, packets, etc.
+ * Each snapshot includes network-level aggregates AND per-node snapshots with status, CPU, RAM, packets, etc.
  * 
- * NOTE: This stores only VARIABLE metrics (status, latency, CPU, RAM, packets, etc.) for each node
+ * NOTE: This stores only VARIABLE metrics (status, CPU, RAM, packets, etc.) for each node
  * Static data like creation dates (accountCreatedAt) are stored in the main nodes collection,
  * not in snapshots, since they don't change over time.
  * 
@@ -284,8 +284,8 @@ export async function getNodeHistory(
           serverLocation: 1,
           pubkey: '$nodeSnapshots.pubkey',
           status: '$nodeSnapshots.status',
-          latency: '$nodeSnapshots.latency',
-          latencyByRegion: '$nodeSnapshots.latencyByRegion',
+          // latency: removed - client-side measurement
+          // latencyByRegion: removed - client-side measurement
           cpuPercent: '$nodeSnapshots.cpuPercent',
           ramPercent: '$nodeSnapshots.ramPercent',
           packetsReceived: '$nodeSnapshots.packetsReceived',
@@ -406,8 +406,8 @@ export async function getNodeHistory(
           timestamp: doc.timestamp,
           pubkey: doc.pubkey,
           status: doc.status,
-          latency: doc.latency,
-          latencyByRegion: doc.latencyByRegion,
+          // latency: removed - client-side measurement
+          // latencyByRegion: removed - client-side measurement
           cpuPercent: doc.cpuPercent,
           ramPercent: doc.ramPercent,
           packetsReceived: doc.packetsReceived,
