@@ -714,20 +714,125 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Data Collection & Processing</h2>
           
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Gossip Network Discovery</h3>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">How We Build the Nodes List</h3>
           <p className="text-gray-700 dark:text-gray-300 mb-4">
-            pGlobe uses a pure gossip approach to discover nodes:
+            pGlobe discovers and maintains the network's node list through a multi-stage process that ensures accuracy and completeness:
           </p>
-          <ol className="list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
-            <li>Query known pRPC endpoints with <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">get-pods-with-stats</code> (v0.7.0+) or <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">get-pods</code> (all versions) to discover nodes in the gossip network</li>
-            <li>Deduplicate nodes by public key (each node has a unique identifier)</li>
-            <li>Enrich with detailed stats via <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">get-stats</code> when pRPC is publicly accessible (adds CPU, RAM, packets data)</li>
-            <li>Add geographic location via IP geolocation API</li>
-            <li>Store historical snapshots for trend analysis</li>
-          </ol>
-          <p className="text-gray-700 dark:text-gray-300 mb-4 text-sm">
-            <strong>Note:</strong> <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">get-pods-with-stats</code> (available in Pod v0.7.0+) provides basic stats (uptime, storage) directly, but we still query <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">get-stats</code> for detailed metrics (CPU, RAM, network packets) when nodes have public pRPC.
-          </p>
+
+          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6 mb-6">
+            <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Stage 1: Gossip Network Discovery</h4>
+            <ol className="list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+              <li><strong>Direct Discovery:</strong> Query known pRPC endpoints with <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">get-pods-with-stats</code> to get all nodes they know about</li>
+              <li><strong>Network Crawl (optional):</strong> If we find fewer than 150 nodes, query discovered nodes for their peers (recursive gossip)</li>
+              <li><strong>Raw Data:</strong> Each response contains node address, public key (pubkey), version, and basic stats</li>
+            </ol>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">
+              <strong>Why gossip?</strong> The gossip protocol is how pNodes naturally discover each other. By tapping into this, 
+              we get a complete, decentralized view of the network without any central registry.
+            </p>
+          </div>
+
+          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6 mb-6">
+            <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Stage 2: Validation & Filtering</h4>
+            <p className="text-gray-700 dark:text-gray-300 mb-3">
+              Not all discovered nodes make it into our database. We apply strict validation:
+            </p>
+            <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+              <li><strong>Valid Public Key:</strong> Must be a valid Solana base58-encoded public key (32-44 characters)</li>
+              <li><strong>Required Fields:</strong> Must have both an IP address and a public key</li>
+              <li><strong>Test Nodes Excluded:</strong> Filters out test/placeholder pubkeys like "TestPubkey14"</li>
+            </ul>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">
+              <strong>Why filter?</strong> Invalid or test nodes would skew network statistics and provide no useful information. 
+              We only track real, operational nodes.
+            </p>
+          </div>
+
+          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6 mb-6">
+            <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Stage 3: Deduplication & Node Identity</h4>
+            <p className="text-gray-700 dark:text-gray-300 mb-3">
+              <strong>Core principle:</strong> A node's <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">pubkey</code> is its unique identity. 
+              The same pubkey always represents the same node, even if other properties change.
+            </p>
+            <p className="text-gray-700 dark:text-gray-300 mb-3">
+              <strong>The Challenge:</strong> Nodes can change IP addresses (e.g., server relocation, network changes). 
+              During discovery, we might see the same pubkey at different IPs, or the same IP with different pubkeys over time.
+            </p>
+            <p className="text-gray-700 dark:text-gray-300 mb-3">
+              <strong>Our Solution - Smart Merging:</strong>
+            </p>
+            <ol className="list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+              <li><strong>Group by pubkey:</strong> All entries with the same pubkey are identified as the same node</li>
+              <li><strong>Track IP history:</strong> When a node appears at a new IP, we:
+                <ul className="list-disc list-inside ml-6 mt-1 space-y-1">
+                  <li>Update the <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">address</code> field to the latest IP from gossip</li>
+                  <li>Add the old IP to <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">previousAddresses</code> array</li>
+                  <li>Preserve all other node data (stats, uptime, balance, etc.)</li>
+                </ul>
+              </li>
+              <li><strong>Version priority:</strong> If multiple entries exist for the same pubkey during discovery, we keep the one with the latest version number</li>
+            </ol>
+            
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mt-4">
+              <h5 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Example: Node IP Change</h5>
+              <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
+                <p><strong>Discovery 1:</strong> Node <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">EcTqXgB6...</code> at <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">173.212.207.32:9001</code></p>
+                <p><strong>Discovery 2 (later):</strong> Same node <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">EcTqXgB6...</code> now at <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">192.168.1.100:9001</code></p>
+                <p><strong>Result in database:</strong></p>
+                <ul className="list-disc list-inside ml-4 space-y-1">
+                  <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">address: "192.168.1.100:9001"</code> (latest from gossip)</li>
+                  <li><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">previousAddresses: ["173.212.207.32:9001"]</code></li>
+                  <li>All historical data (uptime, stats, balance) preserved</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6 mb-6">
+            <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Stage 4: Enrichment</h4>
+            <p className="text-gray-700 dark:text-gray-300 mb-3">
+              After deduplication, we enrich each unique node with additional data:
+            </p>
+            <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+              <li><strong>Geographic Location:</strong> IP geolocation API provides city, country, coordinates</li>
+              <li><strong>Solana On-Chain Data:</strong> 
+                <ul className="list-disc list-inside ml-6 mt-1 space-y-1">
+                  <li>SOL balance (fetched once, then cached)</li>
+                  <li>Account creation date (blockchain history)</li>
+                  <li>Registration status (balance &gt; 0)</li>
+                </ul>
+              </li>
+              <li><strong>Pod Credits:</strong> Reputation score from Xandeum credits API</li>
+              <li><strong>Status Determination:</strong> Online/syncing/offline based on last seen timestamp</li>
+            </ul>
+          </div>
+
+          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6 mb-6">
+            <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Stage 5: Storage & Updates</h4>
+            <p className="text-gray-700 dark:text-gray-300 mb-3">
+              Final step: persist to MongoDB with smart upsert logic:
+            </p>
+            <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+              <li><strong>New nodes:</strong> Insert with all enriched data</li>
+              <li><strong>Existing nodes:</strong> Update with latest data from gossip, preserving historical fields</li>
+              <li><strong>Offline nodes:</strong> Mark as offline if not seen in latest gossip, but keep in database</li>
+              <li><strong>Historical snapshots:</strong> Every 10 minutes, store network-wide metrics for trend analysis</li>
+            </ul>
+          </div>
+
+          <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
+            <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">💡 Key Insight: Why Deduplication Matters</h4>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+              During our testing, we discovered that without proper deduplication, we would see discrepancies like:
+            </p>
+            <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1 ml-4">
+              <li><strong>198 entries from gossip → 189 unique nodes in database</strong></li>
+              <li>The difference? Duplicate pubkeys at different IPs (e.g., 4 nodes with IP changes = 8 entries)</li>
+            </ul>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">
+              Our merge strategy ensures we never lose data when nodes change IPs, while maintaining accurate node counts.
+            </p>
+          </div>
 
           <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Background Refresh</h3>
           <p className="text-gray-700 dark:text-gray-300 mb-4">
