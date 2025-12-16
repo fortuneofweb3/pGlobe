@@ -18,6 +18,9 @@ export interface PNode {
   pubkey?: string; // Alternative field name (added in Pod v0.5.1+)
   version?: string;
   
+  // IP address history (for tracking IP changes)
+  previousAddresses?: string[]; // Array of previous IP:port addresses
+  
   // From get-stats (pRPC)
   uptime?: number; // Uptime in seconds (from stats.uptime)
   uptimePercent?: number; // Calculated uptime percentage

@@ -173,6 +173,9 @@ export interface NodeDocument {
   ipAddress?: string;
   port?: number;
   
+  // IP address history (for tracking IP changes)
+  previousAddresses?: string[]; // Array of previous IP:port addresses
+  
   // Alternative field names for compatibility
   publicKey?: string; // Same as _id (for compatibility)
   pubkey?: string; // Same as _id (for compatibility)
@@ -274,6 +277,44 @@ export function isValidPubkey(pubkey: string | null | undefined): boolean {
 }
 
 /**
+ * Merge two nodes with the same pubkey
+ * Preserves all data and tracks IP changes
+ */
+function mergeNodes(existing: PNode, incoming: PNode): PNode {
+  // Start with existing node as base
+  const merged: PNode = { ...existing };
+  
+  // Track previous address if different
+  if (existing.address && incoming.address && existing.address !== incoming.address) {
+    const previousAddresses = existing.previousAddresses || [];
+    if (!previousAddresses.includes(existing.address)) {
+      merged.previousAddresses = [...previousAddresses, existing.address];
+    } else {
+      merged.previousAddresses = previousAddresses;
+    }
+  }
+  
+  // Update address to incoming (current from gossip)
+  merged.address = incoming.address;
+  
+  // Merge all fields - prefer incoming (newer) values, but keep existing if incoming is undefined
+  for (const key in incoming) {
+    if (incoming[key] !== undefined && incoming[key] !== null) {
+      merged[key] = incoming[key];
+    }
+    // If incoming doesn't have it but exists in merged, keep merged value (already set from existing)
+  }
+  
+  // Always mark as seen in gossip (it's in current response)
+  merged.seenInGossip = true;
+  
+  // Update lastSeen to current time
+  merged.lastSeen = Date.now();
+  
+  return merged;
+}
+
+/**
  * Convert PNode to MongoDB document
  */
 function nodeToDocument(node: PNode): NodeDocument {
@@ -289,6 +330,7 @@ function nodeToDocument(node: PNode): NodeDocument {
     address: node.address || '',
     ipAddress: ip,
     port,
+    previousAddresses: node.previousAddresses || undefined,
     publicKey: node.publicKey || node.pubkey || undefined,
     pubkey: node.pubkey || node.publicKey || undefined,
     version: node.version || undefined,
@@ -363,6 +405,7 @@ export function documentToNode(doc: NodeDocument): PNode {
     pubkey: doc.pubkey || doc.publicKey || '',
     publicKey: doc.publicKey || doc.pubkey || '',
     address: doc.address || '',
+    previousAddresses: doc.previousAddresses || undefined,
     version: doc.version || '',
     status: status,
     lastSeen: doc.lastSeen,
@@ -507,29 +550,24 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
       
       // FIRST: Check for duplicate pubkey (even with different IPs)
       if (pubkey && pubkeyToNode.has(pubkey)) {
-        // Same pubkey, different IP - keep the better node
+        // Same pubkey, different IP - MERGE them (same node, IP changed)
         const existing = pubkeyToNode.get(pubkey)!;
-        const existingVersion = existing.version || '';
-        const newNodeVersion = node.version || '';
-        const existingDataCount = Object.values(existing).filter(v => v !== undefined && v !== null).length;
-        const newNodeDataCount = Object.values(node).filter(v => v !== undefined && v !== null).length;
         
-        // Keep the one with later version or more data
-        if (newNodeVersion > existingVersion || 
-            (newNodeVersion === existingVersion && newNodeDataCount > existingDataCount)) {
-          // Replace with better node
-          pubkeyToNode.set(pubkey, node);
-          deduplicated.set(`pubkey:${pubkey}`, node);
-          // Update IP mapping if IP changed
-          if (ip) {
-            const existingIP = existing.address?.split(':')[0] || '';
-            if (existingIP && existingIP !== ip) {
-              ipToNode.delete(existingIP);
-            }
-            ipToNode.set(ip, node);
+        // Merge nodes instead of replacing
+        const mergedNode = mergeNodes(existing, node);
+        
+        pubkeyToNode.set(pubkey, mergedNode);
+        deduplicated.set(`pubkey:${pubkey}`, mergedNode);
+        
+        // Update IP mapping
+        if (ip) {
+          const existingIP = existing.address?.split(':')[0] || '';
+          if (existingIP && existingIP !== ip) {
+            ipToNode.delete(existingIP);
           }
+          ipToNode.set(ip, mergedNode);
         }
-        // Skip this node - existing one is better
+        
         continue;
       }
       
