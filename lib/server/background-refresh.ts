@@ -14,15 +14,31 @@ import { PNode } from '../types/pnode';
 
 let refreshInterval: NodeJS.Timeout | null = null;
 let isRunning = false;
+let lastRefreshStart = 0;
+
+// Maximum time a refresh can take before we force-reset isRunning
+// Should be slightly less than the interval to prevent overlap
+const MAX_REFRESH_TIME_MS = 4.5 * 60 * 1000; // 4.5 minutes
 
 /**
  * Perform a single refresh cycle
  * Exported for use in Vercel Cron Jobs
  */
 export async function performRefresh(): Promise<void> {
-  if (isRunning) return;
+  // Check if previous refresh is stuck (taking too long)
+  if (isRunning) {
+    const timeSinceStart = Date.now() - lastRefreshStart;
+    if (timeSinceStart > MAX_REFRESH_TIME_MS) {
+      console.warn(`[BackgroundRefresh] ⚠️ Previous refresh stuck for ${Math.round(timeSinceStart / 1000)}s, force-resetting...`);
+      isRunning = false;
+    } else {
+      console.log(`[BackgroundRefresh] ⏳ Previous refresh still running (${Math.round(timeSinceStart / 1000)}s), skipping...`);
+      return;
+    }
+  }
 
   isRunning = true;
+  lastRefreshStart = Date.now();
   const startTime = Date.now();
 
   try {
@@ -47,7 +63,16 @@ export async function performRefresh(): Promise<void> {
     for (const network of enabledNetworks) {
       try {
         console.log(`[BackgroundRefresh] Trying ${network.name} (${network.rpcUrl})...`);
-        const nodes = await fetchPNodesFromGossip(network.rpcUrl, false);
+        
+        // Add timeout to prevent hanging indefinitely (5 minutes for full discovery + enrichment)
+        const timeoutPromise = new Promise<PNode[]>((_, reject) => {
+          setTimeout(() => reject(new Error('Discovery timeout after 5 minutes')), 5 * 60 * 1000);
+        });
+        
+        // Keep enrichment enabled (false) to get full stats (CPU, RAM, packets, etc.)
+        const fetchPromise = fetchPNodesFromGossip(network.rpcUrl, false);
+        
+        const nodes = await Promise.race([fetchPromise, timeoutPromise]);
         if (nodes.length > 0) {
           gossipNodes = nodes;
           console.log(`[BackgroundRefresh] ✅ Fetched ${gossipNodes.length} nodes from ${network.name}`);
@@ -588,7 +613,7 @@ export async function performRefresh(): Promise<void> {
 }
 
 /**
- * Start the background refresh task (runs every 1 minute)
+ * Start the background refresh task (runs every 5 minutes)
  */
 export function startBackgroundRefresh(): void {
   if (refreshInterval) return;
@@ -598,12 +623,14 @@ export function startBackgroundRefresh(): void {
     console.error('[BackgroundRefresh] Error:', err);
   });
 
-  // Then set up interval for every 1 minute (60000ms)
+  // Then set up interval for every 5 minutes (300000ms)
+  // Note: Each refresh cycle can take 3-5 minutes due to discovery + enrichment
+  // 5-minute interval ensures cycles complete before next one starts
   refreshInterval = setInterval(() => {
     performRefresh().catch(err => {
       console.error('[BackgroundRefresh] Error:', err);
     });
-  }, 60 * 1000); // 1 minute
+  }, 5 * 60 * 1000); // 5 minutes
 }
 
 /**
