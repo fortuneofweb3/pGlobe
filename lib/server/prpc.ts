@@ -329,12 +329,23 @@ async function callPRPC(
  * This ensures nodes with pubkeys are properly identified even if IP changes
  */
 function getNodeKey(node: PNode): string {
-  // Use pubkey first (most reliable identifier)
-  if (node.pubkey) return `pubkey:${node.pubkey}`;
-  if (node.publicKey) return `pubkey:${node.publicKey}`;
-  // Fallback to IP address if no pubkey
+  // IMPORTANT: Use BOTH pubkey AND IP for the key during discovery
+  // This ensures nodes with same pubkey but different IPs are kept as separate entries
+  // The merge logic in upsertNodes will properly consolidate them in MongoDB
+  const pubkey = node.pubkey || node.publicKey;
   const ip = node.address?.split(':')[0];
-  if (ip) return `ip:${ip}`;
+  
+  if (pubkey && ip) {
+    // Both pubkey and IP available - use both for unique key
+    return `${pubkey}@${ip}`;
+  } else if (pubkey) {
+    // Only pubkey available
+    return `pubkey:${pubkey}`;
+  } else if (ip) {
+    // Only IP available (no pubkey)
+    return `ip:${ip}`;
+  }
+  
   // Last resort: use id
   return node.id || '';
 }

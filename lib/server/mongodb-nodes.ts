@@ -560,13 +560,13 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
         deduplicated.set(`pubkey:${pubkey}`, mergedNode);
         
         // Update IP mapping
-        if (ip) {
-          const existingIP = existing.address?.split(':')[0] || '';
-          if (existingIP && existingIP !== ip) {
-            ipToNode.delete(existingIP);
-          }
+          if (ip) {
+            const existingIP = existing.address?.split(':')[0] || '';
+            if (existingIP && existingIP !== ip) {
+              ipToNode.delete(existingIP);
+            }
           ipToNode.set(ip, mergedNode);
-        }
+          }
         
         continue;
       }
@@ -618,8 +618,8 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
           if (newNodeVersion > existingVersion || 
               (newNodeVersion === existingVersion && newNodeDataCount > existingDataCount)) {
             ipToNode.set(ip, node);
-            pubkeyToNode.set(pubkey, node);
-            deduplicated.set(`pubkey:${pubkey}`, node);
+              pubkeyToNode.set(pubkey, node);
+              deduplicated.set(`pubkey:${pubkey}`, node);
           }
         }
       } else {
