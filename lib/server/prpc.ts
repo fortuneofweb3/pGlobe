@@ -750,15 +750,21 @@ async function discoverPodsFromGossip(): Promise<Map<string, PNode>> {
   console.log(`[DiscoverPods] Proxy: ${basicNodesCount} from get-pods (versions: ${Array.from(basicVersions).join(', ') || 'none'})`);
   console.log(`[DiscoverPods] ${workingProxies}/${PROXY_RPC_ENDPOINTS.length} proxy endpoints working`);
 
-  // Use get-pods for discovery (works with ALL versions including 0.5.1, 0.6.0, 0.7.0+)
-  // get-pods-with-stats is v0.7.0+ only, so it won't help us find older versions
-  console.log(`[DiscoverPods] Querying ${PUBLIC_PRPC_ENDPOINTS.length} direct pRPC endpoints with get-pods (all versions)...`);
+  // Use get-pods-with-stats for discovery (gives us full stats: uptime, storage, version, etc.)
+  // This is faster than get-pods + peer discovery with get-pods-with-stats
+  console.log(`[DiscoverPods] Querying ${PUBLIC_PRPC_ENDPOINTS.length} direct pRPC endpoints with get-pods-with-stats...`);
   const directResults = await Promise.allSettled(
     PUBLIC_PRPC_ENDPOINTS.map(async (ip) => {
       try {
+        // Try get-pods-with-stats first (v0.7.0+) - gives us full stats
+        const statsResult = await fetchPodsWithStatsFromEndpoint(`http://${ip}/rpc`);
+        if (statsResult.length > 0) {
+          return statsResult;
+        }
+        // Fallback to get-pods if get-pods-with-stats fails (older versions)
         return await fetchPodsFromEndpoint(`http://${ip}/rpc`);
       } catch (error: any) {
-        console.log(`  ❌ ${ip} (get-pods): Exception - ${error.message}`);
+        console.log(`  ❌ ${ip}: Exception - ${error.message}`);
         return [];
       }
     })
@@ -805,7 +811,7 @@ async function discoverPodsFromGossip(): Promise<Map<string, PNode>> {
     }
   }
 
-  console.log(`[DiscoverPods] Direct: ${directBasicCount} from get-pods (versions: ${Array.from(directBasicVersions).join(', ') || 'none'})`);
+  console.log(`[DiscoverPods] Direct: ${directBasicCount} from get-pods-with-stats (versions: ${Array.from(directBasicVersions).join(', ') || 'none'})`);
   console.log(`[DiscoverPods] ${workingEndpoints}/${PUBLIC_PRPC_ENDPOINTS.length} direct endpoints working, ${nodesMap.size} total nodes so far`);
 
   // STEP 3: Query discovered nodes for their peers (OPTIONAL - only if we need more nodes)
