@@ -64,13 +64,15 @@ export async function performRefresh(): Promise<void> {
       try {
         console.log(`[BackgroundRefresh] Trying ${network.name} (${network.rpcUrl})...`);
         
-        // Add timeout to prevent hanging indefinitely (5 minutes for full discovery + enrichment)
+        // Add timeout to prevent hanging indefinitely (2 minutes for discovery)
         const timeoutPromise = new Promise<PNode[]>((_, reject) => {
-          setTimeout(() => reject(new Error('Discovery timeout after 5 minutes')), 5 * 60 * 1000);
+          setTimeout(() => reject(new Error('Discovery timeout after 2 minutes')), 2 * 60 * 1000);
         });
         
-        // Keep enrichment enabled (false) to get full stats (CPU, RAM, packets, etc.)
-        const fetchPromise = fetchPNodesFromGossip(network.rpcUrl, false);
+        // Skip prpc.ts enrichment - it's slow and get-pods-with-stats already has essential data
+        // (uptime, storage, version, is_public, rpc_port)
+        // The background-refresh.ts has its own enrichment for geo, balance, credits
+        const fetchPromise = fetchPNodesFromGossip(network.rpcUrl, true); // skipEnrichment=true
         
         const nodes = await Promise.race([fetchPromise, timeoutPromise]);
         if (nodes.length > 0) {

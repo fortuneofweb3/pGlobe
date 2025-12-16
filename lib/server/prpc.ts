@@ -808,14 +808,22 @@ async function discoverPodsFromGossip(): Promise<Map<string, PNode>> {
   console.log(`[DiscoverPods] Direct: ${directBasicCount} from get-pods (versions: ${Array.from(directBasicVersions).join(', ') || 'none'})`);
   console.log(`[DiscoverPods] ${workingEndpoints}/${PUBLIC_PRPC_ENDPOINTS.length} direct endpoints working, ${nodesMap.size} total nodes so far`);
 
-  // STEP 3: Query ALL discovered nodes for their peers (MULTI-ROUND recursive discovery)
-  // This is critical for finding older versions (0.5.1, 0.6.0) that might not be in main gossip
-  // Each node's get-pods returns its own view of the network, which may include different nodes
-  // Do multiple rounds to discover nodes that are only known by specific peers
+  // STEP 3: Query discovered nodes for their peers (OPTIONAL - only if we need more nodes)
+  // Skip if we already have 150+ nodes from direct discovery (saves 5-10 minutes!)
+  // The direct endpoints already give us a comprehensive view of the network
+  const MIN_NODES_TO_SKIP_PEER_DISCOVERY = 150;
+  
+  if (nodesMap.size >= MIN_NODES_TO_SKIP_PEER_DISCOVERY) {
+    console.log(`[DiscoverPods] ✅ Skipping peer discovery - already have ${nodesMap.size} nodes (threshold: ${MIN_NODES_TO_SKIP_PEER_DISCOVERY})`);
+  } else {
+    console.log(`[DiscoverPods] Only ${nodesMap.size} nodes found, doing peer discovery...`);
+  }
+
   const queriedIPs = new Set<string>(PUBLIC_PRPC_ENDPOINTS.map(ep => ep.split(':')[0])); // Track which IPs we've queried
   
-  const MAX_ROUNDS = 3; // Do up to 3 rounds of recursive discovery
-  const BATCH_SIZE = 20;
+  // Only do 1 round with larger batches (faster)
+  const MAX_ROUNDS = nodesMap.size >= MIN_NODES_TO_SKIP_PEER_DISCOVERY ? 0 : 1;
+  const BATCH_SIZE = 50; // Larger batches = fewer network round trips
   
   for (let round = 1; round <= MAX_ROUNDS; round++) {
     // Get all discovered nodes that we haven't queried yet
