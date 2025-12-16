@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { RefreshCw, Menu, X } from 'lucide-react';
 import NetworkSelector from './NetworkSelector';
+import NetToggle from './NetToggle';
 import { NetworkConfig } from '@/lib/server/network-config';
 
 interface HeaderProps {
@@ -32,6 +33,13 @@ export default function Header({
   showNetworkSelector = false,
 }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [selectedNet, setSelectedNet] = useState<'devnet' | 'mainnet'>('devnet');
+
+  const handleNetChange = (net: 'devnet' | 'mainnet') => {
+    setSelectedNet(net);
+    // TODO: Implement actual network switching logic
+    console.log('Network changed to:', net);
+  };
 
   const formatTimeAgo = (date: Date | null) => {
     if (!date) return 'Never';
@@ -118,6 +126,11 @@ export default function Header({
 
           {/* Right side - Controls */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Network Toggle (DevNet/MainNet) */}
+            <div className="hidden sm:block">
+              <NetToggle currentNet={selectedNet} onNetChange={handleNetChange} />
+            </div>
+
             {showNetworkSelector && networks.length > 0 && (
               <div className="hidden sm:block px-3 py-1.5">
                 <NetworkSelector
@@ -166,6 +179,11 @@ export default function Header({
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-[#F0A741]/20 bg-black/95 backdrop-blur-md">
           <nav className="px-4 py-3 space-y-2">
+            {/* Network Toggle for Mobile */}
+            <div className="px-4 py-2">
+              <NetToggle currentNet={selectedNet} onNetChange={handleNetChange} />
+            </div>
+            
             <Link
               href="/"
               prefetch={true}
