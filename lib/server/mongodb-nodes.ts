@@ -572,59 +572,63 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
       }
       
       // SECOND: Check for duplicate IP (only if no pubkey duplicate)
+      // NOTE: Multiple DIFFERENT pubkeys can legitimately share the same IP
+      // We should only deduplicate when we can't distinguish between nodes
       if (ip && ipToNode.has(ip)) {
-        // Duplicate IP - keep the better node
         const existing = ipToNode.get(ip)!;
         const existingPubkey = existing.pubkey || existing.publicKey || '';
         const existingVersion = existing.version || '';
         const newNodeVersion = node.version || '';
         
-        // Priority rules:
-        // 1. Node with pubkey > node without pubkey
-        // 2. Later version > earlier version
-        // 3. More data > less data
+        // CRITICAL: Different pubkeys at same IP are DIFFERENT NODES
+        // Only deduplicate if:
+        // 1. Both have NO pubkey (can't distinguish) - keep better version
+        // 2. One has pubkey, other doesn't - keep the one with pubkey
         
-        if (pubkey && !existingPubkey) {
-          // New node has pubkey, existing doesn't - replace
+        if (pubkey && existingPubkey && pubkey !== existingPubkey) {
+          // ✅ Different pubkeys = DIFFERENT NODES at same IP
+          // Keep BOTH! Add new node, let existing stay
+          pubkeyToNode.set(pubkey, node);
+          deduplicated.set(`pubkey:${pubkey}`, node);
+          // Note: ipToNode will point to the newer one, but both are in deduplicated
+          ipToNode.set(ip, node); // Update IP map to newer node (for reference only)
+        } else if (pubkey && !existingPubkey) {
+          // New node has pubkey, existing doesn't - replace IP-only node with pubkey node
           ipToNode.set(ip, node);
-          if (existingPubkey) {
-            deduplicated.delete(`pubkey:${existingPubkey}`);
-          }
+          deduplicated.delete(`ip:${ip}`); // Remove IP-only entry
           deduplicated.set(`pubkey:${pubkey}`, node);
         } else if (!pubkey && existingPubkey) {
-          // Existing has pubkey, new doesn't - keep existing
+          // Existing has pubkey, new doesn't - keep existing, ignore new
           continue;
-        } else if (pubkey && existingPubkey && pubkey !== existingPubkey) {
-          // Both have pubkeys but different - this shouldn't happen for same IP, but handle it
-          // Keep the one with later version
-          if (newNodeVersion > existingVersion) {
-            ipToNode.set(ip, node);
-            deduplicated.delete(`pubkey:${existingPubkey}`);
-            deduplicated.set(`pubkey:${pubkey}`, node);
-          }
-        } else {
-          // Both have same pubkey or both have no pubkey - keep better version/data
+        } else if (!pubkey && !existingPubkey) {
+          // Both have NO pubkey - these are indistinguishable, keep better version/data
           const existingDataCount = Object.values(existing).filter(v => v !== undefined && v !== null).length;
           const newNodeDataCount = Object.values(node).filter(v => v !== undefined && v !== null).length;
           
           if (newNodeVersion > existingVersion || 
               (newNodeVersion === existingVersion && newNodeDataCount > existingDataCount)) {
             ipToNode.set(ip, node);
-            if (pubkey) {
-              pubkeyToNode.set(pubkey, node);
-              deduplicated.set(`pubkey:${pubkey}`, node);
-            } else {
-              deduplicated.set(`ip:${ip}`, node);
-            }
+            deduplicated.set(`ip:${ip}`, node);
+          }
+        } else {
+          // Both have same pubkey - keep better version/data (shouldn't reach here due to FIRST check)
+          const existingDataCount = Object.values(existing).filter(v => v !== undefined && v !== null).length;
+          const newNodeDataCount = Object.values(node).filter(v => v !== undefined && v !== null).length;
+          
+          if (newNodeVersion > existingVersion || 
+              (newNodeVersion === existingVersion && newNodeDataCount > existingDataCount)) {
+            ipToNode.set(ip, node);
+            pubkeyToNode.set(pubkey, node);
+            deduplicated.set(`pubkey:${pubkey}`, node);
           }
         }
       } else {
         // New IP or first occurrence
-        ipToNode.set(ip, node);
+        if (ip) ipToNode.set(ip, node);
         if (pubkey) {
           pubkeyToNode.set(pubkey, node);
           deduplicated.set(`pubkey:${pubkey}`, node);
-        } else {
+        } else if (ip) {
           deduplicated.set(`ip:${ip}`, node);
         }
       }
