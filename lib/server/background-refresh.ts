@@ -17,8 +17,8 @@ let isRunning = false;
 let lastRefreshStart = 0;
 
 // Maximum time a refresh can take before we force-reset isRunning
-// Should be slightly less than the interval to prevent overlap
-const MAX_REFRESH_TIME_MS = 4.5 * 60 * 1000; // 4.5 minutes
+// Should be longer than the interval to allow cycles to complete
+const MAX_REFRESH_TIME_MS = 2 * 60 * 1000; // 2 minutes
 
 /**
  * Perform a single refresh cycle
@@ -172,13 +172,13 @@ export async function performRefresh(): Promise<void> {
       console.log(`[BackgroundRefresh] Fetched geo for ${fetchedGeo.size} IPs`);
     }
 
-    // STEP 4: Fetch on-chain data to check registration status and account creation dates
+    // STEP 4: Fetch on-chain data ONLY for NEW nodes (don't re-fetch for existing nodes)
+    // This saves time by not doing 200+ RPC calls every refresh cycle
     const allPubkeys = [...new Set(nodesWithValidPubkeys.map(node => node.pubkey || node.publicKey).filter(pk => pk))] as string[];
-    console.log(`[BackgroundRefresh] Fetching on-chain data for ${allPubkeys.length} pubkeys...`);
     const balanceMap = new Map<string, any>();
     const accountCreationMap = new Map<string, { accountCreatedAt?: Date; firstSeenSlot?: number }>();
 
-    // Get existing nodes to check which ones already have accountCreatedAt
+    // Get existing nodes to check which ones already have balance data
     const existingNodesMap = new Map<string, PNode>();
     try {
       const existingNodes = await getAllNodes();
@@ -187,14 +187,23 @@ export async function performRefresh(): Promise<void> {
         if (key) existingNodesMap.set(key, node);
       });
     } catch (e) {
-      console.warn('[BackgroundRefresh] Could not fetch existing nodes for account creation check');
+      console.warn('[BackgroundRefresh] Could not fetch existing nodes for balance check');
     }
+
+    // Filter to only NEW pubkeys (nodes without balance data yet)
+    const newPubkeys = allPubkeys.filter(pk => {
+      const existingNode = existingNodesMap.get(pk);
+      // Fetch if node is new (not in DB) OR doesn't have balance data yet
+      return !existingNode || existingNode.balance === undefined || existingNode.balance === null;
+    });
+
+    console.log(`[BackgroundRefresh] Fetching on-chain data for ${newPubkeys.length}/${allPubkeys.length} NEW nodes (skipping ${allPubkeys.length - newPubkeys.length} existing)...`);
 
     // Use Solana connection for account creation date fetching
     const DEVNET_RPC = 'https://api.devnet.xandeum.com:8899';
     const connection = new Connection(DEVNET_RPC, 'confirmed');
 
-    for (const pk of allPubkeys) {
+    for (const pk of newPubkeys) {
       try {
         // Fetch balance (includes registration status)
         const balanceData = await fetchBalanceForPubkey(pk);
@@ -615,7 +624,7 @@ export async function performRefresh(): Promise<void> {
 }
 
 /**
- * Start the background refresh task (runs every 5 minutes)
+ * Start the background refresh task (runs every 1 minute)
  */
 export function startBackgroundRefresh(): void {
   if (refreshInterval) return;
@@ -625,14 +634,14 @@ export function startBackgroundRefresh(): void {
     console.error('[BackgroundRefresh] Error:', err);
   });
 
-  // Then set up interval for every 5 minutes (300000ms)
-  // Note: Each refresh cycle can take 3-5 minutes due to discovery + enrichment
-  // 5-minute interval ensures cycles complete before next one starts
+  // Then set up interval for every 1 minute (60000ms)
+  // With optimizations (skip peer discovery, only fetch balance for new nodes),
+  // each cycle should complete in 1-2 minutes
   refreshInterval = setInterval(() => {
     performRefresh().catch(err => {
       console.error('[BackgroundRefresh] Error:', err);
     });
-  }, 5 * 60 * 1000); // 5 minutes
+  }, 60 * 1000); // 1 minute
 }
 
 /**
