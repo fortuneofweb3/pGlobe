@@ -10,13 +10,13 @@ import { ZoomIn, ZoomOut, RotateCcw, Globe, ChevronLeft, ChevronRight, MapPin, I
 
 interface MapLibreGlobeProps {
   nodes: PNode[];
-  highlightedNodeIds?: Set<string> | string[]; // Nodes to highlight (closest nodes in scan mode)
   centerLocation?: { lat: number; lon: number }; // Optional location to center on (scan location)
   scanLocation?: { lat: number; lon: number; city?: string; country?: string }; // Scan location to show marker and connections
   scanTopNodes?: PNode[]; // Top nodes to connect to scan location (top 20)
   navigateToNodeId?: string | null; // Node ID to navigate to (from search)
   onNodeClick?: (node: PNode) => void; // Callback when a node is clicked (should navigate to node)
   onPopupClick?: (node: PNode) => void; // Callback when popup is clicked (should open node details modal)
+  autoRotate?: boolean; // Whether to enable auto-rotation (default: true)
 }
 
 
@@ -68,7 +68,7 @@ const MAP_STYLE = {
   glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
 } as const;
 
-function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation, scanTopNodes, navigateToNodeId, onNodeClick, onPopupClick }: MapLibreGlobeProps) {
+function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navigateToNodeId, onNodeClick, onPopupClick, autoRotate = true }: MapLibreGlobeProps) {
   const router = useRouter();
   const mapRef = useRef<MapRef>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -76,15 +76,9 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [activeScanConnector, setActiveScanConnector] = useState<string | null>(null); // Track which connector was clicked
   
-  // Convert highlightedNodeIds to Set for efficient lookup
-  const highlightedIdsSet = useMemo(() => {
-    if (!highlightedNodeIds) return new Set<string>();
-    if (highlightedNodeIds instanceof Set) return highlightedNodeIds;
-    return new Set(highlightedNodeIds);
-  }, [highlightedNodeIds]);
   const [viewState, setViewState] = useState<any>(null);
   const [userHasInteracted, setUserHasInteracted] = useState(false);
-  const [shouldAutoRotate, setShouldAutoRotate] = useState(true); // Track if auto-rotation should be active
+  const [shouldAutoRotate, setShouldAutoRotate] = useState(autoRotate); // Track if auto-rotation should be active
   const [isUserDragging, setIsUserDragging] = useState(false); // Track if user is currently dragging
   const isInitialLoadRef = useRef(true); // Track if this is the initial load
   const [popupPosition, setPopupPosition] = useState<{ nodePos: { x: number; y: number } | null; popupPos: { x: number; y: number; lineEnd: { x: number; y: number } } | null }>({ nodePos: null, popupPos: null });
@@ -303,11 +297,10 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
         address: String(node.address || ''),
         clusterSize: groupSize, // Include cluster info
         clusterKey: key, // Store cluster key for connections
-        highlighted: highlightedIdsSet.has(node.id) ? 1 : 0, // Mark highlighted nodes
       },
       };
     });
-  }, [nodesWithLocation, highlightedIdsSet]);
+  }, [nodesWithLocation]);
 
   // Create cluster connection lines - thin threads connecting nodes in same cluster
   const clusterConnections = useMemo(() => {
@@ -901,6 +894,14 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [legendOpen]);
+
+  // Sync shouldAutoRotate state with autoRotate prop
+  useEffect(() => {
+    // If autoRotate prop is explicitly false, ensure rotation is disabled
+    if (!autoRotate) {
+      setShouldAutoRotate(false);
+    }
+  }, [autoRotate]);
 
   // Auto-rotation logic - starts immediately when globe loads, stops on user interaction or node navigation
   useEffect(() => {
@@ -1965,44 +1966,52 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
                       }
                       
                       // Style labels based on type with different sizes and thickness
+                      // Labels gradually appear as you zoom in, disappear as you zoom out
+                      // Lower opacity at low zoom = fewer labels shown (MapLibre collision detection)
                       if (isCountryLabel) {
-                        // Country labels - largest and boldest (reduced by 10% from original)
-                        // Start showing at higher zoom to reduce clutter at low zoom
+                        // Country labels - largest and boldest
+                        // Start showing at zoom 0, gradually increase to max at zoom 6
                         map.setLayoutProperty(layer.id, 'text-size', [
                           'interpolate',
                           ['linear'],
                           ['zoom'],
-                          2, 0,      // Hidden until zoom 2
-                          2.5, 11,   // Start showing at zoom 2.5
-                          3, 13,     // Medium size at zoom 3
-                          6, 14      // Larger at zoom 6
+                          0, 8,       // Small size at zoom 0 (some labels visible)
+                          1, 9,       // Slightly larger at zoom 1
+                          2.2, 11,    // Default zoom (~2.2) - medium size
+                          4, 13,      // Medium size at zoom 4
+                          6, 14,      // Max size at zoom 6
+                          8, 14       // Maintain max size at higher zoom
                         ]);
                         // Country labels use uppercase
                         map.setLayoutProperty(layer.id, 'text-transform', 'uppercase');
-                        // Country labels fade in starting at zoom 2.5 (increased from 1.5)
+                        // Country labels: opacity controls how many show (fewer at low zoom, more at high zoom)
                         map.setPaintProperty(layer.id, 'text-opacity', [
                           'interpolate',
                           ['linear'],
                           ['zoom'],
-                          2, 0,        // Fully transparent at zoom 2
-                          2.5, 0,      // Start fade in at zoom 2.5
-                          2.8, 0.8,    // Mostly visible at zoom 2.8
-                          3, 0.9,      // Full opacity at zoom 3
-                          6, 0.9       // Maintain at higher zoom
+                          0, 0.3,     // Low opacity at zoom 0 (only major countries)
+                          1, 0.5,     // More visible at zoom 1
+                          2.2, 0.7,   // Default zoom (~2.2) - good visibility
+                          3, 0.85,    // Mostly visible at zoom 3
+                          4, 0.9,     // Full opacity at zoom 4
+                          6, 0.9,     // Maintain at higher zoom
+                          8, 0.9      // Keep max at very high zoom
                         ]);
                         map.setPaintProperty(layer.id, 'text-halo-width', 1.5); // Thicker outline for countries
                         map.setPaintProperty(layer.id, 'text-halo-color', 'rgba(0, 0, 0, 0.6)');
                       } else if (isStateLabel) {
-                        // State labels - medium size (reduced by 10% from original)
-                        // Start showing at higher zoom to reduce clutter
+                        // State labels - medium size
+                        // Start showing at zoom 1, gradually increase to max at zoom 7
                         map.setLayoutProperty(layer.id, 'text-size', [
                           'interpolate',
                           ['linear'],
                           ['zoom'],
-                          3, 0,      // Hidden until zoom 3
-                          3.5, 8,    // Start showing at zoom 3.5
-                          4, 10,     // Medium size at zoom 4
-                          6, 12      // Larger at zoom 6
+                          1, 6,       // Small size at zoom 1
+                          2.2, 8,     // Default zoom (~2.2) - small-medium
+                          3.5, 9,     // Medium size at zoom 3.5
+                          5, 11,      // Larger at zoom 5
+                          7, 12,      // Max size at zoom 7
+                          8, 12       // Maintain max size at higher zoom
                         ]);
                         // State labels use normal case (not uppercase) - explicitly set
                         try {
@@ -2018,30 +2027,35 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
                             // Layer might not support text-transform
                           }
                         }
-                        // State labels fade in starting at zoom 3.5 (increased from 2.5)
+                        // State labels: gradually increase visibility as zoom increases
                         map.setPaintProperty(layer.id, 'text-opacity', [
                           'interpolate',
                           ['linear'],
                           ['zoom'],
-                          3, 0,        // Fully transparent at zoom 3
-                          3.5, 0,      // Start fade in at zoom 3.5
-                          3.8, 0.8,    // Mostly visible at zoom 3.8
-                          4, 0.9,      // Full opacity at zoom 4
-                          6, 0.9       // Maintain at higher zoom
+                          1, 0.2,     // Very low opacity at zoom 1 (few states)
+                          2.2, 0.5,   // Default zoom (~2.2) - some states visible
+                          3, 0.7,     // More visible at zoom 3
+                          4, 0.85,    // Mostly visible at zoom 4
+                          5, 0.9,     // Full opacity at zoom 5
+                          7, 0.9,     // Maintain at higher zoom
+                          8, 0.9      // Keep max at very high zoom
                         ]);
                         map.setPaintProperty(layer.id, 'text-halo-width', 1); // Medium outline
                         map.setPaintProperty(layer.id, 'text-halo-color', 'rgba(0, 0, 0, 0.5)');
                       } else if (isCityLabel) {
                         // City labels - smallest and thinnest
-                        // Start showing at higher zoom to reduce clutter
+                        // Start showing at zoom 2, gradually increase to max at zoom 8
                         map.setLayoutProperty(layer.id, 'text-size', [
                           'interpolate',
                           ['linear'],
                           ['zoom'],
-                          4, 0,      // Hidden until zoom 4
-                          4.5, 8,    // Start showing at zoom 4.5
-                          5, 10,     // Medium size at zoom 5
-                          7, 12      // Larger at zoom 7
+                          2, 6,       // Small size at zoom 2
+                          3, 7,       // Slightly larger at zoom 3
+                          4, 9,       // Medium size at zoom 4
+                          5.5, 10,    // Larger at zoom 5.5
+                          7, 12,      // Larger at zoom 7
+                          8, 12,      // Max size at zoom 8
+                          10, 12      // Maintain max size at higher zoom
                         ]);
                         // City labels use normal case (not uppercase)
                         try {
@@ -2049,30 +2063,34 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
                         } catch (e) {
                           // Some layers might not support this property
                         }
-                        // City labels fade in starting at zoom 4.5 (increased from 3.5)
+                        // City labels: gradually increase visibility as zoom increases
                         map.setPaintProperty(layer.id, 'text-opacity', [
                           'interpolate',
                           ['linear'],
                           ['zoom'],
-                          4, 0,        // Fully transparent at zoom 4
-                          4.5, 0,      // Start fade in at zoom 4.5
-                          4.8, 0.8,    // Mostly visible at zoom 4.8
-                          5, 0.9,      // Full opacity at zoom 5
-                          7, 0.9       // Maintain at higher zoom
+                          2, 0.1,     // Very low opacity at zoom 2 (only major cities)
+                          3, 0.3,     // Some cities at zoom 3
+                          4, 0.6,     // More cities at zoom 4
+                          5, 0.8,     // Many cities at zoom 5
+                          6, 0.9,     // Full opacity at zoom 6
+                          8, 0.9,     // Maintain at higher zoom
+                          10, 0.9     // Keep max at very high zoom
                         ]);
                         map.setPaintProperty(layer.id, 'text-halo-width', 0.5); // Thinnest outline for cities
                         map.setPaintProperty(layer.id, 'text-halo-color', 'rgba(0, 0, 0, 0.4)');
                       } else {
                         // Other place labels - default styling
-                        // Start showing at higher zoom to reduce clutter
+                        // Start showing at zoom 1.5, gradually increase to max at zoom 7
                         map.setLayoutProperty(layer.id, 'text-size', [
                           'interpolate',
                           ['linear'],
                           ['zoom'],
-                          3, 0,
-                          3.5, 10,
-                          4, 12,
-                          6, 14
+                          1.5, 7,     // Small size at zoom 1.5
+                          2.2, 9,     // Default zoom (~2.2) - small-medium
+                          3.5, 11,    // Medium size at zoom 3.5
+                          5, 13,      // Larger at zoom 5
+                          7, 14,      // Max size at zoom 7
+                          8, 14       // Maintain max size at higher zoom
                         ]);
                         // Other labels use normal case (not uppercase)
                         try {
@@ -2084,11 +2102,13 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
                           'interpolate',
                           ['linear'],
                           ['zoom'],
-                          3, 0,
-                          3.5, 0,
-                          3.8, 0.8,
-                          4, 0.9,
-                          6, 0.9
+                          1.5, 0.3,   // Low opacity at zoom 1.5
+                          2.2, 0.5,   // Default zoom (~2.2) - some labels
+                          3, 0.7,     // More visible at zoom 3
+                          4, 0.85,    // Mostly visible at zoom 4
+                          5, 0.9,     // Full opacity at zoom 5
+                          7, 0.9,     // Maintain at higher zoom
+                          8, 0.9      // Keep max at very high zoom
                         ]);
                         map.setPaintProperty(layer.id, 'text-halo-width', 1);
                         map.setPaintProperty(layer.id, 'text-halo-color', 'rgba(0, 0, 0, 0.5)');
@@ -2286,37 +2306,31 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
                 ['linear'],
                 ['zoom'],
                 1, ['case', 
-                  ['==', ['get', 'highlighted'], 1], 7, // Highlighted: larger
                   ['==', ['get', 'id'], currentNodeIndex >= 0 ? String(nodesWithLocation[currentNodeIndex]?.id ?? '') : ''], 6, 
                   4
                 ],
                 4, ['case', 
-                  ['==', ['get', 'highlighted'], 1], 11, // Highlighted: larger
                   ['==', ['get', 'id'], currentNodeIndex >= 0 ? String(nodesWithLocation[currentNodeIndex]?.id ?? '') : ''], 10, 
                   7
                 ],
                 8, ['case', 
-                  ['==', ['get', 'highlighted'], 1], 15, // Highlighted: larger
                   ['==', ['get', 'id'], currentNodeIndex >= 0 ? String(nodesWithLocation[currentNodeIndex]?.id ?? '') : ''], 14, 
                   10
                 ]
               ],
               'circle-color': [
                 'case',
-                ['==', ['get', 'highlighted'], 1], '#F0A741', // Highlighted nodes: Xandeum orange
                 ['==', ['get', 'status'], 'online'], '#3F8277',
                 ['==', ['get', 'status'], 'syncing'], '#FBBF24',
                 '#EF4444'
               ],
               'circle-stroke-width': [
                 'case',
-                ['==', ['get', 'highlighted'], 1], 3, // Highlighted nodes: thicker stroke
                 ['==', ['get', 'id'], currentNodeIndex >= 0 ? String(nodesWithLocation[currentNodeIndex]?.id ?? '') : ''], 3,
                 1.5
               ],
               'circle-stroke-color': [
                 'case',
-                ['==', ['get', 'highlighted'], 1], '#F0A741', // Highlighted nodes: Xandeum orange stroke
                 ['==', ['get', 'id'], currentNodeIndex >= 0 ? String(nodesWithLocation[currentNodeIndex]?.id ?? '') : ''], '#ffffff',
                 '#000000',
               ],
@@ -2389,7 +2403,73 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
             />
           </Source>
         )}
-        
+
+        {/* Dotted circles around nodes connected to scan location */}
+        {scanTopNodes && scanTopNodes.length > 0 && (() => {
+          // Create circular line features for dotted circles around nodes
+          const createCircle = (centerLon: number, centerLat: number, radiusKm: number, points: number = 64) => {
+            const coordinates: [number, number][] = [];
+            for (let i = 0; i <= points; i++) {
+              const angle = (i / points) * 2 * Math.PI;
+              // Convert km to degrees (approximate)
+              const latOffset = (radiusKm / 111.32) * Math.cos(angle);
+              const lonOffset = (radiusKm / (111.32 * Math.cos(centerLat * Math.PI / 180))) * Math.sin(angle);
+              coordinates.push([centerLon + lonOffset, centerLat + latOffset]);
+            }
+            return coordinates;
+          };
+
+          const circleFeatures = scanTopNodes
+            .filter(node => node.locationData?.lat && node.locationData?.lon)
+            .map(node => ({
+              type: 'Feature' as const,
+              geometry: {
+                type: 'LineString' as const,
+                coordinates: createCircle(
+                  node.locationData!.lon,
+                  node.locationData!.lat,
+                  0.05 // ~50km radius, adjust as needed
+                ),
+              },
+              properties: {
+                nodeId: node.id,
+              },
+            }));
+
+          return (
+            <Source
+              id="scan-node-circles-source"
+              type="geojson"
+              data={{
+                type: 'FeatureCollection',
+                features: circleFeatures,
+              }}
+            >
+              <Layer
+                id="scan-node-circles-layer"
+                type="line"
+                layout={{
+                  'line-cap': 'round',
+                  'line-join': 'round',
+                }}
+                paint={{
+                  'line-color': 'rgba(147, 51, 234, 0.8)', // Purple/violet to match connection lines
+                  'line-width': [
+                    'interpolate',
+                    ['linear'],
+                    ['zoom'],
+                    1, 1.5,
+                    4, 2,
+                    8, 2.5,
+                    12, 3,
+                  ],
+                  'line-opacity': 0.8,
+                  'line-dasharray': [4, 4], // Dotted circle
+                }}
+              />
+            </Source>
+          );
+        })()}
 
         {/* Cluster connection lines - thin threads connecting nodes in same cluster */}
         {clusterConnections.length > 0 && (
@@ -2530,7 +2610,8 @@ function MapLibreGlobe({ nodes, highlightedNodeIds, centerLocation, scanLocation
             <div
               ref={popupCardRef}
               className="shadow-2xl backdrop-blur-sm cursor-pointer hover:bg-opacity-100 transition-opacity"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 if (onPopupClick && selectedNode) {
                   onPopupClick(selectedNode);
                 }

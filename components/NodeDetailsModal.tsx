@@ -437,21 +437,51 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [timeRange, setTimeRange] = useState<'30m' | '1h' | '24h' | '1w'>('24h');
-  // Load cached latency immediately if available
-  const [nodeLatency, setNodeLatency] = useState<number | null>(() => {
-    if (!node) return null;
-    const cached = getCachedLatency(node.id);
-    return cached !== undefined ? cached : null;
-  });
+  const [nodeLatency, setNodeLatency] = useState<number | null>(null);
   const [measuringLatency, setMeasuringLatency] = useState(false);
+
+  // Memoize the current node to get a stable reference that only changes when node ID changes
+  // This prevents rerenders when allNodes array reference changes but the node data is the same
+  const currentNode = useMemo(() => {
+    if (!node) return null;
+    // Find the latest version of this node from allNodes to get updated data
+    const latestNode = allNodes.find(n => 
+      n.id === node.id || 
+      n.pubkey === node.pubkey || 
+      n.publicKey === node.publicKey
+    );
+    return latestNode || node;
+  }, [node?.id, node?.pubkey, node?.publicKey, allNodes]);
+
+  // Memoize network average CPU separately to avoid recalculating on every allNodes update
+  // Use a stable hash of CPU values that only changes when values actually change
+  const cpuValuesHash = useMemo(() => {
+    return allNodes
+      .map(n => `${n.id}:${n.cpuPercent ?? 'null'}`)
+      .sort()
+      .join('|');
+  }, [allNodes]);
+
+  const networkAvgCpu = useMemo(() => {
+    if (allNodes.length === 0) return 0;
+    const nodesWithCpu = allNodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null);
+    if (nodesWithCpu.length === 0) return 0;
+    const sum = nodesWithCpu.reduce((acc, n) => acc + (n.cpuPercent || 0), 0);
+    return sum / nodesWithCpu.length;
+  }, [cpuValuesHash, allNodes.length]);
 
   // Measure latency for this specific node when modal opens (only if not cached)
   useEffect(() => {
+    // Reset state when modal closes
+    if (!isOpen || !node) {
+      setNodeLatency(null);
+      setMeasuringLatency(false);
+      return;
+    }
+    
     let mounted = true;
     
     const measureLatency = async () => {
-      if (!node) return;
-      
       // Check cache first
       const cached = getCachedLatency(node.id);
       if (cached !== undefined) {
@@ -478,15 +508,14 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
       }
     };
 
-    if (isOpen && node) {
+    // Small delay to allow modal animation to complete before starting async operations
+    const timeoutId = setTimeout(() => {
       measureLatency();
-    } else {
-      // Reset when modal closes
-      setNodeLatency(null);
-    }
+    }, 100);
     
     return () => {
       mounted = false;
+      clearTimeout(timeoutId);
     };
   }, [isOpen, node?.id]);
 
@@ -513,18 +542,26 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
 
     let abortController: AbortController | null = null;
     let timeoutId: NodeJS.Timeout | null = null;
+    let loadingTimeoutId: NodeJS.Timeout | null = null;
     let isMounted = true;
 
     const fetchHistory = async () => {
       if (!isMounted) return;
       
-      setLoadingHistory(true);
       abortController = new AbortController();
       timeoutId = setTimeout(() => {
         if (abortController) {
           abortController.abort();
         }
       }, 30000); // 30 second timeout
+      
+      // Delay setting loading state to prevent glitch on modal open
+      // This allows the modal animation to complete before showing loading state
+      loadingTimeoutId = setTimeout(() => {
+        if (isMounted) {
+          setLoadingHistory(true);
+        }
+      }, 150);
       
       try {
         const pubkey = node.pubkey || node.publicKey || node.id || '';
@@ -604,6 +641,12 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
           timeoutId = null;
         }
         
+        // Clear any pending loading state update
+        if (loadingTimeoutId) {
+          clearTimeout(loadingTimeoutId);
+          loadingTimeoutId = null;
+        }
+        
         if (!isMounted) return;
         
         if (error.name === 'AbortError') {
@@ -631,23 +674,22 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
+      if (loadingTimeoutId) {
+        clearTimeout(loadingTimeoutId);
+      }
       setLoadingHistory(false);
     };
   }, [node?.pubkey || node?.publicKey || node?.id, isOpen]);
 
   const nodeStats = useMemo(() => {
-    if (!node) return null;
+    if (!currentNode) return null;
 
-    const networkAvgCpu = allNodes.length > 0
-      ? allNodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null).reduce((sum, n) => sum + (n.cpuPercent || 0), 0) / allNodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null).length
+    const storageUtilization = currentNode.storageCapacity
+      ? ((currentNode.storageUsed || 0) / currentNode.storageCapacity) * 100
       : 0;
 
-    const storageUtilization = node.storageCapacity
-      ? ((node.storageUsed || 0) / node.storageCapacity) * 100
-      : 0;
-
-    const ramUtilization = node.ramTotal && node.ramUsed
-      ? (node.ramUsed / node.ramTotal) * 100
+    const ramUtilization = currentNode.ramTotal && currentNode.ramUsed
+      ? (currentNode.ramUsed / currentNode.ramTotal) * 100
       : 0;
 
     return {
@@ -655,7 +697,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
       storageUtilization,
       ramUtilization,
     };
-  }, [node, allNodes]);
+  }, [currentNode, networkAvgCpu]);
 
   const formatUptime = (uptime?: number) => {
     if (uptime === undefined || uptime === null) return '—';
@@ -688,11 +730,11 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
     return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-500/20 text-gray-400 border border-gray-500/30">Offline</span>;
   };
 
-  if (!isOpen || !node) return null;
+  if (!isOpen || !node || !currentNode) return null;
 
-  const pubkey = node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '';
-  const displayPubkey = node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '—';
-  const gossipAddress = node.address || '—';
+  const pubkey = currentNode.pubkey || currentNode.publicKey || currentNode.id || currentNode.address?.split(':')[0] || '';
+  const displayPubkey = currentNode.pubkey || currentNode.publicKey || currentNode.id || currentNode.address?.split(':')[0] || '—';
+  const gossipAddress = currentNode.address || '—';
 
   return (
     <>
@@ -715,22 +757,22 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                   Node Details
                 </div>
                 <div className="flex items-center gap-3">
-                  {getStatusBadge(node.status)}
+                  {getStatusBadge(currentNode.status)}
                   <h1 className="text-xl sm:text-2xl font-bold leading-tight font-mono">
                     {gossipAddress}
                   </h1>
                 </div>
-                {node.version && (
+                {currentNode.version && (
                   <p className="text-xs sm:text-sm text-foreground/70">
-                    Version {node.version}
+                    Version {currentNode.version}
                   </p>
                 )}
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
-                    if (node) {
-                      const nodeId = node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '';
+                    if (currentNode) {
+                      const nodeId = currentNode.pubkey || currentNode.publicKey || currentNode.id || currentNode.address?.split(':')[0] || '';
                       if (nodeId) {
                         router.push(`/?node=${encodeURIComponent(nodeId)}`);
                         onClose();
@@ -794,7 +836,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Uptime</span>
                     <Clock className="w-4 h-4 text-foreground/40" />
                   </div>
-                  <div className="text-xl sm:text-2xl font-bold text-foreground">{formatUptime(node.uptime)}</div>
+                  <div className="text-xl sm:text-2xl font-bold text-foreground">{formatUptime(currentNode.uptime)}</div>
                   <p className="text-xs text-muted-foreground mt-1">Current session</p>
                 </div>
 
@@ -804,11 +846,11 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     <HardDrive className="w-4 h-4 text-foreground/40" />
                   </div>
                   <div className="text-xl sm:text-2xl font-bold text-foreground">
-                    {formatValue(node.storageUsed, formatStorageBytes)}
+                    {formatValue(currentNode.storageUsed, formatStorageBytes)}
                   </div>
-                  {node.storageCapacity && (
+                  {currentNode.storageCapacity && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      of {formatStorageBytes(node.storageCapacity)}
+                      of {formatStorageBytes(currentNode.storageCapacity)}
                     </p>
                   )}
                 </div>
@@ -819,7 +861,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     <Cpu className="w-4 h-4 text-foreground/40" />
                   </div>
                   <div className="text-xl sm:text-2xl font-bold text-foreground">
-                    {formatValue(node.cpuPercent, (val) => `${val.toFixed(1)}%`)}
+                    {formatValue(currentNode.cpuPercent, (val) => `${val.toFixed(1)}%`)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">Current usage</p>
                 </div>
@@ -875,7 +917,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     <h2 className="text-base font-semibold text-foreground">Storage & Memory</h2>
                   </div>
                   <div className="space-y-4">
-                    {node.storageCapacity ? (
+                    {currentNode.storageCapacity ? (
                       <div>
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm font-medium text-foreground">Storage</span>
@@ -890,12 +932,12 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                           />
                         </div>
                         <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-                          <span>{formatValue(node.storageUsed, formatStorageBytes)}</span>
-                          <span>{formatValue(node.storageCapacity, formatStorageBytes)}</span>
+                          <span>{formatValue(currentNode.storageUsed, formatStorageBytes)}</span>
+                          <span>{formatValue(currentNode.storageCapacity, formatStorageBytes)}</span>
                         </div>
                       </div>
                     ) : null}
-                    {node.ramTotal ? (
+                    {currentNode.ramTotal ? (
                       <div>
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm font-medium text-foreground">Memory</span>
@@ -910,8 +952,8 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                           />
                         </div>
                         <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-                          <span>{formatValue(node.ramUsed, formatBytes)}</span>
-                          <span>{formatValue(node.ramTotal, formatBytes)}</span>
+                          <span>{formatValue(currentNode.ramUsed, formatBytes)}</span>
+                          <span>{formatValue(currentNode.ramTotal, formatBytes)}</span>
                         </div>
                       </div>
                     ) : null}
@@ -927,24 +969,24 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-foreground/60">Address</span>
-                      <span className="font-mono text-foreground/80">{formatValue(node.address, (addr) => addr.replace(':6000', ':9001'))}</span>
+                      <span className="font-mono text-foreground/80">{formatValue(currentNode.address, (addr) => addr.replace(':6000', ':9001'))}</span>
                     </div>
-                    {node.rpcPort && (
+                    {currentNode.rpcPort && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">RPC Port</span>
-                        <span className="font-mono text-foreground/80">{node.rpcPort}</span>
+                        <span className="font-mono text-foreground/80">{currentNode.rpcPort}</span>
                       </div>
                     )}
-                    {node.packetsReceived !== undefined && node.packetsReceived !== null && (
+                    {currentNode.packetsReceived !== undefined && currentNode.packetsReceived !== null && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Packets Rx (Total)</span>
-                        <span className="font-mono text-foreground/80">{node.packetsReceived.toLocaleString()}</span>
+                        <span className="font-mono text-foreground/80">{currentNode.packetsReceived.toLocaleString()}</span>
                       </div>
                     )}
-                    {node.packetsSent !== undefined && node.packetsSent !== null && (
+                    {currentNode.packetsSent !== undefined && currentNode.packetsSent !== null && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Packets Tx (Total)</span>
-                        <span className="font-mono text-foreground/80">{node.packetsSent.toLocaleString()}</span>
+                        <span className="font-mono text-foreground/80">{currentNode.packetsSent.toLocaleString()}</span>
                       </div>
                     )}
                     {(() => {
@@ -982,10 +1024,10 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                       }
                       return null;
                     })()}
-                    {node.activeStreams !== undefined && (
+                    {currentNode.activeStreams !== undefined && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Active Streams</span>
-                        <span className="font-mono text-foreground/80">{node.activeStreams}</span>
+                        <span className="font-mono text-foreground/80">{currentNode.activeStreams}</span>
                       </div>
                     )}
                   </div>
@@ -998,28 +1040,28 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     <h2 className="text-base font-semibold text-foreground">Location</h2>
                   </div>
                   <div className="space-y-2 text-sm">
-                    {node.locationData?.country && (
+                    {currentNode.locationData?.country && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Country</span>
-                        <span className="text-foreground/80">{node.locationData.country}</span>
+                        <span className="text-foreground/80">{currentNode.locationData.country}</span>
                       </div>
                     )}
-                    {node.locationData?.city && (
+                    {currentNode.locationData?.city && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">City</span>
-                        <span className="text-foreground/80">{node.locationData.city}</span>
+                        <span className="text-foreground/80">{currentNode.locationData.city}</span>
                       </div>
                     )}
-                    {getRegionName(node.locationData) && (
+                    {getRegionName(currentNode.locationData) && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Region</span>
-                        <span className="text-foreground/80">{getRegionName(node.locationData)}</span>
+                        <span className="text-foreground/80">{getRegionName(currentNode.locationData)}</span>
                       </div>
                     )}
-                    {node.address && (
+                    {currentNode.address && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Data Center</span>
-                        <span className="text-foreground/80">{detectDataCenter(node.address.split(':')[0]) || '—'}</span>
+                        <span className="text-foreground/80">{detectDataCenter(currentNode.address.split(':')[0]) || '—'}</span>
                       </div>
                     )}
                   </div>
@@ -1035,7 +1077,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     <div className="flex justify-between items-center">
                       <span className="text-foreground/60">Registered</span>
                       <div className="flex items-center gap-1.5">
-                        {node.isRegistered || (node.balance && node.balance > 0) ? (
+                        {currentNode.isRegistered || (currentNode.balance && currentNode.balance > 0) ? (
                           <>
                             <CheckCircle2 className="w-4 h-4 text-[#3F8277]" />
                             <span className="text-[#3F8277] font-medium">Yes</span>
@@ -1048,25 +1090,25 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                         )}
                       </div>
                     </div>
-                    {node.credits !== undefined && node.credits !== null && (
+                    {currentNode.credits !== undefined && currentNode.credits !== null && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Credits</span>
-                        <span className="text-foreground/80 font-semibold">{node.credits.toLocaleString()}</span>
+                        <span className="text-foreground/80 font-semibold">{currentNode.credits.toLocaleString()}</span>
                       </div>
                     )}
-                    {node.balance !== undefined && node.balance !== null && (
+                    {currentNode.balance !== undefined && currentNode.balance !== null && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Balance</span>
                         <BalanceDisplay 
-                          balance={node.balance} 
+                          balance={currentNode.balance} 
                           className="text-sm font-mono"
                         />
                       </div>
                     )}
-                    {node.lastSeen && (
+                    {currentNode.lastSeen && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Last Seen</span>
-                        <span className="text-foreground/80 text-xs">{new Date(node.lastSeen).toLocaleString()}</span>
+                        <span className="text-foreground/80 text-xs">{new Date(currentNode.lastSeen).toLocaleString()}</span>
                       </div>
                     )}
                   </div>
@@ -1341,7 +1383,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     })()}
 
                     {/* Credits over time - showing earned amounts per time period */}
-                    {(filteredData.some(d => d.credits !== undefined) || (node.credits !== undefined && node.credits !== null)) && (() => {
+                    {(filteredData.some(d => d.credits !== undefined) || (currentNode.credits !== undefined && currentNode.credits !== null)) && (() => {
                       // Determine time period based on selected time range
                       const getTimePeriod = () => {
                         switch (timeRange) {
@@ -1407,12 +1449,12 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                       });
                       
                       // If we have current credits but no historical data, show current credits
-                      if (filteredCreditsData.length === 0 && node.credits !== undefined && node.credits !== null) {
+                      if (filteredCreditsData.length === 0 && currentNode.credits !== undefined && currentNode.credits !== null) {
                         filteredCreditsData.push({
                           timestamp: Date.now(),
                           value: 0, // Can't calculate earned without previous data
-                          _credits: node.credits,
-                          _originalCredits: node.credits,
+                          _credits: currentNode.credits,
+                          _originalCredits: currentNode.credits,
                         });
                       }
                       
@@ -1491,11 +1533,11 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
               )}
 
               {/* Stats Unavailable Warning */}
-              {node._statsError && (
+              {currentNode._statsError && (
                 <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
                   <p className="text-yellow-400 font-medium text-sm mb-1">Stats Unavailable</p>
                   <p className="text-xs text-foreground/60">
-                    {node._statsError}
+                    {currentNode._statsError}
                   </p>
                 </div>
               )}

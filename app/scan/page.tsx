@@ -19,7 +19,7 @@ import Header from '@/components/Header';
 import { Search, MapPin, Navigation2, Loader2, X } from 'lucide-react';
 import { enrichNodesWithGeo } from '@/lib/utils/geo';
 import { useNodes } from '@/lib/context/NodesContext';
-import { measureNodeLatency } from '@/lib/utils/client-latency';
+import NodeDetailsModal from '@/components/NodeDetailsModal';
 
 /**
  * Calculate distance between two coordinates using Haversine formula
@@ -50,14 +50,13 @@ export default function ScanPage() {
   const [nodesWithGeo, setNodesWithGeo] = useState<PNode[]>([]);
   const [geoEnriching, setGeoEnriching] = useState(false);
   const [scanIp, setScanIp] = useState('');
+  const [userIp, setUserIp] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scanLocation, setScanLocation] = useState<{ lat: number; lon: number; city?: string; country?: string } | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const [closestNodes, setClosestNodes] = useState<NodeWithDistance[]>([]);
-  const [nodesByLatency, setNodesByLatency] = useState<NodeWithDistance[]>([]);
-  const [highlightedNodeIds, setHighlightedNodeIds] = useState<Set<string>>(new Set());
-  const [testingLatency, setTestingLatency] = useState(false);
-  const [rankingTab, setRankingTab] = useState<'distance' | 'latency'>('distance');
+  const [selectedNode, setSelectedNode] = useState<PNode | null>(null);
+  const [isNodeModalOpen, setIsNodeModalOpen] = useState(false);
 
   // Geo enrichment for map display (runs when nodes update from context)
   useEffect(() => {
@@ -99,24 +98,25 @@ export default function ScanPage() {
     }
     // Use setTimeout to ensure UI updates immediately
     setTimeout(() => {
-      handleScanWithIp(scanIp.trim());
+      handleScanWithIp(scanIp.trim(), scanIp.trim() === userIp);
     }, 0);
   };
 
   // Auto-detect user's IP - optimized for immediate UI feedback
-  const handleAutoDetect = () => {
+  const handleAutoDetect = async () => {
     setScanError(null);
     setScanning(true);
     
     // Use setTimeout to ensure UI updates immediately
     setTimeout(async () => {
     try {
-      const userIp = await getUserIp();
-      if (userIp) {
-        setScanIp(userIp);
+      const detectedIp = await getUserIp();
+      if (detectedIp) {
+        setUserIp(detectedIp);
+        setScanIp(detectedIp);
           // Small delay to ensure state update, then scan
           setTimeout(() => {
-            handleScanWithIp(userIp);
+            handleScanWithIp(detectedIp, true);
           }, 10);
       } else {
         setScanError('Failed to detect your IP address');
@@ -129,8 +129,8 @@ export default function ScanPage() {
     }, 0);
   };
 
-  // Helper function to scan with a specific IP (used by auto-detect)
-  const handleScanWithIp = async (ipToScan: string) => {
+  // Helper function to scan with a specific IP (used by auto-detect and manual scan)
+  const handleScanWithIp = async (ipToScan: string, isUserIp: boolean = false) => {
     if (!ipToScan.trim()) {
       setScanError('Please enter an IP address');
       setScanning(false);
@@ -140,10 +140,8 @@ export default function ScanPage() {
     // Update UI state immediately for responsive feel
     setScanning(true);
     setScanError(null);
-    setScanLocation(null);
-    setClosestNodes([]);
-    setNodesByLatency([]);
-    setHighlightedNodeIds(new Set());
+      setScanLocation(null);
+      setClosestNodes([]);
     
     // Use requestAnimationFrame to ensure UI updates before heavy work
     await new Promise(resolve => requestAnimationFrame(resolve));
@@ -187,10 +185,26 @@ export default function ScanPage() {
 
       setScanLocation(location);
 
-      // Calculate distances to all nodes with location data
-      const nodesWithDistance: NodeWithDistance[] = nodesWithGeo
-        .filter(node => node.locationData?.lat && node.locationData?.lon)
+      // Calculate distances to ALL nodes - batch calculation for efficiency
+      // IMPORTANT: Use nodes directly from context to ensure we have ALL nodes (online, syncing, offline)
+      // nodesWithGeo might be incomplete during enrichment, so prefer nodes from context
+      const nodesToUse = nodes; // Always use all nodes from context, not just geo-enriched ones
+      
+      // Batch calculate distances for ALL nodes with location data
+      // NO status filtering - includes online, syncing, and offline nodes
+      // Only requirement: must have valid lat/lon coordinates
+      const nodesWithDistance: NodeWithDistance[] = nodesToUse
+        .filter(node => {
+          // Only filter by location data - NO status filtering
+          // Include all nodes: online, syncing, and offline
+          const hasLocation = node.locationData?.lat != null && 
+                              node.locationData?.lon != null &&
+                              !isNaN(node.locationData.lat) &&
+                              !isNaN(node.locationData.lon);
+          return hasLocation;
+        })
         .map(node => {
+          // Calculate distance for each node (batch processing)
           const distanceKm = calculateDistance(
             location.lat,
             location.lon,
@@ -205,79 +219,16 @@ export default function ScanPage() {
           };
         })
         .sort((a, b) => (a.distanceKm || Infinity) - (b.distanceKm || Infinity));
-      
 
-      // Top 20 by distance - show immediately
-      const top20ByDistance = nodesWithDistance.slice(0, 20);
-      setClosestNodes(top20ByDistance);
-      
-      // Don't highlight nodes - keep them with normal style
-      setHighlightedNodeIds(new Set());
+      // Show top 20 closest nodes (for display and map connections)
+      const top20Closest = nodesWithDistance.slice(0, 20);
+      setClosestNodes(top20Closest);
       
       // Scanning is complete - show results immediately
       setScanning(false);
-      
-      // Test latency in background - don't block UI
-      // Try client-side ping first, fall back to server-side if CORS blocks it
-      setTestingLatency(true);
-      (async () => {
-        try {
-          // Client-side ping function - measures latency from browser to node directly
-          // Use Promise.allSettled with shorter timeout to avoid hanging
-          // Use the client-latency utility which includes caching
-          const latencyPromises = top20ByDistance.map(async (node) => {
-            // Ensure node has required properties before measuring latency
-            if (!node.address || !node.id || (!node.pubkey && !node.publicKey)) {
-              return { ...node, latency: null };
-            }
-            
-            try {
-              // Use measureNodeLatency which handles caching and uses the API route
-              // NodeWithDistance extends Omit<PNode, 'latency'>, so it has all required PNode properties
-              const latency = await measureNodeLatency(node as PNode, 2000);
-              
-              return {
-                ...node,
-                latency: latency, // null if unreachable
-              };
-            } catch (err: any) {
-              // Failed to measure latency
-              return { ...node, latency: null };
-            }
-          });
-
-          // Wait for all pings (with timeout protection)
-          const latencyResults = await Promise.allSettled(latencyPromises);
-          const nodesWithLatency: NodeWithDistance[] = latencyResults
-            .map((result): NodeWithDistance | null => result.status === 'fulfilled' ? result.value : null)
-            .filter((node): node is NodeWithDistance => node !== null && node !== undefined)
-            .map((node) => ({
-              ...node,
-              // Normalize latency to a number so sorting is stable and always numeric
-              latency: node.latency === null || node.latency === undefined ? null : Number(node.latency),
-            }));
-          
-          // Sort by latency (lowest first) and then by distance as a tiebreaker
-          const sortedByLatency = [...nodesWithLatency].sort((a, b) => {
-            const aLatency = a.latency ?? Infinity;
-            const bLatency = b.latency ?? Infinity;
-            if (aLatency !== bLatency) return aLatency - bLatency;
-            return (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity);
-          });
-
-          setNodesByLatency(sortedByLatency.slice(0, 20));
-        } catch (err) {
-          // Latency testing error
-          // Show nodes without latency data if testing fails
-          setNodesByLatency(top20ByDistance.map(n => ({ ...n, latency: null })));
-        } finally {
-          setTestingLatency(false);
-        }
-      })();
     } catch (err: any) {
       setScanError(err.message || 'Failed to scan IP address');
       setScanning(false);
-      setTestingLatency(false);
     }
   };
 
@@ -402,156 +353,61 @@ export default function ScanPage() {
               </div>
             )}
 
-            {/* Results with Toggle */}
-            {(closestNodes.length > 0 || nodesByLatency.length > 0) && (
+            {/* Results - Closest Nodes */}
+            {closestNodes.length > 0 && (
               <div>
                 <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-3">
-                  Top 20 Nodes
+                  {scanIp === userIp ? 'Nodes Near Me' : 'Closest Nodes'} ({closestNodes.length})
                 </h3>
-                
-                {/* Tab buttons */}
-                <div className="flex gap-1 p-1 bg-muted/30 rounded-lg mb-3">
-                  <button
-                    onClick={() => setRankingTab('distance')}
-                    className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                      rankingTab === 'distance'
-                        ? 'bg-[#F0A741]/20 text-[#F0A741]'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    By Distance
-                  </button>
-                  <button
-                    onClick={() => setRankingTab('latency')}
-                    disabled={testingLatency || nodesByLatency.length === 0}
-                    className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                      rankingTab === 'latency'
-                        ? 'bg-[#F0A741]/20 text-[#F0A741]'
-                        : 'text-muted-foreground hover:text-foreground'
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
-                    title="Client-side latency measured from your browser"
-                  >
-                    By Latency
-                    {testingLatency && (
-                      <Loader2 className="w-3 h-3 animate-spin inline-block ml-1" />
-                    )}
-                  </button>
-                </div>
 
                 {/* Results list - scrollable for top 20 */}
                 <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
-                  {rankingTab === 'distance' && closestNodes.length > 0 ? (
-                    closestNodes.map((node, index) => (
-                      <div
-                        key={node.id}
-                        className="p-3 bg-muted/30 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer"
-                        onClick={() => {
-                          // Could add navigation to node detail here
-                        }}
-                      >
-                        <div className="flex items-start justify-between mb-1">
-                          <span className="text-xs font-mono text-foreground/90 truncate flex-1">
-                            {node.pubkey || node.publicKey || node.id}
-                          </span>
-                          <span className="text-xs font-semibold text-[#3F8277] whitespace-nowrap ml-2">
-                            {node.distanceKm !== undefined
-                              ? `${node.distanceKm < 1 
-                                  ? `${Math.round(node.distanceKm * 1000)}m`
-                                  : `${node.distanceKm.toFixed(1)}km`}`
-                              : 'N/A'}
-                          </span>
-                        </div>
-                        {node.locationData?.city && (
-                          <div className="text-xs text-muted-foreground">
-                            {node.locationData.city}
-                            {node.locationData.country && `, ${node.locationData.country}`}
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2 mt-2">
-                          <span
-                            className={`text-xs px-2 py-0.5 rounded ${
-                              node.status === 'online'
-                                ? 'bg-green-500/20 text-green-400'
-                                : node.status === 'syncing'
-                                ? 'bg-yellow-500/20 text-yellow-400'
-                                : 'bg-red-500/20 text-red-400'
-                            }`}
-                          >
-                            {node.status || 'offline'}
-                          </span>
-                          {index < 10 && (
-                            <span className="text-xs px-2 py-0.5 rounded bg-[#F0A741]/20 text-[#F0A741]">
-                              Top {index + 1}
-                            </span>
-                          )}
-                        </div>
+                  {closestNodes.map((node, index) => (
+                    <div
+                      key={node.id}
+                      className="p-3 bg-muted/30 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => {
+                        // Could add navigation to node detail here
+                      }}
+                    >
+                      <div className="flex items-start justify-between mb-1">
+                        <span className="text-xs font-mono text-foreground/90 truncate flex-1">
+                          {node.pubkey || node.publicKey || node.id}
+                        </span>
+                        <span className="text-xs font-semibold text-[#3F8277] whitespace-nowrap ml-2">
+                          {node.distanceKm !== undefined
+                            ? `${node.distanceKm < 1 
+                                ? `${Math.round(node.distanceKm * 1000)}m`
+                                : `${node.distanceKm.toFixed(1)}km`}`
+                            : 'N/A'}
+                        </span>
                       </div>
-                    ))
-                  ) : rankingTab === 'latency' ? (
-                    testingLatency ? (
-                      <div className="text-center py-8 text-sm text-muted-foreground">
-                        <Loader2 className="w-4 h-4 animate-spin inline-block mr-2" />
-                        Testing latency...
-                      </div>
-                    ) : nodesByLatency.length > 0 ? (
-                      nodesByLatency.map((node, index) => (
-                        <div
-                          key={node.id}
-                          className="p-3 bg-muted/30 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer"
-                          onClick={() => {
-                            // Could add navigation to node detail here
-                          }}
+                      {node.locationData?.city && (
+                        <div className="text-xs text-muted-foreground">
+                          {node.locationData.city}
+                          {node.locationData.country && `, ${node.locationData.country}`}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 mt-2">
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded ${
+                            node.status === 'online'
+                              ? 'bg-green-500/20 text-green-400'
+                              : node.status === 'syncing'
+                              ? 'bg-yellow-500/20 text-yellow-400'
+                              : 'bg-red-500/20 text-red-400'
+                          }`}
                         >
-                          <div className="flex items-start justify-between mb-1">
-                            <span className="text-xs font-mono text-foreground/90 truncate flex-1">
-                              {node.pubkey || node.publicKey || node.id}
-                            </span>
-                            <span className={`text-xs font-semibold whitespace-nowrap ml-2 ${
-                              node.latency === null || node.latency === undefined
-                                ? 'text-red-400' 
-                                : node.latency < 50 
-                                ? 'text-green-400' 
-                                : node.latency < 100 
-                                ? 'text-yellow-400' 
-                                : 'text-orange-400'
-                            }`}>
-                              {node.latency !== null && node.latency !== undefined ? `${node.latency}ms` : 'N/A'}
-                            </span>
-                          </div>
-                          {node.locationData?.city && (
-                            <div className="text-xs text-muted-foreground">
-                              {node.locationData.city}
-                              {node.locationData.country && `, ${node.locationData.country}`}
-                            </div>
-                          )}
-                          {node.distanceKm !== undefined && (
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {node.distanceKm < 1 
-                                ? `${Math.round(node.distanceKm * 1000)}m away`
-                                : `${node.distanceKm.toFixed(1)}km away`}
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2 mt-2">
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded ${
-                                node.status === 'online'
-                                  ? 'bg-green-500/20 text-green-400'
-                                  : node.status === 'syncing'
-                                  ? 'bg-yellow-500/20 text-yellow-400'
-                                  : 'bg-red-500/20 text-red-400'
-                              }`}
-                            >
-                              {node.status || 'offline'}
-                            </span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-sm text-muted-foreground">
-                        No latency data available yet
+                          {node.status || 'offline'}
+                        </span>
+                        {index < 10 && (
+                          <span className="text-xs px-2 py-0.5 rounded bg-[#F0A741]/20 text-[#F0A741]">
+                            Top {index + 1}
+                          </span>
+                        )}
                       </div>
-                    )
-                  ) : null}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -584,7 +440,6 @@ export default function ScanPage() {
           ) : (
             <MapLibreGlobe 
               nodes={nodesWithGeo.length > 0 ? nodesWithGeo : nodes}
-              highlightedNodeIds={highlightedNodeIds}
               centerLocation={scanLocation ? { lat: scanLocation.lat, lon: scanLocation.lon } : undefined}
               scanLocation={scanLocation || undefined}
               scanTopNodes={closestNodes.length > 0 ? closestNodes
@@ -601,10 +456,26 @@ export default function ScanPage() {
                   }
                   return hasLocation;
                 }) : undefined}
+              autoRotate={false}
+              onPopupClick={(node) => {
+                // Open node details modal when popup is clicked
+                setSelectedNode(node);
+                setIsNodeModalOpen(true);
+              }}
             />
           )}
         </main>
       </div>
+
+      {/* Node Details Modal */}
+      <NodeDetailsModal
+        node={selectedNode}
+        isOpen={isNodeModalOpen}
+        onClose={() => {
+          setIsNodeModalOpen(false);
+          setSelectedNode(null);
+        }}
+      />
     </div>
   );
 }
