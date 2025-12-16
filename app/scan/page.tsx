@@ -367,7 +367,9 @@ export default function ScanPage() {
                       key={node.id}
                       className="p-3 bg-muted/30 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer"
                       onClick={() => {
-                        // Could add navigation to node detail here
+                        // Open node details modal
+                        setSelectedNode(node as PNode);
+                        setIsNodeModalOpen(true);
                       }}
                     >
                       <div className="flex items-start justify-between mb-1">
@@ -457,8 +459,8 @@ export default function ScanPage() {
                   return hasLocation;
                 }) : undefined}
               autoRotate={false}
-              onPopupClick={(node) => {
-                // Open node details modal when popup is clicked
+              onNodeClick={(node) => {
+                // Open node details modal when node is clicked (don't redirect)
                 setSelectedNode(node);
                 setIsNodeModalOpen(true);
               }}

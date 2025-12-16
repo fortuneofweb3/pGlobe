@@ -126,11 +126,6 @@ export default function Header({
 
           {/* Right side - Controls */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Network Toggle (DevNet/MainNet) */}
-            <div className="hidden sm:block">
-              <NetToggle currentNet={selectedNet} onNetChange={handleNetChange} />
-            </div>
-
             {showNetworkSelector && networks.length > 0 && (
               <div className="hidden sm:block px-3 py-1.5">
                 <NetworkSelector
@@ -159,6 +154,12 @@ export default function Header({
                 <span className="hidden sm:inline">Refresh</span>
               </button>
             )}
+            
+            {/* Network Toggle (DevNet/MainNet) - Extreme Right */}
+            <div className="hidden sm:block">
+              <NetToggle currentNet={selectedNet} onNetChange={handleNetChange} />
+            </div>
+
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

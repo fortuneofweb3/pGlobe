@@ -33,14 +33,14 @@ export default function NetToggle({ currentNet, onNetChange }: NetToggleProps) {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-[#F0A741]/10 text-[#F0A741] hover:bg-[#F0A741]/20 transition-all border border-[#F0A741]/20"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[#F0A741]/10 text-[#F0A741] hover:bg-[#F0A741]/20 transition-all border border-[#F0A741]/30"
       >
-        <span className="uppercase tracking-wide">{currentNet}</span>
-        <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <span className="uppercase tracking-wider">{currentNet}</span>
+        <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-black/95 backdrop-blur-md border border-[#F0A741]/20 rounded-lg shadow-xl overflow-hidden z-50">
+        <div className="absolute right-0 mt-2 w-44 bg-black/95 backdrop-blur-md border border-[#F0A741]/30 rounded-lg shadow-xl overflow-hidden z-50">
           <div className="py-1">
             {/* DevNet */}
             <button
@@ -48,34 +48,34 @@ export default function NetToggle({ currentNet, onNetChange }: NetToggleProps) {
                 onNetChange('devnet');
                 setIsOpen(false);
               }}
-              className="w-full px-4 py-2.5 text-left flex items-center justify-between hover:bg-[#F0A741]/10 transition-colors group"
+              className="w-full px-3 py-2 text-left flex items-center justify-between hover:bg-[#F0A741]/10 transition-colors group"
             >
               <div>
-                <div className="text-sm font-medium text-[#F0A741] group-hover:text-[#F0A741]">
+                <div className="text-xs font-semibold text-[#F0A741] uppercase tracking-wider">
                   DevNet
                 </div>
-                <div className="text-xs text-[#F0A741]/60 mt-0.5">
+                <div className="text-[10px] text-[#F0A741]/50 mt-0.5">
                   Test Network
                 </div>
               </div>
               {currentNet === 'devnet' && (
-                <Check className="w-4 h-4 text-[#F0A741]" />
+                <Check className="w-3.5 h-3.5 text-[#F0A741]" />
               )}
             </button>
 
             {/* MainNet - Disabled */}
             <button
               disabled
-              className="w-full px-4 py-2.5 text-left flex items-center justify-between opacity-50 cursor-not-allowed"
+              className="w-full px-3 py-2 text-left flex items-center justify-between opacity-40 cursor-not-allowed"
             >
               <div>
-                <div className="text-sm font-medium text-[#F0A741]/60 flex items-center gap-2">
+                <div className="text-xs font-semibold text-[#F0A741]/60 flex items-center gap-1.5 uppercase tracking-wider">
                   MainNet
-                  <span className="text-xs px-1.5 py-0.5 bg-[#F0A741]/20 rounded text-[#F0A741]/80 font-normal">
-                    Coming Soon
+                  <span className="text-[9px] px-1.5 py-0.5 bg-[#F0A741]/20 rounded text-[#F0A741]/70 font-medium normal-case tracking-normal">
+                    Soon
                   </span>
                 </div>
-                <div className="text-xs text-[#F0A741]/40 mt-0.5">
+                <div className="text-[10px] text-[#F0A741]/30 mt-0.5">
                   Production Network
                 </div>
               </div>
