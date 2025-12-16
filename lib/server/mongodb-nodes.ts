@@ -193,8 +193,8 @@ export interface NodeDocument {
   packetsReceived?: number;
   packetsSent?: number;
   activeStreams?: number;
-  latency?: number; // Latency in milliseconds (primary measurement from server region)
-  latencyByRegion?: string | Record<string, number>; // Latency measurements from different regions (stored as JSON string)
+  // latency?: number; // REMOVED - Latency should be calculated client-side, not stored in DB
+  // latencyByRegion?: string | Record<string, number>; // REMOVED - Client-side measurement
   
   // Storage metrics
   storageCapacity?: number; // Total storage capacity in bytes
@@ -343,8 +343,8 @@ function nodeToDocument(node: PNode): NodeDocument {
     packetsReceived: node.packetsReceived !== undefined && node.packetsReceived !== null ? node.packetsReceived : undefined,
     packetsSent: node.packetsSent !== undefined && node.packetsSent !== null ? node.packetsSent : undefined,
     activeStreams: node.activeStreams !== undefined && node.activeStreams !== null ? node.activeStreams : undefined,
-    latency: node.latency !== undefined && node.latency !== null ? node.latency : undefined,
-    latencyByRegion: node.latencyByRegion ? JSON.stringify(node.latencyByRegion) : undefined,
+    // latency: removed - client-side measurement
+    // latencyByRegion: removed - client-side measurement
     storageCapacity: node.storageCapacity !== undefined && node.storageCapacity !== null ? node.storageCapacity : undefined,
     storageUsed: node.storageUsed !== undefined && node.storageUsed !== null ? node.storageUsed : undefined,
     storageCommitted: node.storageCommitted !== undefined && node.storageCommitted !== null ? node.storageCommitted : undefined,
@@ -417,8 +417,8 @@ export function documentToNode(doc: NodeDocument): PNode {
     packetsReceived: doc.packetsReceived,
     packetsSent: doc.packetsSent,
     activeStreams: doc.activeStreams,
-    latency: doc.latency,
-    latencyByRegion: doc.latencyByRegion ? (typeof doc.latencyByRegion === 'string' ? JSON.parse(doc.latencyByRegion) : doc.latencyByRegion) : undefined,
+    // latency: removed - client-side measurement
+    // latencyByRegion: removed - client-side measurement
     storageCapacity: doc.storageCapacity,
     storageUsed: doc.storageUsed,
     storageCommitted: doc.storageCommitted,

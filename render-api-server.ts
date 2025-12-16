@@ -606,7 +606,7 @@ async function startServer() {
     // Step 3: Start background refresh (only if MongoDB is connected)
     console.log('[RenderAPI] Starting background refresh task...');
     startBackgroundRefresh();
-    console.log('[RenderAPI] ✅ Background refresh started (runs every 5 minutes)');
+    console.log('[RenderAPI] ✅ Background refresh started (runs every 1 minute)');
 
     // Step 3: Start Express server
     app.listen(PORT, () => {

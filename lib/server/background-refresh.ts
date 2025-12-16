@@ -292,42 +292,49 @@ export async function performRefresh(): Promise<void> {
       console.warn(`[BackgroundRefresh] ⚠️  Failed to fetch pod credits:`, error instanceof Error ? error.message : String(error));
     }
 
-    // STEP 5: Re-enrich nodes with null values (especially those with uptime but missing stats)
-    // Use existingNodesMap from STEP 4 (already fetched)
+    // STEP 5: Re-enrich nodes with null values - DISABLED FOR PERFORMANCE
+    // We now use get-pods-with-stats which gives us the essential stats upfront
+    // Re-enrichment with latency measurements takes too long (100+ nodes × latency check = minutes)
+    // Nodes from get-pods-with-stats already have: uptime, storage, version
+    const SKIP_RE_ENRICHMENT = true; // Set to false to enable
+    
     const nodesNeedingReEnrichment: PNode[] = [];
     
-    try {
-      // Check nodes from existingNodesMap for re-enrichment
-      existingNodesMap.forEach((node, key) => {
-        // Check if node needs re-enrichment (has uptime but missing CPU/RAM/packets)
-        // This indicates the node might be online but stats fetch failed previously
-        const needsEnrichment = (
-          (node.uptime !== undefined && node.uptime !== null && node.uptime > 0) || // Has uptime
-          node.status === 'online' || // Marked as online
-          node.version // Has version (likely active)
-        ) && (
-          node.cpuPercent === null || node.cpuPercent === undefined ||
-          node.ramTotal === null || node.ramTotal === undefined ||
-          node.ramUsed === null || node.ramUsed === undefined ||
-          node.packetsReceived === null || node.packetsReceived === undefined ||
-          node.packetsSent === null || node.packetsSent === undefined ||
-          node.activeStreams === null || node.activeStreams === undefined
-        );
+    if (!SKIP_RE_ENRICHMENT) {
+      try {
+        // Check nodes from existingNodesMap for re-enrichment
+        existingNodesMap.forEach((node, key) => {
+          // Check if node needs re-enrichment (has uptime but missing CPU/RAM/packets)
+          const needsEnrichment = (
+            (node.uptime !== undefined && node.uptime !== null && node.uptime > 0) || // Has uptime
+            node.status === 'online' || // Marked as online
+            node.version // Has version (likely active)
+          ) && (
+            node.cpuPercent === null || node.cpuPercent === undefined ||
+            node.ramTotal === null || node.ramTotal === undefined ||
+            node.ramUsed === null || node.ramUsed === undefined ||
+            node.packetsReceived === null || node.packetsReceived === undefined ||
+            node.packetsSent === null || node.packetsSent === undefined ||
+            node.activeStreams === null || node.activeStreams === undefined
+          );
+          
+          if (needsEnrichment && node.address) {
+            nodesNeedingReEnrichment.push(node);
+          }
+        });
         
-        if (needsEnrichment && node.address) {
-          nodesNeedingReEnrichment.push(node);
+        if (nodesNeedingReEnrichment.length > 0) {
+          console.log(`[BackgroundRefresh] Found ${nodesNeedingReEnrichment.length} nodes with null stats that need re-enrichment...`);
         }
-      });
-      
-      if (nodesNeedingReEnrichment.length > 0) {
-        console.log(`[BackgroundRefresh] Found ${nodesNeedingReEnrichment.length} nodes with null stats that need re-enrichment...`);
+      } catch (e) {
+        console.warn('[BackgroundRefresh] Could not fetch existing nodes, will use balance data only');
       }
-    } catch (e) {
-      console.warn('[BackgroundRefresh] Could not fetch existing nodes, will use balance data only');
+    } else {
+      console.log(`[BackgroundRefresh] ✅ Skipping re-enrichment (using stats from get-pods-with-stats)`);
     }
     
     // Re-enrich nodes with null values
-    if (nodesNeedingReEnrichment.length > 0) {
+    if (!SKIP_RE_ENRICHMENT && nodesNeedingReEnrichment.length > 0) {
       const { fetchNodeStats } = await import('./prpc');
       const { isValidPubkey } = await import('./mongodb-nodes');
       const BATCH_SIZE = 10; // Smaller batch for re-enrichment
@@ -376,7 +383,7 @@ export async function performRefresh(): Promise<void> {
                   packetsSent: enriched.packetsSent ?? nodesWithValidPubkeys[index].packetsSent,
                   activeStreams: enriched.activeStreams ?? nodesWithValidPubkeys[index].activeStreams,
                   uptime: enriched.uptime ?? nodesWithValidPubkeys[index].uptime,
-                  latency: enriched.latency ?? nodesWithValidPubkeys[index].latency,
+                  // latency: removed - client-side measurement
                   status: enriched.status ?? nodesWithValidPubkeys[index].status,
                 };
                 reEnrichedCount++;
