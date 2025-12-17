@@ -452,9 +452,6 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                     <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                       Location
                     </th>
-                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                      Last Seen
-                    </th>
                     <th 
                       className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                       onClick={() => onSort('latency')}
