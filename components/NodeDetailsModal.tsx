@@ -1326,9 +1326,9 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                       );
                     })()}
 
-                    {/* Credits over time - showing earning rate */}
+                    {/* Credits over time - showing credits earned per 5-minute window */}
                     {(filteredData.some(d => d.credits !== undefined) || (node.credits !== undefined && node.credits !== null)) && (() => {
-                      // Calculate credits earning rate from historical data
+                      // Calculate credits earned from historical data (5-minute windows)
                       const sorted = [...filteredData].sort((a, b) => a.timestamp - b.timestamp);
                       const FIVE_MINUTES_MS = 5 * 60 * 1000;
                       
@@ -1347,76 +1347,73 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                           }
                         }
                         
-                        // Calculate earning rate if we have a previous snapshot with credits data
-                        let earningRate = 0;
+                        // Calculate credits earned (not rate - absolute credits)
+                        let creditsEarned = 0;
+                        let previousCredits = undefined;
                         
                         if (previous && previousIndex >= 0) {
-                          // Both must have credits defined to calculate rate
+                          // Both must have credits defined to calculate earned
                           const prevCredits = previous.credits;
                           const currCredits = current.credits;
                           
                           if (prevCredits !== undefined && prevCredits !== null && 
                               currCredits !== undefined && currCredits !== null) {
-                            const timeDiff = (current.timestamp - previous.timestamp) / 1000; // seconds
-                            if (timeDiff > 0) {
-                              const creditsDiff = currCredits - prevCredits;
-                              earningRate = Math.max(0, creditsDiff / timeDiff); // credits per second
-                            }
+                            const creditsDiff = currCredits - prevCredits;
+                            creditsEarned = Math.max(0, creditsDiff); // Absolute credits earned
+                            previousCredits = prevCredits;
                           }
                         }
                         
                         return {
                           timestamp: current.timestamp,
-                          value: earningRate,
+                          value: creditsEarned,
                           // Store original credits for tooltip
                           _credits: current.credits,
+                          _previousCredits: previousCredits,
                           _originalCredits: current.credits,
                         };
                       });
                       
-                      // Fix first point: if it's 0, use the next available non-zero rate
-                      if (creditsData.length > 0 && creditsData[0].value === 0) {
-                        const firstNonZero = creditsData.find(d => d.value > 0);
-                        if (firstNonZero) {
-                          creditsData[0].value = firstNonZero.value;
-                        }
-                      }
+                      // Don't fix first point - 0 is valid for first data point with no previous
                       
-                      // If we have current credits but no historical data, estimate rate from uptime
-                      if (creditsData.length === 0 && node.credits !== undefined && node.credits !== null && node.uptime && node.uptime > 0) {
-                        const estimatedRate = node.credits / node.uptime; // credits per second
+                      // If we have current credits but no historical data, show current total credits
+                      if (creditsData.length === 0 && node.credits !== undefined && node.credits !== null) {
                         creditsData.push({
                           timestamp: Date.now(),
-                          value: estimatedRate,
+                          value: node.credits, // Show total accumulated credits
                           _credits: node.credits,
+                          _previousCredits: undefined,
                           _originalCredits: node.credits,
                         });
                       }
                       
-                      const maxRate = Math.max(
+                      const maxCredits = Math.max(
                         ...creditsData.map(d => d.value || 0),
-                        1
+                        10 // Minimum scale
                       );
                       
                       return (
                         <div className="space-y-4">
                           <HistoricalLineChart
-                            title="Credits Earning Rate"
+                            title="Credits Earned"
                             data={creditsData}
                             height={250}
-                            yDomain={[0, maxRate * 1.1 || 1]}
+                            yDomain={[0, maxCredits * 1.1 || 10]}
                             strokeColor="#F0A741"
-                            yLabel="Credits/s"
-                            yTickFormatter={(v) => formatNumber(v)}
+                            yLabel="Credits"
+                            yTickFormatter={(v) => v.toFixed(0)}
                             tooltipFormatter={(d) => (
                               <div className="text-xs">
                                 <div className="font-semibold text-foreground mb-1">
                                   {new Date(d.timestamp).toLocaleString()}
                                 </div>
                                 <div className="text-foreground/80 space-y-1">
-                                  <div>Earning Rate: <span className="font-semibold">{formatNumber(d.value || 0)}/s</span></div>
+                                  <div>Credits Earned: <span className="font-semibold">{(d.value || 0).toFixed(0)}</span></div>
                                   {d._credits !== undefined && d._credits !== null && (
                                     <div className="text-foreground/60">Total Credits: {d._credits.toLocaleString()}</div>
+                                  )}
+                                  {d._previousCredits !== undefined && d._previousCredits !== null && (
+                                    <div className="text-foreground/60 text-[10px]">Previous: {d._previousCredits.toLocaleString()}</div>
                                   )}
                                 </div>
                               </div>
