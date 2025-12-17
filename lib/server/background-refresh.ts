@@ -29,7 +29,7 @@ export async function performRefresh(): Promise<void> {
   if (isRunning) {
     const timeSinceStart = Date.now() - lastRefreshStart;
     if (timeSinceStart > MAX_REFRESH_TIME_MS) {
-      console.warn(`[BackgroundRefresh] ⚠️ Previous refresh stuck for ${Math.round(timeSinceStart / 1000)}s, force-resetting...`);
+      console.error(`[BackgroundRefresh] ❌ Previous refresh stuck for ${Math.round(timeSinceStart / 1000)}s, force-resetting...`);
       isRunning = false;
     } else {
       console.log(`[BackgroundRefresh] ⏳ Previous refresh still running (${Math.round(timeSinceStart / 1000)}s), skipping...`);
@@ -40,6 +40,8 @@ export async function performRefresh(): Promise<void> {
   isRunning = true;
   lastRefreshStart = Date.now();
   const startTime = Date.now();
+  
+  console.log(`[BackgroundRefresh] 🔄 Refresh cycle started at ${new Date().toISOString()}`);
 
   try {
     console.log(`[BackgroundRefresh] Starting refresh...`);
@@ -604,20 +606,36 @@ export async function performRefresh(): Promise<void> {
       // Don't throw - allow refresh cycle to complete, will retry next cycle
     }
   } catch (error: any) {
-    console.error(`[BackgroundRefresh] ❌ Error:`, error?.message || error);
-    console.error(error?.stack);
+    const totalTime = Date.now() - startTime;
+    console.error(`[BackgroundRefresh] ❌ CRITICAL ERROR in refresh cycle (${totalTime}ms):`, error?.message || error);
+    console.error(`[BackgroundRefresh] Stack trace:`, error?.stack);
   } finally {
+    // ALWAYS reset isRunning flag, even if cleanup fails
+    const resetIsRunning = () => {
+      isRunning = false;
+      const totalTime = Date.now() - startTime;
+      console.log(`[BackgroundRefresh] ✅ Refresh cycle completed in ${totalTime}ms (${Math.round(totalTime / 1000)}s)`);
+    };
+    
     // Clean up invalid nodes every refresh - remove nodes without valid pubkeys
+    // Use timeout to prevent cleanup from hanging
     try {
-      const deletedCount = await cleanupInvalidNodes();
+      const cleanupPromise = cleanupInvalidNodes();
+      const timeoutPromise = new Promise<number>((_, reject) => {
+        setTimeout(() => reject(new Error('Cleanup timeout after 30 seconds')), 30000);
+      });
+      
+      const deletedCount = await Promise.race([cleanupPromise, timeoutPromise]);
       if (deletedCount > 0) {
         console.log(`[BackgroundRefresh] 🧹 Cleaned up ${deletedCount} nodes with invalid pubkeys`);
       }
     } catch (cleanupError: any) {
-      console.error(`[BackgroundRefresh] Error during cleanup:`, cleanupError?.message || cleanupError);
+      console.error(`[BackgroundRefresh] ⚠️  Error during cleanup (non-fatal):`, cleanupError?.message || cleanupError);
+      // Don't let cleanup errors prevent flag reset
+    } finally {
+      // GUARANTEED reset of isRunning flag
+      resetIsRunning();
     }
-    
-    isRunning = false;
   }
 }
 
@@ -625,21 +643,33 @@ export async function performRefresh(): Promise<void> {
  * Start the background refresh task (runs every 1 minute)
  */
 export function startBackgroundRefresh(): void {
-  if (refreshInterval) return;
+  if (refreshInterval) {
+    console.log('[BackgroundRefresh] Background refresh already running, skipping start');
+    return;
+  }
+
+  console.log('[BackgroundRefresh] 🚀 Starting background refresh service...');
+  console.log('[BackgroundRefresh] Refresh interval: 60 seconds');
+  console.log('[BackgroundRefresh] Max refresh time: 120 seconds');
 
   // Perform initial refresh immediately
   performRefresh().catch(err => {
-    console.error('[BackgroundRefresh] Error:', err);
+    console.error('[BackgroundRefresh] ❌ Initial refresh error:', err?.message || err);
+    // Don't let initial error prevent interval from starting
   });
 
   // Then set up interval for every 1 minute (60000ms)
   // With optimizations (skip peer discovery, only fetch balance for new nodes),
   // each cycle should complete in 1-2 minutes
   refreshInterval = setInterval(() => {
+    console.log('[BackgroundRefresh] ⏰ Interval tick - starting new refresh cycle...');
     performRefresh().catch(err => {
-      console.error('[BackgroundRefresh] Error:', err);
+      console.error('[BackgroundRefresh] ❌ Interval refresh error:', err?.message || err);
+      // Don't let errors stop the interval
     });
   }, 60 * 1000); // 1 minute
+  
+  console.log('[BackgroundRefresh] ✅ Background refresh service started successfully');
 }
 
 /**
