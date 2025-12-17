@@ -215,12 +215,14 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     const oneMinuteAgo = now - 60 * 1000;
     
     if (!lastRefreshTime || parseInt(lastRefreshTime) < oneMinuteAgo) {
+      console.log('[NodesContext] Triggering background refresh on Render (last refresh was', lastRefreshTime ? `${Math.floor((now - parseInt(lastRefreshTime)) / 1000)}s ago` : 'never', ')');
       // Defer background refresh to avoid blocking navigation
       if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
         requestIdleCallback(() => {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 30000);
           
+          console.log('[NodesContext] Calling /api/refresh-nodes...');
           fetch('/api/refresh-nodes', { 
             method: 'GET',
             signal: controller.signal,
@@ -229,12 +231,16 @@ export function NodesProvider({ children }: { children: ReactNode }) {
               clearTimeout(timeoutId);
               const data = await res.json();
               if (res.ok) {
+                console.log('[NodesContext] ✅ Background refresh completed:', data);
                 localStorage.setItem('lastServerRefresh', Date.now().toString());
                 refreshNodes();
+              } else {
+                console.error('[NodesContext] ❌ Background refresh failed:', data);
               }
             })
-            .catch(() => {
+            .catch((err) => {
               clearTimeout(timeoutId);
+              console.error('[NodesContext] ❌ Background refresh error:', err);
             });
         }, { timeout: 5000 });
       } else {
@@ -242,6 +248,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 30000);
           
+          console.log('[NodesContext] Calling /api/refresh-nodes...');
           fetch('/api/refresh-nodes', { 
             method: 'GET',
             signal: controller.signal,
@@ -250,29 +257,41 @@ export function NodesProvider({ children }: { children: ReactNode }) {
               clearTimeout(timeoutId);
               const data = await res.json();
               if (res.ok) {
+                console.log('[NodesContext] ✅ Background refresh completed:', data);
                 localStorage.setItem('lastServerRefresh', Date.now().toString());
                 refreshNodes();
+              } else {
+                console.error('[NodesContext] ❌ Background refresh failed:', data);
               }
             })
-            .catch(() => {
+            .catch((err) => {
               clearTimeout(timeoutId);
+              console.error('[NodesContext] ❌ Background refresh error:', err);
             });
         }, 2000);
       }
+    } else {
+      console.log('[NodesContext] Skipping background refresh (last refresh was', Math.floor((now - parseInt(lastRefreshTime)) / 1000), 'seconds ago)');
     }
   }, [refreshNodes, loadCache]);
 
   // Passive polling: Fetch fresh data from MongoDB every minute (matches background refresh interval)
   // Only poll if we have nodes (don't poll if initial load failed)
   useEffect(() => {
-    if (nodes.length === 0) return; // Don't poll if no nodes loaded
+    // Only start polling if we have nodes
+    if (nodes.length === 0) return;
     
+    console.log('[NodesContext] Starting passive polling (every 60s)');
     const interval = setInterval(() => {
+      console.log('[NodesContext] Passive polling tick - fetching fresh data...');
       // Fetch in background - UI already has data, this just updates it
       refreshNodes();
     }, 60 * 1000); // 1 minute
-    return () => clearInterval(interval);
-  }, [refreshNodes, nodes.length]);
+    return () => {
+      console.log('[NodesContext] Stopping passive polling');
+      clearInterval(interval);
+    };
+  }, [refreshNodes]); // Removed nodes.length dependency to prevent interval resets
 
   // Refresh when network changes
   useEffect(() => {

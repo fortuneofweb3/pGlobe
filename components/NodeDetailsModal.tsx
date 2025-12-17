@@ -1347,19 +1347,19 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                           }
                         }
                         
-                        // Calculate credits earned (not rate - absolute credits)
+                        // Calculate credits earned or lost (not rate - absolute credits change)
                         let creditsEarned = 0;
                         let previousCredits = undefined;
                         
                         if (previous && previousIndex >= 0) {
-                          // Both must have credits defined to calculate earned
+                          // Both must have credits defined to calculate earned/lost
                           const prevCredits = previous.credits;
                           const currCredits = current.credits;
                           
                           if (prevCredits !== undefined && prevCredits !== null && 
                               currCredits !== undefined && currCredits !== null) {
                             const creditsDiff = currCredits - prevCredits;
-                            creditsEarned = Math.max(0, creditsDiff); // Absolute credits earned
+                            creditsEarned = creditsDiff; // Can be positive (earned) or negative (lost)
                             previousCredits = prevCredits;
                           }
                         }
@@ -1387,6 +1387,11 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                         });
                       }
                       
+                      // Find min and max for dynamic Y-axis (include negative values for losses)
+                      const minCredits = Math.min(
+                        ...creditsData.map(d => d.value || 0),
+                        0 // Include 0 in case all values are positive
+                      );
                       const maxCredits = Math.max(
                         ...creditsData.map(d => d.value || 0),
                         10 // Minimum scale
@@ -1395,32 +1400,45 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                       return (
                         <div className="space-y-4">
                           <HistoricalLineChart
-                            title="Credits Earned"
+                            title="Credits Earned / Lost"
                             data={creditsData}
                             height={250}
-                            yDomain={[0, maxCredits * 1.1 || 10]}
+                            yDomain={[minCredits * 1.1 || -10, maxCredits * 1.1 || 10]}
                             strokeColor="#F0A741"
                             yLabel="Credits"
-                            yTickFormatter={(v) => v.toFixed(0)}
-                            tooltipFormatter={(d) => (
-                              <div className="text-xs">
-                                <div className="font-semibold text-foreground mb-1">
-                                  {new Date(d.timestamp).toLocaleString()}
+                            yTickFormatter={(v) => {
+                              const val = v.toFixed(0);
+                              return v > 0 ? `+${val}` : val;
+                            }}
+                            tooltipFormatter={(d) => {
+                              const value = d.value || 0;
+                              const isPositive = value > 0;
+                              const isNegative = value < 0;
+                              return (
+                                <div className="text-xs">
+                                  <div className="font-semibold text-foreground mb-1">
+                                    {new Date(d.timestamp).toLocaleString()}
+                                  </div>
+                                  <div className="text-foreground/80 space-y-1">
+                                    <div className={isNegative ? 'text-red-400' : isPositive ? 'text-green-400' : ''}>
+                                      {isNegative ? 'Credits Lost: ' : 'Credits Earned: '}
+                                      <span className="font-semibold">
+                                        {isPositive ? '+' : ''}{value.toFixed(0)}
+                                      </span>
+                                    </div>
+                                    {d._credits !== undefined && d._credits !== null && (
+                                      <div className="text-foreground/60">Total Credits: {d._credits.toLocaleString()}</div>
+                                    )}
+                                    {d._previousCredits !== undefined && d._previousCredits !== null && (
+                                      <div className="text-foreground/60 text-[10px]">Previous: {d._previousCredits.toLocaleString()}</div>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="text-foreground/80 space-y-1">
-                                  <div>Credits Earned: <span className="font-semibold">{(d.value || 0).toFixed(0)}</span></div>
-                                  {d._credits !== undefined && d._credits !== null && (
-                                    <div className="text-foreground/60">Total Credits: {d._credits.toLocaleString()}</div>
-                                  )}
-                                  {d._previousCredits !== undefined && d._previousCredits !== null && (
-                                    <div className="text-foreground/60 text-[10px]">Previous: {d._previousCredits.toLocaleString()}</div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
+                              );
+                            }}
                             headerContent={
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span>Credits earning rate calculated over 5-minute windows</span>
+                                <span>Credits change (earned/lost) calculated over 5-minute windows</span>
                               </div>
                             }
                           />
