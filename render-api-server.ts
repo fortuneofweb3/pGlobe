@@ -17,7 +17,7 @@ dotenv.config(); // Also load .env if it exists
 
 // Now import other modules (they can safely read process.env)
 import express from 'express';
-import { performRefresh, startBackgroundRefresh } from './lib/server/background-refresh';
+import { performRefresh, startBackgroundRefresh, isRefreshRunning } from './lib/server/background-refresh';
 import { getAllNodes, getNodeByPubkey, createIndexes } from './lib/server/mongodb-nodes';
 import { createHistoryIndexes, getHistoricalSnapshots, getDailyStats, getNodeHistory } from './lib/server/mongodb-history';
 import { fetchPNodesFromGossip } from './lib/server/prpc';
@@ -89,6 +89,18 @@ app.get('/health', async (req, res) => {
 app.post('/api/refresh-nodes', authenticate, async (req, res) => {
   try {
     console.log('[RenderAPI] Refresh request received');
+    
+    // Check if background refresh is already running
+    if (isRefreshRunning()) {
+      console.log('[RenderAPI] ⏳ Background refresh already in progress, skipping manual trigger');
+      return res.json({
+        success: true,
+        message: 'Background refresh already in progress',
+        timestamp: new Date().toISOString(),
+      });
+    }
+    
+    // Trigger refresh (performRefresh handles its own concurrency)
     await performRefresh();
     console.log('[RenderAPI] ✅ Refresh completed');
     

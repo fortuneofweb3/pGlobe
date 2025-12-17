@@ -20,8 +20,8 @@ let lastRefreshComplete = 0;
 let consecutiveSkips = 0;
 
 // Maximum time a refresh can take before we force-reset isRunning
-// Increased to 4 minutes to accommodate slow operations
-const MAX_REFRESH_TIME_MS = 4 * 60 * 1000; // 4 minutes
+// Increased to 6 minutes to accommodate discovery (1-2min) + enrichment (1-2min) + DB writes (30s)
+const MAX_REFRESH_TIME_MS = 6 * 60 * 1000; // 4 minutes
 
 // Maximum consecutive skips before forcing a new refresh
 const MAX_CONSECUTIVE_SKIPS = 3;
@@ -78,9 +78,10 @@ export async function performRefresh(): Promise<void> {
       try {
         console.log(`[BackgroundRefresh] Trying ${network.name} (${network.rpcUrl})...`);
         
-        // Add timeout to prevent hanging indefinitely (2 minutes for discovery)
+        // Add timeout to prevent hanging indefinitely (5 minutes for discovery + enrichment)
+        // Discovery can take 1-2 minutes, enrichment adds another 1-2 minutes
         const timeoutPromise = new Promise<PNode[]>((_, reject) => {
-          setTimeout(() => reject(new Error('Discovery timeout after 2 minutes')), 2 * 60 * 1000);
+          setTimeout(() => reject(new Error('Discovery timeout after 5 minutes')), 5 * 60 * 1000);
         });
         
         // Enable enrichment to get storage_used (file_size) from get-stats
@@ -661,7 +662,7 @@ export function startBackgroundRefresh(): void {
   // This is OK - we force-reset after MAX_CONSECUTIVE_SKIPS or MAX_REFRESH_TIME_MS
   refreshInterval = setInterval(() => {
     const timeSinceLastComplete = lastRefreshComplete ? Math.floor((Date.now() - lastRefreshComplete) / 1000) : 0;
-    console.log('[BackgroundRefresh] ⏰ Interval tick (${timeSinceLastComplete}s since last completion)...');
+    console.log(`[BackgroundRefresh] ⏰ Interval tick (${timeSinceLastComplete}s since last completion)...`);
     performRefresh().catch(err => {
       console.error('[BackgroundRefresh] ❌ Interval refresh error:', err?.message || err);
       // Force reset isRunning on error to prevent permanent stuck state
