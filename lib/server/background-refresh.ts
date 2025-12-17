@@ -21,7 +21,7 @@ let consecutiveSkips = 0;
 
 // Maximum time a refresh can take before we force-reset isRunning
 // Increased to 6 minutes to accommodate discovery (1-2min) + enrichment (1-2min) + DB writes (30s)
-const MAX_REFRESH_TIME_MS = 6 * 60 * 1000; // 4 minutes
+const MAX_REFRESH_TIME_MS = 6 * 60 * 1000; // 6 minutes
 
 // Maximum consecutive skips before forcing a new refresh
 const MAX_CONSECUTIVE_SKIPS = 3;
