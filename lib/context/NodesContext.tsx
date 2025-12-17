@@ -88,6 +88,26 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     // DON'T set loading to true during refresh - keep showing existing data
     console.log('[NodesContext] 🔄 Manual refresh triggered - Starting fetch...');
     
+    // Trigger background refresh on Render to update DB (fire-and-forget)
+    // This ensures DB is always fresh when user manually refreshes
+    const triggerBackgroundRefresh = () => {
+      fetch('/api/refresh-nodes', { method: 'GET' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            console.log('[NodesContext] ✅ Background refresh triggered successfully');
+          } else {
+            console.warn('[NodesContext] ⚠️  Background refresh trigger failed:', data);
+          }
+        })
+        .catch(err => {
+          console.warn('[NodesContext] ⚠️  Failed to trigger background refresh:', err);
+        });
+    };
+    
+    // Trigger in background (don't wait for it)
+    triggerBackgroundRefresh();
+    
     const fetchPromise = (async () => {
       try {
         const params = new URLSearchParams();

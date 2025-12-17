@@ -1059,12 +1059,6 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                         />
                       </div>
                     )}
-                    {node.lastSeen && (
-                      <div className="flex justify-between">
-                        <span className="text-foreground/60">Last Seen</span>
-                        <span className="text-foreground/80 text-xs">{new Date(node.lastSeen).toLocaleString()}</span>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

@@ -288,7 +288,8 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
     return `${minutes}m`;
   };
 
-  const formatLastSeen = (lastSeen?: number) => {
+  // Removed formatLastSeen - no longer displaying last seen column
+  const _unusedFormatLastSeen = (lastSeen?: number) => {
     if (!lastSeen) return null;
     
     // lastSeen is in milliseconds
@@ -547,9 +548,6 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                     <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                       Location
                     </th>
-                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                      Last Seen
-                    </th>
                     <th className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                       Latency
                     </th>
@@ -578,7 +576,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
             <tbody className="divide-y divide-border/40">
               {nodes.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="px-4 py-12 text-center text-foreground/50">
+                  <td colSpan={12} className="px-4 py-12 text-center text-foreground/50">
                     No pNodes found
                   </td>
                 </tr>
@@ -667,11 +665,6 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
                         <span className="text-xs sm:text-sm text-foreground/80">
                           {node.location || renderEmptyCell()}
-                        </span>
-                      </td>
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
-                        <span className="text-xs sm:text-sm text-foreground/80">
-                          {formatLastSeen(node.lastSeen) || renderEmptyCell('Last seen time not available')}
                         </span>
                       </td>
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-right">

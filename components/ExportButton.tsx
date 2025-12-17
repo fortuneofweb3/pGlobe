@@ -23,7 +23,6 @@ export default function ExportButton({ nodes, filename = 'xandeum-pnodes' }: Exp
       'Latency (ms)',
       'Reputation',
       'Version',
-      'Last Seen',
     ];
 
     const rows = nodes.map((node) => [
@@ -38,7 +37,6 @@ export default function ExportButton({ nodes, filename = 'xandeum-pnodes' }: Exp
       node.latency?.toString() || '',
       node.reputation?.toString() || '',
       node.version || '',
-      node.lastSeen ? new Date(node.lastSeen).toISOString() : '',
     ]);
 
     const csvContent = [
