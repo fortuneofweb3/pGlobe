@@ -1,16 +1,14 @@
 /**
- * Server-side background task to refresh MongoDB with gossip data every minute
- * Runs independently of client connections
+ * Background Refresh Service
+ * 
+ * Runs node sync every 60 seconds using the simplified sync-nodes module.
+ * This is a thin wrapper that handles:
+ * - Interval management
+ * - Concurrency control (prevent overlapping syncs)
+ * - Health monitoring
  */
 
-import { fetchPNodesFromGossip } from './prpc';
-import { upsertNodes, cleanupInvalidNodes, getAllNodes } from './mongodb-nodes';
-import { batchFetchLocations } from './location-cache';
-import { fetchBalanceForPubkey } from './balance-cache';
-import { getNetworkConfig, getEnabledNetworks } from './network-config';
-import { storeHistoricalSnapshot } from './mongodb-history';
-import { Connection, PublicKey } from '@solana/web3.js';
-import { PNode } from '../types/pnode';
+import { syncNodes } from './sync-nodes';
 
 let refreshInterval: NodeJS.Timeout | null = null;
 let heartbeatInterval: NodeJS.Timeout | null = null;
@@ -19,686 +17,104 @@ let lastRefreshStart = 0;
 let lastRefreshComplete = 0;
 let consecutiveSkips = 0;
 
-// Maximum time a refresh can take before we force-reset isRunning
-// Increased to 6 minutes to accommodate discovery (1-2min) + enrichment (1-2min) + DB writes (30s)
-const MAX_REFRESH_TIME_MS = 6 * 60 * 1000; // 6 minutes
-
-// Maximum consecutive skips before forcing a new refresh
+// Maximum time before force-resetting isRunning
+const MAX_REFRESH_TIME_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_CONSECUTIVE_SKIPS = 3;
 
 /**
+ * Check if refresh is currently running
+ */
+export function isRefreshRunning(): boolean {
+  return isRunning;
+}
+
+/**
  * Perform a single refresh cycle
- * Exported for use in Vercel Cron Jobs
  */
 export async function performRefresh(): Promise<void> {
-  // Check if previous refresh is stuck (taking too long)
+  // Check for stuck refresh
   if (isRunning) {
     const timeSinceStart = Date.now() - lastRefreshStart;
     consecutiveSkips++;
     
-    // Force reset after MAX_REFRESH_TIME_MS OR after too many consecutive skips
     if (timeSinceStart > MAX_REFRESH_TIME_MS || consecutiveSkips >= MAX_CONSECUTIVE_SKIPS) {
-      console.error(`[BackgroundRefresh] ❌ FORCING RESET: Previous refresh stuck for ${Math.round(timeSinceStart / 1000)}s, ${consecutiveSkips} consecutive skips`);
+      console.error(`[BackgroundRefresh] ❌ Force resetting stuck refresh (${Math.round(timeSinceStart / 1000)}s)`);
       isRunning = false;
       consecutiveSkips = 0;
     } else {
-      console.log(`[BackgroundRefresh] ⏳ Previous refresh still running (${Math.round(timeSinceStart / 1000)}s), skip ${consecutiveSkips}/${MAX_CONSECUTIVE_SKIPS}...`);
+      console.log(`[BackgroundRefresh] ⏳ Previous refresh still running, skip ${consecutiveSkips}/${MAX_CONSECUTIVE_SKIPS}`);
       return;
     }
   }
 
-  // Reset skip counter when starting a new refresh
   consecutiveSkips = 0;
   isRunning = true;
   lastRefreshStart = Date.now();
-  const startTime = Date.now();
   
-  console.log(`[BackgroundRefresh] 🔄 Refresh cycle #${Math.floor((Date.now() - lastRefreshComplete) / 1000)}s since last completion, started at ${new Date().toISOString()}`);
+  console.log(`[BackgroundRefresh] 🔄 Starting refresh at ${new Date().toISOString()}`);
 
   try {
-    console.log(`[BackgroundRefresh] Starting refresh...`);
+    const result = await syncNodes();
     
-    // Get all enabled networks (for redundancy - try multiple endpoints)
-    const enabledNetworks = getEnabledNetworks();
-    if (enabledNetworks.length === 0) {
-      console.error(`[BackgroundRefresh] ❌ No enabled networks found in config`);
-      return;
-    }
-
-    // STEP 1: Fetch nodes from gossip (includes get-pods-with-stats + get-stats enrichment)
-    // Try multiple enabled networks for redundancy (they point to same gossip network)
-    // fetchPNodesFromGossip already enriches nodes with detailed stats (CPU, RAM, packets) via get-stats
-    console.log(`[BackgroundRefresh] Fetching nodes from gossip (trying ${enabledNetworks.length} enabled network(s))...`);
-    
-    let gossipNodes: PNode[] = [];
-    let lastError: Error | null = null;
-    
-    // Try each enabled network until we get nodes
-    for (const network of enabledNetworks) {
-      try {
-        console.log(`[BackgroundRefresh] Trying ${network.name} (${network.rpcUrl})...`);
-        
-        // Add timeout to prevent hanging indefinitely (5 minutes for discovery + enrichment)
-        // Discovery can take 1-2 minutes, enrichment adds another 1-2 minutes
-        const timeoutPromise = new Promise<PNode[]>((_, reject) => {
-          setTimeout(() => reject(new Error('Discovery timeout after 5 minutes')), 5 * 60 * 1000);
-        });
-        
-        // Enable enrichment to get storage_used (file_size) from get-stats
-        // get-pods-with-stats gives us capacity but NOT storage used
-        // We need get-stats for file_size (actual data stored)
-        const fetchPromise = fetchPNodesFromGossip(network.rpcUrl, false); // skipEnrichment=false to get storage data
-        
-        const nodes = await Promise.race([fetchPromise, timeoutPromise]);
-        if (nodes.length > 0) {
-          gossipNodes = nodes;
-          console.log(`[BackgroundRefresh] ✅ Fetched ${gossipNodes.length} nodes from ${network.name}`);
-          break; // Success, stop trying other networks
-        } else {
-          console.log(`[BackgroundRefresh] ⚠️  ${network.name} returned 0 nodes, trying next network...`);
-        }
-      } catch (error: any) {
-        lastError = error;
-        console.warn(`[BackgroundRefresh] ⚠️  Failed to fetch from ${network.name}: ${error?.message || error}`);
-        // Continue to next network
-      }
-    }
-    
-    if (gossipNodes.length === 0) {
-      console.error(`[BackgroundRefresh] ❌ Failed to fetch nodes from all enabled networks`);
-      if (lastError) {
-        console.error(`[BackgroundRefresh] Last error:`, lastError);
-      }
-      return;
-    }
-    
-    console.log(`[BackgroundRefresh] Fetched ${gossipNodes.length} nodes from gossip`);
-    
-    if (gossipNodes.length === 0) {
-      console.log(`[BackgroundRefresh] No nodes found, skipping`);
-      return;
-    }
-
-    // Log version distribution before filtering
-    const versionCounts = new Map<string, number>();
-    gossipNodes.forEach(node => {
-      const version = node.version || 'unknown';
-      versionCounts.set(version, (versionCounts.get(version) || 0) + 1);
-    });
-    console.log(`[BackgroundRefresh] Version distribution: ${Array.from(versionCounts.entries()).map(([v, c]) => `${v}:${c}`).join(', ')}`);
-
-    // Filter nodes that have VALID pubkeys (required - no longer accepting IP-only nodes)
-    const { isValidPubkey } = await import('./mongodb-nodes');
-    const nodesWithValidPubkeys = gossipNodes.filter(node => {
-      const pubkey = node.pubkey || node.publicKey || '';
-      return isValidPubkey(pubkey);
-    });
-    const nodesWithoutValidPubkey = gossipNodes.length - nodesWithValidPubkeys.length;
-    if (nodesWithoutValidPubkey > 0) {
-      console.log(`[BackgroundRefresh] ⚠️  ${nodesWithoutValidPubkey} nodes filtered out (invalid or missing pubkey)`);
-    }
-    console.log(`[BackgroundRefresh] ${nodesWithValidPubkeys.length}/${gossipNodes.length} nodes have valid pubkey`);
-    
-    // Log version distribution after filtering
-    const versionCountsWithPubkeys = new Map<string, number>();
-    nodesWithValidPubkeys.forEach(node => {
-      const version = node.version || 'unknown';
-      versionCountsWithPubkeys.set(version, (versionCountsWithPubkeys.get(version) || 0) + 1);
-    });
-    console.log(`[BackgroundRefresh] Version distribution (with valid pubkeys): ${Array.from(versionCountsWithPubkeys.entries()).map(([v, c]) => `${v}:${c}`).join(', ')}`);
-
-    if (nodesWithValidPubkeys.length === 0) {
-      console.log(`[BackgroundRefresh] No nodes with valid pubkeys, skipping MongoDB write`);
-      return;
-    }
-
-    // STEP 2: Store nodes in MongoDB (no duplicates - pubkey is primary key)
-    // Nodes already have all stats (uptime, CPU, RAM, packets) from fetchPNodesFromGossip
-    console.log(`[BackgroundRefresh] Storing ${nodesWithValidPubkeys.length} nodes in MongoDB...`);
-    try {
-      await upsertNodes(nodesWithValidPubkeys);
-      console.log(`[BackgroundRefresh] ✅ Stored nodes in MongoDB`);
-    } catch (error: any) {
-      console.error(`[BackgroundRefresh] ⚠️  Failed to store nodes in MongoDB: ${error?.message || error}`);
-      console.error(`[BackgroundRefresh] Continuing with geo/balance enrichment...`);
-      // Continue with enrichment even if MongoDB write failed
-    }
-
-    // STEP 3: Fetch geo location data for nodes missing it
-    const nodesNeedingGeo: PNode[] = [];
-    const geoMap = new Map<string, any>();
-
-    for (const node of nodesWithValidPubkeys) {
-      const ip = node.address?.split(':')[0];
-      if (!ip || !ip.match(/^\d+\.\d+\.\d+\.\d+$/)) continue;
-
-      if (!node.locationData?.lat || !node.locationData?.lon) {
-        nodesNeedingGeo.push(node);
-      } else {
-        geoMap.set(ip, node.locationData);
-      }
-    }
-
-    if (nodesNeedingGeo.length > 0) {
-      const ipsToFetch = [...new Set(nodesNeedingGeo.map(n => n.address?.split(':')[0]).filter(Boolean))] as string[];
-      console.log(`[BackgroundRefresh] Fetching geo for ${ipsToFetch.length} IPs...`);
-      const fetchedGeo = await batchFetchLocations(ipsToFetch);
-      fetchedGeo.forEach((geo, ip) => geoMap.set(ip, geo));
-      console.log(`[BackgroundRefresh] Fetched geo for ${fetchedGeo.size} IPs`);
-    }
-
-    // STEP 4: Fetch on-chain data ONLY for NEW nodes (don't re-fetch for existing nodes)
-    // This saves time by not doing 200+ RPC calls every refresh cycle
-    const allPubkeys = [...new Set(nodesWithValidPubkeys.map(node => node.pubkey || node.publicKey).filter(pk => pk))] as string[];
-    const balanceMap = new Map<string, any>();
-    const accountCreationMap = new Map<string, { accountCreatedAt?: Date; firstSeenSlot?: number }>();
-
-    // Get existing nodes to check which ones already have balance data
-    const existingNodesMap = new Map<string, PNode>();
-    try {
-      const existingNodes = await getAllNodes();
-      console.log(`[BackgroundRefresh] Found ${existingNodes.length} existing nodes in DB`);
-      let nodesWithBalance = 0;
-      existingNodes.forEach(node => {
-        const key = node.pubkey || node.publicKey;
-        if (key) {
-          existingNodesMap.set(key, node);
-          if (node.balance !== undefined && node.balance !== null) {
-            nodesWithBalance++;
-          }
-        }
-      });
-      console.log(`[BackgroundRefresh] ${nodesWithBalance} existing nodes have balance data`);
-    } catch (e) {
-      console.warn('[BackgroundRefresh] Could not fetch existing nodes for balance check');
-    }
-
-    // Filter to only NEW pubkeys (nodes without balance data yet)
-    const newPubkeys = allPubkeys.filter(pk => {
-      const existingNode = existingNodesMap.get(pk);
-      // Fetch if node is new (not in DB) OR doesn't have balance data yet
-      return !existingNode || existingNode.balance === undefined || existingNode.balance === null;
-    });
-
-    console.log(`[BackgroundRefresh] 💰 Fetching balance for ${newPubkeys.length}/${allPubkeys.length} nodes (${allPubkeys.length - newPubkeys.length} already have balance)`);
-
-    // Use Solana connection for account creation date fetching
-    const DEVNET_RPC = 'https://api.devnet.xandeum.com:8899';
-    const connection = new Connection(DEVNET_RPC, 'confirmed');
-
-    for (const pk of newPubkeys) {
-      try {
-        // Fetch balance (includes registration status)
-        const balanceData = await fetchBalanceForPubkey(pk);
-        if (balanceData) {
-          balanceMap.set(pk, balanceData);
-          if (balanceData.balance > 0) {
-            console.log(`[BackgroundRefresh] Found balance for ${pk.substring(0, 8)}...: ${balanceData.balance} SOL`);
-          }
-        }
-
-        // Fetch account creation date for registered nodes (or nodes without it yet)
-        // Only fetch if:
-        // 1. Node is registered (balance > 0), OR
-        // 2. Node doesn't have accountCreatedAt yet (might be newly registered)
-        const existingNode = existingNodesMap.get(pk);
-        const needsCreationDate = balanceData?.balance !== undefined && balanceData.balance !== null && (
-          balanceData.balance > 0 || // Registered node
-          !existingNode?.accountCreatedAt // Not fetched yet
-        );
-
-        if (needsCreationDate) {
-          try {
-            const pubkey = new PublicKey(pk);
-            const accountInfo = await connection.getAccountInfo(pubkey).catch(() => null);
-            
-            if (accountInfo) {
-              // Account exists - try to get first transaction for creation date
-              try {
-                const signatures = await connection.getSignaturesForAddress(
-                  pubkey,
-                  { limit: 1000 }, // Get up to 1000 signatures to find the oldest
-                  'confirmed'
-                );
-                
-                if (signatures.length > 0) {
-                  // The last signature in the array is the oldest
-                  const oldestSig = signatures[signatures.length - 1];
-                  const firstSeenSlot = oldestSig.slot;
-                  
-                  // Estimate timestamp from slot (approximate)
-                  // Solana devnet: ~400ms per slot on average
-                  const currentSlot = await connection.getSlot();
-                  const slotsAgo = currentSlot - firstSeenSlot;
-                  const msAgo = slotsAgo * 400; // Approximate
-                  const accountCreatedAt = new Date(Date.now() - msAgo);
-                  
-                  accountCreationMap.set(pk, { accountCreatedAt, firstSeenSlot });
-                }
-              } catch (sigError) {
-                // Silent fail - account might not have transactions yet
-              }
-            }
-          } catch (creationError) {
-            // Silent fail for account creation date fetch
-          }
-        }
-      } catch (e) {
-        // Silent fail for individual balance fetches
-        console.warn(`[BackgroundRefresh] Failed to fetch balance for ${pk.substring(0, 8)}...:`, e instanceof Error ? e.message : String(e));
-      }
-    }
-    const nodesWithBalance = Array.from(balanceMap.values()).filter(b => b.balance > 0).length;
-    const nodesWithCreationDate = accountCreationMap.size;
-    console.log(`[BackgroundRefresh] Fetched on-chain data for ${balanceMap.size}/${allPubkeys.length} pubkeys (${nodesWithBalance} with balance > 0)`);
-    console.log(`[BackgroundRefresh] Fetched account creation dates for ${nodesWithCreationDate} nodes`);
-
-    // STEP 4.5: Fetch pod credits
-    console.log(`[BackgroundRefresh] Fetching pod credits...`);
-    const creditsMap = new Map<string, number>();
-    try {
-      const POD_CREDITS_API = 'https://podcredits.xandeum.network/api/pods-credits';
-      const response = await fetch(POD_CREDITS_API, {
-        signal: AbortSignal.timeout(10000), // 10 second timeout
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.status === 'success' && data.pods_credits) {
-          for (const pod of data.pods_credits) {
-            creditsMap.set(pod.pod_id, pod.credits);
-          }
-          console.log(`[BackgroundRefresh] ✅ Fetched credits for ${creditsMap.size} pods`);
-        }
-      }
-    } catch (error) {
-      console.warn(`[BackgroundRefresh] ⚠️  Failed to fetch pod credits:`, error instanceof Error ? error.message : String(error));
-    }
-
-    // STEP 5: Enrich ALL nodes with stats (CPU, RAM, packets) via get-stats
-    // CRITICAL: get-pods-with-stats gives us storage/uptime but NOT CPU/RAM/packets
-    // We MUST call get-stats for each node to get complete data
-    // Enrichment is now ALWAYS enabled to ensure complete data
-    const SKIP_RE_ENRICHMENT = false; // ALWAYS enrich for complete data
-    
-    const nodesNeedingReEnrichment: PNode[] = [];
-    
-    if (!SKIP_RE_ENRICHMENT) {
-      // Enrich ALL nodes from current gossip to get complete stats
-      // get-pods-with-stats gives us storage/uptime, but we need get-stats for CPU/RAM/packets
-      nodesWithValidPubkeys.forEach((node) => {
-        // Always enrich nodes from gossip to get fresh CPU/RAM/packets data
-        if (node.address) {
-          nodesNeedingReEnrichment.push(node);
-        }
-      });
-      
-      console.log(`[BackgroundRefresh] Enriching ${nodesNeedingReEnrichment.length} nodes with get-stats (CPU, RAM, packets)...`);
-    }
-    
-    // Re-enrich nodes with null values
-    if (!SKIP_RE_ENRICHMENT && nodesNeedingReEnrichment.length > 0) {
-      const { fetchNodeStats } = await import('./prpc');
-      const { isValidPubkey } = await import('./mongodb-nodes');
-      const BATCH_SIZE = 10; // Smaller batch for re-enrichment
-      let reEnrichedCount = 0;
-      
-      console.log(`[BackgroundRefresh] Re-enriching ${nodesNeedingReEnrichment.length} nodes with null stats...`);
-      
-      for (let i = 0; i < nodesNeedingReEnrichment.length; i += BATCH_SIZE) {
-        const batch = nodesNeedingReEnrichment.slice(i, i + BATCH_SIZE);
-        const results = await Promise.allSettled(
-          batch.map(node => fetchNodeStats(node))
-        );
-        
-        // Update nodesWithValidPubkeys with re-enriched data
-        for (let j = 0; j < results.length; j++) {
-          if (results[j].status === 'fulfilled') {
-            const enriched = (results[j] as PromiseFulfilledResult<PNode>).value;
-            const originalNode = batch[j];
-            
-            // Check if enrichment returned any valid stats
-            const hasValidStats = (
-              enriched.cpuPercent !== null && enriched.cpuPercent !== undefined ||
-              enriched.ramTotal !== null && enriched.ramTotal !== undefined ||
-              enriched.packetsReceived !== null && enriched.packetsReceived !== undefined ||
-              enriched.packetsSent !== null && enriched.packetsSent !== undefined
-            );
-            
-            if (hasValidStats) {
-              // ALWAYS update nodes with enriched data (don't check if original was null)
-              const key = originalNode.pubkey || originalNode.publicKey || originalNode.address?.split(':')[0];
-              const index = nodesWithValidPubkeys.findIndex(n => {
-                const nKey = n.pubkey || n.publicKey || n.address?.split(':')[0];
-                return nKey === key;
-              });
-              
-              if (index >= 0) {
-                // ALWAYS use fresh enriched data (override existing)
-                nodesWithValidPubkeys[index] = {
-                  ...nodesWithValidPubkeys[index],
-                  // Use enriched data, fallback to existing only if enriched is null/undefined
-                  cpuPercent: enriched.cpuPercent ?? nodesWithValidPubkeys[index].cpuPercent,
-                  ramUsed: enriched.ramUsed ?? nodesWithValidPubkeys[index].ramUsed,
-                  ramTotal: enriched.ramTotal ?? nodesWithValidPubkeys[index].ramTotal,
-                  ramPercent: (enriched.ramUsed && enriched.ramTotal) 
-                    ? (enriched.ramUsed / enriched.ramTotal) * 100 
-                    : nodesWithValidPubkeys[index].ramPercent,
-                  packetsReceived: enriched.packetsReceived ?? nodesWithValidPubkeys[index].packetsReceived,
-                  packetsSent: enriched.packetsSent ?? nodesWithValidPubkeys[index].packetsSent,
-                  activeStreams: enriched.activeStreams ?? nodesWithValidPubkeys[index].activeStreams,
-                  uptime: enriched.uptime ?? nodesWithValidPubkeys[index].uptime,
-                  status: enriched.status ?? nodesWithValidPubkeys[index].status,
-                  // CRITICAL: Preserve storage from get-pods-with-stats (gossip data)
-                  // - storage_used = actual used storage (from get-pods-with-stats)
-                  // - storage_committed = total capacity (from get-pods-with-stats)
-                  // - file_size from get-stats = same as storage_committed (capacity, NOT used)
-                  // ALWAYS use gossip storage_used - never use enriched.storageUsed (it might be from old file_size data)
-                  storageUsed: nodesWithValidPubkeys[index].storageUsed, // ALWAYS use gossip storage_used, never enriched
-                  storageCapacity: nodesWithValidPubkeys[index].storageCapacity ?? enriched.storageCapacity,
-                  storageCommitted: nodesWithValidPubkeys[index].storageCommitted ?? enriched.storageCommitted,
-                  storageUsagePercent: nodesWithValidPubkeys[index].storageUsagePercent ?? enriched.storageUsagePercent,
-                };
-                reEnrichedCount++;
-              }
-            }
-          }
-        }
-      }
-      
-      if (reEnrichedCount > 0) {
-        console.log(`[BackgroundRefresh] ✅ Enriched ${reEnrichedCount}/${nodesNeedingReEnrichment.length} nodes with complete stats (CPU, RAM, packets)`);
-      } else {
-        console.error(`[BackgroundRefresh] ❌ Failed to enrich any nodes - pRPC endpoints may be down or unreachable`);
-      }
-    }
-
-    const enrichedNodes = nodesWithValidPubkeys.map(node => {
-      const pk = node.pubkey || node.publicKey;
-      const ip = node.address?.split(':')[0];
-      const balanceData = pk ? balanceMap.get(pk) : null;
-      const geoData = ip ? geoMap.get(ip) : null;
-      const existingNode = pk ? existingNodesMap.get(pk) : null;
-
-      // Determine isRegistered: always use balance > 0 during sync (per user requirement: "if a node has a balance then it is registered")
-      // Update isRegistered based on actual balance data, not preserve old values
-      let isRegistered: boolean;
-      if (balanceData) {
-        // If node has balance > 0, it's registered
-        isRegistered = balanceData.balance > 0;
-      } else {
-        // If balance fetch failed, check existing balance from MongoDB
-        const existingBalance = existingNode?.balance;
-        if (existingBalance !== undefined && existingBalance !== null) {
-          // Use existing balance to determine registration
-          isRegistered = existingBalance > 0;
-        } else {
-          // No balance data at all - mark as unregistered
-          isRegistered = false;
-        }
-      }
-
-      // Build enriched node from gossip data (gossip nodes don't have balance - that comes from on-chain)
-      // IMPORTANT: Use ALL fresh data from node (gossip + stats) - don't preserve old stats
-      // This ensures activeStreams, cpuPercent, ramUsed, storageUsed, etc. are always updated
-      // CRITICAL: node.storageUsed comes from get-pods-with-stats (storage_used) - this is the correct value
-      const enrichedNode: PNode = {
-        ...node, // This includes all fresh stats from gossip (storageUsed, activeStreams, cpuPercent, ramUsed, packetsReceived, packetsSent, etc.)
-        ...(geoData ? {
-          location: geoData.city ? `${geoData.city}, ${geoData.country}` : geoData.country,
-          locationData: {
-            lat: geoData.lat,
-            lon: geoData.lon,
-            city: geoData.city,
-            country: geoData.country,
-            countryCode: geoData.countryCode,
-          },
-        } : {}),
-      };
-
-      // Balance comes from on-chain fetch, not gossip
-      // Set balance/managerPDA: fresh on-chain data takes priority, otherwise preserve existing from MongoDB
-      if (balanceData) {
-        // Use fresh on-chain balance data
-        enrichedNode.balance = balanceData.balance;
-        if (balanceData.managerPDA) {
-          enrichedNode.managerPDA = balanceData.managerPDA;
-        }
-      } else if (existingNode) {
-        // On-chain fetch failed - preserve existing balance and managerPDA from MongoDB
-        // This is critical: balance only exists from previous on-chain fetches, not from gossip
-        if (existingNode.balance !== undefined && existingNode.balance !== null) {
-          enrichedNode.balance = existingNode.balance;
-        }
-        if (existingNode.managerPDA) {
-          enrichedNode.managerPDA = existingNode.managerPDA;
-        }
-      }
-      // If no on-chain data and no existing node, balance will be undefined (new node, no balance yet)
-
-      // Set account creation date (from on-chain fetch or preserve existing)
-      const creationData = pk ? accountCreationMap.get(pk) : null;
-      if (creationData) {
-        // Use fresh account creation data
-        enrichedNode.accountCreatedAt = creationData.accountCreatedAt;
-        enrichedNode.firstSeenSlot = creationData.firstSeenSlot;
-      } else if (existingNode) {
-        // Preserve existing account creation data if fetch failed or not needed
-        if (existingNode.accountCreatedAt) {
-          enrichedNode.accountCreatedAt = existingNode.accountCreatedAt;
-        }
-        if (existingNode.firstSeenSlot) {
-          enrichedNode.firstSeenSlot = existingNode.firstSeenSlot;
-        }
-      }
-      // Note: For unregistered nodes (not initialized on-chain), accountCreatedAt will be undefined
-      // This is expected - we can't get creation date for accounts that don't exist yet
-
-      // Always set isRegistered based on balance (update during sync)
-      enrichedNode.isRegistered = isRegistered;
-
-      // Set credits from pod credits API (match by pubkey)
-      // Credit calculation rules:
-      // - +1 credit per heartbeat request responded to (~30 second intervals)
-      // - -100 credits for failing to respond to a data request
-      // - Credits reset monthly (tracked via creditsResetMonth)
-      const credits = pk ? creditsMap.get(pk) : undefined;
-      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
-      
-      if (credits !== undefined) {
-        enrichedNode.credits = credits;
-        
-        // Detect monthly credit reset: if credits dropped significantly (more than 50% decrease)
-        // or if we don't have a reset month tracked yet, update it
-        const existingCredits = existingNode?.credits;
-        const existingResetMonth = existingNode?.creditsResetMonth;
-        
-        if (existingCredits !== undefined && existingCredits !== null && existingCredits > 0) {
-          // Check if credits dropped significantly (likely monthly reset)
-          const creditsDropPercent = ((existingCredits - credits) / existingCredits) * 100;
-          if (creditsDropPercent > 50 && credits < existingCredits) {
-            // Significant drop detected - likely monthly reset
-            enrichedNode.creditsResetMonth = currentMonth;
-            console.log(`[BackgroundRefresh] Detected monthly credit reset for ${pk}: ${existingCredits} -> ${credits} (${creditsDropPercent.toFixed(1)}% drop)`);
-          } else if (existingResetMonth && existingResetMonth !== currentMonth) {
-            // Month changed but credits didn't drop - might be a new month with continued earning
-            // Keep existing month if credits are still increasing, otherwise update
-            if (credits < existingCredits) {
-              enrichedNode.creditsResetMonth = currentMonth;
-            } else {
-              enrichedNode.creditsResetMonth = existingResetMonth;
-            }
-          } else {
-            // Preserve existing reset month or set to current month if not set
-            enrichedNode.creditsResetMonth = existingResetMonth || currentMonth;
-          }
-        } else {
-          // First time seeing credits for this node - set current month
-          enrichedNode.creditsResetMonth = currentMonth;
-        }
-      } else if (existingNode?.credits !== undefined && existingNode.credits !== null) {
-        // Preserve existing credits if API fetch failed
-        enrichedNode.credits = existingNode.credits;
-        enrichedNode.creditsResetMonth = existingNode.creditsResetMonth;
-      }
-
-      return enrichedNode;
-    });
-
-    console.log(`[BackgroundRefresh] Updating MongoDB with enriched data + historical snapshot...`);
-    
-    // Retry upsert with better error handling
-    // SIMPLIFIED: Store nodes + snapshot together in one operation
-    let upsertSuccess = false;
-    let upsertRetries = 0;
-    const MAX_UPSERT_RETRIES = 2;
-    
-    while (!upsertSuccess && upsertRetries < MAX_UPSERT_RETRIES) {
-      try {
-        // Store nodes in MongoDB
-        await upsertNodes(enrichedNodes);
-        
-        // Immediately store historical snapshot while connection is still fresh
-        // No need to get all nodes from DB - just snapshot what we have RIGHT NOW
-        console.log(`[BackgroundRefresh] Storing snapshot for ${enrichedNodes.length} nodes...`);
-        await storeHistoricalSnapshot(enrichedNodes);
-        
-        upsertSuccess = true;
-        console.log(`[BackgroundRefresh] ✅ Stored ${enrichedNodes.length} nodes + historical snapshot`);
-      } catch (error: any) {
-        upsertRetries++;
-        const errorMsg = error?.message || String(error);
-        console.error(`[BackgroundRefresh] ⚠️  Attempt ${upsertRetries}/${MAX_UPSERT_RETRIES} failed: ${errorMsg}`);
-        
-        if (upsertRetries < MAX_UPSERT_RETRIES) {
-          console.log(`[BackgroundRefresh] Waiting 2s before retry...`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        } else {
-          console.error(`[BackgroundRefresh] ❌ Failed after ${MAX_UPSERT_RETRIES} attempts`);
-        }
-      }
-    }
-    
-    // Check final count after update
-    try {
-      let finalCount = 0;
-      try {
-        const finalNodes = await getAllNodes();
-        finalCount = finalNodes.length;
-      } catch (e) {
-        // Ignore error
-      }
-      
-      const totalTime = Date.now() - startTime;
-      console.log(`[BackgroundRefresh] ✅ Updated ${enrichedNodes.length} nodes in MongoDB (${totalTime}ms)`);
-      console.log(`[BackgroundRefresh] 📊 Database now has ${finalCount} total nodes (${enrichedNodes.length} from this refresh)`);
-      
-      if (finalCount > enrichedNodes.length) {
-        const offlineCount = finalCount - enrichedNodes.length;
-        console.log(`[BackgroundRefresh] ℹ️  ${offlineCount} nodes in database are not currently in gossip network (may be offline)`);
-      }
-    } catch (error: any) {
-      const totalTime = Date.now() - startTime;
-      console.error(`[BackgroundRefresh] ⚠️  Failed to update MongoDB: ${error?.message || error} (${totalTime}ms)`);
-      // Don't throw - allow refresh cycle to complete, will retry next cycle
+    if (result.success) {
+      console.log(`[BackgroundRefresh] ✅ Synced ${result.count} nodes`);
+    } else {
+      console.error(`[BackgroundRefresh] ⚠️ Sync failed: ${result.error}`);
     }
   } catch (error: any) {
-    const totalTime = Date.now() - startTime;
-    console.error(`[BackgroundRefresh] ❌ CRITICAL ERROR in refresh cycle (${totalTime}ms):`, error?.message || error);
-    console.error(`[BackgroundRefresh] Stack trace:`, error?.stack);
+    console.error(`[BackgroundRefresh] ❌ Error:`, error.message);
   } finally {
-    // ALWAYS reset isRunning flag, even if cleanup fails
-    const resetIsRunning = () => {
-      isRunning = false;
-      const totalTime = Date.now() - startTime;
-      console.log(`[BackgroundRefresh] ✅ Refresh cycle completed in ${totalTime}ms (${Math.round(totalTime / 1000)}s)`);
-    };
-    
-    // Clean up invalid nodes every refresh - remove nodes without valid pubkeys
-    // Use timeout to prevent cleanup from hanging
-    try {
-      const cleanupPromise = cleanupInvalidNodes();
-      const timeoutPromise = new Promise<number>((_, reject) => {
-        setTimeout(() => reject(new Error('Cleanup timeout after 30 seconds')), 30000);
-      });
-      
-      const deletedCount = await Promise.race([cleanupPromise, timeoutPromise]);
-      if (deletedCount > 0) {
-        console.log(`[BackgroundRefresh] 🧹 Cleaned up ${deletedCount} nodes with invalid pubkeys`);
-      }
-    } catch (cleanupError: any) {
-      console.error(`[BackgroundRefresh] ⚠️  Error during cleanup (non-fatal):`, cleanupError?.message || cleanupError);
-      // Don't let cleanup errors prevent flag reset
-    } finally {
-      // GUARANTEED reset of isRunning flag
-      resetIsRunning();
-      lastRefreshComplete = Date.now();
-    }
+    isRunning = false;
+    lastRefreshComplete = Date.now();
+    const duration = lastRefreshComplete - lastRefreshStart;
+    console.log(`[BackgroundRefresh] Completed in ${Math.round(duration / 1000)}s`);
   }
 }
 
 /**
- * Start the background refresh task (runs every 1 minute)
+ * Start background refresh (every 60 seconds)
  */
 export function startBackgroundRefresh(): void {
   if (refreshInterval) {
-    console.log('[BackgroundRefresh] Background refresh already running, skipping start');
+    console.log('[BackgroundRefresh] Already running');
     return;
   }
 
-  console.log('[BackgroundRefresh] 🚀 Starting background refresh service...');
-  console.log('[BackgroundRefresh] Refresh interval: 60 seconds');
-  console.log('[BackgroundRefresh] Max refresh time: 240 seconds (4 minutes)');
-  console.log('[BackgroundRefresh] Max consecutive skips: 3 before force-reset');
+  console.log('[BackgroundRefresh] 🚀 Starting...');
 
-  // Perform initial refresh immediately
+  // Initial refresh
   performRefresh().catch(err => {
-    console.error('[BackgroundRefresh] ❌ Initial refresh error:', err?.message || err);
-    // Don't let initial error prevent interval from starting
+    console.error('[BackgroundRefresh] Initial refresh error:', err.message);
   });
 
-  // Set up interval for every 1 minute (60000ms)
-  // Note: Refresh may take 2-3 minutes, so some cycles will be skipped
-  // This is OK - we force-reset after MAX_CONSECUTIVE_SKIPS or MAX_REFRESH_TIME_MS
+  // Set up interval
   refreshInterval = setInterval(() => {
-    const timeSinceLastComplete = lastRefreshComplete ? Math.floor((Date.now() - lastRefreshComplete) / 1000) : 0;
-    console.log(`[BackgroundRefresh] ⏰ Interval tick (${timeSinceLastComplete}s since last completion)...`);
     performRefresh().catch(err => {
-      console.error('[BackgroundRefresh] ❌ Interval refresh error:', err?.message || err);
-      // Force reset isRunning on error to prevent permanent stuck state
+      console.error('[BackgroundRefresh] Interval error:', err.message);
       isRunning = false;
-      consecutiveSkips = 0;
     });
-  }, 60 * 1000); // 1 minute
+  }, 60 * 1000);
   
-  // Start heartbeat for monitoring and auto-recovery (every 60 seconds)
-  // External cron job will ping /health every 10-14 minutes to keep Render awake
+  // Heartbeat for monitoring
   heartbeatInterval = setInterval(() => {
     const uptime = process.uptime();
-    const timeSinceLastComplete = lastRefreshComplete 
+    const timeSinceComplete = lastRefreshComplete 
       ? Math.floor((Date.now() - lastRefreshComplete) / 1000) 
       : 0;
-    console.log(`[BackgroundRefresh] 💓 Heartbeat: Service alive for ${Math.floor(uptime / 60)}min, last refresh ${timeSinceLastComplete}s ago, isRunning=${isRunning}`);
+    console.log(`[BackgroundRefresh] 💓 Up ${Math.floor(uptime / 60)}min, last sync ${timeSinceComplete}s ago`);
     
-    // Health check: If no refresh completed in >10 minutes, something is seriously wrong
-    if (lastRefreshComplete && timeSinceLastComplete > 10 * 60) {
-      console.error(`[BackgroundRefresh] ⚠️  WARNING: No successful refresh in ${Math.floor(timeSinceLastComplete / 60)} minutes!`);
-      // Force reset to try to recover
-      if (isRunning) {
-        console.error('[BackgroundRefresh] ⚠️  Forcing isRunning=false to attempt recovery...');
-        isRunning = false;
-        consecutiveSkips = 0;
-      }
+    // Auto-recover if stuck
+    if (lastRefreshComplete && timeSinceComplete > 10 * 60 && isRunning) {
+      console.error('[BackgroundRefresh] ⚠️ Force resetting stuck state');
+      isRunning = false;
     }
-  }, 60 * 1000); // 60 seconds
+  }, 60 * 1000);
   
-  console.log('[BackgroundRefresh] ✅ Background refresh service started successfully');
-  console.log('[BackgroundRefresh] ✅ Heartbeat started (every 60s for monitoring)');
-  console.log('[BackgroundRefresh] ℹ️  NOTE: External cron job should ping /health every 10-14 minutes to keep Render awake');
+  console.log('[BackgroundRefresh] ✅ Started');
 }
 
 /**
- * Stop the background refresh task
+ * Stop background refresh
  */
 export function stopBackgroundRefresh(): void {
   if (refreshInterval) {
@@ -709,6 +125,5 @@ export function stopBackgroundRefresh(): void {
     clearInterval(heartbeatInterval);
     heartbeatInterval = null;
   }
-  console.log('[BackgroundRefresh] 🛑 Background refresh service stopped');
+  console.log('[BackgroundRefresh] 🛑 Stopped');
 }
-

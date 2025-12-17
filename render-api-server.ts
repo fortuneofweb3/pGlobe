@@ -18,10 +18,9 @@ dotenv.config(); // Also load .env if it exists
 // Now import other modules (they can safely read process.env)
 import express from 'express';
 import { performRefresh, startBackgroundRefresh, isRefreshRunning } from './lib/server/background-refresh';
-import { getAllNodes, getNodeByPubkey, createIndexes } from './lib/server/mongodb-nodes';
+import { getAllNodes, getNodeByPubkey, createIndexes, upsertNodes } from './lib/server/mongodb-nodes';
 import { createHistoryIndexes, getHistoricalSnapshots, getDailyStats, getNodeHistory } from './lib/server/mongodb-history';
-import { fetchPNodesFromGossip } from './lib/server/prpc';
-import { upsertNodes } from './lib/server/mongodb-nodes';
+import { syncNodes, fetchAllNodes } from './lib/server/sync-nodes';
 import { getNetworkConfig } from './lib/server/network-config';
 import { calculateNetworkHealth } from './lib/utils/network-health';
 import { PNode } from './lib/types/pnode';
@@ -145,36 +144,30 @@ app.post('/api/refresh-nodes', authenticate, async (req, res) => {
 
 /**
  * POST /api/sync-nodes
- * Syncs nodes from pRPC to DB
+ * Syncs nodes from pRPC to DB using the simplified sync service
  */
 app.post('/api/sync-nodes', authenticate, async (req, res) => {
   try {
-    const networkId = req.query.network as string || 'devnet1';
-    const networkConfig = getNetworkConfig(networkId);
+    console.log('[RenderAPI] Sync request received');
+
+    // Use the new simplified sync service
+    const result = await syncNodes();
     
-    if (!networkConfig) {
-      return res.status(400).json({ error: `Network ${networkId} not found` });
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        error: result.error || 'Sync failed',
+      });
     }
-
-    console.log(`[RenderAPI] Sync request for network: ${networkConfig.name}`);
-
-    // Fetch from pRPC
-    const nodes = await fetchPNodesFromGossip(networkConfig.rpcUrl);
-    console.log(`[RenderAPI] Fetched ${nodes.length} nodes from gossip`);
-
-    // Write to DB
-    await upsertNodes(nodes);
-    console.log(`[RenderAPI] Upserted ${nodes.length} nodes to database`);
 
     // Get total count
     const dbNodes = await getAllNodes();
 
     res.json({
       success: true,
-      fetched: nodes.length,
-      upserted: nodes.length,
+      fetched: result.count,
       totalInDB: dbNodes.length,
-      message: `Synced ${nodes.length} nodes to database`,
+      message: `Synced ${result.count} nodes to database`,
     });
   } catch (error: any) {
     console.error('[RenderAPI] ❌ Sync failed:', error);
@@ -325,7 +318,6 @@ function formatNodeForAPI(node: PNode): any {
     packetsReceived: node.packetsReceived,
     packetsSent: node.packetsSent,
     activeStreams: node.activeStreams,
-    latency: node.latency,
     location: node.location,
     locationData: node.locationData,
     lastSeen: node.lastSeen,
@@ -495,11 +487,6 @@ app.get('/api/v1/network/health', authenticate, async (req, res) => {
     const totalUptime = nodes.reduce((sum, n) => sum + (n.uptime || 0), 0);
     const avgUptime = nodes.length > 0 ? totalUptime / nodes.length : 0;
 
-    const nodesWithLatency = nodes.filter(n => n.latency !== undefined);
-    const avgLatency = nodesWithLatency.length > 0
-      ? nodesWithLatency.reduce((sum, n) => sum + (n.latency || 0), 0) / nodesWithLatency.length
-      : null;
-
     const totalStorage = nodes.reduce((sum, n) => sum + (n.storageCapacity || 0), 0);
     const usedStorage = nodes.reduce((sum, n) => sum + (n.storageUsed || 0), 0);
     const storageUsagePercent = totalStorage > 0 ? (usedStorage / totalStorage) * 100 : 0;
@@ -537,9 +524,6 @@ app.get('/api/v1/network/health', authenticate, async (req, res) => {
         uptime: {
           average: avgUptime,
           averageDays: avgUptime / 86400,
-        },
-        latency: {
-          average: avgLatency,
         },
         storage: {
           total: totalStorage,
