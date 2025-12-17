@@ -356,18 +356,16 @@ export async function performRefresh(): Promise<void> {
             const enriched = (results[j] as PromiseFulfilledResult<PNode>).value;
             const originalNode = batch[j];
             
-            // Check if we got new data
-            const gotNewData = (
-              (enriched.cpuPercent !== null && enriched.cpuPercent !== undefined && originalNode.cpuPercent === null) ||
-              (enriched.ramTotal !== null && enriched.ramTotal !== undefined && originalNode.ramTotal === null) ||
-              (enriched.ramUsed !== null && enriched.ramUsed !== undefined && originalNode.ramUsed === null) ||
-              (enriched.packetsReceived !== null && enriched.packetsReceived !== undefined && originalNode.packetsReceived === null) ||
-              (enriched.packetsSent !== null && enriched.packetsSent !== undefined && originalNode.packetsSent === null) ||
-              (enriched.activeStreams !== null && enriched.activeStreams !== undefined && originalNode.activeStreams === null)
+            // Check if enrichment returned any valid stats
+            const hasValidStats = (
+              enriched.cpuPercent !== null && enriched.cpuPercent !== undefined ||
+              enriched.ramTotal !== null && enriched.ramTotal !== undefined ||
+              enriched.packetsReceived !== null && enriched.packetsReceived !== undefined ||
+              enriched.packetsSent !== null && enriched.packetsSent !== undefined
             );
             
-            if (gotNewData) {
-              // Find and update the node in nodesWithValidPubkeys
+            if (hasValidStats) {
+              // ALWAYS update nodes with enriched data (don't check if original was null)
               const key = originalNode.pubkey || originalNode.publicKey || originalNode.address?.split(':')[0];
               const index = nodesWithValidPubkeys.findIndex(n => {
                 const nKey = n.pubkey || n.publicKey || n.address?.split(':')[0];
@@ -375,27 +373,23 @@ export async function performRefresh(): Promise<void> {
               });
               
               if (index >= 0) {
-                // Merge enriched data, preserving existing non-null values
+                // ALWAYS use fresh enriched data (override existing)
                 nodesWithValidPubkeys[index] = {
                   ...nodesWithValidPubkeys[index],
+                  // Use enriched data, fallback to existing only if enriched is null/undefined
                   cpuPercent: enriched.cpuPercent ?? nodesWithValidPubkeys[index].cpuPercent,
                   ramUsed: enriched.ramUsed ?? nodesWithValidPubkeys[index].ramUsed,
                   ramTotal: enriched.ramTotal ?? nodesWithValidPubkeys[index].ramTotal,
+                  ramPercent: (enriched.ramUsed && enriched.ramTotal) 
+                    ? (enriched.ramUsed / enriched.ramTotal) * 100 
+                    : nodesWithValidPubkeys[index].ramPercent,
                   packetsReceived: enriched.packetsReceived ?? nodesWithValidPubkeys[index].packetsReceived,
                   packetsSent: enriched.packetsSent ?? nodesWithValidPubkeys[index].packetsSent,
                   activeStreams: enriched.activeStreams ?? nodesWithValidPubkeys[index].activeStreams,
                   uptime: enriched.uptime ?? nodesWithValidPubkeys[index].uptime,
-                  // latency: removed - client-side measurement
                   status: enriched.status ?? nodesWithValidPubkeys[index].status,
                 };
                 reEnrichedCount++;
-              } else {
-                // Node not in current gossip, but we enriched it - only add if it has valid pubkey
-                const enrichedPubkey = enriched.pubkey || enriched.publicKey;
-                if (enrichedPubkey && isValidPubkey(enrichedPubkey)) {
-                  nodesWithValidPubkeys.push(enriched);
-                  reEnrichedCount++;
-                }
               }
             }
           }
@@ -403,9 +397,9 @@ export async function performRefresh(): Promise<void> {
       }
       
       if (reEnrichedCount > 0) {
-        console.log(`[BackgroundRefresh] ✅ Re-enriched ${reEnrichedCount} nodes with previously null stats`);
+        console.log(`[BackgroundRefresh] ✅ Enriched ${reEnrichedCount}/${nodesNeedingReEnrichment.length} nodes with complete stats (CPU, RAM, packets)`);
       } else {
-        console.log(`[BackgroundRefresh] ⚠️  Attempted to re-enrich ${nodesNeedingReEnrichment.length} nodes but got no new data (nodes may be offline or pRPC not accessible)`);
+        console.error(`[BackgroundRefresh] ❌ Failed to enrich any nodes - pRPC endpoints may be down or unreachable`);
       }
     }
 
