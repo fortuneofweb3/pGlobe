@@ -346,8 +346,24 @@ app.get('/api/v1/nodes', authenticate, async (req, res) => {
   try {
     const { searchParams } = new URL(req.url, `http://${req.headers.host}`);
     
-    // Get all nodes
-    let nodes = await getAllNodes();
+    // Get all nodes - always respond even if DB fails
+    let nodes: PNode[] = [];
+    try {
+      nodes = await getAllNodes();
+    } catch (dbError: any) {
+      console.error('[RenderAPI] ⚠️  DB read failed, returning empty array:', dbError?.message);
+      return res.json({
+        success: false,
+        error: 'Database temporarily unavailable',
+        data: [],
+        meta: {
+          total: 0,
+          page: 1,
+          limit: 100,
+          totalPages: 0,
+        },
+      });
+    }
 
     // Apply filters
     const status = searchParams.get('status');
@@ -422,7 +438,18 @@ app.get('/api/v1/nodes', authenticate, async (req, res) => {
 app.get('/api/v1/nodes/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const node = await getNodeByPubkey(id);
+    let node: PNode | null = null;
+    
+    try {
+      node = await getNodeByPubkey(id);
+    } catch (dbError: any) {
+      console.error('[RenderAPI] ⚠️  DB read failed:', dbError?.message);
+      return res.status(500).json({
+        success: false,
+        error: 'Database temporarily unavailable',
+        message: dbError?.message || 'Unknown error',
+      });
+    }
     
     if (!node) {
       return res.status(404).json({
@@ -436,6 +463,7 @@ app.get('/api/v1/nodes/:id', authenticate, async (req, res) => {
       data: formatNodeForAPI(node),
     });
   } catch (error: any) {
+    // Final safety net - always respond
     console.error('[RenderAPI] ❌ Failed to get v1 node:', error);
     res.status(500).json({
       success: false,
@@ -541,7 +569,18 @@ app.get('/api/v1/network/health', authenticate, async (req, res) => {
  */
 app.get('/api/v1/network/stats', authenticate, async (req, res) => {
   try {
-    const nodes = await getAllNodes();
+    // Always respond, even if DB fails
+    let nodes: PNode[] = [];
+    try {
+      nodes = await getAllNodes();
+    } catch (dbError: any) {
+      console.error('[RenderAPI] ⚠️  DB read failed:', dbError?.message);
+      return res.status(500).json({
+        success: false,
+        error: 'Database temporarily unavailable',
+        message: dbError?.message || 'Unknown error',
+      });
+    }
     
     if (nodes.length === 0) {
       return res.status(404).json({
