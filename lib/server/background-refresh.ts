@@ -388,6 +388,13 @@ export async function performRefresh(): Promise<void> {
                   activeStreams: enriched.activeStreams ?? nodesWithValidPubkeys[index].activeStreams,
                   uptime: enriched.uptime ?? nodesWithValidPubkeys[index].uptime,
                   status: enriched.status ?? nodesWithValidPubkeys[index].status,
+                  // CRITICAL: Preserve storage from get-pods-with-stats (capacity/committed)
+                  // get-stats only gives us file_size (used), NOT capacity
+                  // So we MUST preserve storageCapacity/storageCommitted from gossip
+                  storageUsed: enriched.storageUsed ?? nodesWithValidPubkeys[index].storageUsed,
+                  storageCapacity: nodesWithValidPubkeys[index].storageCapacity ?? enriched.storageCapacity,
+                  storageCommitted: nodesWithValidPubkeys[index].storageCommitted ?? enriched.storageCommitted,
+                  storageUsagePercent: nodesWithValidPubkeys[index].storageUsagePercent ?? enriched.storageUsagePercent,
                 };
                 reEnrichedCount++;
               }

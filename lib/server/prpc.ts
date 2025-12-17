@@ -1027,10 +1027,13 @@ export async function fetchNodeStats(node: PNode): Promise<PNode> {
       packetsReceived: stats.packets_received ?? undefined,
       packetsSent: stats.packets_sent ?? undefined,
       activeStreams: stats.active_streams ?? undefined,
-      // Storage: API only provides file_size (used), NOT capacity!
-      // Preserve storageCapacity from get-pods-with-stats if it exists
-      storageUsed: fileSize > 0 ? fileSize : (enrichedNode.storageUsed || undefined),
+      // Storage: get-stats provides file_size (actual used storage)
+      // get-pods-with-stats provides storage_committed (capacity) and storage_used (may be wrong/0)
+      // ALWAYS use file_size from get-stats if available (more accurate)
+      // ALWAYS preserve storageCapacity/storageCommitted from get-pods-with-stats (get-stats doesn't provide capacity)
+      storageUsed: fileSize !== undefined && fileSize !== null ? fileSize : enrichedNode.storageUsed,
       storageCapacity: enrichedNode.storageCapacity || enrichedNode.storageCommitted || undefined, // Use committed as capacity if available
+      storageCommitted: enrichedNode.storageCommitted, // Preserve committed value
       totalPages: stats.total_pages ?? undefined,
       // Data operations
       dataOperationsHandled: stats.data_operations_handled ?? undefined,
@@ -1406,10 +1409,11 @@ async function enrichFromKnownPublicEndpoints(nodesMap: Map<string, PNode>): Pro
         cpuPercent: stats.cpu_percent ?? undefined,
         ramUsed: stats.ram_used ?? undefined,
         ramTotal: stats.ram_total ?? undefined,
-        // Storage: API only provides file_size (used), NOT capacity!
-        // Preserve storageCapacity from get-pods-with-stats if it exists
-        storageUsed: fileSize > 0 ? fileSize : null,
+        // Storage: get-stats provides file_size (actual used storage)
+        // ALWAYS preserve storageCapacity/storageCommitted from get-pods-with-stats (get-stats doesn't provide capacity)
+        storageUsed: fileSize !== undefined && fileSize !== null ? fileSize : existingNode?.storageUsed,
         storageCapacity: existingNode?.storageCapacity || existingNode?.storageCommitted || undefined, // Use committed as capacity if available
+        storageCommitted: existingNode?.storageCommitted, // Preserve committed value
         // Network metrics - include ALL fields, even if 0
         packetsReceived: stats.packets_received ?? undefined,
         packetsSent: stats.packets_sent ?? undefined,
