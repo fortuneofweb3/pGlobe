@@ -388,12 +388,12 @@ export async function performRefresh(): Promise<void> {
                   activeStreams: enriched.activeStreams ?? nodesWithValidPubkeys[index].activeStreams,
                   uptime: enriched.uptime ?? nodesWithValidPubkeys[index].uptime,
                   status: enriched.status ?? nodesWithValidPubkeys[index].status,
-                  // CRITICAL: Preserve storage from get-pods-with-stats
+                  // CRITICAL: Preserve storage from get-pods-with-stats (gossip data)
                   // - storage_used = actual used storage (from get-pods-with-stats)
                   // - storage_committed = total capacity (from get-pods-with-stats)
                   // - file_size from get-stats = same as storage_committed (capacity, NOT used)
-                  // So we MUST preserve storageUsed/storageCapacity/storageCommitted from gossip
-                  storageUsed: nodesWithValidPubkeys[index].storageUsed ?? enriched.storageUsed, // Prefer gossip storage_used
+                  // ALWAYS use gossip storage_used - never use enriched.storageUsed (it might be from old file_size data)
+                  storageUsed: nodesWithValidPubkeys[index].storageUsed, // ALWAYS use gossip storage_used, never enriched
                   storageCapacity: nodesWithValidPubkeys[index].storageCapacity ?? enriched.storageCapacity,
                   storageCommitted: nodesWithValidPubkeys[index].storageCommitted ?? enriched.storageCommitted,
                   storageUsagePercent: nodesWithValidPubkeys[index].storageUsagePercent ?? enriched.storageUsagePercent,
@@ -439,9 +439,10 @@ export async function performRefresh(): Promise<void> {
 
       // Build enriched node from gossip data (gossip nodes don't have balance - that comes from on-chain)
       // IMPORTANT: Use ALL fresh data from node (gossip + stats) - don't preserve old stats
-      // This ensures activeStreams, cpuPercent, ramUsed, etc. are always updated
+      // This ensures activeStreams, cpuPercent, ramUsed, storageUsed, etc. are always updated
+      // CRITICAL: node.storageUsed comes from get-pods-with-stats (storage_used) - this is the correct value
       const enrichedNode: PNode = {
-        ...node, // This includes all fresh stats from gossip (activeStreams, cpuPercent, ramUsed, packetsReceived, packetsSent, etc.)
+        ...node, // This includes all fresh stats from gossip (storageUsed, activeStreams, cpuPercent, ramUsed, packetsReceived, packetsSent, etc.)
         ...(geoData ? {
           location: geoData.city ? `${geoData.city}, ${geoData.country}` : geoData.country,
           locationData: {
