@@ -262,6 +262,16 @@ function HomeContent() {
     const usedStorage = nodes.reduce((sum, n) => sum + (n.storageUsed || 0), 0);
     const totalCapacity = nodes.reduce((sum, n) => sum + (n.storageCapacity || n.storageCommitted || 0), 0);
     const nodesWithCapacity = nodes.filter(n => (n.storageCapacity || n.storageCommitted || 0) > 0).length;
+    
+    // Debug storage values
+    if (nodes.length > 0 && (usedStorage > 0 || totalCapacity > 0)) {
+      console.log('[Storage Debug]', {
+        usedStorage,
+        totalCapacity,
+        nodesWithCapacity,
+        sampleNode: nodes.find(n => n.storageUsed || n.storageCapacity),
+      });
+    }
     const usagePercents = nodes
       .map(n => {
         const used = n.storageUsed || 0;

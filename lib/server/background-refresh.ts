@@ -69,10 +69,10 @@ export async function performRefresh(): Promise<void> {
           setTimeout(() => reject(new Error('Discovery timeout after 2 minutes')), 2 * 60 * 1000);
         });
         
-        // Skip prpc.ts enrichment - it's slow and get-pods-with-stats already has essential data
-        // (uptime, storage, version, is_public, rpc_port)
-        // The background-refresh.ts has its own enrichment for geo, balance, credits
-        const fetchPromise = fetchPNodesFromGossip(network.rpcUrl, true); // skipEnrichment=true
+        // Enable enrichment to get storage_used (file_size) from get-stats
+        // get-pods-with-stats gives us capacity but NOT storage used
+        // We need get-stats for file_size (actual data stored)
+        const fetchPromise = fetchPNodesFromGossip(network.rpcUrl, false); // skipEnrichment=false to get storage data
         
         const nodes = await Promise.race([fetchPromise, timeoutPromise]);
         if (nodes.length > 0) {
@@ -182,10 +182,18 @@ export async function performRefresh(): Promise<void> {
     const existingNodesMap = new Map<string, PNode>();
     try {
       const existingNodes = await getAllNodes();
+      console.log(`[BackgroundRefresh] Found ${existingNodes.length} existing nodes in DB`);
+      let nodesWithBalance = 0;
       existingNodes.forEach(node => {
         const key = node.pubkey || node.publicKey;
-        if (key) existingNodesMap.set(key, node);
+        if (key) {
+          existingNodesMap.set(key, node);
+          if (node.balance !== undefined && node.balance !== null) {
+            nodesWithBalance++;
+          }
+        }
       });
+      console.log(`[BackgroundRefresh] ${nodesWithBalance} existing nodes have balance data`);
     } catch (e) {
       console.warn('[BackgroundRefresh] Could not fetch existing nodes for balance check');
     }
@@ -197,7 +205,7 @@ export async function performRefresh(): Promise<void> {
       return !existingNode || existingNode.balance === undefined || existingNode.balance === null;
     });
 
-    console.log(`[BackgroundRefresh] Fetching on-chain data for ${newPubkeys.length}/${allPubkeys.length} NEW nodes (skipping ${allPubkeys.length - newPubkeys.length} existing)...`);
+    console.log(`[BackgroundRefresh] 💰 Fetching balance for ${newPubkeys.length}/${allPubkeys.length} nodes (${allPubkeys.length - newPubkeys.length} already have balance)`);
 
     // Use Solana connection for account creation date fetching
     const DEVNET_RPC = 'https://api.devnet.xandeum.com:8899';
@@ -538,59 +546,42 @@ export async function performRefresh(): Promise<void> {
       return enrichedNode;
     });
 
-    console.log(`[BackgroundRefresh] Updating MongoDB with enriched data...`);
-    try {
-      await upsertNodes(enrichedNodes);
-      
-      // Store historical snapshot (10-minute interval aggregation) in pGlobe database
-      // This captures node-level metrics: status, latency, CPU, RAM, packets, etc.
-      // IMPORTANT: Store snapshots for ALL nodes in database, not just current gossip nodes
-      // This ensures we track offline nodes and nodes that temporarily disappear from gossip
+    console.log(`[BackgroundRefresh] Updating MongoDB with enriched data + historical snapshot...`);
+    
+    // Retry upsert with better error handling
+    // SIMPLIFIED: Store nodes + snapshot together in one operation
+    let upsertSuccess = false;
+    let upsertRetries = 0;
+    const MAX_UPSERT_RETRIES = 2;
+    
+    while (!upsertSuccess && upsertRetries < MAX_UPSERT_RETRIES) {
       try {
-        // Get ALL nodes from database (including offline ones not in current gossip)
-        const allNodesInDb = await getAllNodes();
-        console.log(`[BackgroundRefresh] Found ${allNodesInDb.length} total nodes in database (${enrichedNodes.length} from current gossip)`);
+        // Store nodes in MongoDB
+        await upsertNodes(enrichedNodes);
         
-        // Create a map of fresh gossip data by pubkey for quick lookup
-        const freshDataMap = new Map<string, PNode>();
-        enrichedNodes.forEach(node => {
-          const key = node.pubkey || node.publicKey || node.id;
-          if (key) freshDataMap.set(key, node);
-        });
+        // Immediately store historical snapshot while connection is still fresh
+        // No need to get all nodes from DB - just snapshot what we have RIGHT NOW
+        console.log(`[BackgroundRefresh] Storing snapshot for ${enrichedNodes.length} nodes...`);
+        await storeHistoricalSnapshot(enrichedNodes);
         
-        // Merge fresh gossip data with all database nodes
-        // For nodes in gossip: use fresh data
-        // For nodes not in gossip: use existing database data (they're offline)
-        const allNodesForSnapshot = allNodesInDb.map(dbNode => {
-          const key = dbNode.pubkey || dbNode.publicKey || dbNode.id;
-          const freshNode = key ? freshDataMap.get(key) : null;
-          
-          if (freshNode) {
-            // Node is in current gossip - use fresh data
-            return freshNode;
-          } else {
-            // Node is not in current gossip - use existing data but mark as offline
-            // Update status to offline if it was previously online/syncing
-            const updatedNode = { ...dbNode };
-            if (updatedNode.status === 'online' || updatedNode.status === 'syncing') {
-              updatedNode.status = 'offline';
-            }
-            // Update seenInGossip flag
-            updatedNode.seenInGossip = false;
-            return updatedNode;
-          }
-        });
+        upsertSuccess = true;
+        console.log(`[BackgroundRefresh] ✅ Stored ${enrichedNodes.length} nodes + historical snapshot`);
+      } catch (error: any) {
+        upsertRetries++;
+        const errorMsg = error?.message || String(error);
+        console.error(`[BackgroundRefresh] ⚠️  Attempt ${upsertRetries}/${MAX_UPSERT_RETRIES} failed: ${errorMsg}`);
         
-        // Use server location detected at start of refresh (already logged above)
-        // This ensures consistency - all latency measurements in this refresh cycle are from the same server location
-        await storeHistoricalSnapshot(allNodesForSnapshot);
-        console.log(`[BackgroundRefresh] ✅ Stored historical snapshot with ${allNodesForSnapshot.length} node snapshots (${enrichedNodes.length} from gossip, ${allNodesForSnapshot.length - enrichedNodes.length} offline)`);
-      } catch (historyError: any) {
-        console.warn(`[BackgroundRefresh] ⚠️  Failed to store historical snapshot: ${historyError?.message || historyError}`);
-        // Don't throw - historical data is nice to have but not critical
+        if (upsertRetries < MAX_UPSERT_RETRIES) {
+          console.log(`[BackgroundRefresh] Waiting 2s before retry...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        } else {
+          console.error(`[BackgroundRefresh] ❌ Failed after ${MAX_UPSERT_RETRIES} attempts`);
+        }
       }
-      
-      // Check final count after update
+    }
+    
+    // Check final count after update
+    try {
       let finalCount = 0;
       try {
         const finalNodes = await getAllNodes();

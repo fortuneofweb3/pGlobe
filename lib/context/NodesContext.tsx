@@ -85,7 +85,8 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     }
 
     fetchingRef.current = true;
-    console.log('[NodesContext] Starting fetch...');
+    // DON'T set loading to true during refresh - keep showing existing data
+    console.log('[NodesContext] 🔄 Manual refresh triggered - Starting fetch...');
     
     const fetchPromise = (async () => {
       try {
@@ -97,11 +98,11 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         const url = `/api/pnodes?${params.toString()}`;
         console.log('[NodesContext] Fetching from:', url);
 
-        // Use fetch with shorter timeout for faster failure
+        // Use fetch with reasonable timeout for API server response
         let response: Response;
         try {
           const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-          const timeoutId = controller ? setTimeout(() => controller.abort(), 10000) : null; // 10 second timeout (MongoDB might be slow on first connection)
+          const timeoutId = controller ? setTimeout(() => controller.abort(), 30000) : null; // 30 second timeout for slower connections
           
           console.log('[NodesContext] Making fetch request...');
           response = await fetch(url, {
@@ -123,53 +124,47 @@ export function NodesProvider({ children }: { children: ReactNode }) {
 
         if (data.nodes && Array.isArray(data.nodes)) {
           console.log('[NodesContext] ✅ Setting nodes:', data.nodes.length);
-          // Update UI immediately with new data
-          setNodes(data.nodes);
-          setLastUpdate(new Date());
-          setError(null);
+          // Only update if we got valid data (prevents wrong data flash)
+          if (data.nodes.length > 0) {
+            // Update UI immediately with new data
+            setNodes(data.nodes);
+            setLastUpdate(new Date());
+            setError(null);
 
-          // Update network info
-          if (data.networks && Array.isArray(data.networks)) {
-            setAvailableNetworks(data.networks);
-          }
-          if (data.currentNetwork) {
-            setCurrentNetwork(data.currentNetwork);
-            setSelectedNetwork(data.currentNetwork.id);
-          }
+            // Update network info
+            if (data.networks && Array.isArray(data.networks)) {
+              setAvailableNetworks(data.networks);
+            }
+            if (data.currentNetwork) {
+              setCurrentNetwork(data.currentNetwork);
+              setSelectedNetwork(data.currentNetwork.id);
+            }
 
-          // Cache successful fetch (async, don't block)
-          saveCache({
-            nodes: data.nodes,
-            lastUpdate: new Date(),
-            availableNetworks: data.networks,
-            currentNetwork: data.currentNetwork,
-          });
+            // Cache successful fetch (async, don't block)
+            saveCache({
+              nodes: data.nodes,
+              lastUpdate: new Date(),
+              availableNetworks: data.networks,
+              currentNetwork: data.currentNetwork,
+            });
+          }
         } else {
           const errorMsg = data.error || 'Failed to fetch nodes';
           console.error('[NodesContext] API returned error:', errorMsg);
-          setError(errorMsg);
+          // Don't set error on refresh - just log it
+          console.warn('[NodesContext] Keeping existing data after error');
         }
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'An error occurred';
         console.error('[NodesContext] Fetch error:', errorMsg, err);
         
-        // Only set error if we don't have cached data
-        const cached = loadCache();
-        if (!cached?.nodes) {
-          setError(errorMsg);
-        }
-
-        // Fallback to cached data if available (don't overwrite if we already have nodes)
-        if (cached?.nodes && nodes.length === 0) {
-          setNodes(cached.nodes);
-          setLastUpdate(cached.lastUpdate ? new Date(cached.lastUpdate) : null);
-          if (cached.availableNetworks) setAvailableNetworks(cached.availableNetworks);
-          if (cached.currentNetwork) setCurrentNetwork(cached.currentNetwork);
-        }
+        // On refresh error, keep existing data and just log the error
+        // Don't fallback to cache - we already have current nodes displayed
+        console.warn('[NodesContext] Refresh failed, keeping existing nodes:', nodes.length);
       } finally {
         fetchingRef.current = false;
         fetchPromiseRef.current = null;
-        setLoading(false);
+        // Don't set loading to false here - we never set it to true for refresh
       }
     })();
 

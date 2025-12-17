@@ -586,7 +586,7 @@ function calculateVersionDistribution(nodes: PNode[]): Record<string, number> {
 }
 
 function createNodeSnapshots(nodes: PNode[]): HistoricalSnapshot['nodeSnapshots'] {
-  return nodes.map(node => {
+  const snapshots = nodes.map(node => {
     const pubkey = node.pubkey || node.publicKey || node.id || '';
     const ramPercent = node.ramUsed && node.ramTotal && node.ramTotal > 0
       ? ((node.ramUsed / node.ramTotal) * 100)
@@ -633,5 +633,20 @@ function createNodeSnapshots(nodes: PNode[]): HistoricalSnapshot['nodeSnapshots'
         : undefined),
     };
   }).filter(snapshot => snapshot.pubkey); // Only include nodes with a valid pubkey
+  
+  // Debug: Log sample snapshot to verify data structure
+  if (snapshots.length > 0) {
+    const sampleSnapshot = snapshots[0];
+    console.log(`[MongoDB History] Sample snapshot data:`, {
+      pubkey: sampleSnapshot.pubkey?.substring(0, 8),
+      status: sampleSnapshot.status,
+      cpuPercent: sampleSnapshot.cpuPercent,
+      ramPercent: sampleSnapshot.ramPercent,
+      hasUptime: sampleSnapshot.uptime !== undefined,
+      hasStorage: sampleSnapshot.storageUsed !== undefined,
+    });
+  }
+  
+  return snapshots;
 }
 

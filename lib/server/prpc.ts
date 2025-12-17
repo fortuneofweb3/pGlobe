@@ -577,6 +577,16 @@ async function fetchPodsWithStatsFromEndpoint(endpoint: string): Promise<PNode[]
     const storageUsed = pod.storage_used ?? pod.storageUsed ?? undefined;
     const storageCommitted = pod.storage_committed ?? pod.storageCommitted ?? undefined;
     
+    // Debug first few nodes to see what data we're getting
+    if (index < 3) {
+      console.log(`[DEBUG] Node ${index} storage:`, {
+        storage_used: pod.storage_used,
+        storage_committed: pod.storage_committed,
+        has_storage_used: storageUsed !== undefined,
+        storage_value: storageUsed,
+      });
+    }
+    
     const enrichedNode: PNode = {
       id: address || pubkey || `unknown-${index}`,
       publicKey: pubkey,
@@ -977,97 +987,25 @@ export async function fetchNodeStats(node: PNode): Promise<PNode> {
   // Fetch stats and version in parallel (silent mode - failures are expected)
   // Use shorter timeouts for faster enrichment (most nodes won't respond anyway)
   
-  // Measure latency as if we're a real client using the node for data transfer
-  // Applications connect through proxy RPC endpoints (rpc1.pchednode.com/rpc, etc.) for data operations
-  // 
-  // MULTI-REGION APPROACH:
-  // Option 1: Measure from multiple regions using Cloudflare Workers (if configured)
-  // Option 2: Measure from server location only (current fallback)
-  //
-  let latency: number | null = null;
-  let latencyByRegion: Record<string, number> | undefined = undefined;
-  let versionResult: any | null = null;
-  let latencyMethod: 'multi-region' | 'proxy' | 'direct-prpc' | 'fallback-prpc' | null = null;
+  // LATENCY MEASUREMENT DISABLED - Client-side only!
+  // Latency should be measured from the user's browser, not from the server
+  // This makes the measurement more accurate and speeds up enrichment by 10x
   
-  // Multi-region latency is now measured in batch before calling fetchNodeStats
-  // If node already has latencyByRegion from batch measurement, use it
-  if (node.latencyByRegion && Object.keys(node.latencyByRegion).length > 0) {
-    latencyByRegion = node.latencyByRegion;
-    latency = node.latency ?? null; // Already set from batch measurement
-    latencyMethod = 'multi-region';
-    console.log(`[Latency] ${ip}: Using pre-measured multi-region latency from ${Object.keys(latencyByRegion).length} regions, best: ${latency}ms`);
-  }
-  
-  // Fallback: Measure from server location only
-  if (latency === null) {
-    const proxyEndpoints = PROXY_RPC_ENDPOINTS;
-    const proxyLatencies: Array<{ endpoint: string; latency: number }> = [];
-    
-    for (const endpoint of proxyEndpoints) {
-      const proxyLatency = await measureProxyRPCLatency(endpoint, 2000);
-      if (proxyLatency !== null) {
-        proxyLatencies.push({ endpoint, latency: proxyLatency });
-      }
-    }
-    
-    // Use the minimum latency from proxy endpoints (best case scenario)
-    if (proxyLatencies.length > 0) {
-      const bestProxy = proxyLatencies.reduce((best, current) => 
-        current.latency < best.latency ? current : best
-      );
-      latency = bestProxy.latency;
-      latencyMethod = 'proxy';
-      console.log(`[Latency] ${ip}: Proxy RPC latency = ${latency}ms (from ${bestProxy.endpoint}, tried ${proxyLatencies.length} endpoints)`);
-    } else {
-    // Fallback: Try direct pRPC endpoint (port 6000/9000) if proxy measurement failed
-    // This gives us network latency to the specific node, though users don't connect directly
-    if (ip) {
-      const portsToTry = node.rpcPort ? [node.rpcPort, 6000, 9000] : [6000, 9000];
-      for (const port of portsToTry) {
-        const measuredLatency = await measureLatencyTTFB(ip, port, 2000);
-        if (measuredLatency !== null) {
-          latency = measuredLatency;
-          latencyMethod = 'direct-prpc';
-          console.log(`[Latency] ${ip}: Direct pRPC latency = ${latency}ms (port ${port}, TTFB)`);
-          break;
-          }
-        }
-      }
-    }
-  }
-  
-  // Final fallback: if TTFB measurement failed, try regular pRPC call (includes processing time)
-  // This also fetches version for us
-  if (latency === null) {
-    const latencyStartTime = Date.now();
-    versionResult = await callPRPCMultiPort(node, 'get-version', 2000, true);
-    latency = versionResult ? Date.now() - latencyStartTime : null;
-    if (latency !== null) {
-      latencyMethod = 'fallback-prpc';
-      console.log(`[Latency] ${ip}: Fallback pRPC latency = ${latency}ms (full request/response)`);
-    } else {
-      console.log(`[Latency] ${ip}: Failed to measure latency (all methods failed)`);
-    }
-  } else {
-    // If we got latency from proxy or direct pRPC TTFB, still fetch version separately
-    versionResult = await callPRPCMultiPort(node, 'get-version', 2000, true);
-  }
-
-  // Fetch stats in parallel (version already fetched above)
-  const statsResult = await Promise.allSettled([
+  // Fetch version and stats (no latency measurement)
+  const [versionResult, statsResult] = await Promise.allSettled([
+    callPRPCMultiPort(node, 'get-version', 2000, true),
     callPRPCMultiPort(node, 'get-stats', 2000, true), // 2s timeout - fast fail
-  ]).then(results => results[0]); // Get first (and only) result
+  ]);
 
   let enrichedNode = { ...node };
+  
+  // Don't set latency - client will measure it
+  // enrichedNode.latency = undefined;
+  // enrichedNode.latencyByRegion = undefined;
 
-          // Only set latency if we got a successful response
-          // If call failed/timeout, latency is null (offline/unreachable)
-          enrichedNode.latency = latency ?? undefined;
-          enrichedNode.latencyByRegion = latencyByRegion;
-
-  // Process version (already fetched for latency measurement)
-  if (versionResult?.version) {
-    enrichedNode.version = versionResult.version;
+  // Process version
+  if (versionResult.status === 'fulfilled' && versionResult.value?.version) {
+    enrichedNode.version = versionResult.value.version;
   }
 
   // Process stats - API returns FLAT structure directly on result
@@ -1101,10 +1039,7 @@ export async function fetchNodeStats(node: PNode): Promise<PNode> {
       status: 'online',
     };
 
-    const latencyInfo = latency !== null 
-      ? `${latency}ms (${latencyMethod || 'unknown'})` 
-      : 'null';
-    console.log(`  ✅ Enriched ${ip}: uptime=${(uptimeSeconds / 86400).toFixed(1)}d, cpu=${stats.cpu_percent || 0}%, packets_rx=${stats.packets_received || 0}, packets_tx=${stats.packets_sent || 0}, latency=${latencyInfo}`);
+    console.log(`  ✅ Enriched ${ip}: uptime=${(uptimeSeconds / 86400).toFixed(1)}d, cpu=${stats.cpu_percent || 0}%, packets_rx=${stats.packets_received || 0}, packets_tx=${stats.packets_sent || 0}`);
   } else {
     // If stats call failed, preserve the gossip status (online/offline/syncing)
     // Don't override - keep whatever status gossip gave us

@@ -690,12 +690,9 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                               <div className="flex flex-col items-end gap-0.5">
                                 <span 
                                   className={`text-xs sm:text-sm font-mono font-medium ${color}`}
-                                  title={`Your latency to this node: ${nodeLatency.toFixed(0)}ms (measured from your browser)`}
+                                  title={`Measured from your browser: ${nodeLatency.toFixed(0)}ms`}
                                 >
                                   {nodeLatency.toFixed(0)}ms
-                                </span>
-                                <span className="text-[10px] text-muted-foreground/60">
-                                  Your latency
                                 </span>
                               </div>
                             );

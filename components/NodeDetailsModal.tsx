@@ -299,10 +299,9 @@ function HistoricalLineChart({
                             })
                           ) : (
                             (() => {
-                              // Filter out points with invalid values, but keep zeros (0 is a valid value)
+                              // Filter out points with invalid values
                               const validData = chartData.filter(d => {
                                 const val = d.value;
-                                // Include 0 as a valid value - it means nothing was earned in that period
                                 return val !== undefined && val !== null && !isNaN(val);
                               });
                               return (
@@ -368,7 +367,7 @@ function HistoricalLineChart({
                           <AxisBottom
                             top={yMax}
                             scale={xScale}
-                            numTicks={Math.min(4, Math.floor(xMax / 150))}
+                            numTicks={Math.min(6, Math.floor(xMax / 100))}
                             tickFormat={(d) => {
                               const date = d as Date;
                               return formatDateAxis(date, chartData);
@@ -393,7 +392,7 @@ function HistoricalLineChart({
                             stroke="#6B7280"
                             tickStroke="#6B7280"
                             tickFormat={smartYFormatter}
-                            numTicks={yTicks ? yTicks.length : 4}
+                            numTicks={yTicks ? yTicks.length : 5}
                             tickValues={yTicks}
                             tickLabelProps={() => ({
                               fill: '#9CA3AF',
@@ -437,51 +436,21 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [timeRange, setTimeRange] = useState<'30m' | '1h' | '24h' | '1w'>('24h');
-  const [nodeLatency, setNodeLatency] = useState<number | null>(null);
-  const [measuringLatency, setMeasuringLatency] = useState(false);
-
-  // Memoize the current node to get a stable reference that only changes when node ID changes
-  // This prevents rerenders when allNodes array reference changes but the node data is the same
-  const currentNode = useMemo(() => {
+  // Load cached latency immediately if available
+  const [nodeLatency, setNodeLatency] = useState<number | null>(() => {
     if (!node) return null;
-    // Find the latest version of this node from allNodes to get updated data
-    const latestNode = allNodes.find(n => 
-      n.id === node.id || 
-      n.pubkey === node.pubkey || 
-      n.publicKey === node.publicKey
-    );
-    return latestNode || node;
-  }, [node?.id, node?.pubkey, node?.publicKey, allNodes]);
-
-  // Memoize network average CPU separately to avoid recalculating on every allNodes update
-  // Use a stable hash of CPU values that only changes when values actually change
-  const cpuValuesHash = useMemo(() => {
-    return allNodes
-      .map(n => `${n.id}:${n.cpuPercent ?? 'null'}`)
-      .sort()
-      .join('|');
-  }, [allNodes]);
-
-  const networkAvgCpu = useMemo(() => {
-    if (allNodes.length === 0) return 0;
-    const nodesWithCpu = allNodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null);
-    if (nodesWithCpu.length === 0) return 0;
-    const sum = nodesWithCpu.reduce((acc, n) => acc + (n.cpuPercent || 0), 0);
-    return sum / nodesWithCpu.length;
-  }, [cpuValuesHash, allNodes.length]);
+    const cached = getCachedLatency(node.id);
+    return cached !== undefined ? cached : null;
+  });
+  const [measuringLatency, setMeasuringLatency] = useState(false);
 
   // Measure latency for this specific node when modal opens (only if not cached)
   useEffect(() => {
-    // Reset state when modal closes
-    if (!isOpen || !node) {
-      setNodeLatency(null);
-      setMeasuringLatency(false);
-      return;
-    }
-    
     let mounted = true;
     
     const measureLatency = async () => {
+      if (!node) return;
+      
       // Check cache first
       const cached = getCachedLatency(node.id);
       if (cached !== undefined) {
@@ -508,14 +477,15 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
       }
     };
 
-    // Small delay to allow modal animation to complete before starting async operations
-    const timeoutId = setTimeout(() => {
+    if (isOpen && node) {
       measureLatency();
-    }, 100);
+    } else {
+      // Reset when modal closes
+      setNodeLatency(null);
+    }
     
     return () => {
       mounted = false;
-      clearTimeout(timeoutId);
     };
   }, [isOpen, node?.id]);
 
@@ -542,26 +512,18 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
 
     let abortController: AbortController | null = null;
     let timeoutId: NodeJS.Timeout | null = null;
-    let loadingTimeoutId: NodeJS.Timeout | null = null;
     let isMounted = true;
 
     const fetchHistory = async () => {
       if (!isMounted) return;
       
+      setLoadingHistory(true);
       abortController = new AbortController();
       timeoutId = setTimeout(() => {
         if (abortController) {
           abortController.abort();
         }
       }, 30000); // 30 second timeout
-      
-      // Delay setting loading state to prevent glitch on modal open
-      // This allows the modal animation to complete before showing loading state
-      loadingTimeoutId = setTimeout(() => {
-        if (isMounted) {
-          setLoadingHistory(true);
-        }
-      }, 150);
       
       try {
         const pubkey = node.pubkey || node.publicKey || node.id || '';
@@ -641,12 +603,6 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
           timeoutId = null;
         }
         
-        // Clear any pending loading state update
-        if (loadingTimeoutId) {
-          clearTimeout(loadingTimeoutId);
-          loadingTimeoutId = null;
-        }
-        
         if (!isMounted) return;
         
         if (error.name === 'AbortError') {
@@ -674,22 +630,23 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
-      if (loadingTimeoutId) {
-        clearTimeout(loadingTimeoutId);
-      }
       setLoadingHistory(false);
     };
   }, [node?.pubkey || node?.publicKey || node?.id, isOpen]);
 
   const nodeStats = useMemo(() => {
-    if (!currentNode) return null;
+    if (!node) return null;
 
-    const storageUtilization = currentNode.storageCapacity
-      ? ((currentNode.storageUsed || 0) / currentNode.storageCapacity) * 100
+    const networkAvgCpu = allNodes.length > 0
+      ? allNodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null).reduce((sum, n) => sum + (n.cpuPercent || 0), 0) / allNodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null).length
       : 0;
 
-    const ramUtilization = currentNode.ramTotal && currentNode.ramUsed
-      ? (currentNode.ramUsed / currentNode.ramTotal) * 100
+    const storageUtilization = node.storageCapacity
+      ? ((node.storageUsed || 0) / node.storageCapacity) * 100
+      : 0;
+
+    const ramUtilization = node.ramTotal && node.ramUsed
+      ? (node.ramUsed / node.ramTotal) * 100
       : 0;
 
     return {
@@ -697,7 +654,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
       storageUtilization,
       ramUtilization,
     };
-  }, [currentNode, networkAvgCpu]);
+  }, [node, allNodes]);
 
   const formatUptime = (uptime?: number) => {
     if (uptime === undefined || uptime === null) return '—';
@@ -730,11 +687,11 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
     return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-500/20 text-gray-400 border border-gray-500/30">Offline</span>;
   };
 
-  if (!isOpen || !node || !currentNode) return null;
+  if (!isOpen || !node) return null;
 
-  const pubkey = currentNode.pubkey || currentNode.publicKey || currentNode.id || currentNode.address?.split(':')[0] || '';
-  const displayPubkey = currentNode.pubkey || currentNode.publicKey || currentNode.id || currentNode.address?.split(':')[0] || '—';
-  const gossipAddress = currentNode.address || '—';
+  const pubkey = node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '';
+  const displayPubkey = node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '—';
+  const gossipAddress = node.address || '—';
 
   return (
     <>
@@ -757,22 +714,22 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                   Node Details
                 </div>
                 <div className="flex items-center gap-3">
-                  {getStatusBadge(currentNode.status)}
+                  {getStatusBadge(node.status)}
                   <h1 className="text-xl sm:text-2xl font-bold leading-tight font-mono">
                     {gossipAddress}
                   </h1>
                 </div>
-                {currentNode.version && (
+                {node.version && (
                   <p className="text-xs sm:text-sm text-foreground/70">
-                    Version {currentNode.version}
+                    Version {node.version}
                   </p>
                 )}
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
-                    if (currentNode) {
-                      const nodeId = currentNode.pubkey || currentNode.publicKey || currentNode.id || currentNode.address?.split(':')[0] || '';
+                    if (node) {
+                      const nodeId = node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '';
                       if (nodeId) {
                         router.push(`/?node=${encodeURIComponent(nodeId)}`);
                         onClose();
@@ -836,7 +793,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Uptime</span>
                     <Clock className="w-4 h-4 text-foreground/40" />
                   </div>
-                  <div className="text-xl sm:text-2xl font-bold text-foreground">{formatUptime(currentNode.uptime)}</div>
+                  <div className="text-xl sm:text-2xl font-bold text-foreground">{formatUptime(node.uptime)}</div>
                   <p className="text-xs text-muted-foreground mt-1">Current session</p>
                 </div>
 
@@ -846,11 +803,11 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     <HardDrive className="w-4 h-4 text-foreground/40" />
                   </div>
                   <div className="text-xl sm:text-2xl font-bold text-foreground">
-                    {formatValue(currentNode.storageUsed, formatStorageBytes)}
+                    {formatValue(node.storageUsed, formatStorageBytes)}
                   </div>
-                  {currentNode.storageCapacity && (
+                  {node.storageCapacity && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      of {formatStorageBytes(currentNode.storageCapacity)}
+                      of {formatStorageBytes(node.storageCapacity)}
                     </p>
                   )}
                 </div>
@@ -861,7 +818,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     <Cpu className="w-4 h-4 text-foreground/40" />
                   </div>
                   <div className="text-xl sm:text-2xl font-bold text-foreground">
-                    {formatValue(currentNode.cpuPercent, (val) => `${val.toFixed(1)}%`)}
+                    {formatValue(node.cpuPercent, (val) => `${val.toFixed(1)}%`)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">Current usage</p>
                 </div>
@@ -879,9 +836,6 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                           <div className="flex flex-col">
                             <span className="text-xl sm:text-2xl font-bold text-foreground">
                               {nodeLatency.toFixed(0)}ms
-                            </span>
-                            <span className="text-[10px] text-muted-foreground/60 mt-0.5">
-                              Your latency
                             </span>
                           </div>
                         );
@@ -903,7 +857,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     })()}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {nodeLatency !== null ? 'Your latency to this node' : 'Node not reachable'}
+                    {nodeLatency !== null ? 'Measured from your browser' : 'Node not reachable'}
                   </p>
                 </div>
               </div>
@@ -917,7 +871,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     <h2 className="text-base font-semibold text-foreground">Storage & Memory</h2>
                   </div>
                   <div className="space-y-4">
-                    {currentNode.storageCapacity ? (
+                    {node.storageCapacity ? (
                       <div>
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm font-medium text-foreground">Storage</span>
@@ -932,12 +886,12 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                           />
                         </div>
                         <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-                          <span>{formatValue(currentNode.storageUsed, formatStorageBytes)}</span>
-                          <span>{formatValue(currentNode.storageCapacity, formatStorageBytes)}</span>
+                          <span>{formatValue(node.storageUsed, formatStorageBytes)}</span>
+                          <span>{formatValue(node.storageCapacity, formatStorageBytes)}</span>
                         </div>
                       </div>
                     ) : null}
-                    {currentNode.ramTotal ? (
+                    {node.ramTotal ? (
                       <div>
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm font-medium text-foreground">Memory</span>
@@ -952,8 +906,8 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                           />
                         </div>
                         <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-                          <span>{formatValue(currentNode.ramUsed, formatBytes)}</span>
-                          <span>{formatValue(currentNode.ramTotal, formatBytes)}</span>
+                          <span>{formatValue(node.ramUsed, formatBytes)}</span>
+                          <span>{formatValue(node.ramTotal, formatBytes)}</span>
                         </div>
                       </div>
                     ) : null}
@@ -969,24 +923,24 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-foreground/60">Address</span>
-                      <span className="font-mono text-foreground/80">{formatValue(currentNode.address, (addr) => addr.replace(':6000', ':9001'))}</span>
+                      <span className="font-mono text-foreground/80">{formatValue(node.address, (addr) => addr.replace(':6000', ':9001'))}</span>
                     </div>
-                    {currentNode.rpcPort && (
+                    {node.rpcPort && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">RPC Port</span>
-                        <span className="font-mono text-foreground/80">{currentNode.rpcPort}</span>
+                        <span className="font-mono text-foreground/80">{node.rpcPort}</span>
                       </div>
                     )}
-                    {currentNode.packetsReceived !== undefined && currentNode.packetsReceived !== null && (
+                    {node.packetsReceived !== undefined && node.packetsReceived !== null && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Packets Rx (Total)</span>
-                        <span className="font-mono text-foreground/80">{currentNode.packetsReceived.toLocaleString()}</span>
+                        <span className="font-mono text-foreground/80">{node.packetsReceived.toLocaleString()}</span>
                       </div>
                     )}
-                    {currentNode.packetsSent !== undefined && currentNode.packetsSent !== null && (
+                    {node.packetsSent !== undefined && node.packetsSent !== null && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Packets Tx (Total)</span>
-                        <span className="font-mono text-foreground/80">{currentNode.packetsSent.toLocaleString()}</span>
+                        <span className="font-mono text-foreground/80">{node.packetsSent.toLocaleString()}</span>
                       </div>
                     )}
                     {(() => {
@@ -1024,10 +978,10 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                       }
                       return null;
                     })()}
-                    {currentNode.activeStreams !== undefined && (
+                    {node.activeStreams !== undefined && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Active Streams</span>
-                        <span className="font-mono text-foreground/80">{currentNode.activeStreams}</span>
+                        <span className="font-mono text-foreground/80">{node.activeStreams}</span>
                       </div>
                     )}
                   </div>
@@ -1040,28 +994,28 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     <h2 className="text-base font-semibold text-foreground">Location</h2>
                   </div>
                   <div className="space-y-2 text-sm">
-                    {currentNode.locationData?.country && (
+                    {node.locationData?.country && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Country</span>
-                        <span className="text-foreground/80">{currentNode.locationData.country}</span>
+                        <span className="text-foreground/80">{node.locationData.country}</span>
                       </div>
                     )}
-                    {currentNode.locationData?.city && (
+                    {node.locationData?.city && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">City</span>
-                        <span className="text-foreground/80">{currentNode.locationData.city}</span>
+                        <span className="text-foreground/80">{node.locationData.city}</span>
                       </div>
                     )}
-                    {getRegionName(currentNode.locationData) && (
+                    {getRegionName(node.locationData) && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Region</span>
-                        <span className="text-foreground/80">{getRegionName(currentNode.locationData)}</span>
+                        <span className="text-foreground/80">{getRegionName(node.locationData)}</span>
                       </div>
                     )}
-                    {currentNode.address && (
+                    {node.address && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Data Center</span>
-                        <span className="text-foreground/80">{detectDataCenter(currentNode.address.split(':')[0]) || '—'}</span>
+                        <span className="text-foreground/80">{detectDataCenter(node.address.split(':')[0]) || '—'}</span>
                       </div>
                     )}
                   </div>
@@ -1077,7 +1031,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     <div className="flex justify-between items-center">
                       <span className="text-foreground/60">Registered</span>
                       <div className="flex items-center gap-1.5">
-                        {currentNode.isRegistered || (currentNode.balance && currentNode.balance > 0) ? (
+                        {node.isRegistered || (node.balance && node.balance > 0) ? (
                           <>
                             <CheckCircle2 className="w-4 h-4 text-[#3F8277]" />
                             <span className="text-[#3F8277] font-medium">Yes</span>
@@ -1090,25 +1044,25 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                         )}
                       </div>
                     </div>
-                    {currentNode.credits !== undefined && currentNode.credits !== null && (
+                    {node.credits !== undefined && node.credits !== null && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Credits</span>
-                        <span className="text-foreground/80 font-semibold">{currentNode.credits.toLocaleString()}</span>
+                        <span className="text-foreground/80 font-semibold">{node.credits.toLocaleString()}</span>
                       </div>
                     )}
-                    {currentNode.balance !== undefined && currentNode.balance !== null && (
+                    {node.balance !== undefined && node.balance !== null && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Balance</span>
                         <BalanceDisplay 
-                          balance={currentNode.balance} 
+                          balance={node.balance} 
                           className="text-sm font-mono"
                         />
                       </div>
                     )}
-                    {currentNode.lastSeen && (
+                    {node.lastSeen && (
                       <div className="flex justify-between">
                         <span className="text-foreground/60">Last Seen</span>
-                        <span className="text-foreground/80 text-xs">{new Date(currentNode.lastSeen).toLocaleString()}</span>
+                        <span className="text-foreground/80 text-xs">{new Date(node.lastSeen).toLocaleString()}</span>
                       </div>
                     )}
                   </div>
@@ -1272,81 +1226,79 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                       </div>
                     )}
 
-                    {/* Packets over time - showing earned amounts per time period */}
+                    {/* Packets over time - showing rates */}
                     {(filteredData.some(d => d.packetsReceived !== undefined) || filteredData.some(d => d.packetsSent !== undefined)) && (() => {
-                      // Determine time period based on selected time range
-                      const getTimePeriod = () => {
-                        switch (timeRange) {
-                          case '30m': return { label: 'per minute', ms: 60 * 1000, period: 'minute' };
-                          case '1h': return { label: 'per minute', ms: 60 * 1000, period: 'minute' };
-                          case '24h': return { label: 'per hour', ms: 60 * 60 * 1000, period: 'hour' };
-                          case '1w': return { label: 'per day', ms: 24 * 60 * 60 * 1000, period: 'day' };
-                          default: return { label: 'per hour', ms: 60 * 60 * 1000, period: 'hour' };
-                        }
-                      };
-                      
-                      const timePeriod = getTimePeriod();
+                      // Calculate rates for each snapshot (5-minute window)
                       const sorted = [...filteredData].sort((a, b) => a.timestamp - b.timestamp);
+                      const FIVE_MINUTES_MS = 5 * 60 * 1000;
                       
-                      const packetEarnedData = sorted.map((current, index) => {
-                        // Find the previous snapshot
-                        let previous = index > 0 ? sorted[index - 1] : null;
+                      const packetRateData = sorted.map((current, index) => {
+                        // Find the snapshot 5 minutes earlier (or previous snapshot if less than 5 minutes)
+                        let previousIndex = index - 1;
+                        let previous = sorted[previousIndex];
                         
-                        // Calculate earned packets if we have a previous snapshot
-                        let rxEarned = 0;
-                        let txEarned = 0;
-                        
-                        if (previous) {
-                          const rxDiff = (current.packetsReceived || 0) - (previous.packetsReceived || 0);
-                          const txDiff = (current.packetsSent || 0) - (previous.packetsSent || 0);
-                          
-                          // Only count positive differences (earned packets)
-                          // Negative values indicate counter reset or error, show as 0
-                          rxEarned = Math.max(0, rxDiff);
-                          txEarned = Math.max(0, txDiff);
+                        // Try to find a snapshot approximately 5 minutes earlier
+                        const targetTime = current.timestamp - FIVE_MINUTES_MS;
+                        for (let i = index - 1; i >= 0; i--) {
+                          if (sorted[i].timestamp <= targetTime) {
+                            previous = sorted[i];
+                            previousIndex = i;
+                            break;
+                          }
                         }
                         
-                        // Calculate total earned (Rx + Tx)
-                        const totalEarned = rxEarned + txEarned;
+                        // Calculate rates if we have a previous snapshot
+                        let rxRate = 0;
+                        let txRate = 0;
+                        
+                        if (previous && previousIndex >= 0) {
+                          const timeDiff = (current.timestamp - previous.timestamp) / 1000; // seconds
+                          if (timeDiff > 0) {
+                            const rxDiff = (current.packetsReceived || 0) - (previous.packetsReceived || 0);
+                            const txDiff = (current.packetsSent || 0) - (previous.packetsSent || 0);
+                            
+                            rxRate = Math.max(0, rxDiff / timeDiff);
+                            txRate = Math.max(0, txDiff / timeDiff);
+                          }
+                        }
+                        
+                        // Calculate total rate (Rx + Tx)
+                        const totalRate = rxRate + txRate;
                         
                         return {
                           timestamp: current.timestamp,
-                          value: totalEarned,
+                          value: totalRate,
                           // Store original values for tooltip
-                          _rxEarned: rxEarned,
-                          _txEarned: txEarned,
+                          _rxRate: rxRate,
+                          _txRate: txRate,
                           _originalReceived: current.packetsReceived,
                           _originalSent: current.packetsSent,
                         };
                       });
                       
-                      // Keep all data points including zeros - only skip first point if we can't calculate (no previous)
-                      const filteredPacketData = packetEarnedData.filter((d, index) => {
-                        // Skip first point only if we have no previous data to compare against
-                        if (index === 0) {
-                          // Keep first point if it has packet data, otherwise skip
-                          return d._originalReceived !== undefined || d._originalSent !== undefined;
+                      // Fix first point: if it's 0, use the next available non-zero rate
+                      if (packetRateData.length > 0 && packetRateData[0].value === 0) {
+                        const firstNonZero = packetRateData.find(d => d.value > 0);
+                        if (firstNonZero) {
+                          packetRateData[0].value = firstNonZero.value;
+                          packetRateData[0]._rxRate = firstNonZero._rxRate;
+                          packetRateData[0]._txRate = firstNonZero._txRate;
                         }
-                        // Keep all other points, including zeros - this ensures the line goes down to 0
-                        return true;
-                      });
+                      }
                       
-                      // Calculate max, but ensure it's at least 1 to show the chart properly
-                      // If all values are 0, we still want to show the chart with a small range
-                      const allValues = filteredPacketData.map(d => d.value || 0);
-                      const maxEarned = allValues.length > 0 && Math.max(...allValues) > 0
-                        ? Math.max(...allValues) * 1.1
-                        : 1;
+                      const maxRate = Math.max(
+                        ...packetRateData.map(d => d.value || 0)
+                      );
                       
                       return (
                         <div className="space-y-4">
                           <HistoricalLineChart
-                            title="Packets Earned Over Time"
-                            data={filteredPacketData}
+                            title="Network Activity"
+                            data={packetRateData}
                             height={250}
-                            yDomain={[0, maxEarned * 1.1 || 1]}
+                            yDomain={[0, maxRate * 1.1 || 1]}
                             strokeColor="#3F8277"
-                            yLabel={`Packets ${timePeriod.label}`}
+                            yLabel="Packets/s"
                             yTickFormatter={(v) => formatNumber(v)}
                             tooltipFormatter={(d) => (
                               <div className="text-xs">
@@ -1354,27 +1306,19 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                                   {new Date(d.timestamp).toLocaleString()}
                                 </div>
                                 <div className="text-foreground/80 space-y-1">
-                                  <div>Earned in this interval: <span className="font-semibold">{formatNumber(d.value || 0)} packets</span></div>
-                                  {d._rxEarned !== undefined && d._rxEarned !== null && (
-                                    <div className="text-foreground/60">Rx: {formatNumber(d._rxEarned)} packets</div>
+                                  <div>Total Rate: <span className="font-semibold">{formatNumber(d.value || 0)}/s</span></div>
+                                  {d._rxRate !== undefined && d._rxRate !== null && (
+                                    <div className="text-foreground/60">Rx: {formatNumber(d._rxRate)}/s</div>
                                   )}
-                                  {d._txEarned !== undefined && d._txEarned !== null && (
-                                    <div className="text-foreground/60">Tx: {formatNumber(d._txEarned)} packets</div>
-                                  )}
-                                  {d._originalReceived !== undefined && d._originalReceived !== null && (
-                                    <div className="text-foreground/50 mt-1 pt-1 border-t border-border/50">
-                                      Cumulative Rx: {d._originalReceived.toLocaleString()}
-                                    </div>
-                                  )}
-                                  {d._originalSent !== undefined && d._originalSent !== null && (
-                                    <div className="text-foreground/50">Cumulative Tx: {d._originalSent.toLocaleString()}</div>
+                                  {d._txRate !== undefined && d._txRate !== null && (
+                                    <div className="text-foreground/60">Tx: {formatNumber(d._txRate)}/s</div>
                                   )}
                                 </div>
                               </div>
                             )}
                             headerContent={
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span>Packets earned {timePeriod.label}</span>
+                                <span>Total packet rate (Rx + Tx) calculated over 5-minute windows</span>
                               </div>
                             }
                           />
@@ -1382,133 +1326,104 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                       );
                     })()}
 
-                    {/* Credits over time - showing earned amounts per time period */}
-                    {(filteredData.some(d => d.credits !== undefined) || (currentNode.credits !== undefined && currentNode.credits !== null)) && (() => {
-                      // Determine time period based on selected time range
-                      const getTimePeriod = () => {
-                        switch (timeRange) {
-                          case '30m': return { label: 'per minute', ms: 60 * 1000, period: 'minute' };
-                          case '1h': return { label: 'per minute', ms: 60 * 1000, period: 'minute' };
-                          case '24h': return { label: 'per hour', ms: 60 * 60 * 1000, period: 'hour' };
-                          case '1w': return { label: 'per day', ms: 24 * 60 * 60 * 1000, period: 'day' };
-                          default: return { label: 'per hour', ms: 60 * 60 * 1000, period: 'hour' };
-                        }
-                      };
-                      
-                      const timePeriod = getTimePeriod();
+                    {/* Credits over time - showing earning rate */}
+                    {(filteredData.some(d => d.credits !== undefined) || (node.credits !== undefined && node.credits !== null)) && (() => {
+                      // Calculate credits earning rate from historical data
                       const sorted = [...filteredData].sort((a, b) => a.timestamp - b.timestamp);
+                      const FIVE_MINUTES_MS = 5 * 60 * 1000;
                       
-                      // Filter to only data points that have credits defined
-                      const creditsDataPoints = sorted.filter(d => 
-                        d.credits !== undefined && d.credits !== null
-                      );
-                      
-                      const creditsEarnedData = creditsDataPoints.map((current, index) => {
-                        // Find the previous snapshot with credits
-                        let previous = null;
+                      const creditsData = sorted.map((current, index) => {
+                        // Find the snapshot 5 minutes earlier (or previous snapshot if less than 5 minutes)
+                        let previousIndex = index - 1;
+                        let previous = sorted[previousIndex];
+                        
+                        // Try to find a snapshot approximately 5 minutes earlier
+                        const targetTime = current.timestamp - FIVE_MINUTES_MS;
                         for (let i = index - 1; i >= 0; i--) {
-                          if (creditsDataPoints[i].credits !== undefined && creditsDataPoints[i].credits !== null) {
-                            previous = creditsDataPoints[i];
+                          if (sorted[i].timestamp <= targetTime) {
+                            previous = sorted[i];
+                            previousIndex = i;
                             break;
                           }
                         }
                         
-                        // Calculate credits change (can be positive or negative)
-                        let creditsChange = 0;
+                        // Calculate earning rate if we have a previous snapshot with credits data
+                        let earningRate = 0;
                         
-                        if (previous && previous.credits !== undefined && previous.credits !== null) {
+                        if (previous && previousIndex >= 0) {
+                          // Both must have credits defined to calculate rate
                           const prevCredits = previous.credits;
                           const currCredits = current.credits;
                           
-                          if (currCredits !== undefined && currCredits !== null) {
-                            const creditsDiff = currCredits - prevCredits;
-                            // Allow negative values - negative means credits were lost (e.g., -100 for failed data request)
-                            // Positive means credits were earned (e.g., +1 per heartbeat)
-                            creditsChange = creditsDiff;
+                          if (prevCredits !== undefined && prevCredits !== null && 
+                              currCredits !== undefined && currCredits !== null) {
+                            const timeDiff = (current.timestamp - previous.timestamp) / 1000; // seconds
+                            if (timeDiff > 0) {
+                              const creditsDiff = currCredits - prevCredits;
+                              earningRate = Math.max(0, creditsDiff / timeDiff); // credits per second
+                            }
                           }
                         }
                         
                         return {
                           timestamp: current.timestamp,
-                          value: creditsChange,
-                          // Store original credits for tooltip (only if defined)
-                          _credits: current.credits !== undefined && current.credits !== null ? current.credits : undefined,
-                          _originalCredits: current.credits !== undefined && current.credits !== null ? current.credits : undefined,
+                          value: earningRate,
+                          // Store original credits for tooltip
+                          _credits: current.credits,
+                          _originalCredits: current.credits,
                         };
                       });
                       
-                      // Keep all data points including zeros - only skip first point if we can't calculate (no previous)
-                      const filteredCreditsData = creditsEarnedData.filter((d, index) => {
-                        // Skip first point only if we have no previous data to compare against
-                        if (index === 0) {
-                          // Keep first point if it has credits value
-                          return d._credits !== undefined && d._credits !== null;
+                      // Fix first point: if it's 0, use the next available non-zero rate
+                      if (creditsData.length > 0 && creditsData[0].value === 0) {
+                        const firstNonZero = creditsData.find(d => d.value > 0);
+                        if (firstNonZero) {
+                          creditsData[0].value = firstNonZero.value;
                         }
-                        // Keep all other points, including zeros - this ensures the line goes down to 0
-                        return true;
-                      });
+                      }
                       
-                      // If we have current credits but no historical data, show current credits
-                      if (filteredCreditsData.length === 0 && currentNode.credits !== undefined && currentNode.credits !== null) {
-                        filteredCreditsData.push({
+                      // If we have current credits but no historical data, estimate rate from uptime
+                      if (creditsData.length === 0 && node.credits !== undefined && node.credits !== null && node.uptime && node.uptime > 0) {
+                        const estimatedRate = node.credits / node.uptime; // credits per second
+                        creditsData.push({
                           timestamp: Date.now(),
-                          value: 0, // Can't calculate earned without previous data
-                          _credits: currentNode.credits,
-                          _originalCredits: currentNode.credits,
+                          value: estimatedRate,
+                          _credits: node.credits,
+                          _originalCredits: node.credits,
                         });
                       }
                       
-                      // Calculate min and max to support negative values (credits lost)
-                      const allCreditsValues = filteredCreditsData.map(d => d.value || 0);
-                      const minValue = allCreditsValues.length > 0 ? Math.min(...allCreditsValues) : 0;
-                      const maxValue = allCreditsValues.length > 0 ? Math.max(...allCreditsValues) : 0;
-                      
-                      // Set yDomain to accommodate both positive and negative values
-                      // Add padding (10% on each side) and ensure we show at least some range
-                      const range = Math.max(Math.abs(minValue), Math.abs(maxValue), 1);
-                      const yDomainMin = minValue < 0 ? minValue * 1.1 - (range * 0.1) : -range * 0.1;
-                      const yDomainMax = maxValue > 0 ? maxValue * 1.1 + (range * 0.1) : range * 0.1;
+                      const maxRate = Math.max(
+                        ...creditsData.map(d => d.value || 0),
+                        1
+                      );
                       
                       return (
                         <div className="space-y-4">
                           <HistoricalLineChart
-                            title="Credits Change Over Time"
-                            data={filteredCreditsData}
+                            title="Credits Earning Rate"
+                            data={creditsData}
                             height={250}
-                            yDomain={[yDomainMin, yDomainMax]}
+                            yDomain={[0, maxRate * 1.1 || 1]}
                             strokeColor="#F0A741"
-                            yLabel={`Credits ${timePeriod.label}`}
-                            yTickFormatter={(v: any) => {
-                              // Show negative sign for negative values
-                              const val = typeof v === 'number' ? v : v.valueOf();
-                              return val < 0 ? `-${formatNumber(Math.abs(val))}` : formatNumber(val);
-                            }}
-                            tooltipFormatter={(d) => {
-                              const change = d.value || 0;
-                              const isNegative = change < 0;
-                              return (
-                                <div className="text-xs">
-                                  <div className="font-semibold text-foreground mb-1">
-                                    {new Date(d.timestamp).toLocaleString()}
-                                  </div>
-                                  <div className="text-foreground/80 space-y-1">
-                                    <div>
-                                      {isNegative ? 'Lost' : 'Earned'} in this interval: <span className={`font-semibold ${isNegative ? 'text-red-400' : 'text-green-400'}`}>
-                                        {isNegative ? '-' : '+'}{formatNumber(Math.abs(change))} credits
-                                      </span>
-                                    </div>
-                                    {d._credits !== undefined && d._credits !== null && typeof d._credits === 'number' && (
-                                      <div className="text-foreground/60 mt-1 pt-1 border-t border-border/50">
-                                        Cumulative Credits: {d._credits.toLocaleString()}
-                                      </div>
-                                    )}
-                                  </div>
+                            yLabel="Credits/s"
+                            yTickFormatter={(v) => formatNumber(v)}
+                            tooltipFormatter={(d) => (
+                              <div className="text-xs">
+                                <div className="font-semibold text-foreground mb-1">
+                                  {new Date(d.timestamp).toLocaleString()}
                                 </div>
-                              );
-                            }}
+                                <div className="text-foreground/80 space-y-1">
+                                  <div>Earning Rate: <span className="font-semibold">{formatNumber(d.value || 0)}/s</span></div>
+                                  {d._credits !== undefined && d._credits !== null && (
+                                    <div className="text-foreground/60">Total Credits: {d._credits.toLocaleString()}</div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                             headerContent={
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span>Credits change {timePeriod.label} (positive = earned, negative = lost)</span>
+                                <span>Credits earning rate calculated over 5-minute windows</span>
                               </div>
                             }
                           />
@@ -1533,11 +1448,11 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
               )}
 
               {/* Stats Unavailable Warning */}
-              {currentNode._statsError && (
+              {node._statsError && (
                 <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
                   <p className="text-yellow-400 font-medium text-sm mb-1">Stats Unavailable</p>
                   <p className="text-xs text-foreground/60">
-                    {currentNode._statsError}
+                    {node._statsError}
                   </p>
                 </div>
               )}
