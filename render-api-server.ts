@@ -48,12 +48,38 @@ const authenticate = (req: express.Request, res: express.Response, next: express
 };
 
 // Health check endpoint (used by external cron jobs to keep service awake)
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-  });
+app.get('/health', async (req, res) => {
+  try {
+    const uptime = process.uptime();
+    const uptimeMinutes = Math.floor(uptime / 60);
+    const uptimeHours = Math.floor(uptimeMinutes / 60);
+    
+    // Quick MongoDB ping to verify connection
+    let dbStatus = 'unknown';
+    try {
+      const { getDb } = await import('./lib/server/mongodb-nodes');
+      const db = await getDb();
+      await db.admin().ping();
+      dbStatus = 'connected';
+    } catch (err) {
+      dbStatus = 'disconnected';
+    }
+    
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      uptime: Math.floor(uptime),
+      uptimeFormatted: `${uptimeHours}h ${uptimeMinutes % 60}m`,
+      database: dbStatus,
+      message: 'Background refresh service running',
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      error: 'Health check failed',
+    });
+  }
 });
 
 /**
