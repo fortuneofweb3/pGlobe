@@ -314,45 +314,25 @@ export async function performRefresh(): Promise<void> {
       console.warn(`[BackgroundRefresh] ⚠️  Failed to fetch pod credits:`, error instanceof Error ? error.message : String(error));
     }
 
-    // STEP 5: Re-enrich nodes with null values - DISABLED FOR PERFORMANCE
-    // We now use get-pods-with-stats which gives us the essential stats upfront
-    // Re-enrichment with latency measurements takes too long (100+ nodes × latency check = minutes)
-    // Nodes from get-pods-with-stats already have: uptime, storage, version
-    const SKIP_RE_ENRICHMENT = true; // Set to false to enable
+    // STEP 5: Enrich ALL nodes with stats (CPU, RAM, packets) via get-stats
+    // CRITICAL: get-pods-with-stats gives us storage/uptime but NOT CPU/RAM/packets
+    // We MUST call get-stats for each node to get complete data
+    // Enrichment is now ALWAYS enabled to ensure complete data
+    const SKIP_RE_ENRICHMENT = false; // ALWAYS enrich for complete data
     
     const nodesNeedingReEnrichment: PNode[] = [];
     
     if (!SKIP_RE_ENRICHMENT) {
-      try {
-        // Check nodes from existingNodesMap for re-enrichment
-        existingNodesMap.forEach((node, key) => {
-          // Check if node needs re-enrichment (has uptime but missing CPU/RAM/packets)
-          const needsEnrichment = (
-            (node.uptime !== undefined && node.uptime !== null && node.uptime > 0) || // Has uptime
-            node.status === 'online' || // Marked as online
-            node.version // Has version (likely active)
-          ) && (
-            node.cpuPercent === null || node.cpuPercent === undefined ||
-            node.ramTotal === null || node.ramTotal === undefined ||
-            node.ramUsed === null || node.ramUsed === undefined ||
-            node.packetsReceived === null || node.packetsReceived === undefined ||
-            node.packetsSent === null || node.packetsSent === undefined ||
-            node.activeStreams === null || node.activeStreams === undefined
-          );
-          
-          if (needsEnrichment && node.address) {
-            nodesNeedingReEnrichment.push(node);
-          }
-        });
-        
-        if (nodesNeedingReEnrichment.length > 0) {
-          console.log(`[BackgroundRefresh] Found ${nodesNeedingReEnrichment.length} nodes with null stats that need re-enrichment...`);
+      // Enrich ALL nodes from current gossip to get complete stats
+      // get-pods-with-stats gives us storage/uptime, but we need get-stats for CPU/RAM/packets
+      nodesWithValidPubkeys.forEach((node) => {
+        // Always enrich nodes from gossip to get fresh CPU/RAM/packets data
+        if (node.address) {
+          nodesNeedingReEnrichment.push(node);
         }
-      } catch (e) {
-        console.warn('[BackgroundRefresh] Could not fetch existing nodes, will use balance data only');
-      }
-    } else {
-      console.log(`[BackgroundRefresh] ✅ Skipping re-enrichment (using stats from get-pods-with-stats)`);
+      });
+      
+      console.log(`[BackgroundRefresh] Enriching ${nodesNeedingReEnrichment.length} nodes with get-stats (CPU, RAM, packets)...`);
     }
     
     // Re-enrich nodes with null values
