@@ -188,13 +188,14 @@ app.post('/api/sync-nodes', authenticate, async (req, res) => {
 /**
  * GET /api/pnodes
  * Returns all nodes from DB (read-only, no pRPC)
+ * ALWAYS responds to client requests, even if DB is unavailable
  */
 app.get('/api/pnodes', authenticate, async (req, res) => {
   try {
     const networkId = req.query.network as string;
     const refresh = req.query.refresh === 'true';
 
-    // If refresh requested, trigger it but return cached data
+    // If refresh requested, trigger it but return cached data (non-blocking)
     if (refresh) {
       performRefresh().catch(err => {
         console.error('[RenderAPI] Background refresh failed:', err);
@@ -202,19 +203,37 @@ app.get('/api/pnodes', authenticate, async (req, res) => {
     }
 
     // Always return from DB (fast)
-    const nodes = await getAllNodes();
-    console.log(`[RenderAPI] Returning ${nodes.length} nodes from DB`);
+    // If DB fails, return empty array with error flag (never hang)
+    let nodes: PNode[] = [];
+    try {
+      nodes = await getAllNodes();
+      console.log(`[RenderAPI] Returning ${nodes.length} nodes from DB`);
+    } catch (dbError: any) {
+      console.error('[RenderAPI] ⚠️  DB read failed, returning empty array:', dbError?.message);
+      // Still respond to client, just with empty data
+      return res.json({
+        nodes: [],
+        count: 0,
+        error: 'Database temporarily unavailable',
+        timestamp: new Date().toISOString(),
+      });
+    }
 
+    // Always respond with data
     res.json({
       nodes,
       count: nodes.length,
       timestamp: new Date().toISOString(),
     });
   } catch (error: any) {
+    // Final safety net - always respond, even on unexpected errors
     console.error('[RenderAPI] ❌ Failed to get nodes:', error);
     res.status(500).json({
       error: 'Failed to fetch nodes',
       message: error?.message || 'Unknown error',
+      nodes: [], // Always include nodes array (empty) so client doesn't break
+      count: 0,
+      timestamp: new Date().toISOString(),
     });
   }
 });
@@ -226,7 +245,17 @@ app.get('/api/pnodes', authenticate, async (req, res) => {
 app.get('/api/nodes/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const node = await getNodeByPubkey(id);
+    let node: PNode | null = null;
+    
+    try {
+      node = await getNodeByPubkey(id);
+    } catch (dbError: any) {
+      console.error('[RenderAPI] ⚠️  DB read failed:', dbError?.message);
+      return res.status(500).json({
+        error: 'Database temporarily unavailable',
+        message: dbError?.message || 'Unknown error',
+      });
+    }
     
     if (!node) {
       return res.status(404).json({ error: 'Node not found' });
@@ -234,6 +263,7 @@ app.get('/api/nodes/:id', authenticate, async (req, res) => {
 
     res.json({ node });
   } catch (error: any) {
+    // Final safety net - always respond
     console.error('[RenderAPI] ❌ Failed to get node:', error);
     res.status(500).json({
       error: 'Failed to fetch node',
@@ -249,7 +279,17 @@ app.get('/api/nodes/:id', authenticate, async (req, res) => {
 app.get('/api/nodes/:id/stats', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const node = await getNodeByPubkey(id);
+    let node: PNode | null = null;
+    
+    try {
+      node = await getNodeByPubkey(id);
+    } catch (dbError: any) {
+      console.error('[RenderAPI] ⚠️  DB read failed:', dbError?.message);
+      return res.status(500).json({
+        error: 'Database temporarily unavailable',
+        message: dbError?.message || 'Unknown error',
+      });
+    }
     
     if (!node) {
       return res.status(404).json({ error: 'Node not found' });
@@ -257,6 +297,7 @@ app.get('/api/nodes/:id/stats', authenticate, async (req, res) => {
 
     res.json({ node });
   } catch (error: any) {
+    // Final safety net - always respond
     console.error('[RenderAPI] ❌ Failed to get node stats:', error);
     res.status(500).json({
       error: 'Failed to fetch node stats',
