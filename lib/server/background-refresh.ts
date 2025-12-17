@@ -13,12 +13,18 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import { PNode } from '../types/pnode';
 
 let refreshInterval: NodeJS.Timeout | null = null;
+let heartbeatInterval: NodeJS.Timeout | null = null;
 let isRunning = false;
 let lastRefreshStart = 0;
+let lastRefreshComplete = 0;
+let consecutiveSkips = 0;
 
 // Maximum time a refresh can take before we force-reset isRunning
-// Should be longer than the interval to allow cycles to complete
-const MAX_REFRESH_TIME_MS = 2 * 60 * 1000; // 2 minutes
+// Increased to 4 minutes to accommodate slow operations
+const MAX_REFRESH_TIME_MS = 4 * 60 * 1000; // 4 minutes
+
+// Maximum consecutive skips before forcing a new refresh
+const MAX_CONSECUTIVE_SKIPS = 3;
 
 /**
  * Perform a single refresh cycle
@@ -28,20 +34,26 @@ export async function performRefresh(): Promise<void> {
   // Check if previous refresh is stuck (taking too long)
   if (isRunning) {
     const timeSinceStart = Date.now() - lastRefreshStart;
-    if (timeSinceStart > MAX_REFRESH_TIME_MS) {
-      console.error(`[BackgroundRefresh] ❌ Previous refresh stuck for ${Math.round(timeSinceStart / 1000)}s, force-resetting...`);
+    consecutiveSkips++;
+    
+    // Force reset after MAX_REFRESH_TIME_MS OR after too many consecutive skips
+    if (timeSinceStart > MAX_REFRESH_TIME_MS || consecutiveSkips >= MAX_CONSECUTIVE_SKIPS) {
+      console.error(`[BackgroundRefresh] ❌ FORCING RESET: Previous refresh stuck for ${Math.round(timeSinceStart / 1000)}s, ${consecutiveSkips} consecutive skips`);
       isRunning = false;
+      consecutiveSkips = 0;
     } else {
-      console.log(`[BackgroundRefresh] ⏳ Previous refresh still running (${Math.round(timeSinceStart / 1000)}s), skipping...`);
+      console.log(`[BackgroundRefresh] ⏳ Previous refresh still running (${Math.round(timeSinceStart / 1000)}s), skip ${consecutiveSkips}/${MAX_CONSECUTIVE_SKIPS}...`);
       return;
     }
   }
 
+  // Reset skip counter when starting a new refresh
+  consecutiveSkips = 0;
   isRunning = true;
   lastRefreshStart = Date.now();
   const startTime = Date.now();
   
-  console.log(`[BackgroundRefresh] 🔄 Refresh cycle started at ${new Date().toISOString()}`);
+  console.log(`[BackgroundRefresh] 🔄 Refresh cycle #${Math.floor((Date.now() - lastRefreshComplete) / 1000)}s since last completion, started at ${new Date().toISOString()}`);
 
   try {
     console.log(`[BackgroundRefresh] Starting refresh...`);
@@ -635,6 +647,7 @@ export async function performRefresh(): Promise<void> {
     } finally {
       // GUARANTEED reset of isRunning flag
       resetIsRunning();
+      lastRefreshComplete = Date.now();
     }
   }
 }
@@ -650,7 +663,8 @@ export function startBackgroundRefresh(): void {
 
   console.log('[BackgroundRefresh] 🚀 Starting background refresh service...');
   console.log('[BackgroundRefresh] Refresh interval: 60 seconds');
-  console.log('[BackgroundRefresh] Max refresh time: 120 seconds');
+  console.log('[BackgroundRefresh] Max refresh time: 240 seconds (4 minutes)');
+  console.log('[BackgroundRefresh] Max consecutive skips: 3 before force-reset');
 
   // Perform initial refresh immediately
   performRefresh().catch(err => {
@@ -658,18 +672,43 @@ export function startBackgroundRefresh(): void {
     // Don't let initial error prevent interval from starting
   });
 
-  // Then set up interval for every 1 minute (60000ms)
-  // With optimizations (skip peer discovery, only fetch balance for new nodes),
-  // each cycle should complete in 1-2 minutes
+  // Set up interval for every 1 minute (60000ms)
+  // Note: Refresh may take 2-3 minutes, so some cycles will be skipped
+  // This is OK - we force-reset after MAX_CONSECUTIVE_SKIPS or MAX_REFRESH_TIME_MS
   refreshInterval = setInterval(() => {
-    console.log('[BackgroundRefresh] ⏰ Interval tick - starting new refresh cycle...');
+    const timeSinceLastComplete = lastRefreshComplete ? Math.floor((Date.now() - lastRefreshComplete) / 1000) : 0;
+    console.log('[BackgroundRefresh] ⏰ Interval tick (${timeSinceLastComplete}s since last completion)...');
     performRefresh().catch(err => {
       console.error('[BackgroundRefresh] ❌ Interval refresh error:', err?.message || err);
-      // Don't let errors stop the interval
+      // Force reset isRunning on error to prevent permanent stuck state
+      isRunning = false;
+      consecutiveSkips = 0;
     });
   }, 60 * 1000); // 1 minute
   
+  // Start heartbeat to keep service alive (every 30 seconds)
+  // This prevents Render from putting the service to sleep
+  heartbeatInterval = setInterval(() => {
+    const uptime = process.uptime();
+    const timeSinceLastComplete = lastRefreshComplete 
+      ? Math.floor((Date.now() - lastRefreshComplete) / 1000) 
+      : 0;
+    console.log(`[BackgroundRefresh] 💓 Heartbeat: Service alive for ${Math.floor(uptime / 60)}min, last refresh ${timeSinceLastComplete}s ago, isRunning=${isRunning}`);
+    
+    // Health check: If no refresh completed in >10 minutes, something is seriously wrong
+    if (lastRefreshComplete && timeSinceLastComplete > 10 * 60) {
+      console.error(`[BackgroundRefresh] ⚠️  WARNING: No successful refresh in ${Math.floor(timeSinceLastComplete / 60)} minutes!`);
+      // Force reset to try to recover
+      if (isRunning) {
+        console.error('[BackgroundRefresh] ⚠️  Forcing isRunning=false to attempt recovery...');
+        isRunning = false;
+        consecutiveSkips = 0;
+      }
+    }
+  }, 30 * 1000); // 30 seconds
+  
   console.log('[BackgroundRefresh] ✅ Background refresh service started successfully');
+  console.log('[BackgroundRefresh] ✅ Heartbeat started (every 30s to keep service alive)');
 }
 
 /**
@@ -680,5 +719,10 @@ export function stopBackgroundRefresh(): void {
     clearInterval(refreshInterval);
     refreshInterval = null;
   }
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+  }
+  console.log('[BackgroundRefresh] 🛑 Background refresh service stopped');
 }
 
