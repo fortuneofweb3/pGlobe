@@ -686,14 +686,31 @@ export function startBackgroundRefresh(): void {
     });
   }, 60 * 1000); // 1 minute
   
-  // Start heartbeat to keep service alive (every 30 seconds)
-  // This prevents Render from putting the service to sleep
-  heartbeatInterval = setInterval(() => {
+  // Start heartbeat to keep service alive (every 45 seconds)
+  // This prevents Render from putting the service to sleep by generating HTTP activity
+  heartbeatInterval = setInterval(async () => {
     const uptime = process.uptime();
     const timeSinceLastComplete = lastRefreshComplete 
       ? Math.floor((Date.now() - lastRefreshComplete) / 1000) 
       : 0;
     console.log(`[BackgroundRefresh] 💓 Heartbeat: Service alive for ${Math.floor(uptime / 60)}min, last refresh ${timeSinceLastComplete}s ago, isRunning=${isRunning}`);
+    
+    // Make a self-ping to generate HTTP activity (keeps Render awake)
+    try {
+      const port = process.env.PORT || 3001;
+      const response = await fetch(`http://localhost:${port}/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000), // 5 second timeout
+      });
+      if (response.ok) {
+        console.log(`[BackgroundRefresh] 💓 Self-ping successful - keeping service awake`);
+      } else {
+        console.warn(`[BackgroundRefresh] ⚠️  Self-ping returned ${response.status}`);
+      }
+    } catch (error: any) {
+      console.warn(`[BackgroundRefresh] ⚠️  Self-ping failed:`, error?.message);
+      // Don't crash on heartbeat errors - just log them
+    }
     
     // Health check: If no refresh completed in >10 minutes, something is seriously wrong
     if (lastRefreshComplete && timeSinceLastComplete > 10 * 60) {
@@ -705,10 +722,10 @@ export function startBackgroundRefresh(): void {
         consecutiveSkips = 0;
       }
     }
-  }, 30 * 1000); // 30 seconds
+  }, 45 * 1000); // 45 seconds (under Render's 60s idle timeout)
   
   console.log('[BackgroundRefresh] ✅ Background refresh service started successfully');
-  console.log('[BackgroundRefresh] ✅ Heartbeat started (every 30s to keep service alive)');
+  console.log('[BackgroundRefresh] ✅ Heartbeat started (every 45s with self-ping to keep Render awake)');
 }
 
 /**
