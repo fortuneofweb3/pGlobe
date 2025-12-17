@@ -278,13 +278,32 @@ export function isValidPubkey(pubkey: string | null | undefined): boolean {
 
 /**
  * Merge two nodes with the same pubkey
- * Preserves all data and tracks IP changes
+ * BACKGROUND REFRESH STRATEGY:
+ * - OVERWRITE all stats (CPU, RAM, packets, storage, uptime, credits, etc.) with fresh gossip data
+ * - PRESERVE balance (refetch for new/null wallets)
+ * - PRESERVE identifiers (pubkey, publicKey, id)
+ * - MERGE IP addresses (track previous addresses)
+ * - MERGE location data (keep existing, update if new location data provided)
  */
 function mergeNodes(existing: PNode, incoming: PNode): PNode {
-  // Start with existing node as base
-  const merged: PNode = { ...existing };
+  // Start with incoming node as base (fresh gossip data takes priority)
+  const merged: PNode = { ...incoming };
   
-  // Track previous address if different
+  // PRESERVE identifiers
+  merged.id = existing.id || incoming.id;
+  merged.pubkey = existing.pubkey || incoming.pubkey;
+  merged.publicKey = existing.publicKey || incoming.publicKey;
+  
+  // PRESERVE balance (refetch for new/null wallets)
+  merged.balance = existing.balance !== undefined && existing.balance !== null 
+    ? existing.balance 
+    : incoming.balance;
+  merged.managerPDA = existing.managerPDA || incoming.managerPDA;
+  merged.accountCreatedAt = existing.accountCreatedAt || incoming.accountCreatedAt;
+  merged.firstSeenSlot = existing.firstSeenSlot || incoming.firstSeenSlot;
+  merged.onChainError = existing.onChainError || incoming.onChainError;
+  
+  // MERGE IP addresses (track previous addresses if changed)
   if (existing.address && incoming.address && existing.address !== incoming.address) {
     const previousAddresses = existing.previousAddresses || [];
     if (!previousAddresses.includes(existing.address)) {
@@ -292,18 +311,25 @@ function mergeNodes(existing: PNode, incoming: PNode): PNode {
     } else {
       merged.previousAddresses = previousAddresses;
     }
+  } else {
+    merged.previousAddresses = existing.previousAddresses;
   }
-  
-  // Update address to incoming (current from gossip)
+  // Address comes from incoming (fresh gossip)
   merged.address = incoming.address;
   
-  // Merge all fields - prefer incoming (newer) values, but keep existing if incoming is undefined
-  for (const key in incoming) {
-    if (incoming[key] !== undefined && incoming[key] !== null) {
-      merged[key] = incoming[key];
-    }
-    // If incoming doesn't have it but exists in merged, keep merged value (already set from existing)
+  // MERGE location data (keep existing if no new location, otherwise use new)
+  if (incoming.locationData) {
+    // New location data provided - use it
+    merged.locationData = incoming.locationData;
+    merged.location = incoming.location;
+  } else if (existing.locationData) {
+    // No new location, preserve existing
+    merged.locationData = existing.locationData;
+    merged.location = existing.location;
   }
+  
+  // All other fields (stats, credits, storage, CPU, RAM, packets, uptime, etc.) 
+  // come from incoming (fresh gossip data) - already set by { ...incoming }
   
   // Always mark as seen in gossip (it's in current response)
   merged.seenInGossip = true;
@@ -486,8 +512,14 @@ export async function upsertNode(node: PNode): Promise<void> {
       updatedAt: now,
     };
     
+    // Always overwrite storage fields from gossip (even if undefined/null)
+    // This ensures old file_size-based values are replaced with storage_used from get-pods-with-stats
+    const storageFields = ['storageUsed', 'storageCapacity', 'storageCommitted'];
+    
     for (const [key, value] of Object.entries(docWithoutTimestamps)) {
-      if (value !== undefined && value !== null) {
+      if (storageFields.includes(key) && key in docWithoutTimestamps) {
+        setFields[key] = value; // Always set storage fields, even if undefined
+      } else if (value !== undefined && value !== null) {
         setFields[key] = value;
       }
     }
@@ -687,23 +719,45 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
       const doc = nodeToDocument(node);
       const { _id, createdAt, updatedAt, ...docWithoutTimestamps } = doc;
       
-      // Remove undefined values - but preserve existing stats if new data doesn't have them
-      const docToUpdate = Object.fromEntries(
-        Object.entries(docWithoutTimestamps).filter(([_, value]) => value !== undefined)
-      );
+      // BACKGROUND REFRESH STRATEGY: Overwrite ALL stats, only preserve balance/identifiers
+      // Fields to ALWAYS overwrite (even if undefined/null): All stats from gossip
+      // Fields to PRESERVE if new value is undefined: balance, identifiers, on-chain data
+      const statsFieldsToAlwaysOverwrite = [
+        // From get-pods-with-stats
+        'storageUsed', 'storageCapacity', 'storageCommitted', 'storageUsagePercent',
+        'uptime', 'totalPages', 'dataOperationsHandled', 'isPublic', 'rpcPort', 'peerCount', 'peers',
+        // From get-stats enrichment
+        'cpuPercent', 'ramUsed', 'ramTotal', 'packetsReceived', 'packetsSent', 'activeStreams',
+        // From credits API
+        'credits', 'creditsResetMonth',
+        // From gossip
+        'version', 'status', 'lastSeen',
+      ];
       
-      // Build update with $set for new/updated fields and $setOnInsert for new documents
-      // IMPORTANT: Don't overwrite existing stats fields if they're undefined in new data
-      // Use $set only for fields that are actually defined
+      const fieldsToPreserveIfUndefined = [
+        'balance', 'managerPDA', 'accountCreatedAt', 'firstSeenSlot', 'onChainError',
+        'pubkey', 'publicKey', 'id',
+      ];
+      
       const setFields: any = {
         updatedAt: now,
       };
       
-      // Only set fields that have actual values (not undefined)
-      // This preserves existing stats when enrichment fails
-      for (const [key, value] of Object.entries(docToUpdate)) {
-        if (value !== undefined && value !== null) {
+      // Build setFields: always overwrite stats, preserve balance/identifiers if undefined
+      for (const [key, value] of Object.entries(docWithoutTimestamps)) {
+        if (statsFieldsToAlwaysOverwrite.includes(key)) {
+          // Always overwrite stats fields (even if undefined/null) - replaces old DB values
           setFields[key] = value;
+        } else if (fieldsToPreserveIfUndefined.includes(key)) {
+          // Only set if value is defined, otherwise preserve existing DB value
+          if (value !== undefined && value !== null) {
+            setFields[key] = value;
+          }
+        } else {
+          // Other fields (location, address, etc.) - set if defined
+          if (value !== undefined && value !== null) {
+            setFields[key] = value;
+          }
         }
       }
       
