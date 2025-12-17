@@ -90,12 +90,25 @@ app.post('/api/refresh-nodes', authenticate, async (req, res) => {
   try {
     console.log('[RenderAPI] Refresh request received');
     
-    // Check if background refresh is already running
+    // Always respond to client requests
+    // If refresh is already running, return status immediately
     if (isRefreshRunning()) {
-      console.log('[RenderAPI] ⏳ Background refresh already in progress, skipping manual trigger');
+      console.log('[RenderAPI] ⏳ Background refresh already in progress');
+      
+      // Get current DB count while refresh is running
+      let totalInDb = null;
+      try {
+        const nodes = await getAllNodes();
+        totalInDb = nodes.length;
+      } catch (err) {
+        console.warn('[RenderAPI] Could not read back from DB:', err);
+      }
+      
       return res.json({
         success: true,
         message: 'Background refresh already in progress',
+        inProgress: true,
+        totalInDb,
         timestamp: new Date().toISOString(),
       });
     }
@@ -116,6 +129,7 @@ app.post('/api/refresh-nodes', authenticate, async (req, res) => {
     res.json({
       success: true,
       message: 'Background refresh completed',
+      inProgress: false,
       totalInDb,
       timestamp: new Date().toISOString(),
     });
