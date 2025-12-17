@@ -597,9 +597,9 @@ async function fetchPodsWithStatsFromEndpoint(endpoint: string): Promise<PNode[]
       lastSeen: lastSeen,
       // Stats from get-pods-with-stats (v0.7.0+)
       uptime: pod.uptime ?? pod.uptime_seconds ?? undefined,
-      storageUsed: storageUsed,
-      storageCommitted: storageCommitted,
-      storageCapacity: storageCommitted ?? pod.storage_capacity ?? pod.storageCapacity ?? undefined, // Use storage_committed as capacity, fallback to storage_capacity
+      storageUsed: storageUsed, // Actual used storage from get-pods-with-stats
+      storageCommitted: storageCommitted, // TOTAL CAPACITY allocated/reserved for this node
+      storageCapacity: storageCommitted ?? pod.storage_capacity ?? pod.storageCapacity ?? undefined, // storage_committed = total capacity
       storageUsagePercent: pod.storage_usage_percent ?? pod.storageUsagePercent ?? undefined,
       totalPages: pod.total_pages ?? pod.totalPages ?? undefined,
       dataOperationsHandled: pod.data_operations_handled ?? pod.dataOperationsHandled ?? undefined,
@@ -1027,13 +1027,20 @@ export async function fetchNodeStats(node: PNode): Promise<PNode> {
       packetsReceived: stats.packets_received ?? undefined,
       packetsSent: stats.packets_sent ?? undefined,
       activeStreams: stats.active_streams ?? undefined,
-      // Storage: get-stats provides file_size (actual used storage)
-      // get-pods-with-stats provides storage_committed (capacity) and storage_used (may be wrong/0)
-      // ALWAYS use file_size from get-stats if available (more accurate)
-      // ALWAYS preserve storageCapacity/storageCommitted from get-pods-with-stats (get-stats doesn't provide capacity)
-      storageUsed: fileSize !== undefined && fileSize !== null ? fileSize : enrichedNode.storageUsed,
-      storageCapacity: enrichedNode.storageCapacity || enrichedNode.storageCommitted || undefined, // Use committed as capacity if available
-      storageCommitted: enrichedNode.storageCommitted, // Preserve committed value
+      // Storage:
+      // - get-pods-with-stats provides:
+      //   * storage_committed = TOTAL CAPACITY (allocated/reserved storage for the node)
+      //   * storage_used = actual used storage (use this for storageUsed)
+      // - get-stats provides:
+      //   * file_size = same as storage_committed (total capacity, NOT used storage)
+      // 
+      // Therefore:
+      // - storageUsed = storage_used from get-pods-with-stats (actual used storage)
+      // - storageCapacity = storage_committed from get-pods-with-stats (total capacity)
+      // - DO NOT use file_size from get-stats (it's capacity, not used)
+      storageUsed: enrichedNode.storageUsed, // Use storage_used from get-pods-with-stats, don't override with file_size
+      storageCapacity: enrichedNode.storageCapacity || enrichedNode.storageCommitted || undefined, // storage_committed is the total capacity
+      storageCommitted: enrichedNode.storageCommitted, // Total capacity allocated/reserved for this node
       totalPages: stats.total_pages ?? undefined,
       // Data operations
       dataOperationsHandled: stats.data_operations_handled ?? undefined,
@@ -1409,11 +1416,14 @@ async function enrichFromKnownPublicEndpoints(nodesMap: Map<string, PNode>): Pro
         cpuPercent: stats.cpu_percent ?? undefined,
         ramUsed: stats.ram_used ?? undefined,
         ramTotal: stats.ram_total ?? undefined,
-        // Storage: get-stats provides file_size (actual used storage)
-        // ALWAYS preserve storageCapacity/storageCommitted from get-pods-with-stats (get-stats doesn't provide capacity)
-        storageUsed: fileSize !== undefined && fileSize !== null ? fileSize : existingNode?.storageUsed,
-        storageCapacity: existingNode?.storageCapacity || existingNode?.storageCommitted || undefined, // Use committed as capacity if available
-        storageCommitted: existingNode?.storageCommitted, // Preserve committed value
+        // Storage:
+        // - storage_used from get-pods-with-stats = actual used storage (use this)
+        // - storage_committed from get-pods-with-stats = total capacity
+        // - file_size from get-stats = same as storage_committed (total capacity, NOT used storage)
+        // DO NOT use file_size for storageUsed - it's capacity, not used!
+        storageUsed: existingNode?.storageUsed, // Use storage_used from get-pods-with-stats, don't override with file_size
+        storageCapacity: existingNode?.storageCapacity || existingNode?.storageCommitted || undefined, // storage_committed = total capacity
+        storageCommitted: existingNode?.storageCommitted, // Total capacity allocated/reserved for this node
         // Network metrics - include ALL fields, even if 0
         packetsReceived: stats.packets_received ?? undefined,
         packetsSent: stats.packets_sent ?? undefined,
