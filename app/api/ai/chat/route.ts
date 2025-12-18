@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+export const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 
 if (!DEEPSEEK_API_KEY) {
   console.warn('[AI Chat] DEEPSEEK_API_KEY not found in environment variables');
@@ -9,7 +9,7 @@ if (!DEEPSEEK_API_KEY) {
 }
 
 // Define tools/functions the AI can call (OpenAI format)
-const tools = [
+export const tools = [
   {
     type: 'function' as const,
     function: {
@@ -203,7 +203,7 @@ const tools = [
 ];
 
 // Continent to country code mapping
-const continentCountries: Record<string, string[]> = {
+export const continentCountries: Record<string, string[]> = {
   africa: ['DZ', 'AO', 'BJ', 'BW', 'BF', 'BI', 'CM', 'CV', 'CF', 'TD', 'KM', 'CG', 'CD', 'CI', 'DJ', 'EG', 'GQ', 'ER', 'ET', 'GA', 'GM', 'GH', 'GN', 'GW', 'KE', 'LS', 'LR', 'LY', 'MG', 'MW', 'ML', 'MR', 'MU', 'MA', 'MZ', 'NA', 'NE', 'NG', 'RW', 'ST', 'SN', 'SC', 'SL', 'SO', 'ZA', 'SS', 'SD', 'SZ', 'TZ', 'TG', 'TN', 'UG', 'ZM', 'ZW'],
   europe: ['AL', 'AD', 'AT', 'BY', 'BE', 'BA', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IS', 'IE', 'IT', 'XK', 'LV', 'LI', 'LT', 'LU', 'MT', 'MD', 'MC', 'ME', 'NL', 'MK', 'NO', 'PL', 'PT', 'RO', 'RU', 'SM', 'RS', 'SK', 'SI', 'ES', 'SE', 'CH', 'UA', 'GB', 'VA'],
   asia: ['AF', 'AM', 'AZ', 'BH', 'BD', 'BT', 'BN', 'KH', 'CN', 'GE', 'IN', 'ID', 'IR', 'IQ', 'IL', 'JP', 'JO', 'KZ', 'KW', 'KG', 'LA', 'LB', 'MY', 'MV', 'MN', 'MM', 'NP', 'KP', 'OM', 'PK', 'PS', 'PH', 'QA', 'SA', 'SG', 'KR', 'LK', 'SY', 'TW', 'TJ', 'TH', 'TL', 'TR', 'TM', 'AE', 'UZ', 'VN', 'YE'],
@@ -213,7 +213,7 @@ const continentCountries: Record<string, string[]> = {
 };
 
 // Execute a function call
-async function executeFunction(
+export async function executeFunction(
   name: string, 
   args: any, 
   baseUrl: string, 
@@ -431,6 +431,7 @@ async function executeFunction(
       
       case 'find_closest_nodes': {
         let lat: number, lon: number;
+        let userCountryCode: string | null = null;
         
         // Get location from IP or use provided coordinates
         if (args.ip) {
@@ -444,9 +445,22 @@ async function executeFunction(
           }
           lat = geoData.lat;
           lon = geoData.lon;
+          userCountryCode = geoData.countryCode || null;
         } else if (args.lat !== undefined && args.lon !== undefined) {
           lat = args.lat;
           lon = args.lon;
+          // If clientIp is provided, try to get country from it
+          if (clientIp) {
+            try {
+              const geoResponse = await fetch(`${baseUrl}/api/geo?ip=${encodeURIComponent(clientIp)}`);
+              if (geoResponse.ok) {
+                const geoData = await geoResponse.json();
+                userCountryCode = geoData.countryCode || null;
+              }
+            } catch (e) {
+              // Ignore errors, just continue without country code
+            }
+          }
         } else {
           return { error: 'Either ip or lat/lon must be provided' };
         }
@@ -508,6 +522,9 @@ async function executeFunction(
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             const distanceKm = R * c;
             
+            const nodeCountry = (node.locationData?.countryCode || node.locationData?.country || 'Unknown').toUpperCase();
+            const isSameCountry = userCountryCode && nodeCountry === userCountryCode.toUpperCase();
+            
             // Format node details for AI response
             return {
               pubkey: node.pubkey || node.publicKey || node.id,
@@ -520,19 +537,26 @@ async function executeFunction(
               storageBytes: node.storageCapacity || 0,
               cpuPercent: node.cpuPercent,
               ramPercent: node.ramTotal ? ((node.ramUsed || 0) / node.ramTotal * 100) : null,
-              country: node.locationData?.countryCode || node.locationData?.country || 'Unknown',
+              country: nodeCountry,
               city: node.locationData?.city || '',
               distanceKm, // No rounding to match scan page exactly
-              distanceMi: distanceKm * 0.621371 // Convert to miles (same as scan page)
+              distanceMi: distanceKm * 0.621371, // Convert to miles (same as scan page)
+              isSameCountry // Flag to help AI prioritize
             };
           })
-          .sort((a: any, b: any) => (a.distanceKm || Infinity) - (b.distanceKm || Infinity))
+          .sort((a: any, b: any) => {
+            // Prioritize same-country nodes, then sort by distance
+            if (a.isSameCountry && !b.isSameCountry) return -1;
+            if (!a.isSameCountry && b.isSameCountry) return 1;
+            return (a.distanceKm || Infinity) - (b.distanceKm || Infinity);
+          })
           .slice(0, args.limit || 20);
         
         return {
-          location: { lat, lon },
+          location: { lat, lon, countryCode: userCountryCode },
           count: nodesWithDistance.length,
-          nodes: nodesWithDistance
+          nodes: nodesWithDistance,
+          sameCountryNodes: nodesWithDistance.filter((n: any) => n.isSameCountry).length
         };
       }
       
@@ -720,7 +744,7 @@ async function executeFunction(
   }
 }
 
-function formatNodesResult(nodes: any[], functionName: string): any {
+export function formatNodesResult(nodes: any[], functionName: string): any {
   const formatted = nodes.slice(0, 100).map((n: any) => ({
     pubkey: n.p || n.pubkey,
     address: n.a || n.address,
@@ -742,7 +766,7 @@ function formatNodesResult(nodes: any[], functionName: string): any {
   };
 }
 
-function formatNodeDetails(node: any): any {
+export function formatNodeDetails(node: any): any {
   return {
     pubkey: node.p || node.pubkey,
     address: node.a || node.address,
@@ -760,7 +784,7 @@ function formatNodeDetails(node: any): any {
 }
 
 // System prompt
-const systemPrompt = `You are an AI assistant for pGlobe, a real-time visualization platform for Xandeum's decentralized pNode network.
+export const systemPrompt = `You are an AI assistant for pGlobe, a real-time visualization platform for Xandeum's decentralized pNode network.
 
 KNOWLEDGE BASE:
 
@@ -845,7 +869,10 @@ QUERY INTERPRETATION:
 
 RESPONSE GUIDELINES:
 - Be direct and concise - answer questions immediately
-- Use plain text only - NO markdown formatting (no **, no *, no #, no bullet points with -)
+- Use plain text only - ABSOLUTELY NO markdown formatting whatsoever
+- NEVER use ** for bold, * for italic, # for headers, - for bullets, or any other markdown syntax
+- Write in plain, natural language without any formatting symbols
+- If listing items, use simple numbered lists like "1. Item" or just separate with line breaks
 - When listing pNodes, format them readably:
   "Address: 192.168.1.1:9001
    Pubkey: [full pubkey]
@@ -862,7 +889,7 @@ RESPONSE GUIDELINES:
 - If asked about something not related to pGlobe, politely redirect`;
 
 // Helper function to call any OpenAI-compatible API
-async function callOpenAICompatible(
+export async function callOpenAICompatible(
   apiUrl: string,
   apiKey: string,
   model: string,
@@ -926,7 +953,7 @@ async function callOpenAICompatible(
 }
 
 // Process response and handle tool calls
-async function processResponse(
+export async function processResponse(
   data: any,
   messages: any[],
   baseUrl: string,
@@ -1020,7 +1047,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { message, conversationHistory, clientIp } = await request.json();
+    const { message, conversationHistory, clientIp, onStatusUpdate } = await request.json();
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
@@ -1108,10 +1135,10 @@ export async function POST(request: Request) {
 
       const data = await response.json();
       
-      // Status update callback (for future use with streaming)
-      const statusCallback = (status: string) => {
+      // Status update callback - use provided callback or default to console log
+      const statusCallback = onStatusUpdate || ((status: string) => {
         console.log(`[AI Chat] Status: ${status}`);
-      };
+      });
       
       const result = await processResponse(data, messages, baseUrl, 'DeepSeek', clientIp, statusCallback, allExecutedFunctions);
       
@@ -1134,9 +1161,18 @@ export async function POST(request: Request) {
       );
     }
 
+    // Strip markdown formatting from the response
+    const cleanResponse = finalResponse
+      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold **text**
+      .replace(/\*(.*?)\*/g, '$1') // Remove italic *text*
+      .replace(/#{1,6}\s+/g, '') // Remove headers # ## ###
+      .replace(/^-\s+/gm, '') // Remove bullet points at start of lines
+      .replace(/^\d+\.\s+/gm, '') // Remove numbered lists
+      .trim();
+
     // Return the response with executed functions for streaming status updates
     return NextResponse.json({ 
-      message: finalResponse,
+      message: cleanResponse,
       executedFunctions: allExecutedFunctions,
       iterations: iteration
     });

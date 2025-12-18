@@ -5,11 +5,13 @@
  */
 
 import { NextRequest } from 'next/server';
-
-// Import the chat route's processing functions
-// We'll call the chat endpoint but monitor its execution via logs and send updates
-
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+import {
+  DEEPSEEK_API_KEY,
+  tools,
+  systemPrompt,
+  callOpenAICompatible,
+  processResponse,
+} from '../chat/route';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -25,6 +27,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!DEEPSEEK_API_KEY) {
+    console.error('[AI Chat Stream] DEEPSEEK_API_KEY not found');
     return new Response(
       JSON.stringify({ error: 'AI service not configured' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
@@ -61,12 +64,24 @@ export async function GET(request: NextRequest) {
       const sendMessage = (message: string) => {
         if (!isClosed) {
           try {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ message })}\n\n`));
-            controller.close();
-            isClosed = true;
+            // Strip markdown formatting from the message
+            let cleanMessage = message
+              .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold **text**
+              .replace(/\*(.*?)\*/g, '$1') // Remove italic *text*
+              .replace(/#{1,6}\s+/g, '') // Remove headers # ## ###
+              .replace(/^-\s+/gm, '') // Remove bullet points at start of lines
+              .replace(/^\d+\.\s+/gm, '') // Remove numbered lists
+              .trim();
+            
+            const messageData = `data: ${JSON.stringify({ message: cleanMessage })}\n\n`;
+            controller.enqueue(encoder.encode(messageData));
+            console.log('[AI Chat Stream] Message enqueued, length:', cleanMessage.length);
           } catch (e) {
+            console.error('[AI Chat Stream] Error sending message:', e);
             isClosed = true;
           }
+        } else {
+          console.error('[AI Chat Stream] Attempted to send message but stream is already closed');
         }
       };
 
@@ -83,132 +98,183 @@ export async function GET(request: NextRequest) {
       };
 
       try {
+        console.log('[AI Chat Stream] Starting request processing');
+        console.log('[AI Chat Stream] Message:', message);
+        console.log('[AI Chat Stream] Client IP:', clientIp);
+        
         // Send initial status
         sendStatus('Thinking...');
 
-        // Function status mapping
-        const functionStatusMap: Record<string, string> = {
-          'get_user_location': 'Getting your location...',
-          'get_location_for_ip': 'Looking up IP location...',
-          'find_closest_nodes': 'Finding nearest nodes...',
-          'filter_nodes': 'Filtering nodes...',
-          'get_node_details': 'Fetching node details...',
-          'get_network_stats': 'Calculating network statistics...',
-          'get_credits_change': 'Checking credit changes...',
-          'get_node_history': 'Fetching historical data...',
-          'compare_nodes': 'Comparing nodes...',
-          'compare_countries': 'Comparing countries...',
-        };
+        // Build messages array
+        const messages: any[] = [
+          { role: 'system', content: systemPrompt }
+        ];
 
-        // Monitor console logs to detect function execution
-        // This is a workaround - in a perfect world we'd have direct access to the execution
-        let lastFunctionSeen = '';
-        let statusUpdateInterval: NodeJS.Timeout | null = null;
-        
-        // Poll for status updates by checking if we're still processing
-        // We'll show status based on common patterns and update when we detect function execution
-        const checkStatus = () => {
-          // This will be updated based on actual execution
-        };
+        // Add conversation history
+        if (conversationHistory && Array.isArray(conversationHistory)) {
+          conversationHistory.forEach((msg: { role: string; content: string }) => {
+            if (msg.role === 'user' || msg.role === 'assistant') {
+              messages.push({
+                role: msg.role,
+                content: msg.content
+              });
+            }
+          });
+        }
 
-        // Call the main chat endpoint
-        const chatPromise = fetch(`${baseUrl}/api/ai/chat`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            message, 
-            conversationHistory, 
-            clientIp
-          }),
-          signal: AbortSignal.timeout(120000), // 120 second timeout
-        });
+        // Add current message
+        messages.push({ role: 'user', content: message });
 
-        // Show status updates while processing
-        // We'll update based on common query patterns and show progress
-        const messageLower = message.toLowerCase();
-        let statusStep = 0;
+        // Use DeepSeek chat model first (faster), fall back to reasoner if needed
+        // Reasoner is slower but better for complex reasoning - use chat for speed
+        const models = ['deepseek-chat', 'deepseek-reasoner'];
+        let maxIterations = 5;
+        let iteration = 0;
+        let finalResponse = '';
+        const allExecutedFunctions: string[] = [];
         
-        // Determine likely functions based on query
-        const likelyFunctions: string[] = [];
-        if (messageLower.includes('nearest') || messageLower.includes('closest') || messageLower.includes('near me') || messageLower.includes('best node')) {
-          likelyFunctions.push('get_user_location', 'find_closest_nodes');
-        }
-        if (messageLower.includes('nigeria') || messageLower.includes('country') || messageLower.includes('africa') || messageLower.includes('europe')) {
-          likelyFunctions.push('filter_nodes');
-        }
-        if (messageLower.includes('compare')) {
-          likelyFunctions.push('compare_nodes', 'compare_countries');
-        }
-        if (messageLower.includes('credit') && (messageLower.includes('earn') || messageLower.includes('hour'))) {
-          likelyFunctions.push('get_credits_change');
-        }
-        
-        // Show initial status
-        if (likelyFunctions.length > 0 && functionStatusMap[likelyFunctions[0]]) {
-          sendStatus(functionStatusMap[likelyFunctions[0]]);
-        } else {
-          sendStatus('Processing your request...');
-        }
-        
-        // Update status periodically to show we're still working
-        const statusInterval = setInterval(() => {
-          if (isClosed) {
-            clearInterval(statusInterval);
+        while (iteration < maxIterations) {
+          iteration++;
+          console.log(`[DeepSeek] Iteration ${iteration}, messages: ${messages.length}`);
+
+          let response: Response | null = null;
+          let lastError: any = null;
+
+          // Try each model with tools and system prompt
+          for (const model of models) {
+            try {
+              console.log(`[DeepSeek] Trying model: ${model}`);
+              
+              const result = await callOpenAICompatible(
+                'https://api.deepseek.com/v1/chat/completions',
+                DEEPSEEK_API_KEY!,
+                model,
+                messages,
+                'DeepSeek',
+                true // with tools
+              );
+              
+              if (result.success && result.response) {
+                response = result.response;
+                console.log(`[DeepSeek] Success with model: ${model}`);
+                break;
+              } else {
+                lastError = result.error;
+                console.error(`[DeepSeek] Model ${model} failed:`, JSON.stringify(result.error, null, 2));
+              }
+            } catch (error: any) {
+              console.error(`[DeepSeek] Model ${model} exception:`, error?.message, error?.stack);
+              lastError = error;
+            }
+          }
+
+          if (!response) {
+            const errorDetails = lastError?.data || lastError?.message || JSON.stringify(lastError);
+            console.error('[DeepSeek] All models failed. Last error:', errorDetails);
+            sendError('Failed to get AI response from DeepSeek');
             return;
           }
-          statusStep++;
-          if (statusStep < likelyFunctions.length && functionStatusMap[likelyFunctions[statusStep]]) {
-            sendStatus(functionStatusMap[likelyFunctions[statusStep]]);
-          } else if (statusStep >= likelyFunctions.length) {
-            sendStatus('Analyzing data...');
+
+          let data: any;
+          try {
+            data = await response.json();
+            console.log('[AI Chat Stream] Response data structure:', {
+              hasChoices: !!data.choices,
+              choicesLength: data.choices?.length,
+              firstChoice: data.choices?.[0] ? {
+                hasMessage: !!data.choices[0].message,
+                hasToolCalls: !!data.choices[0].message?.tool_calls,
+                hasContent: !!data.choices[0].message?.content,
+                toolCallsLength: data.choices[0].message?.tool_calls?.length
+              } : null
+            });
+          } catch (parseError: any) {
+            console.error('[AI Chat Stream] Failed to parse response:', parseError);
+            sendError('Failed to parse AI response');
+            return;
           }
-        }, 3000); // Update every 3 seconds
-
-        const regularResponse = await chatPromise;
-
-        // Clear intervals
-        clearInterval(statusInterval);
-
-        if (!regularResponse.ok) {
-          const errorData = await regularResponse.json().catch(() => ({}));
-          sendError(errorData.error || 'Failed to get AI response');
-          return;
-        }
-
-        const data = await regularResponse.json();
-        
-        // Log function execution info
-        if (data.executedFunctions && data.executedFunctions.length > 0) {
-          console.log('[AI Chat Stream] Functions executed:', data.executedFunctions);
-          console.log('[AI Chat Stream] Iterations:', data.iterations);
           
-          // Show what functions were executed (for user feedback)
-          // Since we can't get real-time updates, at least show what happened
-          const lastFunction = data.executedFunctions[data.executedFunctions.length - 1];
-          if (lastFunction && functionStatusMap[lastFunction]) {
-            sendStatus(functionStatusMap[lastFunction]);
-            await new Promise(resolve => setTimeout(resolve, 500));
+          // Status update callback that sends SSE updates
+          const statusCallback = (status: string) => {
+            if (!isClosed) {
+              console.log('[AI Chat Stream] Status update:', status);
+              sendStatus(status);
+            }
+          };
+          
+          let result;
+          try {
+            result = await processResponse(data, messages, baseUrl, 'DeepSeek', clientIp || undefined, statusCallback, allExecutedFunctions);
+            console.log('[AI Chat Stream] ProcessResponse result:', {
+              hasToolCalls: result.hasToolCalls,
+              hasFinalResponse: !!result.finalResponse,
+              finalResponseLength: result.finalResponse?.length,
+              executedFunctions: result.executedFunctions
+            });
+          } catch (processError: any) {
+            console.error('[AI Chat Stream] Error in processResponse:', processError?.message);
+            console.error('[AI Chat Stream] Error stack:', processError?.stack);
+            sendError(`Processing error: ${processError?.message || 'Unknown error'}`);
+            return;
           }
+          
+          if (result.hasToolCalls) {
+            console.log('[AI Chat Stream] Has tool calls, continuing loop');
+            messages.length = 0; // Clear array
+            messages.push(...result.updatedMessages);
+            continue; // Continue loop with updated messages
+          }
+          
+          if (result.finalResponse) {
+            console.log('[AI Chat Stream] Got final response, breaking loop');
+            finalResponse = result.finalResponse;
+            break; // Success!
+          }
+          
+          console.warn('[AI Chat Stream] No tool calls and no final response, continuing loop');
         }
-        
-        if (!data.message) {
-          sendError('Invalid response from AI');
+
+        if (!finalResponse) {
+          console.error('[AI Chat Stream] No final response after', iteration, 'iterations');
+          console.error('[AI Chat Stream] Executed functions:', allExecutedFunctions);
+          sendError('AI did not produce a response after multiple attempts');
           return;
         }
 
+        console.log('[AI Chat Stream] Got final response, length:', finalResponse.length);
+        
         // Send final status
         sendStatus('Generating response...');
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-        // Send the final message
-        sendMessage(data.message);
+        
+        // Send the final message immediately
+        console.log('[AI Chat Stream] Sending final message');
+        sendMessage(finalResponse);
+        
+        // Mark as closed and close the controller after a brief delay to ensure message is sent
+        isClosed = true;
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Close the controller (only if not already closed)
+        try {
+          controller.close();
+          console.log('[AI Chat Stream] Stream closed successfully');
+        } catch (e: any) {
+          // Ignore if already closed
+          if (e?.code !== 'ERR_INVALID_STATE') {
+            console.log('[AI Chat Stream] Error closing stream:', e);
+          }
+        }
         
       } catch (error: any) {
-        console.error('[AI Chat Stream] Error:', error);
-        if (error.name === 'AbortError' || error.name === 'TimeoutError') {
-          sendError('Request timed out. Please try again.');
-        } else {
-          sendError(error?.message || 'Failed to process request');
+        console.error('[AI Chat Stream] Unhandled error:', error);
+        console.error('[AI Chat Stream] Error stack:', error?.stack);
+        console.error('[AI Chat Stream] Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        if (!isClosed) {
+          if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+            sendError('Request timed out. Please try again.');
+          } else {
+            sendError(error?.message || 'Failed to process request');
+          }
         }
       }
     },

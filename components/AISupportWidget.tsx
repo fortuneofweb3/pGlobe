@@ -251,18 +251,30 @@ export default function AISupportWidget() {
       // Wait for final message
       await new Promise<void>((resolve) => {
         const checkInterval = setInterval(() => {
-          if (hasReceivedMessage || eventSource.readyState === EventSource.CLOSED) {
+          // Check if we have the message or if stream is closed
+          if (hasReceivedMessage) {
+            clearInterval(checkInterval);
+            eventSource.close();
+            resolve();
+          } else if (eventSource.readyState === EventSource.CLOSED) {
+            // Stream closed but we might have missed the message
+            // Check if finalMessage was set (might have been received before hasReceivedMessage flag)
+            if (finalMessage) {
+              hasReceivedMessage = true;
+            }
             clearInterval(checkInterval);
             resolve();
           }
-        }, 100);
+        }, 50); // Check more frequently
 
-        // Timeout after 60 seconds
+        // Timeout after 120 seconds (increased for reasoning model)
         setTimeout(() => {
           clearInterval(checkInterval);
-          eventSource.close();
+          if (eventSource.readyState !== EventSource.CLOSED) {
+            eventSource.close();
+          }
           resolve();
-        }, 60000);
+        }, 120000);
       });
 
       if (finalMessage) {
