@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const message = searchParams.get('message');
   const historyParam = searchParams.get('history');
+  const clientIp = searchParams.get('clientIp');
 
   if (!message) {
     return new Response(
@@ -109,7 +110,7 @@ export async function GET(request: NextRequest) {
         const regularResponse = await fetch(`${baseUrl}/api/ai/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message, conversationHistory }),
+          body: JSON.stringify({ message, conversationHistory, clientIp }),
           signal: AbortSignal.timeout(90000), // 90 second timeout (function calls can take time)
         });
 

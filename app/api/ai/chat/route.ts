@@ -213,7 +213,7 @@ const continentCountries: Record<string, string[]> = {
 };
 
 // Execute a function call
-async function executeFunction(name: string, args: any, baseUrl: string): Promise<any> {
+async function executeFunction(name: string, args: any, baseUrl: string, clientIp?: string): Promise<any> {
   console.log(`[AI Chat] Executing function: ${name}`, args);
   
   try {
@@ -344,6 +344,38 @@ async function executeFunction(name: string, args: any, baseUrl: string): Promis
       }
       
       case 'get_user_location': {
+        // Use client-provided IP if available (more accurate), otherwise fall back to server-side detection
+        if (clientIp) {
+          // Use the same method as scan page - get location for the client IP
+          const geoResponse = await fetch(`${baseUrl}/api/geo?ip=${encodeURIComponent(clientIp)}`);
+          if (geoResponse.ok) {
+            const geoData = await geoResponse.json();
+            if (geoData.error || !geoData.lat || !geoData.lon) {
+              // Fall back to server-side detection
+              const response = await fetch(`${baseUrl}/api/client-location`);
+              if (response.ok) {
+                const data = await response.json();
+                return {
+                  ip: data.ip,
+                  location: data.location
+                };
+              }
+              return { error: 'Failed to get user location' };
+            }
+            return {
+              ip: clientIp,
+              location: {
+                lat: geoData.lat,
+                lon: geoData.lon,
+                city: geoData.city,
+                country: geoData.country,
+                countryCode: geoData.countryCode
+              }
+            };
+          }
+        }
+        
+        // Fall back to server-side detection
         const response = await fetch(`${baseUrl}/api/client-location`);
         if (response.ok) {
           const data = await response.json();
@@ -410,20 +442,20 @@ async function executeFunction(name: string, args: any, baseUrl: string): Promis
         const nodesData = await nodesResponse.json();
         const nodes = nodesData.nodes || [];
         
-        // Calculate distance for each node (Haversine formula)
+        // Calculate distance for each node (Haversine formula - matches scan page exactly)
         const nodesWithDistance = nodes
           .filter((n: any) => {
-            // Get location from node data - check various possible fields
-            const nodeLat = n.lat || n.locationData?.lat;
-            const nodeLon = n.lon || n.locationData?.lon;
+            // Get location from node data - AI query returns lat/lon directly, but check locationData as fallback
+            const nodeLat = n.lat ?? n.locationData?.lat;
+            const nodeLon = n.lon ?? n.locationData?.lon;
             return nodeLat != null && nodeLon != null && !isNaN(nodeLat) && !isNaN(nodeLon);
           })
           .map((n: any) => {
-            const nodeLat = n.lat || n.locationData?.lat;
-            const nodeLon = n.lon || n.locationData?.lon;
+            const nodeLat = n.lat ?? n.locationData?.lat;
+            const nodeLon = n.lon ?? n.locationData?.lon;
             
-            // Haversine formula
-            const R = 6371; // Earth radius in km
+            // Haversine formula (identical to scan page)
+            const R = 6371; // Radius of the Earth in kilometers
             const dLat = (nodeLat - lat) * Math.PI / 180;
             const dLon = (nodeLon - lon) * Math.PI / 180;
             const a = 
@@ -435,11 +467,11 @@ async function executeFunction(name: string, args: any, baseUrl: string): Promis
             
             return {
               ...formatNodeDetails(n),
-              distanceKm: Math.round(distanceKm * 100) / 100,
-              distanceMi: Math.round(distanceKm * 0.621371 * 100) / 100
+              distanceKm, // No rounding to match scan page exactly
+              distanceMi: distanceKm * 0.621371 // Convert to miles (same as scan page)
             };
           })
-          .sort((a: any, b: any) => a.distanceKm - b.distanceKm)
+          .sort((a: any, b: any) => (a.distanceKm || Infinity) - (b.distanceKm || Infinity))
           .slice(0, args.limit || 20);
         
         return {
@@ -717,7 +749,10 @@ KEY METRICS & DATA FIELDS:
 - Address: Network address in format IP:port (e.g., 192.168.1.1:9001)
 - Pubkey: Unique public key identifier (full base58 string)
 
-IMPORTANT: You MUST use the provided functions to get CURRENT data. You do NOT have real-time pNode data in your context - you MUST call functions to retrieve it. However, you CAN answer general questions about what pGlobe is, what pNodes are, how the system works, etc. using the knowledge above.
+IMPORTANT: 
+- You MUST use the provided functions to get CURRENT data. You do NOT have real-time pNode data in your context - you MUST call functions to retrieve it.
+- However, you CAN answer general questions about what pGlobe is, what pNodes are, how the system works, etc. using the knowledge above WITHOUT calling functions.
+- For simple questions that don't require real-time data, you can think for yourself and provide direct answers. Only call functions when you need CURRENT, REAL-TIME data about specific pNodes, network statistics, or user location.
 
 TERMINOLOGY:
 - Always refer to nodes as "pNode" or "pNodes" (not just "node" or "nodes")
@@ -821,7 +856,8 @@ async function processResponse(
   data: any,
   messages: any[],
   baseUrl: string,
-  provider: string
+  provider: string,
+  clientIp?: string
 ): Promise<{ hasToolCalls: boolean; finalResponse?: string; updatedMessages: any[] }> {
   if (!data.choices || !data.choices[0]) {
     throw new Error(`Invalid response from ${provider}`);
@@ -842,7 +878,7 @@ async function processResponse(
     for (const toolCall of message.tool_calls) {
       const { name, arguments: args } = toolCall.function;
       const parsedArgs = JSON.parse(args);
-      const result = await executeFunction(name, parsedArgs, baseUrl);
+      const result = await executeFunction(name, parsedArgs, baseUrl, clientIp);
       
       toolResults.push({
         tool_call_id: toolCall.id,
@@ -876,7 +912,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { message, conversationHistory } = await request.json();
+    const { message, conversationHistory, clientIp } = await request.json();
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
@@ -963,7 +999,7 @@ export async function POST(request: Request) {
 
       const data = await response.json();
       
-      const result = await processResponse(data, messages, baseUrl, 'DeepSeek');
+      const result = await processResponse(data, messages, baseUrl, 'DeepSeek', clientIp);
       
       if (result.hasToolCalls) {
         messages.length = 0; // Clear array

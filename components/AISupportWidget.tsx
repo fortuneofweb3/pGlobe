@@ -85,8 +85,23 @@ export default function AISupportWidget() {
   const [isLoading, setIsLoading] = useState(false);
   const [thinkingStatus, setThinkingStatus] = useState<string | null>(null);
   const [dotCount, setDotCount] = useState(1);
+  const [userIp, setUserIp] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Get user's IP address (client-side, same as scan page)
+  useEffect(() => {
+    const getUserIp = async () => {
+      try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        setUserIp(data.ip);
+      } catch {
+        // Ignore errors, will fall back to server-side detection
+      }
+    };
+    getUserIp();
+  }, []);
 
   // Animate the dots when thinking
   useEffect(() => {
@@ -138,7 +153,14 @@ export default function AISupportWidget() {
       }));
 
       // Use EventSource for Server-Sent Events to get status updates
-      const eventSource = new EventSource(`/api/ai/chat-stream?message=${encodeURIComponent(currentInput)}&history=${encodeURIComponent(JSON.stringify(conversationHistory))}`);
+      const params = new URLSearchParams({
+        message: currentInput,
+        history: JSON.stringify(conversationHistory),
+      });
+      if (userIp) {
+        params.append('clientIp', userIp);
+      }
+      const eventSource = new EventSource(`/api/ai/chat-stream?${params.toString()}`);
 
       let finalMessage = '';
       let hasReceivedMessage = false;
@@ -192,7 +214,7 @@ export default function AISupportWidget() {
           fetch('/api/ai/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: currentInput, conversationHistory }),
+            body: JSON.stringify({ message: currentInput, conversationHistory, clientIp: userIp }),
           })
             .then(res => res.json())
             .then(data => {
@@ -426,7 +448,7 @@ export default function AISupportWidget() {
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Ask me anything about pGlobe..."
-                    className="flex-1 px-4 py-2 bg-black/50 border border-[#F0A741]/20 rounded-lg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-[#F0A741]/50 text-sm"
+                    className="flex-1 px-4 py-2 bg-black/50 border border-[#F0A741]/20 rounded-lg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-[#F0A741]/50 text-base"
                     disabled={isLoading}
                   />
                   <button

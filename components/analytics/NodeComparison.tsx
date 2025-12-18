@@ -288,7 +288,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                     onChange={(e) => updateSearch(index, e.target.value)}
                     onFocus={() => updateSearch(index, comparison.searchQuery)}
                     placeholder={`Search node ${index + 1}...`}
-                    className="w-full pl-10 pr-3 py-2.5 bg-muted/20 border border-border/50 rounded-lg text-sm font-medium text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-[#F0A741]/40 focus:border-[#F0A741]/60 transition-all"
+                    className="w-full pl-10 pr-3 py-2.5 bg-muted/20 border border-border/50 rounded-lg text-base font-medium text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-[#F0A741]/40 focus:border-[#F0A741]/60 transition-all"
                   />
                 </div>
                 

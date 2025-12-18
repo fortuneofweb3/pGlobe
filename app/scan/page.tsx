@@ -299,7 +299,7 @@ export default function ScanPage() {
                       }
                     }}
                     placeholder="e.g., 8.8.8.8"
-                    className="flex-1 px-3 py-2 text-sm bg-muted/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#F0A741]/50"
+                    className="flex-1 px-3 py-2 text-base bg-muted/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#F0A741]/50"
                     disabled={scanning}
                   />
                   <button
