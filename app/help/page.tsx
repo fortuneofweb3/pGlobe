@@ -21,7 +21,7 @@ export default function HelpPage() {
         onRefresh={() => refreshNodes()}
         networks={availableNetworks}
         currentNetwork={currentNetwork}
-        onNetworkChange={() => {}}
+        onNetworkChange={() => { }}
         showNetworkSelector={false}
       />
 
@@ -35,9 +35,8 @@ export default function HelpPage() {
         )}
 
         {/* Sidebar Navigation */}
-        <aside className={`${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:translate-x-0 fixed md:relative w-64 border-r border-border bg-black overflow-y-auto flex-shrink-0 z-50 md:z-auto h-full transition-transform duration-300`}>
+        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          } md:translate-x-0 fixed md:relative w-64 border-r border-border bg-black overflow-y-auto flex-shrink-0 z-50 md:z-auto h-full transition-transform duration-300`}>
           <div className="p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Documentation</h2>
@@ -55,11 +54,10 @@ export default function HelpPage() {
                   setActiveDoc(null);
                   setSidebarOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                  activeDoc === null
-                    ? 'bg-[#1a1a1a] text-foreground font-medium'
-                    : 'text-foreground hover:hover:bg-[#1a1a1a]'
-                }`}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${activeDoc === null
+                  ? 'bg-[#1a1a1a] text-foreground font-medium'
+                  : 'text-foreground hover:hover:bg-[#1a1a1a]'
+                  }`}
               >
                 Quick Start Guide
               </button>
@@ -68,11 +66,10 @@ export default function HelpPage() {
                   setActiveDoc('deployment');
                   setSidebarOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${
-                  activeDoc === 'deployment'
-                    ? 'bg-[#1a1a1a] text-foreground font-medium'
-                    : 'text-foreground hover:hover:bg-[#1a1a1a]'
-                }`}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${activeDoc === 'deployment'
+                  ? 'bg-[#1a1a1a] text-foreground font-medium'
+                  : 'text-foreground hover:hover:bg-[#1a1a1a]'
+                  }`}
               >
                 <span>Deployment</span>
                 <ChevronRight className="w-4 h-4" />
@@ -82,11 +79,10 @@ export default function HelpPage() {
                   setActiveDoc('analytics');
                   setSidebarOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${
-                  activeDoc === 'analytics'
-                    ? 'bg-[#1a1a1a] text-foreground font-medium'
-                    : 'text-foreground hover:hover:bg-[#1a1a1a]'
-                }`}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${activeDoc === 'analytics'
+                  ? 'bg-[#1a1a1a] text-foreground font-medium'
+                  : 'text-foreground hover:hover:bg-[#1a1a1a]'
+                  }`}
               >
                 <span>Analytics & Metrics</span>
                 <ChevronRight className="w-4 h-4" />
@@ -96,11 +92,10 @@ export default function HelpPage() {
                   setActiveDoc('architecture');
                   setSidebarOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${
-                  activeDoc === 'architecture'
-                    ? 'bg-[#1a1a1a] text-foreground font-medium'
-                    : 'text-foreground hover:hover:bg-[#1a1a1a]'
-                }`}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${activeDoc === 'architecture'
+                  ? 'bg-[#1a1a1a] text-foreground font-medium'
+                  : 'text-foreground hover:hover:bg-[#1a1a1a]'
+                  }`}
               >
                 <span>Architecture</span>
                 <ChevronRight className="w-4 h-4" />
@@ -110,11 +105,10 @@ export default function HelpPage() {
                   setActiveDoc('ai');
                   setSidebarOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${
-                  activeDoc === 'ai'
-                    ? 'bg-[#1a1a1a] text-foreground font-medium'
-                    : 'text-foreground hover:hover:bg-[#1a1a1a]'
-                }`}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${activeDoc === 'ai'
+                  ? 'bg-[#1a1a1a] text-foreground font-medium'
+                  : 'text-foreground hover:hover:bg-[#1a1a1a]'
+                  }`}
               >
                 <span>AI Assistant</span>
                 <ChevronRight className="w-4 h-4" />
@@ -166,24 +160,24 @@ function QuickStartGuide() {
       {/* What is pGlobe */}
       <section className="mb-12">
         <h2 className="text-2xl font-semibold text-foreground mb-4">What is pGlobe?</h2>
-        <div className="prose prose-gray dark:prose-invert max-w-none">
+        <div className="prose prose-gray prose-invert max-w-none">
           <p className="text-foreground leading-relaxed mb-4">
-            pGlobe is a real-time analytics and monitoring platform for the <strong>Xandeum pNode network</strong>. 
-            It provides comprehensive visibility into the decentralized storage layer that powers Solana dApps with scalable, 
+            pGlobe is a real-time analytics and monitoring platform for the <strong>Xandeum pNode network</strong>.
+            It provides comprehensive visibility into the decentralized storage layer that powers Solana dApps with scalable,
             affordable data storage.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
             <div className="border border-border rounded-lg p-4">
               <h3 className="font-semibold text-foreground mb-2">What are pNodes?</h3>
               <p className="text-sm text-muted-foreground">
-                Provider Nodes (pNodes) form a distributed storage network where each node contributes storage capacity 
+                Provider Nodes (pNodes) form a distributed storage network where each node contributes storage capacity
                 and earns rewards for serving data to applications. They're the backbone of Xandeum's decentralized storage infrastructure.
               </p>
             </div>
             <div className="border border-border rounded-lg p-4">
               <h3 className="font-semibold text-foreground mb-2">Why Use pGlobe?</h3>
               <p className="text-sm text-muted-foreground">
-                Monitor network health, track node performance, analyze storage distribution, and make informed decisions 
+                Monitor network health, track node performance, analyze storage distribution, and make informed decisions
                 about staking or operating nodes. All in real-time with historical data tracking.
               </p>
             </div>
@@ -194,7 +188,7 @@ function QuickStartGuide() {
       {/* Getting Started */}
       <section className="mb-12">
         <h2 className="text-2xl font-semibold text-foreground mb-4">Getting Started</h2>
-        <div className="prose prose-gray dark:prose-invert max-w-none">
+        <div className="prose prose-gray prose-invert max-w-none">
           <h3 className="text-xl font-semibold text-foreground mb-3">Navigation</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="border border-border rounded-lg p-4">
@@ -203,7 +197,7 @@ function QuickStartGuide() {
                 <h4 className="font-medium text-foreground">Overview</h4>
               </div>
               <p className="text-sm text-muted-foreground">
-                The main dashboard with interactive globe, network statistics, health score, and node list. 
+                The main dashboard with interactive globe, network statistics, health score, and node list.
                 Click any node on the globe or in the list to view detailed information.
               </p>
             </div>
@@ -213,7 +207,7 @@ function QuickStartGuide() {
                 <h4 className="font-medium text-foreground">Analytics</h4>
               </div>
               <p className="text-sm text-muted-foreground">
-                Deep dive into network metrics with charts showing performance trends, resource utilization, 
+                Deep dive into network metrics with charts showing performance trends, resource utilization,
                 latency distribution, and geographic metrics.
               </p>
             </div>
@@ -262,7 +256,7 @@ function QuickStartGuide() {
       {/* Understanding Metrics */}
       <section className="mb-12">
         <h2 className="text-2xl font-semibold text-foreground mb-4">Understanding Metrics</h2>
-        <div className="prose prose-gray dark:prose-invert max-w-none">
+        <div className="prose prose-gray prose-invert max-w-none">
           <h3 className="text-xl font-semibold text-foreground mb-3">Node Status</h3>
           <dl className="space-y-3 mb-6">
             <div>
@@ -290,37 +284,37 @@ function QuickStartGuide() {
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">Uptime (%)</dt>
               <dd className="text-sm text-muted-foreground">
-                Percentage of time the node has been continuously running, calculated over a 30-day window. 
+                Percentage of time the node has been continuously running, calculated over a 30-day window.
                 Higher uptime (95%+) indicates a reliable, well-maintained node.
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">CPU (%)</dt>
               <dd className="text-sm text-muted-foreground">
-                Processor utilization. Shows how much of the node's CPU capacity is being used. 
+                Processor utilization. Shows how much of the node's CPU capacity is being used.
                 Lower values (under 50%) mean more headroom for growth and better performance.
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">RAM (Used / Total)</dt>
               <dd className="text-sm text-muted-foreground">
-                Memory usage displayed as "Used / Total" (e.g., "4.2 GB / 8 GB"). Shows both the amount of RAM currently in use 
+                Memory usage displayed as "Used / Total" (e.g., "4.2 GB / 8 GB"). Shows both the amount of RAM currently in use
                 and the total available RAM. Typical pNode setups use 2-8GB depending on data volume. High RAM usage may indicate memory pressure.
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">Storage Capacity</dt>
               <dd className="text-sm text-muted-foreground">
-                Total storage capacity allocated by the node (in bytes, displayed as TB/GB/MB). This represents the total space 
-                the node has committed for storage, not the amount of data currently stored. Nodes can allocate storage capacity 
+                Total storage capacity allocated by the node (in bytes, displayed as TB/GB/MB). This represents the total space
+                the node has committed for storage, not the amount of data currently stored. Nodes can allocate storage capacity
                 without necessarily using all of it.
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">Latency (ms)</dt>
               <dd className="text-sm text-muted-foreground">
-                Response time measured directly from your browser to each node's pRPC endpoint. 
-                This gives you accurate latency based on your location and internet connection. 
+                Response time measured directly from your browser to each node's pRPC endpoint.
+                This gives you accurate latency based on your location and internet connection.
                 Latency measurements are cached for 1 hour to improve performance. Lower is better (under 100ms is excellent).
               </dd>
             </div>
@@ -335,7 +329,7 @@ function QuickStartGuide() {
                 <li>Credits <strong>reset monthly</strong> (tracked via creditsResetMonth field)</li>
               </ul>
               <p className="text-sm text-muted-foreground mt-2">
-                Credits are fetched from the Xandeum pod credits API and represent the node's reputation and reliability. 
+                Credits are fetched from the Xandeum pod credits API and represent the node's reputation and reliability.
                 Higher credits indicate a more reliable node that consistently responds to network requests.
               </p>
             </div>
@@ -350,20 +344,20 @@ function QuickStartGuide() {
             <li><strong>35%</strong> - Version Health (% of nodes on the latest version)</li>
             <li><strong>25%</strong> - Geographic Distribution (diversity of node locations)</li>
           </ul>
-          
+
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Node Identification</h3>
           <dl className="space-y-3 mb-6">
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">TRYNET Badge</dt>
               <dd className="text-sm text-muted-foreground">
-                Nodes running trynet versions (development/test network) are marked with an orange "TRYNET" badge in the node details modal. 
+                Nodes running trynet versions (development/test network) are marked with an orange "TRYNET" badge in the node details modal.
                 In the nodes table, trynet nodes have a subtle orange background to distinguish them from mainnet nodes.
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">Country Flags</dt>
               <dd className="text-sm text-muted-foreground">
-                Country flags are displayed next to node locations throughout the interface - in the nodes table, node details modal, 
+                Country flags are displayed next to node locations throughout the interface - in the nodes table, node details modal,
                 globe popups, and geographic charts. This provides quick visual identification of node locations.
               </dd>
             </div>
@@ -378,15 +372,15 @@ function QuickStartGuide() {
           <div className="border border-border rounded-lg p-4">
             <h3 className="font-semibold text-foreground mb-2">Why do some nodes show "N/A" for stats?</h3>
             <p className="text-sm text-muted-foreground">
-              pNode operators can choose to keep their pRPC endpoint private (localhost-only) for security. 
-              This is the recommended security configuration. Only nodes with public pRPC expose detailed statistics. 
+              pNode operators can choose to keep their pRPC endpoint private (localhost-only) for security.
+              This is the recommended security configuration. Only nodes with public pRPC expose detailed statistics.
               We still track these nodes for network discovery and basic status, but detailed metrics aren't available.
             </p>
           </div>
           <div className="border border-border rounded-lg p-4">
             <h3 className="font-semibold text-foreground mb-2">How often is the data updated?</h3>
             <p className="text-sm text-muted-foreground">
-              Data automatically refreshes every 60 seconds (1 minute). You can also manually refresh using the refresh button 
+              Data automatically refreshes every 60 seconds (1 minute). You can also manually refresh using the refresh button
               in the header. Historical data is stored at ~10-minute intervals, so trend charts show data points at 10-minute intervals.
             </p>
           </div>
@@ -394,7 +388,7 @@ function QuickStartGuide() {
       </section>
 
       <div className="mt-8 pt-6 border-t border-border">
-        <Link 
+        <Link
           href="/"
           className="inline-flex items-center gap-2 text-foreground hover:text-[#F0A741] transition-colors"
         >
@@ -424,7 +418,7 @@ function DeploymentDocs({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      <div className="prose prose-gray dark:prose-invert max-w-none">
+      <div className="prose prose-gray prose-invert max-w-none">
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Production Architecture</h2>
           <p className="text-foreground mb-4">
@@ -468,12 +462,12 @@ function DeploymentDocs({ onClose }: { onClose: () => void }) {
 
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Deployment Process</h2>
-          
+
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Initial Setup</h3>
           <p className="text-foreground mb-4">
             The platform was initially deployed as follows:
           </p>
-          
+
           <div className="mb-6">
             <h4 className="font-semibold text-foreground mb-2">1. Render API Server Setup</h4>
             <ol className="list-decimal list-inside text-foreground space-y-2 mb-4">
@@ -508,7 +502,7 @@ function DeploymentDocs({ onClose }: { onClose: () => void }) {
 
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Deployment Workflow</h2>
-          
+
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Standard Deployment Process</h3>
           <ol className="list-decimal list-inside text-foreground space-y-2 mb-4">
             <li>Make changes locally and test with <code className="bg-[#1a1a1a] px-1 rounded">npm run dev:api</code> and <code className="bg-[#1a1a1a] px-1 rounded">npm run dev</code></li>
@@ -532,7 +526,7 @@ function DeploymentDocs({ onClose }: { onClose: () => void }) {
 
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Infrastructure Details</h2>
-          
+
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Render Service</h3>
           <ul className="list-disc list-inside text-foreground space-y-2 mb-4">
             <li><strong>Service Type:</strong> Web Service</li>
@@ -555,7 +549,7 @@ function DeploymentDocs({ onClose }: { onClose: () => void }) {
 
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Data Flow in Production</h2>
-          
+
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Background Refresh (Render)</h3>
           <ol className="list-decimal list-inside text-foreground space-y-2 mb-4">
             <li>Render API server runs background refresh task every minute</li>
@@ -598,10 +592,10 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      <div className="prose prose-gray dark:prose-invert max-w-none">
+      <div className="prose prose-gray prose-invert max-w-none">
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Overview Page Analytics</h2>
-          
+
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Network Statistics Cards</h3>
           <p className="text-foreground mb-4">
             The top section displays key network metrics calculated in real-time:
@@ -629,8 +623,8 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
 
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Interactive Globe</h3>
           <p className="text-foreground mb-4">
-            The 3D globe visualization shows all nodes with their geographic locations. Each node is represented as a dot, 
-            colored by status (green = online, yellow = syncing, red = offline). The globe uses MapLibre GL for rendering 
+            The 3D globe visualization shows all nodes with their geographic locations. Each node is represented as a dot,
+            colored by status (green = online, yellow = syncing, red = offline). The globe uses MapLibre GL for rendering
             and supports:
           </p>
           <ul className="list-disc list-inside text-foreground space-y-2 mb-4">
@@ -644,10 +638,10 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
 
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Analytics Page</h2>
-          
+
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Network Health Chart</h3>
           <p className="text-foreground mb-4">
-            A donut chart showing the distribution of node statuses (online, syncing, offline) with percentages. 
+            A donut chart showing the distribution of node statuses (online, syncing, offline) with percentages.
             Hover over segments to see exact counts. The chart uses visx library for rendering.
           </p>
 
@@ -655,7 +649,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
           <p className="text-foreground mb-4">
             Two side-by-side bar charts displaying:
           </p>
-          
+
           <div className="mb-4">
             <h4 className="font-semibold text-foreground mb-2">Latency Distribution</h4>
             <p className="text-foreground mb-2">
@@ -688,7 +682,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
               CPU and RAM percentages are shown as separate bars for each range, making it easy to compare resource usage patterns.
             </p>
           </div>
-          
+
           <div className="mb-4">
             <h4 className="font-semibold text-foreground mb-2">Analytics Cards</h4>
             <p className="text-foreground mb-2">
@@ -704,7 +698,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
 
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Geographic Distribution</h3>
           <p className="text-foreground mb-4">
-            A horizontal bar chart showing node count by country with country flags. Helps visualize where the network has the most presence 
+            A horizontal bar chart showing node count by country with country flags. Helps visualize where the network has the most presence
             and geographic diversity. Countries are sorted by node count (highest first). You can switch between different metrics:
           </p>
           <ul className="list-disc list-inside text-foreground space-y-1 ml-4 mb-4">
@@ -732,7 +726,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
 
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Node Details Modal</h2>
-          
+
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Historical Data Charts</h3>
           <p className="text-foreground mb-4">
             When viewing a node's details, you can see historical trends for:
@@ -744,14 +738,14 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
             <li><strong>Credits Earned Over Time:</strong> Line chart showing credits earned per time interval (difference between consecutive snapshots)</li>
           </ul>
           <p className="text-foreground mb-4">
-            Historical data is stored in MongoDB at ~10-minute intervals. Charts use visx library with smooth interpolation between data points. 
+            Historical data is stored in MongoDB at ~10-minute intervals. Charts use visx library with smooth interpolation between data points.
             X-axis labels are horizontal and automatically skip labels to prevent overlap.
           </p>
-          
+
           <div className="bg-[#0f0f0f] border border-border rounded-lg p-4 mb-4">
             <h4 className="font-semibold text-foreground mb-2">Understanding Earned Charts</h4>
             <p className="text-sm text-foreground mb-2">
-              The <strong>Packets Earned</strong> and <strong>Credits Earned</strong> charts show the amount earned in each time interval, 
+              The <strong>Packets Earned</strong> and <strong>Credits Earned</strong> charts show the amount earned in each time interval,
               not cumulative totals. This means:
             </p>
             <ul className="list-disc list-inside text-sm text-foreground space-y-1 ml-4">
@@ -761,7 +755,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
               <li>Tooltips show both "Earned in this interval" and "Cumulative" values for context</li>
             </ul>
             <p className="text-sm text-foreground mt-2">
-              This approach gives you a clear view of earning activity patterns over time, showing when nodes are actively 
+              This approach gives you a clear view of earning activity patterns over time, showing when nodes are actively
               processing requests versus idle periods.
             </p>
           </div>
@@ -782,7 +776,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
 
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Data Collection & Processing</h2>
-          
+
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">How We Build the Nodes List</h3>
           <p className="text-foreground mb-4">
             pGlobe discovers and maintains the network's node list through a multi-stage process that ensures accuracy and completeness:
@@ -796,7 +790,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
               <li><strong>Raw Data:</strong> Each response contains node address, public key (pubkey), version, and basic stats</li>
             </ol>
             <p className="text-sm text-foreground mt-2">
-              <strong>Why gossip?</strong> The gossip protocol is how pNodes naturally discover each other. By tapping into this, 
+              <strong>Why gossip?</strong> The gossip protocol is how pNodes naturally discover each other. By tapping into this,
               we get a complete, decentralized view of the network without any central registry.
             </p>
           </div>
@@ -812,7 +806,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
               <li><strong>Test Nodes Excluded:</strong> Filters out test/placeholder pubkeys like "TestPubkey14"</li>
             </ul>
             <p className="text-sm text-foreground mt-2">
-              <strong>Why filter?</strong> Invalid or test nodes would skew network statistics and provide no useful information. 
+              <strong>Why filter?</strong> Invalid or test nodes would skew network statistics and provide no useful information.
               We only track real, operational nodes.
             </p>
           </div>
@@ -820,11 +814,11 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
           <div className="bg-[#0f0f0f] border border-border rounded-lg p-6 mb-6">
             <h4 className="font-semibold text-foreground mb-3">Stage 3: Deduplication & Node Identity</h4>
             <p className="text-foreground mb-3">
-              <strong>Core principle:</strong> A node's <code className="bg-[#1a1a1a] px-1 rounded">pubkey</code> is its unique identity. 
+              <strong>Core principle:</strong> A node's <code className="bg-[#1a1a1a] px-1 rounded">pubkey</code> is its unique identity.
               The same pubkey always represents the same node, even if other properties change.
             </p>
             <p className="text-foreground mb-3">
-              <strong>The Challenge:</strong> Nodes can change IP addresses (e.g., server relocation, network changes). 
+              <strong>The Challenge:</strong> Nodes can change IP addresses (e.g., server relocation, network changes).
               During discovery, we might see the same pubkey at different IPs, or the same IP with different pubkeys over time.
             </p>
             <p className="text-foreground mb-3">
@@ -841,8 +835,8 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
               </li>
               <li><strong>Version priority:</strong> If multiple entries exist for the same pubkey during discovery, we keep the one with the latest version number</li>
             </ol>
-            
-            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mt-4">
+
+            <div className="bg-blue-950/30 border border-blue-800 rounded-lg p-4 mt-4">
               <h5 className="font-semibold text-foreground mb-2">Example: Node IP Change</h5>
               <div className="text-sm text-foreground space-y-2">
                 <p><strong>Discovery 1:</strong> Node <code className="bg-[#1a1a1a] px-1 rounded">EcTqXgB6...</code> at <code className="bg-[#1a1a1a] px-1 rounded">173.212.207.32:9001</code></p>
@@ -864,7 +858,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
             </p>
             <ul className="list-disc list-inside text-foreground space-y-2 mb-4">
               <li><strong>Geographic Location:</strong> IP geolocation API provides city, country, coordinates</li>
-              <li><strong>Solana On-Chain Data:</strong> 
+              <li><strong>Solana On-Chain Data:</strong>
                 <ul className="list-disc list-inside ml-6 mt-1 space-y-1">
                   <li>SOL balance (fetched once, then cached)</li>
                   <li>Account creation date (blockchain history)</li>
@@ -889,7 +883,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
             </ul>
           </div>
 
-          <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
+          <div className="bg-yellow-950/30 border border-yellow-800 rounded-lg p-4 mb-4">
             <h4 className="font-semibold text-foreground mb-2">💡 Key Insight: Why Deduplication Matters</h4>
             <p className="text-sm text-foreground mb-2">
               During our testing, we discovered that without proper deduplication, we would see discrepancies like:
@@ -946,7 +940,7 @@ function ArchitectureDocs({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      <div className="prose prose-gray dark:prose-invert max-w-none">
+      <div className="prose prose-gray prose-invert max-w-none">
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">High-Level Architecture</h2>
           <p className="text-foreground mb-4">
@@ -989,7 +983,7 @@ function ArchitectureDocs({ onClose }: { onClose: () => void }) {
 
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Data Flow</h2>
-          
+
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Background Refresh Flow</h3>
           <ol className="list-decimal list-inside text-foreground space-y-2 mb-4">
             <li>Render API server runs background refresh every minute</li>
@@ -1013,7 +1007,7 @@ function ArchitectureDocs({ onClose }: { onClose: () => void }) {
 
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Technology Stack</h2>
-          
+
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Frontend</h3>
           <ul className="list-disc list-inside text-foreground space-y-2 mb-4">
             <li><strong>Next.js 14:</strong> React framework with App Router</li>
@@ -1042,7 +1036,7 @@ function ArchitectureDocs({ onClose }: { onClose: () => void }) {
 
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Performance Optimizations</h2>
-          
+
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Client-Side Optimizations</h3>
           <ul className="list-disc list-inside text-foreground space-y-2 mb-4">
             <li><strong>Lazy Loading:</strong> MapLibreGlobe component loads only when needed</li>
@@ -1081,12 +1075,12 @@ function AIFeaturesDocs({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      <div className="prose prose-gray dark:prose-invert max-w-none">
+      <div className="prose prose-gray prose-invert max-w-none">
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">What is the AI Assistant?</h2>
           <p className="text-foreground mb-4">
-            The AI Assistant is an intelligent chat widget powered by DeepSeek's reasoning model that helps you explore and understand 
-            the pGlobe network. It can answer questions about nodes, countries, performance metrics, historical trends, and more - 
+            The AI Assistant is an intelligent chat widget powered by DeepSeek's reasoning model that helps you explore and understand
+            the pGlobe network. It can answer questions about nodes, countries, performance metrics, historical trends, and more -
             all in natural language.
           </p>
           <div className="bg-[#0f0f0f] border border-border rounded-lg p-6 mb-4">
@@ -1108,7 +1102,7 @@ function AIFeaturesDocs({ onClose }: { onClose: () => void }) {
 
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">How to Use</h2>
-          
+
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Accessing the AI</h3>
           <p className="text-foreground mb-4">
             Look for the floating chat button in the bottom-right corner of any page. Click it to open the AI Assistant widget.
@@ -1182,7 +1176,7 @@ function AIFeaturesDocs({ onClose }: { onClose: () => void }) {
 
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">What the AI Can Do</h2>
-          
+
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Data Queries</h3>
           <p className="text-foreground mb-4">
             The AI can query and filter nodes based on:
@@ -1231,8 +1225,8 @@ function AIFeaturesDocs({ onClose }: { onClose: () => void }) {
 
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Tips for Best Results</h2>
-          
-          <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-6 mb-4">
+
+          <div className="bg-blue-950/30 border border-blue-800 rounded-lg p-6 mb-4">
             <h3 className="font-semibold text-foreground mb-3">Be Specific</h3>
             <p className="text-foreground mb-2">
               More specific questions get better answers:
@@ -1243,7 +1237,7 @@ function AIFeaturesDocs({ onClose }: { onClose: () => void }) {
             </ul>
           </div>
 
-          <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-6 mb-4">
+          <div className="bg-green-950/30 border border-green-800 rounded-lg p-6 mb-4">
             <h3 className="font-semibold text-foreground mb-3">Use Natural Language</h3>
             <p className="text-foreground mb-2">
               The AI understands conversational queries:
@@ -1255,7 +1249,7 @@ function AIFeaturesDocs({ onClose }: { onClose: () => void }) {
             </ul>
           </div>
 
-          <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 mb-4">
+          <div className="bg-yellow-950/30 border border-yellow-800 rounded-lg p-6 mb-4">
             <h3 className="font-semibold text-foreground mb-3">Time Ranges</h3>
             <p className="text-foreground mb-2">
               Specify time ranges for historical queries:
@@ -1270,7 +1264,7 @@ function AIFeaturesDocs({ onClose }: { onClose: () => void }) {
 
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Technical Details</h2>
-          
+
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">AI Model</h3>
           <p className="text-foreground mb-4">
             The AI Assistant uses DeepSeek's reasoning model (R1), which provides:
