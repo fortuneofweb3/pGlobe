@@ -428,11 +428,12 @@ async function executeFunction(name: string, args: any, baseUrl: string, clientI
           return { error: 'Either ip or lat/lon must be provided' };
         }
         
-        // Get all nodes
-        const nodesResponse = await fetch(`${baseUrl}/api/ai/query`, {
-          method: 'POST',
+        // Get all nodes - use the same fast endpoint as the frontend (/api/pnodes)
+        // This is faster than /api/ai/query because it's cached and optimized (same as scan page uses)
+        const nodesResponse = await fetch(`${baseUrl}/api/pnodes`, {
+          method: 'GET',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ queryType: 'nodes', filters: {} }),
+          signal: AbortSignal.timeout(10000), // 10 second timeout (should be fast with cache)
         });
         
         if (!nodesResponse.ok) {
@@ -443,30 +444,42 @@ async function executeFunction(name: string, args: any, baseUrl: string, clientI
         const nodes = nodesData.nodes || [];
         
         // Calculate distance for each node (Haversine formula - matches scan page exactly)
+        // Use the same structure as scan page: node.locationData.lat/lon
         const nodesWithDistance = nodes
-          .filter((n: any) => {
-            // Get location from node data - AI query returns lat/lon directly, but check locationData as fallback
-            const nodeLat = n.lat ?? n.locationData?.lat;
-            const nodeLon = n.lon ?? n.locationData?.lon;
-            return nodeLat != null && nodeLon != null && !isNaN(nodeLat) && !isNaN(nodeLon);
+          .filter((node: any) => {
+            // Same filter as scan page
+            const hasLocation = node.locationData?.lat != null && 
+                                node.locationData?.lon != null &&
+                                !isNaN(node.locationData.lat) &&
+                                !isNaN(node.locationData.lon);
+            return hasLocation;
           })
-          .map((n: any) => {
-            const nodeLat = n.lat ?? n.locationData?.lat;
-            const nodeLon = n.lon ?? n.locationData?.lon;
-            
-            // Haversine formula (identical to scan page)
+          .map((node: any) => {
+            // Same calculation as scan page
             const R = 6371; // Radius of the Earth in kilometers
-            const dLat = (nodeLat - lat) * Math.PI / 180;
-            const dLon = (nodeLon - lon) * Math.PI / 180;
+            const dLat = (node.locationData.lat - lat) * Math.PI / 180;
+            const dLon = (node.locationData.lon - lon) * Math.PI / 180;
             const a = 
               Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat * Math.PI / 180) * Math.cos(nodeLat * Math.PI / 180) *
+              Math.cos(lat * Math.PI / 180) * Math.cos(node.locationData.lat * Math.PI / 180) *
               Math.sin(dLon / 2) * Math.sin(dLon / 2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             const distanceKm = R * c;
             
+            // Format node details for AI response
             return {
-              ...formatNodeDetails(n),
+              pubkey: node.pubkey || node.publicKey || node.id,
+              address: node.address,
+              status: node.status,
+              version: node.version,
+              uptimeSeconds: node.uptime || 0,
+              uptimeDays: node.uptime ? Math.floor(node.uptime / 86400) : 0,
+              credits: node.credits || 0,
+              storageBytes: node.storageCapacity || 0,
+              cpuPercent: node.cpuPercent,
+              ramPercent: node.ramTotal ? ((node.ramUsed || 0) / node.ramTotal * 100) : null,
+              country: node.locationData?.countryCode || node.locationData?.country || 'Unknown',
+              city: node.locationData?.city || '',
               distanceKm, // No rounding to match scan page exactly
               distanceMi: distanceKm * 0.621371 // Convert to miles (same as scan page)
             };
@@ -829,22 +842,41 @@ async function callOpenAICompatible(
       body.tool_choice = 'auto';
     }
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(30000),
-    });
+    // Use longer timeout for reasoning models (they can take much longer)
+    const timeoutMs = model.includes('reasoner') || model.includes('reasoning') ? 120000 : 60000; // 120s for reasoning, 60s for regular
+    
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
 
-    if (response.ok) {
-      return { success: true, response };
-    } else {
-      const errorData = await response.text().catch(() => 'Unable to read error');
-      console.error(`[${provider}] API Error (${response.status}):`, errorData);
-      return { success: false, error: { status: response.status, data: errorData } };
+      if (response.ok) {
+        return { success: true, response };
+      } else {
+        const errorData = await response.text().catch(() => 'Unable to read error');
+        console.error(`[${provider}] API Error (${response.status}):`, errorData);
+        return { success: false, error: { status: response.status, data: errorData } };
+      }
+    } catch (fetchError: any) {
+      // Check for timeout errors specifically
+      if (fetchError?.name === 'TimeoutError' || fetchError?.name === 'AbortError' || fetchError?.message?.includes('timeout')) {
+        console.error(`[${provider}] Request timeout for model ${model} (${timeoutMs}ms)`);
+        return { 
+          success: false, 
+          error: { 
+            type: 'timeout',
+            message: `Request timed out after ${timeoutMs}ms. The ${model} model may need more time to process.`,
+            timeout: timeoutMs
+          } 
+        };
+      }
+      throw fetchError; // Re-throw if not a timeout
     }
   } catch (error: any) {
     return { success: false, error: error };
