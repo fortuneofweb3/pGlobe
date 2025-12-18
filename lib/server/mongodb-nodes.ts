@@ -88,7 +88,7 @@ export async function getDb(): Promise<Db> {
   return db;
 }
 
-async function getNodesCollection(): Promise<Collection> {
+export async function getNodesCollection(): Promise<Collection> {
   const database = await getDb();
   return database.collection('nodes');
 }
