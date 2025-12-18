@@ -715,9 +715,16 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                   </h1>
                 </div>
                 {node.version && (
-                  <p className="text-xs sm:text-sm text-foreground/70">
-                    Version {node.version}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs sm:text-sm text-foreground/70">
+                      Version {node.version}
+                    </p>
+                    {node.version.includes('-trynet') && (
+                      <span className="text-xs px-2 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 font-medium">
+                        TRYNET
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
               <div className="flex items-center gap-2">

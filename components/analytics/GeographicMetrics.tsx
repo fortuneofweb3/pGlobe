@@ -300,7 +300,9 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
   }
 
   const margin = { top: 10, right: 30, left: 120, bottom: 40 };
-  const chartHeight = 300;
+  // Match height of Top Nodes div: header (~24px) + tabs (~40px) + list (280px) = ~344px
+  // Chart: header (~24px) + chart = ~344px, so chart should be ~320px
+  const chartHeight = 320;
 
   return (
     <div>

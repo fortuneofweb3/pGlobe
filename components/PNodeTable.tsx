@@ -593,6 +593,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
               ) : (
                 nodes.map((node) => {
                   const duplicate = isDuplicate(node);
+                  const isTrynet = node.version?.includes('-trynet') || false;
                   return (
                     <tr
                       key={node.id}
@@ -605,7 +606,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                       }}
                       className={`hover:bg-muted/30 cursor-pointer transition-colors border-b border-border/20 ${
                         duplicate ? 'bg-warning/5 border-l-2 border-warning' : ''
-                      }`}
+                      } ${isTrynet ? 'bg-orange-500/5' : ''}`}
                     >
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
                         <a
