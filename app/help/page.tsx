@@ -286,10 +286,18 @@ function QuickStartGuide() {
               </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">RAM (%)</dt>
+              <dt className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">RAM (Used / Total)</dt>
               <dd className="text-sm text-gray-600 dark:text-gray-400">
-                Memory usage as a percentage of total available RAM. Typical pNode setups use 2-8GB 
-                depending on data volume. High RAM usage may indicate memory pressure.
+                Memory usage displayed as "Used / Total" (e.g., "4.2 GB / 8 GB"). Shows both the amount of RAM currently in use 
+                and the total available RAM. Typical pNode setups use 2-8GB depending on data volume. High RAM usage may indicate memory pressure.
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Storage Capacity</dt>
+              <dd className="text-sm text-gray-600 dark:text-gray-400">
+                Total storage capacity allocated by the node (in bytes, displayed as TB/GB/MB). This represents the total space 
+                the node has committed for storage, not the amount of data currently stored. Nodes can allocate storage capacity 
+                without necessarily using all of it.
               </dd>
             </div>
             <div>
@@ -326,6 +334,24 @@ function QuickStartGuide() {
             <li><strong>35%</strong> - Version Health (% of nodes on the latest version)</li>
             <li><strong>25%</strong> - Geographic Distribution (diversity of node locations)</li>
           </ul>
+          
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Node Identification</h3>
+          <dl className="space-y-3 mb-6">
+            <div>
+              <dt className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">TRYNET Badge</dt>
+              <dd className="text-sm text-gray-600 dark:text-gray-400">
+                Nodes running trynet versions (development/test network) are marked with an orange "TRYNET" badge in the node details modal. 
+                In the nodes table, trynet nodes have a subtle orange background to distinguish them from mainnet nodes.
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Country Flags</dt>
+              <dd className="text-sm text-gray-600 dark:text-gray-400">
+                Country flags are displayed next to node locations throughout the interface - in the nodes table, node details modal, 
+                globe popups, and geographic charts. This provides quick visual identification of node locations.
+              </dd>
+            </div>
+          </dl>
         </div>
       </section>
 
@@ -567,7 +593,8 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
           <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
             <li><strong>Total Nodes:</strong> Count of all discovered pNodes in the network</li>
             <li><strong>Online/Syncing/Offline:</strong> Status breakdown based on last seen timestamps</li>
-            <li><strong>Storage Capacity/Used:</strong> Aggregated storage metrics from all reporting nodes</li>
+            <li><strong>Storage Capacity:</strong> Total storage capacity allocated by all nodes (in TB)</li>
+            <li><strong>Total RAM / Used RAM:</strong> Aggregated RAM metrics showing total capacity and current usage</li>
             <li><strong>Average Metrics:</strong> Calculated averages for uptime, CPU, RAM, and latency</li>
           </ul>
 
@@ -610,7 +637,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
 
           <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Performance Metrics</h3>
           <p className="text-gray-700 dark:text-gray-300 mb-4">
-            Two bar charts displaying:
+            Two side-by-side bar charts displaying:
           </p>
           
           <div className="mb-4">
@@ -633,7 +660,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
           <div className="mb-4">
             <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Resource Utilization</h4>
             <p className="text-gray-700 dark:text-gray-300 mb-2">
-              Shows CPU and RAM usage distribution across nodes, grouped into ranges:
+              Shows CPU and RAM usage distribution across nodes, grouped into ranges. The chart displays both metrics side-by-side:
             </p>
             <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-1 ml-4">
               <li>0-25%</li>
@@ -641,13 +668,36 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
               <li>50-75%</li>
               <li>75-100%</li>
             </ul>
+            <p className="text-gray-700 dark:text-gray-300 mt-2 text-sm">
+              CPU and RAM percentages are shown as separate bars for each range, making it easy to compare resource usage patterns.
+            </p>
+          </div>
+          
+          <div className="mb-4">
+            <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Analytics Cards</h4>
+            <p className="text-gray-700 dark:text-gray-300 mb-2">
+              The analytics page includes metric cards showing:
+            </p>
+            <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-1 ml-4">
+              <li>Total Credits: Sum of all credits across the network</li>
+              <li>Active Streams: Total number of active network streams</li>
+              <li>Avg CPU: Average CPU usage percentage</li>
+              <li>Avg RAM: Average RAM usage percentage</li>
+            </ul>
           </div>
 
           <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Geographic Distribution</h3>
           <p className="text-gray-700 dark:text-gray-300 mb-4">
-            A horizontal bar chart showing node count by country. Helps visualize where the network has the most presence 
-            and geographic diversity. Countries are sorted by node count (highest first).
+            A horizontal bar chart showing node count by country with country flags. Helps visualize where the network has the most presence 
+            and geographic diversity. Countries are sorted by node count (highest first). You can switch between different metrics:
           </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-1 ml-4 mb-4">
+            <li>Node Count</li>
+            <li>Average Latency</li>
+            <li>Total Storage</li>
+            <li>Online Rate</li>
+            <li>Average Uptime</li>
+          </ul>
 
           <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Top Performing Nodes</h3>
           <p className="text-gray-700 dark:text-gray-300 mb-4">
@@ -655,7 +705,9 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
           </p>
           <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
             <li><strong>Uptime:</strong> Nodes with the highest uptime percentage (calculated over 30-day window)</li>
-            <li><strong>Storage:</strong> Nodes storing the most data</li>
+            <li><strong>Storage:</strong> Nodes with the highest storage capacity</li>
+            <li><strong>Packets:</strong> Nodes with the highest packet transfer rates</li>
+            <li><strong>Credits:</strong> Nodes with the highest reputation credits</li>
           </ul>
           <p className="text-gray-700 dark:text-gray-300 mb-4">
             Click any node in the rankings to view its detailed information.
@@ -671,7 +723,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
           </p>
           <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
             <li><strong>Uptime Over Time:</strong> Line chart showing uptime percentage trends</li>
-            <li><strong>Storage Over Time:</strong> Line chart showing storage usage trends</li>
+            <li><strong>Storage Over Time:</strong> Line chart showing storage capacity trends</li>
             <li><strong>Packets Earned Over Time:</strong> Line chart showing packets earned per time interval (difference between consecutive snapshots)</li>
             <li><strong>Credits Earned Over Time:</strong> Line chart showing credits earned per time interval (difference between consecutive snapshots)</li>
           </ul>
@@ -703,11 +755,12 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
             The modal displays current metrics including:
           </p>
           <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
-            <li>CPU and RAM usage percentages</li>
+            <li>CPU and RAM usage percentages (with used/total for RAM)</li>
             <li>Client-side latency measurement</li>
-            <li>Storage capacity and usage</li>
+            <li>Storage capacity (total allocated space)</li>
             <li>Network activity (packets, streams)</li>
-            <li>Node status and version</li>
+            <li>Node status and version (with TRYNET badge for trynet versions)</li>
+            <li>Geographic location with country flag</li>
           </ul>
         </section>
 
