@@ -430,18 +430,37 @@ async function executeFunction(name: string, args: any, baseUrl: string, clientI
         
         // Get all nodes - use the same fast endpoint as the frontend (/api/pnodes)
         // This is faster than /api/ai/query because it's cached and optimized (same as scan page uses)
-        const nodesResponse = await fetch(`${baseUrl}/api/pnodes`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-          signal: AbortSignal.timeout(10000), // 10 second timeout (should be fast with cache)
-        });
-        
-        if (!nodesResponse.ok) {
-          return { error: 'Failed to fetch nodes' };
+        let nodesResponse: Response;
+        try {
+          nodesResponse = await fetch(`${baseUrl}/api/pnodes`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            signal: AbortSignal.timeout(10000), // 10 second timeout (should be fast with cache)
+          });
+        } catch (fetchError: any) {
+          console.error('[AI Chat] Failed to fetch nodes from /api/pnodes:', fetchError?.message);
+          return { error: `Failed to fetch nodes: ${fetchError?.message || 'Network error'}` };
         }
         
-        const nodesData = await nodesResponse.json();
+        if (!nodesResponse.ok) {
+          const errorText = await nodesResponse.text().catch(() => 'Unknown error');
+          console.error('[AI Chat] /api/pnodes returned error:', nodesResponse.status, errorText);
+          return { error: `Failed to fetch nodes: ${nodesResponse.status} ${errorText}` };
+        }
+        
+        let nodesData: any;
+        try {
+          nodesData = await nodesResponse.json();
+        } catch (parseError: any) {
+          console.error('[AI Chat] Failed to parse nodes response:', parseError?.message);
+          return { error: 'Failed to parse nodes response' };
+        }
+        
         const nodes = nodesData.nodes || [];
+        if (!Array.isArray(nodes)) {
+          console.error('[AI Chat] Invalid nodes data structure:', typeof nodes);
+          return { error: 'Invalid nodes data structure' };
+        }
         
         // Calculate distance for each node (Haversine formula - matches scan page exactly)
         // Use the same structure as scan page: node.locationData.lat/lon
@@ -908,16 +927,41 @@ async function processResponse(
     const toolResults: any[] = [];
     
     for (const toolCall of message.tool_calls) {
-      const { name, arguments: args } = toolCall.function;
-      const parsedArgs = JSON.parse(args);
-      const result = await executeFunction(name, parsedArgs, baseUrl, clientIp);
-      
-      toolResults.push({
-        tool_call_id: toolCall.id,
-        role: 'tool',
-        name: name,
-        content: JSON.stringify(result)
-      });
+      try {
+        const { name, arguments: args } = toolCall.function;
+        let parsedArgs: any;
+        try {
+          parsedArgs = JSON.parse(args);
+        } catch (parseError: any) {
+          console.error(`[${provider}] Failed to parse function arguments for ${name}:`, parseError?.message);
+          toolResults.push({
+            tool_call_id: toolCall.id,
+            role: 'tool',
+            name: name,
+            content: JSON.stringify({ error: `Invalid function arguments: ${parseError?.message}` })
+          });
+          continue;
+        }
+        
+        const result = await executeFunction(name, parsedArgs, baseUrl, clientIp);
+        
+        toolResults.push({
+          tool_call_id: toolCall.id,
+          role: 'tool',
+          name: name,
+          content: JSON.stringify(result)
+        });
+      } catch (error: any) {
+        const functionName = toolCall?.function?.name || 'unknown';
+        const toolCallId = toolCall?.id || 'unknown';
+        console.error(`[${provider}] Error executing function ${functionName}:`, error?.message, error?.stack);
+        toolResults.push({
+          tool_call_id: toolCallId,
+          role: 'tool',
+          name: functionName,
+          content: JSON.stringify({ error: `Function execution failed: ${error?.message || 'Unknown error'}` })
+        });
+      }
     }
     
     updatedMessages.push(...toolResults);
