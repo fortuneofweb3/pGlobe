@@ -73,36 +73,42 @@ export async function GET(request: NextRequest) {
         // Send initial status
         sendStatus('Thinking...');
 
-        // Determine what kind of query this might be for better status messages
+        // Show detailed step-by-step status updates
         const messageLower = message.toLowerCase();
+        let statusStep = 0;
         
-        // Show contextual status based on the query
-        setTimeout(() => {
-          if (isClosed) return;
-          
-          if (messageLower.includes('credit') && (messageLower.includes('earn') || messageLower.includes('hour') || messageLower.includes('day'))) {
-            sendStatus('Checking credit changes...');
-          } else if (messageLower.includes('africa') || messageLower.includes('europe') || messageLower.includes('asia') || messageLower.includes('america')) {
-            sendStatus('Querying nodes by region...');
-          } else if (messageLower.includes('nigeria') || messageLower.includes('france') || messageLower.includes('germany') || messageLower.includes('country')) {
-            sendStatus('Querying nodes by country...');
-          } else if (messageLower.includes('ram') || messageLower.includes('cpu') || messageLower.includes('%')) {
-            sendStatus('Filtering by resource usage...');
-          } else if (messageLower.includes('uptime') || messageLower.includes('average')) {
-            sendStatus('Calculating statistics...');
-          } else if (messageLower.includes('top') || messageLower.includes('best') || messageLower.includes('highest')) {
-            sendStatus('Finding top performers...');
-          } else if (messageLower.includes('how many') || messageLower.includes('count') || messageLower.includes('total')) {
-            sendStatus('Counting nodes...');
-          }
-        }, 500);
-
-        // Show "Analyzing..." after a bit more time
-        setTimeout(() => {
-          if (!isClosed) {
-            sendStatus('Analyzing data...');
-          }
-        }, 2000);
+        // Status progression based on common query patterns
+        const statusSteps: string[] = [];
+        
+        if (messageLower.includes('nearest') || messageLower.includes('closest') || messageLower.includes('near me') || messageLower.includes('my location') || messageLower.includes('best node')) {
+          statusSteps.push('Getting your location...', 'Finding nearest nodes...', 'Calculating distances...', 'Analyzing node performance...', 'Generating response...');
+        } else if (messageLower.includes('credit') && (messageLower.includes('earn') || messageLower.includes('hour') || messageLower.includes('day'))) {
+          statusSteps.push('Checking credit changes...', 'Analyzing credit data...', 'Generating response...');
+        } else if (messageLower.includes('africa') || messageLower.includes('europe') || messageLower.includes('asia') || messageLower.includes('america')) {
+          statusSteps.push('Querying nodes by region...', 'Filtering nodes...', 'Calculating statistics...', 'Generating response...');
+        } else if (messageLower.includes('nigeria') || messageLower.includes('france') || messageLower.includes('germany') || messageLower.includes('country')) {
+          statusSteps.push('Querying nodes by country...', 'Filtering nodes...', 'Analyzing data...', 'Generating response...');
+        } else if (messageLower.includes('ram') || messageLower.includes('cpu') || messageLower.includes('%')) {
+          statusSteps.push('Filtering by resource usage...', 'Analyzing performance...', 'Generating response...');
+        } else if (messageLower.includes('uptime') || messageLower.includes('average')) {
+          statusSteps.push('Calculating statistics...', 'Analyzing data...', 'Generating response...');
+        } else if (messageLower.includes('top') || messageLower.includes('best') || messageLower.includes('highest')) {
+          statusSteps.push('Finding top performers...', 'Ranking nodes...', 'Analyzing metrics...', 'Generating response...');
+        } else if (messageLower.includes('how many') || messageLower.includes('count') || messageLower.includes('total')) {
+          statusSteps.push('Counting nodes...', 'Calculating totals...', 'Generating response...');
+        } else {
+          statusSteps.push('Processing your request...', 'Querying data...', 'Analyzing results...', 'Generating response...');
+        }
+        
+        // Show status steps progressively
+        statusSteps.forEach((step, index) => {
+          setTimeout(() => {
+            if (!isClosed) {
+              sendStatus(step);
+              statusStep = index;
+            }
+          }, 1000 + (index * 2000)); // 1s, 3s, 5s, 7s, etc.
+        });
 
         // Call the main chat endpoint
         const baseUrl = request.url.split('/api/ai/chat-stream')[0];

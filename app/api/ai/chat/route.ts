@@ -213,7 +213,30 @@ const continentCountries: Record<string, string[]> = {
 };
 
 // Execute a function call
-async function executeFunction(name: string, args: any, baseUrl: string, clientIp?: string): Promise<any> {
+async function executeFunction(
+  name: string, 
+  args: any, 
+  baseUrl: string, 
+  clientIp?: string,
+  onStatusUpdate?: (status: string) => void
+): Promise<any> {
+  const functionStatusMap: Record<string, string> = {
+    'get_user_location': 'Getting your location...',
+    'get_location_for_ip': 'Looking up IP location...',
+    'find_closest_nodes': 'Finding nearest nodes...',
+    'filter_nodes': 'Filtering nodes...',
+    'get_node_details': 'Fetching node details...',
+    'get_network_stats': 'Calculating network statistics...',
+    'get_credits_change': 'Checking credit changes...',
+    'get_node_history': 'Fetching historical data...',
+    'compare_nodes': 'Comparing nodes...',
+    'compare_countries': 'Comparing countries...',
+  };
+  
+  const statusMessage = functionStatusMap[name] || `Executing ${name}...`;
+  if (onStatusUpdate) {
+    onStatusUpdate(statusMessage);
+  }
   console.log(`[AI Chat] Executing function: ${name}`, args);
   
   try {
@@ -908,7 +931,8 @@ async function processResponse(
   messages: any[],
   baseUrl: string,
   provider: string,
-  clientIp?: string
+  clientIp?: string,
+  onStatusUpdate?: (status: string) => void
 ): Promise<{ hasToolCalls: boolean; finalResponse?: string; updatedMessages: any[] }> {
   if (!data.choices || !data.choices[0]) {
     throw new Error(`Invalid response from ${provider}`);
@@ -943,7 +967,10 @@ async function processResponse(
           continue;
         }
         
-        const result = await executeFunction(name, parsedArgs, baseUrl, clientIp);
+        if (onStatusUpdate) {
+          onStatusUpdate(`Executing ${name}...`);
+        }
+        const result = await executeFunction(name, parsedArgs, baseUrl, clientIp, onStatusUpdate);
         
         toolResults.push({
           tool_call_id: toolCall.id,
@@ -1075,7 +1102,12 @@ export async function POST(request: Request) {
 
       const data = await response.json();
       
-      const result = await processResponse(data, messages, baseUrl, 'DeepSeek', clientIp);
+      // Status update callback (for future use with streaming)
+      const statusCallback = (status: string) => {
+        console.log(`[AI Chat] Status: ${status}`);
+      };
+      
+      const result = await processResponse(data, messages, baseUrl, 'DeepSeek', clientIp, statusCallback);
       
       if (result.hasToolCalls) {
         messages.length = 0; // Clear array
@@ -1100,8 +1132,14 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('[DeepSeek] Exception:', error);
+    console.error('[DeepSeek] Exception stack:', error?.stack);
+    console.error('[DeepSeek] Exception details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
     return NextResponse.json(
-      { error: 'Failed to process request', message: error?.message },
+      { 
+        error: 'Failed to process request', 
+        message: error?.message || 'Unknown error',
+        details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      },
       { status: 500 }
     );
   }
