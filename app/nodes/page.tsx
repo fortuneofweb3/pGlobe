@@ -106,7 +106,6 @@ function NodesPageContent() {
       if (node.packetsSent !== undefined && node.packetsSent !== null) score += 1;
       if (node.activeStreams !== undefined && node.activeStreams !== null) score += 1;
       // Storage stats
-      if (node.storageUsed !== undefined && node.storageUsed !== null) score += 1;
       if (node.storageCapacity !== undefined && node.storageCapacity !== null) score += 1;
       // Location data
       if (node.locationData?.country) score += 1;

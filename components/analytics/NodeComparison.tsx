@@ -146,7 +146,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
       case 'uptime':
         return node.uptimePercent ?? (node.uptime ? Math.min(99.9, (node.uptime / (30 * 24 * 3600)) * 100) : null);
       case 'storage':
-        return node.storageUsed ?? null;
+        return node.storageCapacity ?? null;
       case 'cpu':
         return node.cpuPercent ?? null;
       case 'ram':

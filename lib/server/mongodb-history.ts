@@ -60,8 +60,7 @@ export interface HistoricalSnapshot {
     // Cumulative metrics (track to see behavior over time)
     uptime?: number; // seconds - cumulative, but tracks if node stays online
     uptimePercent?: number; // calculated from uptime
-    storageUsed?: number; // bytes - can grow over time
-    storageCapacity?: number; // bytes - usually static but can change
+    storageCapacity?: number; // bytes - total capacity allocated
     credits?: number; // cumulative credits earned - changes over time
     // Static-ish metadata (for context)
     version?: string; // changes occasionally
@@ -293,7 +292,6 @@ export async function getNodeHistory(
           activeStreams: '$nodeSnapshots.activeStreams',
           uptime: '$nodeSnapshots.uptime',
           uptimePercent: '$nodeSnapshots.uptimePercent',
-          storageUsed: '$nodeSnapshots.storageUsed',
           storageCapacity: '$nodeSnapshots.storageCapacity',
           credits: '$nodeSnapshots.credits',
           version: '$nodeSnapshots.version',
@@ -352,7 +350,6 @@ export async function getNodeHistory(
       activeStreams: doc.activeStreams,
       uptime: doc.uptime,
       uptimePercent: doc.uptimePercent,
-      storageUsed: doc.storageUsed,
       storageCapacity: doc.storageCapacity,
       credits: doc.credits,
       version: doc.version,
@@ -388,7 +385,6 @@ export async function getNodeHistory(
             activeStreams: '$nodeSnapshots.activeStreams',
             uptime: '$nodeSnapshots.uptime',
             uptimePercent: '$nodeSnapshots.uptimePercent',
-            storageUsed: '$nodeSnapshots.storageUsed',
             storageCapacity: '$nodeSnapshots.storageCapacity',
             credits: '$nodeSnapshots.credits',
             version: '$nodeSnapshots.version',
@@ -415,7 +411,6 @@ export async function getNodeHistory(
           activeStreams: doc.activeStreams,
           uptime: doc.uptime,
           uptimePercent: doc.uptimePercent,
-          storageUsed: doc.storageUsed,
           storageCapacity: doc.storageCapacity,
           credits: doc.credits,
           version: doc.version,
@@ -622,7 +617,6 @@ function createNodeSnapshots(nodes: PNode[]): HistoricalSnapshot['nodeSnapshots'
       // Cumulative metrics (track behavior over time)
       uptime: node.uptime !== undefined && node.uptime !== null ? node.uptime : undefined,
       uptimePercent: node.uptimePercent !== undefined && node.uptimePercent !== null ? node.uptimePercent : undefined,
-      storageUsed: node.storageUsed !== undefined && node.storageUsed !== null ? node.storageUsed : undefined,
       storageCapacity: node.storageCapacity !== undefined && node.storageCapacity !== null ? node.storageCapacity : undefined,
       credits: node.credits !== undefined && node.credits !== null ? node.credits : undefined,
       // Static-ish metadata (for context)
@@ -643,7 +637,7 @@ function createNodeSnapshots(nodes: PNode[]): HistoricalSnapshot['nodeSnapshots'
       cpuPercent: sampleSnapshot.cpuPercent,
       ramPercent: sampleSnapshot.ramPercent,
       hasUptime: sampleSnapshot.uptime !== undefined,
-      hasStorage: sampleSnapshot.storageUsed !== undefined,
+      hasStorage: sampleSnapshot.storageCapacity !== undefined,
     });
   }
   

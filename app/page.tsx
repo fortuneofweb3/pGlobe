@@ -259,31 +259,8 @@ function HomeContent() {
     const onlineNodes = nodes.filter((n) => n.status === 'online').length;
     
     // Storage metrics
-    const usedStorage = nodes.reduce((sum, n) => sum + (n.storageUsed || 0), 0);
-    const totalCapacity = nodes.reduce((sum, n) => sum + (n.storageCapacity || n.storageCommitted || 0), 0);
-    const nodesWithCapacity = nodes.filter(n => (n.storageCapacity || n.storageCommitted || 0) > 0).length;
-    
-    // Debug storage values
-    if (nodes.length > 0 && (usedStorage > 0 || totalCapacity > 0)) {
-      console.log('[Storage Debug]', {
-        usedStorage,
-        totalCapacity,
-        nodesWithCapacity,
-        sampleNode: nodes.find(n => n.storageUsed || n.storageCapacity),
-      });
-    }
-    const usagePercents = nodes
-      .map(n => {
-        const used = n.storageUsed || 0;
-        const cap = n.storageCapacity || n.storageCommitted || 0;
-        if (cap > 0) return (used / cap) * 100;
-        return null;
-      })
-      .filter((v): v is number => v !== null);
-    const avgStorageUsagePercent = usagePercents.length > 0
-      ? usagePercents.reduce((sum, v) => sum + v, 0) / usagePercents.length
-      : 0;
-    const usedVsCapacityPercent = totalCapacity > 0 ? (usedStorage / totalCapacity) * 100 : 0;
+    const totalCapacity = nodes.reduce((sum, n) => sum + (n.storageCapacity || 0), 0);
+    const nodesWithCapacity = nodes.filter(n => (n.storageCapacity || 0) > 0).length;
     
     // Uptime metrics - uptime is in seconds, calculate average as human-readable duration
     const nodesWithUptime = nodes.filter(n => n.uptime !== undefined && n.uptime > 0);
@@ -344,11 +321,8 @@ function HomeContent() {
     return {
       totalNodes,
       onlineNodes,
-      usedStorage,
       totalCapacity,
       nodesWithCapacity,
-      avgStorageUsagePercent,
-      usedVsCapacityPercent,
       avgUptime: avgUptimeSeconds, // Now in seconds, format in UI
       avgCPU,
       totalRAM,
@@ -543,35 +517,17 @@ function HomeContent() {
             <div className="pt-4 sm:pt-6 border-t border-border">
               <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Storage</h2>
-                {stats.usedStorage === 0 && (
-                  <InfoTooltip content="Storage data requires nodes with public pRPC. Most nodes keep pRPC private for security.">
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Info className="w-3 h-3 text-foreground/40" />
-                      <span className="hidden sm:inline">Limited</span>
-                    </span>
-                  </InfoTooltip>
-                )}
               </div>
               <div className="space-y-2 sm:space-y-3">
                 <MetricRow
-                  label="Total Used"
-                  value={formatStorageBytes(stats.usedStorage)}
-                  tooltip="Total data stored across all reporting nodes. This is actual dApp data being served by the pNode network."
-                />
-                <MetricRow
                   label="Total Capacity"
                   value={formatStorageBytes(stats.totalCapacity)}
-                  tooltip="Sum of storage capacity reported by nodes that share it (storage_committed)."
+                  tooltip="Sum of storage capacity reported by nodes (storage_committed from get-pods-with-stats)."
                 />
                 <MetricRow
-                  label="Used vs Capacity"
-                  value={stats.totalCapacity > 0 ? `${stats.usedVsCapacityPercent.toFixed(1)}%` : 'N/A'}
-                  tooltip="Network-wide utilization: total used divided by total reported capacity."
-                />
-                <MetricRow
-                  label="Avg Node Utilization"
-                  value={stats.avgStorageUsagePercent > 0 ? `${stats.avgStorageUsagePercent.toFixed(1)}%` : 'N/A'}
-                  tooltip="Average per-node utilization (used ÷ capacity) across nodes that report both metrics."
+                  label="Nodes with Capacity"
+                  value={`${stats.nodesWithCapacity}`}
+                  tooltip="Number of nodes reporting storage capacity."
                 />
               </div>
                   </div>

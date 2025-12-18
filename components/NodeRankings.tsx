@@ -115,10 +115,10 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
         };
       });
 
-    // Top 10 nodes by storage used (actual data stored)
+    // Top 10 nodes by storage capacity
     const byStorage = [...nodes]
-      .filter(n => n.storageUsed !== undefined && n.storageUsed > 0)
-      .sort((a, b) => (b.storageUsed || 0) - (a.storageUsed || 0))
+      .filter(n => n.storageCapacity !== undefined && n.storageCapacity > 0)
+      .sort((a, b) => (b.storageCapacity || 0) - (a.storageCapacity || 0))
       .slice(0, 10);
 
     // Top 10 nodes by packet transfer rate
@@ -287,7 +287,7 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
                 {activeTab === 'uptime'
                   ? `${(node.uptimePercent || 0).toFixed(1)}%`
                   : activeTab === 'storage'
-                  ? formatStorageBytes(node.storageUsed || 0)
+                  ? formatStorageBytes(node.storageCapacity || 0)
                   : activeTab === 'credits'
                   ? (node.credits !== undefined && node.credits !== null)
                     ? node.credits.toLocaleString()

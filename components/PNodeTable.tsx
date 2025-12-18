@@ -370,7 +370,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
   // Calculate stats for info banner
   const statsWithData = useMemo(() => {
     const withUptime = nodes.filter(n => n.uptime && n.uptime > 0).length;
-    const withStorage = nodes.filter(n => n.storageUsed && n.storageUsed > 0).length;
+    const withStorage = nodes.filter(n => n.storageCapacity && n.storageCapacity > 0).length;
     const withCPU = nodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null).length;
     const withLatency = nodes.filter(n => {
       // Check for client-side latency measurement
@@ -438,11 +438,11 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                     </th>
                     <th 
                       className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
-                      onClick={() => onSort('storageUsed')}
+                      onClick={() => onSort('storageCapacity')}
                     >
                       <div className="flex items-center gap-1.5">
                         <span>Storage</span>
-                        {sortBy === 'storageUsed' ? (
+                        {sortBy === 'storageCapacity' ? (
                           sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
                         ) : (
                           <ArrowDown className="w-3 h-3 text-foreground/30" />
@@ -644,15 +644,13 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                       </td>
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
                         {(() => {
-                          const capacity = node.storageCapacity || node.storageCommitted;
-                          const used = node.storageUsed;
-                          const hasUsed = used !== undefined && used !== null;
+                          const capacity = node.storageCapacity;
                           const hasCapacity = capacity !== undefined && capacity !== null;
                           
-                          if (hasUsed || hasCapacity) {
+                          if (hasCapacity) {
                             return (
                               <span className="text-xs sm:text-sm text-foreground/80">
-                                {hasUsed ? formatBytes(used) : '—'} / {hasCapacity ? formatBytes(capacity) : '—'}
+                                {formatBytes(capacity)}
                               </span>
                             );
                           }

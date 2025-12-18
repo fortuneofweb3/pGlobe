@@ -18,7 +18,6 @@ export default function ExportButton({ nodes, filename = 'xandeum-pnodes' }: Exp
       'Status',
       'Uptime (%)',
       'Storage Capacity (GB)',
-      'Storage Used (GB)',
       'Location',
       'Latency (ms)',
       'Reputation',
@@ -32,7 +31,6 @@ export default function ExportButton({ nodes, filename = 'xandeum-pnodes' }: Exp
       node.status || '',
       node.uptime?.toFixed(2) || '',
       node.storageCapacity ? (node.storageCapacity / (1024 * 1024 * 1024)).toFixed(2) : '',
-      node.storageUsed ? (node.storageUsed / (1024 * 1024 * 1024)).toFixed(2) : '',
       node.location || '',
       node.latency?.toString() || '',
       node.reputation?.toString() || '',
@@ -64,7 +62,6 @@ export default function ExportButton({ nodes, filename = 'xandeum-pnodes' }: Exp
       nodes: nodes.map((node) => ({
         ...node,
         storageCapacityGB: node.storageCapacity ? node.storageCapacity / (1024 * 1024 * 1024) : null,
-        storageUsedGB: node.storageUsed ? node.storageUsed / (1024 * 1024 * 1024) : null,
       })),
     };
 

@@ -312,9 +312,6 @@ function formatNodeForAPI(node: PNode): any {
     ramUsed: node.ramUsed,
     ramTotal: node.ramTotal,
     storageCapacity: node.storageCapacity,
-    storageUsed: node.storageUsed,
-    storageCommitted: node.storageCommitted,
-    storageUsagePercent: node.storageUsagePercent,
     packetsReceived: node.packetsReceived,
     packetsSent: node.packetsSent,
     activeStreams: node.activeStreams,
@@ -488,8 +485,6 @@ app.get('/api/v1/network/health', authenticate, async (req, res) => {
     const avgUptime = nodes.length > 0 ? totalUptime / nodes.length : 0;
 
     const totalStorage = nodes.reduce((sum, n) => sum + (n.storageCapacity || 0), 0);
-    const usedStorage = nodes.reduce((sum, n) => sum + (n.storageUsed || 0), 0);
-    const storageUsagePercent = totalStorage > 0 ? (usedStorage / totalStorage) * 100 : 0;
 
     const totalCPU = nodes.filter(n => n.cpuPercent !== undefined).reduce((sum, n) => sum + (n.cpuPercent || 0), 0);
     const avgCPU = nodes.filter(n => n.cpuPercent !== undefined).length > 0
@@ -527,8 +522,6 @@ app.get('/api/v1/network/health', authenticate, async (req, res) => {
         },
         storage: {
           total: totalStorage,
-          used: usedStorage,
-          usagePercent: storageUsagePercent,
         },
         cpu: {
           average: avgCPU,

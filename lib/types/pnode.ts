@@ -31,10 +31,7 @@ export interface PNode {
       packetsReceived?: number; // Total packets received (cumulative counter from stats.packets_received)
       packetsSent?: number; // Total packets sent (cumulative counter from stats.packets_sent)
   activeStreams?: number; // Active network streams (from stats.active_streams)
-  storageCapacity?: number; // Total storage capacity in bytes (from storage_committed - allocated/reserved storage)
-  storageUsed?: number; // Storage used in bytes (from storage_used via get-pods-with-stats - actual used storage)
-  storageCommitted?: number; // Storage committed in bytes (from get-pods-with-stats v0.7.0+) - this is the TOTAL CAPACITY allocated/reserved
-  storageUsagePercent?: number; // Storage usage percentage (from get-pods-with-stats v0.7.0+)
+  storageCapacity?: number; // Total storage capacity in bytes (from storage_committed via get-pods-with-stats)
   totalPages?: number; // Total pages (from metadata.total_pages)
   isPublic?: boolean; // Whether pRPC is publicly accessible (from get-pods-with-stats v0.7.0+)
   rpcPort?: number; // RPC port number (from get-pods-with-stats v0.7.0+)

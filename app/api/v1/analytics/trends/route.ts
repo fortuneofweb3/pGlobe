@@ -58,12 +58,9 @@ export const GET = withAPIAuth(async (request: Request) => {
         };
       } else if (metric === 'storage') {
         const total = groupNodes.reduce((sum, n) => sum + (n.storageCapacity || 0), 0);
-        const used = groupNodes.reduce((sum, n) => sum + (n.storageUsed || 0), 0);
         trends[key] = {
           count: groupNodes.length,
           totalStorage: total,
-          usedStorage: used,
-          usagePercent: total > 0 ? (used / total) * 100 : 0,
         };
       } else if (metric === 'latency') {
         const withLatency = groupNodes.filter(n => n.latency !== undefined);

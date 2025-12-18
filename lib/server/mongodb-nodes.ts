@@ -114,9 +114,6 @@ export interface NodeDocument {
   packetsSent?: number;
   activeStreams?: number;
   storageCapacity?: number;
-  storageUsed?: number;
-  storageCommitted?: number;
-  storageUsagePercent?: number;
   totalPages?: number;
   dataOperationsHandled?: number;
   isPublic?: boolean;
@@ -185,9 +182,6 @@ function nodeToDocument(node: PNode): Partial<NodeDocument> {
     packetsSent: node.packetsSent,
     activeStreams: node.activeStreams,
     storageCapacity: node.storageCapacity,
-    storageUsed: node.storageUsed,
-    storageCommitted: node.storageCommitted,
-    storageUsagePercent: node.storageUsagePercent,
     totalPages: node.totalPages,
     dataOperationsHandled: node.dataOperationsHandled,
     isPublic: node.isPublic,
@@ -233,9 +227,6 @@ export function documentToNode(doc: NodeDocument): PNode {
     packetsSent: doc.packetsSent,
     activeStreams: doc.activeStreams,
     storageCapacity: doc.storageCapacity,
-    storageUsed: doc.storageUsed,
-    storageCommitted: doc.storageCommitted,
-    storageUsagePercent: doc.storageUsagePercent,
     totalPages: doc.totalPages,
     dataOperationsHandled: doc.dataOperationsHandled,
     isPublic: doc.isPublic,
@@ -302,7 +293,7 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
       const statsFields = [
         'address', 'version', 'status', 'lastSeen', 'uptime',
         'cpuPercent', 'ramUsed', 'ramTotal', 'packetsReceived', 'packetsSent', 'activeStreams',
-        'storageUsed', 'storageCapacity', 'storageCommitted', 'storageUsagePercent',
+        'storageCapacity',
         'totalPages', 'dataOperationsHandled', 'isPublic', 'rpcPort', 'peerCount', 'peers',
         'credits', 'creditsResetMonth', 'seenInGossip', 'pubkey', 'publicKey', 'previousAddresses',
       ];

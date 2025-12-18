@@ -641,17 +641,12 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
       ? allNodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null).reduce((sum, n) => sum + (n.cpuPercent || 0), 0) / allNodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null).length
       : 0;
 
-    const storageUtilization = node.storageCapacity
-      ? ((node.storageUsed || 0) / node.storageCapacity) * 100
-      : 0;
-
     const ramUtilization = node.ramTotal && node.ramUsed
       ? (node.ramUsed / node.ramTotal) * 100
       : 0;
 
     return {
       networkAvgCpu,
-      storageUtilization,
       ramUtilization,
     };
   }, [node, allNodes]);
@@ -803,13 +798,9 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     <HardDrive className="w-4 h-4 text-foreground/40" />
                   </div>
                   <div className="text-xl sm:text-2xl font-bold text-foreground">
-                    {formatValue(node.storageUsed, formatStorageBytes)}
+                    {formatValue(node.storageCapacity, formatStorageBytes)}
                   </div>
-                  {node.storageCapacity && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      of {formatStorageBytes(node.storageCapacity)}
-                    </p>
-                  )}
+                  <p className="text-xs text-muted-foreground mt-1">Total capacity</p>
                 </div>
 
                 <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
@@ -874,20 +865,10 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     {node.storageCapacity ? (
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-foreground">Storage</span>
+                          <span className="text-sm font-medium text-foreground">Storage Capacity</span>
                           <span className="text-sm font-mono font-semibold text-foreground">
-                            {formatValue(nodeStats?.storageUtilization, (val) => `${val.toFixed(1)}%`)}
+                            {formatValue(node.storageCapacity, formatStorageBytes)}
                           </span>
-                        </div>
-                        <div className="w-full bg-muted/30 rounded-full h-2">
-                          <div
-                            className="bg-[#F0A741] h-2 rounded-full transition-all duration-500"
-                            style={{ width: `${nodeStats?.storageUtilization || 0}%` }}
-                          />
-                        </div>
-                        <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-                          <span>{formatValue(node.storageUsed, formatStorageBytes)}</span>
-                          <span>{formatValue(node.storageCapacity, formatStorageBytes)}</span>
                         </div>
                       </div>
                     ) : null}
