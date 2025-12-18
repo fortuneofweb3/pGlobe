@@ -102,14 +102,14 @@ export default function NetworkHealthChart({ nodes }: NetworkHealthChartProps) {
   }
 
   const margin = { top: 5, right: 30, left: 80, bottom: 5 };
-  const chartHeight = 300;
-
+  
   return (
-    <div>
-      <div style={{ width: '100%', height: chartHeight, position: 'relative' }}>
+    <div className="h-full flex flex-col">
+      <div className="flex-1" style={{ width: '100%', minHeight: 150, position: 'relative' }}>
         <ParentSize>
-          {({ width: parentWidth = 800 }) => {
+          {({ width: parentWidth = 800, height: parentHeight = 150 }) => {
             const width = parentWidth;
+            const chartHeight = Math.max(150, parentHeight);
             const innerWidth = width - margin.left - margin.right;
             const innerHeight = chartHeight - margin.top - margin.bottom;
 

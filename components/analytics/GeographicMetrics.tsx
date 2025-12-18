@@ -13,6 +13,7 @@ import ParentSize from '@visx/responsive/lib/components/ParentSize';
 import { Globe, ChevronDown } from 'lucide-react';
 import { formatStorageBytes } from '@/lib/utils/storage';
 import { getCachedNodesLatencies, measureNodesLatency } from '@/lib/utils/client-latency';
+import { getFlagForCountry } from '@/lib/utils/country-flags';
 
 type MetricType = 'nodeCount' | 'latency' | 'storage' | 'onlineRate' | 'uptime';
 
@@ -23,6 +24,7 @@ interface GeographicMetricsProps {
 type TooltipData = {
   country: string;
   fullCountry: string;
+  countryCode?: string;
   value: number;
   unit: string;
   label: string;
@@ -128,6 +130,7 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
       totalStorage: number;
       onlineCount: number;
       uptimes: number[];
+      countryCode?: string;
     }>();
 
     nodes.forEach(node => {
@@ -142,10 +145,14 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
           totalStorage: 0,
           onlineCount: 0,
           uptimes: [],
+          countryCode: undefined,
         });
       }
       const entry = nodesByCountry.get(country)!;
       entry.count++;
+      if (node.locationData?.countryCode && !entry.countryCode) {
+        entry.countryCode = node.locationData.countryCode;
+      }
       entry.nodes.push(node);
       
       // Use client-side latency when latency metric is selected, otherwise use server-side
@@ -225,6 +232,7 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
         return {
           country: country.length > 20 ? country.substring(0, 17) + '...' : country,
           fullCountry: country,
+          countryCode: data.countryCode,
           value: Math.round(value * 10) / 10,
           nodeCount: data.count,
           avgLatency: avgLatency || 0,
@@ -300,12 +308,9 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
   }
 
   const margin = { top: 10, right: 30, left: 120, bottom: 40 };
-  // Match height of Top Nodes div: header (~24px) + tabs (~40px) + list (280px) = ~344px
-  // Chart: header (~24px) + chart = ~344px, so chart should be ~320px
-  const chartHeight = 320;
 
   return (
-    <div>
+    <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-foreground/40" />
@@ -327,13 +332,13 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
         </div>
       </div>
       
-      <div className="mt-3">
-        <div style={{ width: '100%', height: chartHeight, position: 'relative' }}>
-          <ParentSize>
-            {({ width: parentWidth = 800 }) => {
-              const width = parentWidth;
-              const innerWidth = width - margin.left - margin.right;
-              const innerHeight = chartHeight - margin.top - margin.bottom;
+      <div className="flex-1" style={{ width: '100%', minHeight: 200, position: 'relative' }}>
+        <ParentSize>
+          {({ width: parentWidth = 800, height: parentHeight = 200 }) => {
+            const width = parentWidth;
+            const chartHeight = Math.max(200, parentHeight);
+            const innerWidth = width - margin.left - margin.right;
+            const innerHeight = chartHeight - margin.top - margin.bottom;
 
               const yScale = scaleBand<string>({
                 range: [innerHeight, 0],
@@ -396,7 +401,13 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
                       top={margin.top}
                     scale={yScale}
                       numTicks={Math.min(data.length, 12)}
-                    tickFormat={(d) => d}
+                    tickFormat={(d) => {
+                      const countryData = data.find(item => item.country === d || item.fullCountry === d);
+                      const flag = countryData?.countryCode 
+                        ? getFlagForCountry(countryData.fullCountry || d, countryData.countryCode)
+                        : '';
+                      return flag ? `${flag} ${d}` : d;
+                    }}
                     tickLabelProps={() => ({
                       fill: '#E5E7EB',
                       fontSize: 11,
@@ -444,7 +455,6 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
               );
             }}
           </ParentSize>
-        </div>
       </div>
     </div>
   );

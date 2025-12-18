@@ -13,6 +13,7 @@ import { measureNodesLatency, getCachedNodesLatencies } from '@/lib/utils/client
 import { fetchNodeBalance } from '@/lib/utils/balance';
 import BalanceDisplay from './BalanceDisplay';
 import { formatBytes, formatStorageBytes } from '@/lib/utils/storage';
+import { getFlagForCountry } from '@/lib/utils/country-flags';
 import { Check, X, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface PNodeTableProps {
@@ -690,9 +691,20 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         })()}
                       </td>
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
-                        <span className="text-xs sm:text-sm text-foreground/80">
-                          {node.location || renderEmptyCell()}
-                        </span>
+                        {(() => {
+                          if (!node.location) return renderEmptyCell();
+                          
+                          const flag = node.locationData?.countryCode 
+                            ? getFlagForCountry(node.locationData.country, node.locationData.countryCode)
+                            : '';
+                          
+                          return (
+                            <span className="text-xs sm:text-sm text-foreground/80 flex items-center gap-1.5">
+                              {flag && <span className="text-base leading-none">{flag}</span>}
+                              {node.location}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-right">
                         {(() => {

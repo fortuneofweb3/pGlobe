@@ -59,20 +59,20 @@ export default function VersionDistribution({ nodes }: VersionDistributionProps)
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
           <Package className="w-4 h-4 text-foreground/40" />
-          Version Distribution
-        </h3>
+          <h2 className="text-base font-semibold text-foreground">Version Distribution</h2>
+        </div>
         <span className="text-xs text-muted-foreground">
           {versionStats.versions.length} {versionStats.versions.length === 1 ? 'version' : 'versions'}
         </span>
       </div>
 
       {/* Version List */}
-      <div className="space-y-2 max-h-[360px] overflow-y-auto pr-2">
+      <div className="space-y-2 flex-1 overflow-y-auto pr-2 min-h-0 max-h-[360px]">
         {versionStats.versions.map(({ version, count, percentage }) => {
           const isLatest = version === versionStats.latestVersion;
           const label = getVersionLabel(version, isLatest);

@@ -150,22 +150,21 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
   }
 
   const margin = { top: 20, right: 20, left: 40, bottom: 40 };
-  const chartHeight = 250;
 
   return (
-    <div>
+    <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-3">
         <div className="text-sm text-muted-foreground">
           Avg: <span className="text-foreground font-semibold">{avgLatency}ms</span>
         </div>
       </div>
-      <div className="mt-3">
-        <div style={{ width: '100%', height: chartHeight, position: 'relative' }}>
-          <ParentSize>
-            {({ width: parentWidth = 800 }) => {
-              const width = parentWidth;
-              const innerWidth = width - margin.left - margin.right;
-              const innerHeight = chartHeight - margin.top - margin.bottom;
+      <div className="flex-1" style={{ width: '100%', minHeight: 180, position: 'relative' }}>
+        <ParentSize>
+          {({ width: parentWidth = 800, height: parentHeight = 180 }) => {
+            const width = parentWidth;
+            const chartHeight = Math.max(180, parentHeight);
+            const innerWidth = width - margin.left - margin.right;
+            const innerHeight = chartHeight - margin.top - margin.bottom;
 
               const xScale = scaleBand<string>({
                 range: [0, innerWidth],
@@ -277,7 +276,6 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
               );
             }}
           </ParentSize>
-        </div>
       </div>
     </div>
   );

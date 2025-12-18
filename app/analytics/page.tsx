@@ -399,18 +399,46 @@ export default function AnalyticsPage() {
 
           {/* Main Analytics Sections */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
-            {/* Left Sidebar */}
-            <div className="lg:col-span-1 space-y-3 sm:space-y-4">
-              <div className="bg-card/50 border border-border rounded-xl p-4">
-                <NetworkHealthScoreDetailed nodes={nodes} />
+            {/* Row 1: Health Score */}
+            <div className="bg-card/50 border border-border rounded-xl p-4 flex flex-col">
+              <NetworkHealthScoreDetailed nodes={nodes} />
+            </div>
+            {/* Row 1: Network Health Chart */}
+            <div className="lg:col-span-2 bg-card/50 border border-border rounded-xl p-4 flex flex-col">
+              <div className="flex items-center gap-2 mb-3">
+                <Activity className="w-4 h-4 text-foreground/40" />
+                <h2 className="text-base font-semibold text-foreground">Network Health</h2>
               </div>
-
-              <div className="bg-card/50 border border-border rounded-xl p-4">
-                <VersionDistribution nodes={nodes} />
+              <div className="flex-1 flex items-center">
+                <div className="w-full">
+                  <NetworkHealthChart nodes={nodes} />
+                </div>
               </div>
+            </div>
 
-              <div className="bg-card/50 border border-border rounded-xl p-4">
-                <h3 className="text-xs font-semibold text-foreground/60 mb-3 uppercase tracking-wide">Top Nodes</h3>
+            {/* Row 2: Version Distribution */}
+            <div className="bg-card/50 border border-border rounded-xl p-4 flex flex-col">
+              <VersionDistribution nodes={nodes} />
+            </div>
+            {/* Row 2: Performance Metrics */}
+            <div className="lg:col-span-2 bg-card/50 border border-border rounded-xl p-4 flex flex-col">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="w-4 h-4 text-foreground/40" />
+                <h2 className="text-base font-semibold text-foreground">Performance Metrics</h2>
+              </div>
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                <LatencyDistribution nodes={nodes} />
+                <ResourceUtilization nodes={nodes} />
+              </div>
+            </div>
+
+            {/* Row 3: Top Nodes */}
+            <div className="bg-card/50 border border-border rounded-xl p-4 flex flex-col">
+              <div className="flex items-center gap-2 mb-3">
+                <Server className="w-4 h-4 text-foreground/40" />
+                <h2 className="text-base font-semibold text-foreground">Top Nodes</h2>
+              </div>
+              <div className="flex-1">
                 <NodeRankings 
                   nodes={nodes} 
                   onNodeClick={(node) => {
@@ -420,31 +448,9 @@ export default function AnalyticsPage() {
                 />
               </div>
             </div>
-
-            {/* Main Content Area */}
-            <div className="lg:col-span-2 space-y-3 sm:space-y-4">
-              <div className="bg-card/50 border border-border rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Activity className="w-4 h-4 text-foreground/40" />
-                  <h2 className="text-base font-semibold text-foreground">Network Health</h2>
-                </div>
-                <NetworkHealthChart nodes={nodes} />
-              </div>
-
-              <div className="bg-card/50 border border-border rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <TrendingUp className="w-4 h-4 text-foreground/40" />
-                  <h2 className="text-base font-semibold text-foreground">Performance Metrics</h2>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                  <LatencyDistribution nodes={nodes} />
-                  <ResourceUtilization nodes={nodes} />
-                </div>
-              </div>
-
-              <div className="bg-card/50 border border-border rounded-xl p-4">
-                <GeographicMetrics nodes={nodes} />
-              </div>
+            {/* Row 3: Geographic Metrics */}
+            <div className="lg:col-span-2 bg-card/50 border border-border rounded-xl p-4 flex flex-col">
+              <GeographicMetrics nodes={nodes} />
             </div>
           </div>
         </div>

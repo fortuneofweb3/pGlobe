@@ -6,6 +6,7 @@ import { PNode } from '@/lib/types/pnode';
 import { X, Copy, Check, RefreshCw, HardDrive, Cpu, MemoryStick, Network, MapPin, Clock, CheckCircle2, XCircle, Globe, TrendingUp, Server, Activity } from 'lucide-react';
 import { detectDataCenter, getRegionName } from '@/lib/utils/dataCenter';
 import { formatBytes, formatStorageBytes } from '@/lib/utils/storage';
+import { getFlagForCountry } from '@/lib/utils/country-flags';
 import { useNodes } from '@/lib/context/NodesContext';
 import BalanceDisplay from './BalanceDisplay';
 import { measureNodeLatency, getCachedLatency } from '@/lib/utils/client-latency';
@@ -982,9 +983,14 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                   </div>
                   <div className="space-y-2 text-sm">
                     {node.locationData?.country && (
-                      <div className="flex justify-between">
+                      <div className="flex justify-between items-center">
                         <span className="text-foreground/60">Country</span>
-                        <span className="text-foreground/80">{node.locationData.country}</span>
+                        <span className="text-foreground/80 flex items-center gap-2">
+                          {node.locationData.countryCode && (
+                            <span className="text-base">{getFlagForCountry(node.locationData.country, node.locationData.countryCode)}</span>
+                          )}
+                          {node.locationData.country}
+                        </span>
                       </div>
                     )}
                     {node.locationData?.city && (

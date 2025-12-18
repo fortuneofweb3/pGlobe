@@ -2,7 +2,7 @@
 
 import { PNode } from '@/lib/types/pnode';
 import { useMemo } from 'react';
-import { Info } from 'lucide-react';
+import { Info, Activity } from 'lucide-react';
 import { calculateNetworkHealth, getLatestVersion } from '@/lib/utils/network-health';
 
 interface NetworkHealthScoreDetailedProps {
@@ -25,22 +25,25 @@ export default function NetworkHealthScoreDetailed({ nodes }: NetworkHealthScore
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <Activity className="w-4 h-4 text-foreground/40" />
+        <h2 className="text-base font-semibold text-foreground">Network Health Score</h2>
+      </div>
+      
       {/* Overall Score - Large Display */}
-      <div className="text-center py-6 border-b border-border">
-        <div className="text-5xl font-bold mb-2">
+      <div className="text-center py-3 border-b border-border">
+        <div className="text-4xl font-bold mb-1">
           <span className={getScoreColor(healthMetrics.overall)}>{healthMetrics.overall}</span>
         </div>
-        <div className="text-sm text-muted-foreground">
-          Network Health Score
-        </div>
-        <div className="text-xs text-muted-foreground/70 mt-1">
-          = (100×40%) + (80×35%) + (70×25%)
+        <div className="text-xs text-muted-foreground">
+          Overall Score
         </div>
       </div>
 
       {/* Score Breakdown Bars */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">

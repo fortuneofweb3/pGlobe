@@ -184,8 +184,7 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
   }, [nodes]);
 
   return (
-    <div className="space-y-3">
-      <h3 className="text-base font-semibold text-foreground">Top Performing Nodes</h3>
+    <div className="space-y-3 h-full flex flex-col">
       
       {/* Tab buttons */}
       <div className="flex gap-1 p-1 bg-muted/30 rounded-lg">
@@ -232,7 +231,7 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
       </div>
 
       {/* Rankings list - scrollable for top 10 */}
-      <div className="space-y-1.5 max-h-[280px] overflow-y-auto pr-1 scrollbar-thin">
+      <div className="space-y-1.5 flex-1 overflow-y-auto pr-1 scrollbar-thin min-h-0 max-h-[280px]">
         {loadingRates && activeTab === 'packets' ? (
           <div className="text-center py-4 text-xs text-muted-foreground">
             <p>Calculating packet rates...</p>

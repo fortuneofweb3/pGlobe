@@ -7,6 +7,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { PNode } from '@/lib/types/pnode';
 import { ZoomIn, ZoomOut, RotateCcw, Globe, ChevronLeft, ChevronRight, MapPin, Info, ArrowUp, ArrowDown } from 'lucide-react';
+import { getFlagForCountry } from '@/lib/utils/country-flags';
 
 interface MapLibreGlobeProps {
   nodes: PNode[];
@@ -2655,10 +2656,15 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                 {/* Location */}
                 <div>
                   <div className="text-[11px] text-muted-foreground/60 uppercase tracking-wider mb-1">Location</div>
-                  <p className="text-[16px] text-foreground font-medium">
-                    {selectedNode.locationData?.city 
-                      ? `${selectedNode.locationData.city}, ${selectedNode.locationData.country}`
-                      : selectedNode.locationData?.country || 'Unknown'}
+                  <p className="text-[16px] text-foreground font-medium flex items-center gap-1.5">
+                    {selectedNode.locationData?.countryCode && (
+                      <span className="text-lg leading-none">{getFlagForCountry(selectedNode.locationData.country, selectedNode.locationData.countryCode)}</span>
+                    )}
+                    <span>
+                      {selectedNode.locationData?.city 
+                        ? `${selectedNode.locationData.city}, ${selectedNode.locationData.country}`
+                        : selectedNode.locationData?.country || 'Unknown'}
+                    </span>
                   </p>
                 </div>
                 

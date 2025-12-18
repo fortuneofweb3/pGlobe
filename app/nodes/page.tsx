@@ -303,12 +303,9 @@ function NodesPageContent() {
                 </div>
               </div>
               
-              {/* Results count */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                <div className="text-xs sm:text-sm text-muted-foreground">
-                  Showing <span className="text-foreground font-medium">{filteredAndSortedNodes.length}</span> of <span className="text-foreground font-medium">{nodes.length}</span> nodes
-                </div>
-                {(statusFilter !== 'all' || versionFilter !== 'all' || creditsFilter !== 'all' || packetsFilter !== 'all') && (
+              {/* Clear filters button */}
+              {(statusFilter !== 'all' || versionFilter !== 'all' || creditsFilter !== 'all' || packetsFilter !== 'all') && (
+                <div className="flex justify-end">
                   <button
                     onClick={() => {
                       setStatusFilter('all');
@@ -320,8 +317,8 @@ function NodesPageContent() {
                   >
                     Clear filters
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Node Table */}
