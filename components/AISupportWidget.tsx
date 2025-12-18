@@ -10,6 +10,66 @@ interface Message {
   timestamp: Date;
 }
 
+// Format message content, detecting and styling pubkeys
+function formatMessageWithPubkeys(content: string): JSX.Element[] {
+  // Solana pubkey pattern: 32-44 base58 characters (A-Z, a-z, 0-9, excluding 0, O, I, l)
+  // Common patterns: "Pubkey: ...", numbered lists (1. XKZpm...), standalone
+  const pubkeyPattern = /([A-HJ-NP-Za-km-z1-9]{32,44})/g;
+  
+  const parts: JSX.Element[] = [];
+  let lastIndex = 0;
+  let match;
+  
+  while ((match = pubkeyPattern.exec(content)) !== null) {
+    // Add text before the pubkey
+    if (match.index > lastIndex) {
+      const beforeText = content.slice(lastIndex, match.index);
+      if (beforeText) {
+        parts.push(<span key={`text-${lastIndex}`}>{beforeText}</span>);
+      }
+    }
+    
+    // Check if this looks like a pubkey
+    // Look at context: should be on its own line or after "Pubkey:", numbered list, etc.
+    const beforeChar = match.index > 0 ? content[match.index - 1] : ' ';
+    const afterChar = match.index + match[0].length < content.length 
+      ? content[match.index + match[0].length] 
+      : ' ';
+    
+    // Check if preceded by "Pubkey:", number + period, or whitespace/newline
+    const beforeContext = match.index >= 10 
+      ? content.slice(Math.max(0, match.index - 10), match.index).toLowerCase()
+      : '';
+    const hasPubkeyPrefix = beforeContext.includes('pubkey:');
+    const hasNumberPrefix = /^\d+\.\s*$/.test(content.slice(Math.max(0, match.index - 5), match.index));
+    
+    // Pubkey should be surrounded by whitespace, punctuation, line breaks, or be in a list
+    const isPubkey = (hasPubkeyPrefix || hasNumberPrefix || /[\s\n.,:;!?()\[\]{}]/.test(beforeChar)) && 
+                     /[\s\n.,:;!?()\[\]{}]/.test(afterChar);
+    
+    if (isPubkey) {
+      // Format as pubkey with monospace and wrap
+      parts.push(
+        <span key={`pubkey-${match.index}`} className="font-mono text-xs break-all inline-block max-w-full">
+          {match[0]}
+        </span>
+      );
+    } else {
+      // Not a pubkey, just regular text
+      parts.push(<span key={`text-${match.index}`}>{match[0]}</span>);
+    }
+    
+    lastIndex = match.index + match[0].length;
+  }
+  
+  // Add remaining text
+  if (lastIndex < content.length) {
+    parts.push(<span key={`text-${lastIndex}`}>{content.slice(lastIndex)}</span>);
+  }
+  
+  return parts.length > 0 ? parts : [<span key="content">{content}</span>];
+}
+
 export default function AISupportWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -305,25 +365,14 @@ export default function AISupportWidget() {
                       </div>
                     )}
                     <div
-                      className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                      className={`max-w-[80%] rounded-lg px-4 py-2 break-words ${
                         message.role === 'user'
                           ? 'bg-[#F0A741] text-black'
                           : 'bg-[#F0A741]/10 text-foreground border border-[#F0A741]/20'
                       }`}
                     >
-                      <div className="text-sm whitespace-pre-wrap">
-                        {message.content.split(/(Pubkey: [^\n]+)/).map((part, idx) => {
-                          if (part.startsWith('Pubkey: ')) {
-                            const pubkey = part.replace(/^Pubkey:\s*/, '');
-                            return (
-                              <span key={idx}>
-                                Pubkey:{' '}
-                                <span className="font-mono text-xs break-all inline-block max-w-full">{pubkey}</span>
-                              </span>
-                            );
-                          }
-                          return <span key={idx}>{part}</span>;
-                        })}
+                      <div className="text-sm whitespace-pre-wrap break-words overflow-wrap-anywhere word-break-break-word">
+                        {formatMessageWithPubkeys(message.content)}
                       </div>
                       <p className="text-xs mt-1 opacity-60">
                         {message.timestamp.toLocaleTimeString([], {
