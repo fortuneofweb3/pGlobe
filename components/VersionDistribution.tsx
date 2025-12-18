@@ -72,7 +72,7 @@ export default function VersionDistribution({ nodes }: VersionDistributionProps)
       </div>
 
       {/* Version List */}
-      <div className="space-y-2">
+      <div className="space-y-2 max-h-[360px] overflow-y-auto pr-2">
         {versionStats.versions.map(({ version, count, percentage }) => {
           const isLatest = version === versionStats.latestVersion;
           const label = getVersionLabel(version, isLatest);

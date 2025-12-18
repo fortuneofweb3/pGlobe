@@ -232,7 +232,7 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
       </div>
 
       {/* Rankings list - scrollable for top 10 */}
-      <div className="space-y-1.5 max-h-[360px] overflow-y-auto pr-1 scrollbar-thin">
+      <div className="space-y-1.5 max-h-[280px] overflow-y-auto pr-1 scrollbar-thin">
         {loadingRates && activeTab === 'packets' ? (
           <div className="text-center py-4 text-xs text-muted-foreground">
             <p>Calculating packet rates...</p>

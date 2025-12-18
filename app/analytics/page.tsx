@@ -14,7 +14,7 @@ import Header from '@/components/Header';
 import NodeDetailsModal from '@/components/NodeDetailsModal';
 import { useNodes } from '@/lib/context/NodesContext';
 import { formatStorageBytes } from '@/lib/utils/storage';
-import { Activity, HardDrive, TrendingUp, Server, BarChart3, Download, FileJson, FileSpreadsheet, ArrowDown, MemoryStick, Cpu } from 'lucide-react';
+import { Activity, HardDrive, TrendingUp, Server, BarChart3, Download, FileJson, FileSpreadsheet, ArrowDown, MemoryStick, Cpu, Award, Network } from 'lucide-react';
 
 interface HistoricalDataPoint {
   timestamp: number;
@@ -145,6 +145,14 @@ export default function AnalyticsPage() {
     const avgCPU = nodesWithCPU.length > 0
       ? nodesWithCPU.reduce((sum, n) => sum + (n.cpuPercent || 0), 0) / nodesWithCPU.length
       : 0;
+    
+    // Credits metrics
+    const nodesWithCredits = nodes.filter(n => n.credits !== undefined && n.credits !== null);
+    const totalCredits = nodesWithCredits.reduce((sum, n) => sum + (n.credits || 0), 0);
+    
+    // Active Streams
+    const totalActiveStreams = nodes.reduce((sum, n) => sum + (n.activeStreams || 0), 0);
+    const nodesWithStreams = nodes.filter(n => n.activeStreams !== undefined && n.activeStreams !== null && n.activeStreams > 0).length;
 
     return {
       totalNodes: nodes.length,
@@ -160,6 +168,10 @@ export default function AnalyticsPage() {
       avgCPU,
       nodesWithCPU: nodesWithCPU.length,
       nodesWithRAM: nodesWithRAM.length,
+      totalCredits,
+      nodesWithCredits: nodesWithCredits.length,
+      totalActiveStreams,
+      nodesWithStreams,
     };
   }, [nodes]);
 
@@ -286,7 +298,7 @@ export default function AnalyticsPage() {
           )}
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Nodes</span>
@@ -322,17 +334,8 @@ export default function AnalyticsPage() {
                 <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">RAM</span>
                 <MemoryStick className="w-4 h-4 text-foreground/40" />
               </div>
-              <div className="mb-2">
-                <div className="text-xs text-foreground/60 mb-0.5">Total</div>
-                <div className="text-xl sm:text-2xl font-bold text-foreground">
-                  {stats.totalRAM > 0 ? formatStorageBytes(stats.totalRAM) : 'N/A'}
-                </div>
-              </div>
-              <div className="mb-2">
-                <div className="text-xs text-foreground/60 mb-0.5">Used</div>
-                <div className="text-lg font-bold text-foreground">
-                  {stats.usedRAM > 0 ? formatStorageBytes(stats.usedRAM) : 'N/A'}
-                </div>
+              <div className="text-xl sm:text-2xl font-bold text-foreground">
+                {stats.totalRAM > 0 ? formatStorageBytes(stats.totalRAM) : 'N/A'}
               </div>
               <div className="text-xs text-foreground/50 mt-1">
                 {stats.avgRAMUsage > 0 ? `${stats.avgRAMUsage.toFixed(1)}% avg usage` : 'N/A'}
@@ -364,6 +367,32 @@ export default function AnalyticsPage() {
               </div>
               <div className="text-xs text-foreground/50 mt-1">
                 {nodes.filter(n => n.uptime && n.uptime > 0).length} nodes reporting
+              </div>
+            </div>
+
+            <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Credits</span>
+                <Award className="w-4 h-4 text-foreground/40" />
+              </div>
+              <div className="text-xl sm:text-2xl font-bold text-foreground">
+                {stats.totalCredits > 0 ? stats.totalCredits.toLocaleString() : 'N/A'}
+              </div>
+              <div className="text-xs text-foreground/50 mt-1">
+                {stats.nodesWithCredits} nodes reporting
+              </div>
+            </div>
+
+            <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Active Streams</span>
+                <Network className="w-4 h-4 text-foreground/40" />
+              </div>
+              <div className="text-xl sm:text-2xl font-bold text-foreground">
+                {stats.totalActiveStreams > 0 ? stats.totalActiveStreams.toLocaleString() : 'N/A'}
+              </div>
+              <div className="text-xs text-foreground/50 mt-1">
+                {stats.nodesWithStreams} nodes active
               </div>
             </div>
           </div>
