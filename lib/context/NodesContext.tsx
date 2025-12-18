@@ -41,6 +41,18 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       if (!cached) return null;
       const parsed = JSON.parse(cached);
       if (!parsed?.nodes) return null;
+      
+      // Validate cache age - invalidate if older than 5 minutes
+      if (parsed.lastUpdate) {
+        const cacheAge = Date.now() - new Date(parsed.lastUpdate).getTime();
+        const maxAge = 5 * 60 * 1000; // 5 minutes
+        if (cacheAge > maxAge) {
+          console.log('[NodesContext] Cache expired (age:', Math.floor(cacheAge / 1000), 'seconds), invalidating');
+          localStorage.removeItem(cacheKey(selectedNetwork));
+          return null;
+        }
+      }
+      
       return parsed as {
         nodes: PNode[];
         lastUpdate?: string;
@@ -144,12 +156,14 @@ export function NodesProvider({ children }: { children: ReactNode }) {
 
         if (data.nodes && Array.isArray(data.nodes)) {
           console.log('[NodesContext] ✅ Setting nodes:', data.nodes.length);
-          // Only update if we got valid data (prevents wrong data flash)
-          if (data.nodes.length > 0) {
+          // Always update with fresh data - even if fewer nodes (network might have changed)
+          // Only skip if we get empty array AND we already have nodes (might be temporary issue)
+          if (data.nodes.length > 0 || nodes.length === 0) {
             // Update UI immediately with new data
             setNodes(data.nodes);
             setLastUpdate(new Date());
             setError(null);
+            setLoading(false); // Ensure loading is false after successful fetch
 
             // Update network info
             if (data.networks && Array.isArray(data.networks)) {
@@ -167,12 +181,18 @@ export function NodesProvider({ children }: { children: ReactNode }) {
               availableNetworks: data.networks,
               currentNetwork: data.currentNetwork,
             });
+            
+            console.log('[NodesContext] ✅ Updated to', data.nodes.length, 'nodes, cached');
+          } else {
+            console.warn('[NodesContext] Received empty nodes array, keeping existing', nodes.length, 'nodes');
+            setLoading(false);
           }
         } else {
           const errorMsg = data.error || 'Failed to fetch nodes';
           console.error('[NodesContext] API returned error:', errorMsg);
           // Don't set error on refresh - just log it
           console.warn('[NodesContext] Keeping existing data after error');
+          setLoading(false); // Still set loading to false so UI doesn't stay in loading state
         }
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'An error occurred';
@@ -206,24 +226,34 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         setSelectedNetwork(cached.currentNetwork.id);
       }
       setLoading(false); // Set loading to false immediately so UI renders with cached data
+      console.log('[NodesContext] Loaded', cached.nodes.length, 'nodes from cache');
     } else {
       // Only show loading if no cache available
       setLoading(true);
+      console.log('[NodesContext] No cache available, showing loading state');
     }
     
-    // STEP 1: Fetch from MongoDB FIRST (fast, non-blocking)
-    // This ensures we show data immediately, even if refresh is slow
+    // STEP 1: ALWAYS fetch fresh data - don't rely on cache alone
+    // This ensures we show current data, even if cache exists
     // Defer fetch until after initial render to avoid blocking navigation
     if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
       requestIdleCallback(() => {
-        refreshNodes().catch(() => {
-          // Silently fail - cached data is already shown
+        refreshNodes().catch((err) => {
+          // Log error but don't fail silently - user should know if data is stale
+          console.error('[NodesContext] Failed to refresh nodes:', err);
+          // If we have cached data, keep showing it, but log that it might be stale
+          if (cached?.nodes && cached.nodes.length > 0) {
+            console.warn('[NodesContext] Using cached data - may be stale');
+          }
         });
       }, { timeout: 500 });
     } else {
       setTimeout(() => {
-        refreshNodes().catch(() => {
-          // Silently fail - cached data is already shown
+        refreshNodes().catch((err) => {
+          console.error('[NodesContext] Failed to refresh nodes:', err);
+          if (cached?.nodes && cached.nodes.length > 0) {
+            console.warn('[NodesContext] Using cached data - may be stale');
+          }
         });
       }, 50);
     }
