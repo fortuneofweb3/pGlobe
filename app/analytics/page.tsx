@@ -82,7 +82,7 @@ export default function AnalyticsPage() {
 
   // Export functions
   const exportToCSV = () => {
-    const headers = ['ID', 'Status', 'Version', 'Address', 'Location', 'Uptime', 'Storage Used', 'CPU %', 'RAM %'];
+    const headers = ['ID', 'Status', 'Version', 'Address', 'Location', 'Uptime', 'Storage', 'CPU %', 'RAM %'];
     const rows = nodes.map(node => [
       node.id || node.pubkey || node.publicKey || '',
       node.status || '',
@@ -290,7 +290,7 @@ export default function AnalyticsPage() {
                 <HardDrive className="w-4 h-4 text-foreground/40" />
               </div>
               <div className="mb-2">
-                <div className="text-xs text-foreground/60 mb-0.5">Total Capacity</div>
+                <div className="text-xs text-foreground/60 mb-0.5">Total Storage</div>
                 <div className="text-xl sm:text-2xl font-bold text-foreground">
                   {stats.totalStorageCapacity > 0 ? formatStorageBytes(stats.totalStorageCapacity) : 'N/A'}
                 </div>

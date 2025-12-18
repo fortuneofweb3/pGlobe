@@ -17,7 +17,7 @@ export default function ExportButton({ nodes, filename = 'xandeum-pnodes' }: Exp
       'Address',
       'Status',
       'Uptime (%)',
-      'Storage Capacity (GB)',
+      'Storage (GB)',
       'Location',
       'Latency (ms)',
       'Reputation',

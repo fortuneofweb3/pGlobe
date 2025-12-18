@@ -520,12 +520,12 @@ function HomeContent() {
               </div>
               <div className="space-y-2 sm:space-y-3">
                 <MetricRow
-                  label="Total Capacity"
+                  label="Total Storage"
                   value={formatStorageBytes(stats.totalCapacity)}
-                  tooltip="Sum of storage capacity reported by nodes (storage_committed from get-pods-with-stats)."
+                  tooltip="Total storage capacity across all nodes."
                 />
                 <MetricRow
-                  label="Nodes with Capacity"
+                  label="Nodes Reporting"
                   value={`${stats.nodesWithCapacity}`}
                   tooltip="Number of nodes reporting storage capacity."
                 />

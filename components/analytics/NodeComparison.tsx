@@ -454,7 +454,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                   })}
                 </tr>
 
-                {/* Storage Used */}
+                {/* Storage Capacity */}
                 <tr className="hover:bg-muted/20 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">

@@ -800,7 +800,6 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                   <div className="text-xl sm:text-2xl font-bold text-foreground">
                     {formatValue(node.storageCapacity, formatStorageBytes)}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Total capacity</p>
                 </div>
 
                 <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
@@ -865,7 +864,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                     {node.storageCapacity ? (
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-foreground">Storage Capacity</span>
+                          <span className="text-sm font-medium text-foreground">Storage</span>
                           <span className="text-sm font-mono font-semibold text-foreground">
                             {formatValue(node.storageCapacity, formatStorageBytes)}
                           </span>
