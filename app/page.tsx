@@ -525,9 +525,19 @@ function HomeContent() {
                   tooltip="Total storage capacity across all nodes."
                 />
                 <MetricRow
-                  label="Nodes Reporting"
-                  value={`${stats.nodesWithCapacity}`}
-                  tooltip="Number of nodes reporting storage capacity."
+                  label="Total RAM"
+                  value={formatStorageBytes(stats.totalRAM)}
+                  tooltip="Total RAM capacity across all nodes."
+                />
+                <MetricRow
+                  label="Used RAM"
+                  value={formatStorageBytes(stats.usedRAM)}
+                  tooltip="Total RAM currently in use across all nodes."
+                />
+                <MetricRow
+                  label="Avg RAM Usage"
+                  value={stats.avgRAMUsage > 0 ? `${stats.avgRAMUsage.toFixed(1)}%` : 'N/A'}
+                  tooltip="Average RAM usage percentage across all nodes."
                 />
               </div>
                   </div>

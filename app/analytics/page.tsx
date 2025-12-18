@@ -295,10 +295,6 @@ export default function AnalyticsPage() {
                   {stats.totalStorageCapacity > 0 ? formatStorageBytes(stats.totalStorageCapacity) : 'N/A'}
                 </div>
               </div>
-              <div className="flex items-center justify-between text-xs text-foreground/50">
-                <span></span>
-                <span>{stats.nodesWithStorage} nodes reporting</span>
-              </div>
             </div>
 
             <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
