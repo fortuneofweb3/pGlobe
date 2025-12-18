@@ -14,7 +14,7 @@ import Header from '@/components/Header';
 import NodeDetailsModal from '@/components/NodeDetailsModal';
 import { useNodes } from '@/lib/context/NodesContext';
 import { formatStorageBytes } from '@/lib/utils/storage';
-import { Activity, HardDrive, TrendingUp, Server, BarChart3, Download, FileJson, FileSpreadsheet, ArrowDown } from 'lucide-react';
+import { Activity, HardDrive, TrendingUp, Server, BarChart3, Download, FileJson, FileSpreadsheet, ArrowDown, MemoryStick, Cpu } from 'lucide-react';
 
 interface HistoricalDataPoint {
   timestamp: number;
@@ -128,6 +128,23 @@ export default function AnalyticsPage() {
     const avgUptime = nodes
       .filter(n => n.uptime && n.uptime > 0)
       .reduce((sum, n) => sum + (n.uptime || 0), 0) / nodes.filter(n => n.uptime && n.uptime > 0).length || 0;
+    
+    // RAM metrics
+    const totalRAM = nodes.reduce((sum, n) => sum + (n.ramTotal || 0), 0);
+    const usedRAM = nodes.reduce((sum, n) => sum + (n.ramUsed || 0), 0);
+    const nodesWithRAM = nodes.filter(n => n.ramTotal !== undefined);
+    const avgRAMUsage = nodesWithRAM.length > 0
+      ? nodesWithRAM.reduce((sum, n) => {
+          const usage = n.ramTotal && n.ramUsed ? (n.ramUsed / n.ramTotal) * 100 : 0;
+          return sum + usage;
+        }, 0) / nodesWithRAM.length
+      : 0;
+    
+    // CPU metrics
+    const nodesWithCPU = nodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null);
+    const avgCPU = nodesWithCPU.length > 0
+      ? nodesWithCPU.reduce((sum, n) => sum + (n.cpuPercent || 0), 0) / nodesWithCPU.length
+      : 0;
 
     return {
       totalNodes: nodes.length,
@@ -137,6 +154,12 @@ export default function AnalyticsPage() {
       totalStorageCapacity,
       nodesWithStorage,
       avgUptime,
+      totalRAM,
+      usedRAM,
+      avgRAMUsage,
+      avgCPU,
+      nodesWithCPU: nodesWithCPU.length,
+      nodesWithRAM: nodesWithRAM.length,
     };
   }, [nodes]);
 
@@ -263,7 +286,7 @@ export default function AnalyticsPage() {
           )}
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
             <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Nodes</span>
@@ -289,11 +312,43 @@ export default function AnalyticsPage() {
                 <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Storage</span>
                 <HardDrive className="w-4 h-4 text-foreground/40" />
               </div>
+              <div className="text-xl sm:text-2xl font-bold text-foreground">
+                {stats.totalStorageCapacity > 0 ? formatStorageBytes(stats.totalStorageCapacity) : 'N/A'}
+              </div>
+            </div>
+
+            <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">RAM</span>
+                <MemoryStick className="w-4 h-4 text-foreground/40" />
+              </div>
               <div className="mb-2">
-                <div className="text-xs text-foreground/60 mb-0.5">Total Storage</div>
+                <div className="text-xs text-foreground/60 mb-0.5">Total</div>
                 <div className="text-xl sm:text-2xl font-bold text-foreground">
-                  {stats.totalStorageCapacity > 0 ? formatStorageBytes(stats.totalStorageCapacity) : 'N/A'}
+                  {stats.totalRAM > 0 ? formatStorageBytes(stats.totalRAM) : 'N/A'}
                 </div>
+              </div>
+              <div className="mb-2">
+                <div className="text-xs text-foreground/60 mb-0.5">Used</div>
+                <div className="text-lg font-bold text-foreground">
+                  {stats.usedRAM > 0 ? formatStorageBytes(stats.usedRAM) : 'N/A'}
+                </div>
+              </div>
+              <div className="text-xs text-foreground/50 mt-1">
+                {stats.avgRAMUsage > 0 ? `${stats.avgRAMUsage.toFixed(1)}% avg usage` : 'N/A'}
+              </div>
+            </div>
+
+            <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">CPU</span>
+                <Cpu className="w-4 h-4 text-foreground/40" />
+              </div>
+              <div className="text-xl sm:text-2xl font-bold text-foreground">
+                {stats.avgCPU > 0 ? `${stats.avgCPU.toFixed(1)}%` : 'N/A'}
+              </div>
+              <div className="text-xs text-foreground/50 mt-1">
+                {stats.nodesWithCPU} nodes reporting
               </div>
             </div>
 

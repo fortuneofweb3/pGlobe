@@ -516,7 +516,7 @@ function HomeContent() {
 
             <div className="pt-4 sm:pt-6 border-t border-border">
               <div className="flex items-center justify-between mb-3 sm:mb-4">
-                <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Storage</h2>
+                <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Storage & Memory</h2>
               </div>
               <div className="space-y-2 sm:space-y-3">
                 <MetricRow

@@ -449,6 +449,19 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         )}
                       </div>
                     </th>
+                    <th 
+                      className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                      onClick={() => onSort?.('ramTotal')}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>RAM</span>
+                        {sortBy === 'ramTotal' ? (
+                          sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
+                        ) : (
+                          <ArrowDown className="w-3 h-3 text-foreground/30" />
+                        )}
+                      </div>
+                    </th>
                     <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                       Location
                     </th>
@@ -651,6 +664,24 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                             return (
                               <span className="text-xs sm:text-sm text-foreground/80">
                                 {formatBytes(capacity)}
+                              </span>
+                            );
+                          }
+                          return renderEmptyCell();
+                        })()}
+                      </td>
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                        {(() => {
+                          const ramUsed = node.ramUsed;
+                          const ramTotal = node.ramTotal;
+                          const hasRAM = ramTotal !== undefined && ramTotal !== null;
+                          
+                          if (hasRAM) {
+                            const used = ramUsed !== undefined && ramUsed !== null ? formatBytes(ramUsed) : '—';
+                            const total = formatBytes(ramTotal);
+                            return (
+                              <span className="text-xs sm:text-sm text-foreground/80">
+                                {used} / {total}
                               </span>
                             );
                           }
