@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
-import { BookOpen, ChevronRight, X, FileText, Settings, BarChart3, MapPin, Search, HelpCircle } from 'lucide-react';
+import { BookOpen, ChevronRight, X, FileText, Settings, BarChart3, MapPin, Search, HelpCircle, Bot } from 'lucide-react';
 
 export default function HelpPage() {
   const { nodes, loading, lastUpdate, availableNetworks, currentNetwork, refreshNodes } = useNodes();
@@ -105,6 +105,20 @@ export default function HelpPage() {
                 <span>Architecture</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
+              <button
+                onClick={() => {
+                  setActiveDoc('ai');
+                  setSidebarOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${
+                  activeDoc === 'ai'
+                    ? 'bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-medium'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                <span>AI Assistant</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </nav>
           </div>
         </aside>
@@ -130,6 +144,8 @@ export default function HelpPage() {
             <AnalyticsDocs onClose={() => setActiveDoc(null)} />
           ) : activeDoc === 'architecture' ? (
             <ArchitectureDocs onClose={() => setActiveDoc(null)} />
+          ) : activeDoc === 'ai' ? (
+            <AIFeaturesDocs onClose={() => setActiveDoc(null)} />
           ) : null}
         </div>
       </main>
@@ -1042,6 +1058,251 @@ function ArchitectureDocs({ onClose }: { onClose: () => void }) {
             <li><strong>MongoDB Indexes:</strong> Optimized queries for fast data retrieval</li>
             <li><strong>Request Deduplication:</strong> Prevents duplicate API calls</li>
             <li><strong>Connection Pooling:</strong> Efficient database connections</li>
+          </ul>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function AIFeaturesDocs({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="max-w-4xl mx-auto px-6 py-8 bg-white dark:bg-gray-950">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">AI Assistant</h1>
+          <p className="text-gray-600 dark:text-gray-400">Your intelligent guide to the pGlobe network</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="prose prose-gray dark:prose-invert max-w-none">
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">What is the AI Assistant?</h2>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            The AI Assistant is an intelligent chat widget powered by DeepSeek's reasoning model that helps you explore and understand 
+            the pGlobe network. It can answer questions about nodes, countries, performance metrics, historical trends, and more - 
+            all in natural language.
+          </p>
+          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6 mb-4">
+            <div className="flex items-start gap-3">
+              <Bot className="w-6 h-6 text-[#F0A741] flex-shrink-0 mt-1" />
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Key Features</h3>
+                <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                  <li>Natural language queries - ask questions in plain English</li>
+                  <li>Real-time data access - queries live network data</li>
+                  <li>Smart analysis - combines multiple data sources to answer complex questions</li>
+                  <li>Performance insights - analyzes historical trends and patterns</li>
+                  <li>Geographic intelligence - finds closest nodes, compares countries</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">How to Use</h2>
+          
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Accessing the AI</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            Look for the floating chat button in the bottom-right corner of any page. Click it to open the AI Assistant widget.
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li><strong>Desktop:</strong> Bottom-right corner</li>
+            <li><strong>Mobile:</strong> Bottom-right corner (optimized for mobile screens)</li>
+            <li><strong>Minimize:</strong> Click the minimize button to collapse the widget</li>
+            <li><strong>Close:</strong> Click the X button to close completely</li>
+          </ul>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Asking Questions</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            Simply type your question in natural language. The AI understands questions about:
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Node Queries</h4>
+              <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                <li>"How many nodes are in India?"</li>
+                <li>"Show me nodes with high CPU usage"</li>
+                <li>"What's the health score of node [pubkey]?"</li>
+                <li>"Compare these two nodes: [pubkey1] and [pubkey2]"</li>
+              </ul>
+            </div>
+            <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Performance Analysis</h4>
+              <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                <li>"How well has this node performed in the past 5 hours?"</li>
+                <li>"Rank countries by node performance"</li>
+                <li>"Top 10 nodes by credits"</li>
+                <li>"Network trends in the last 24 hours"</li>
+              </ul>
+            </div>
+            <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Geographic Queries</h4>
+              <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                <li>"What's my IP address?"</li>
+                <li>"Find the closest nodes to me"</li>
+                <li>"Compare nodes in US and France"</li>
+                <li>"Show me nodes near [IP address]"</li>
+              </ul>
+            </div>
+            <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">General Questions</h4>
+              <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                <li>"What is pGlobe?"</li>
+                <li>"What are pNodes?"</li>
+                <li>"How does the Xandeum network work?"</li>
+                <li>"What does the status field mean?"</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Understanding Status Updates</h2>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            When you ask a question, the AI shows real-time status updates as it processes your request:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li><strong>"Thinking..."</strong> - The AI is analyzing your question and deciding what data it needs</li>
+            <li><strong>"Querying nodes..."</strong> - Fetching node data from the network</li>
+            <li><strong>"Analyzing data..."</strong> - Processing and calculating metrics</li>
+            <li><strong>"Generating response..."</strong> - Creating the final answer</li>
+          </ul>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            The animated dots (., .., ...) show that the AI is actively working on your request.
+          </p>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">What the AI Can Do</h2>
+          
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Data Queries</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            The AI can query and filter nodes based on:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li>Country or continent</li>
+            <li>Status (online, offline, syncing)</li>
+            <li>Resource usage (CPU, RAM percentages)</li>
+            <li>Performance metrics (uptime, credits, storage)</li>
+            <li>Geographic location</li>
+          </ul>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Comparisons & Rankings</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            Ask the AI to compare or rank:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li>Specific nodes side-by-side</li>
+            <li>Countries by various metrics</li>
+            <li>Top/bottom performers</li>
+            <li>Performance over time</li>
+          </ul>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Historical Analysis</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            The AI can analyze historical data to answer questions about:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li>Node performance over time</li>
+            <li>Credit earnings in specific time periods</li>
+            <li>Network trends and changes</li>
+            <li>Status change patterns</li>
+          </ul>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Geographic Intelligence</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            Location-based queries:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li>Find your IP address and location</li>
+            <li>Locate nodes nearest to you or any IP</li>
+            <li>Calculate distances between locations and nodes</li>
+            <li>Compare geographic distributions</li>
+          </ul>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Tips for Best Results</h2>
+          
+          <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-6 mb-4">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Be Specific</h3>
+            <p className="text-gray-700 dark:text-gray-300 mb-2">
+              More specific questions get better answers:
+            </p>
+            <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1 ml-4">
+              <li>✅ "How many nodes are using 50% or more RAM?"</li>
+              <li>❌ "What about RAM?"</li>
+            </ul>
+          </div>
+
+          <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-6 mb-4">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Use Natural Language</h3>
+            <p className="text-gray-700 dark:text-gray-300 mb-2">
+              The AI understands conversational queries:
+            </p>
+            <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1 ml-4">
+              <li>✅ "Show me the best performing nodes in France"</li>
+              <li>✅ "What's happening with nodes in Africa?"</li>
+              <li>✅ "Compare US and Germany"</li>
+            </ul>
+          </div>
+
+          <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 mb-4">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Time Ranges</h3>
+            <p className="text-gray-700 dark:text-gray-300 mb-2">
+              Specify time ranges for historical queries:
+            </p>
+            <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1 ml-4">
+              <li>"in the past 5 hours"</li>
+              <li>"over the last 24 hours"</li>
+              <li>"in the past week"</li>
+            </ul>
+          </div>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Technical Details</h2>
+          
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">AI Model</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            The AI Assistant uses DeepSeek's reasoning model (R1), which provides:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li>Advanced reasoning capabilities for complex queries</li>
+            <li>Function calling to query real-time network data</li>
+            <li>Smart combination of multiple data sources</li>
+            <li>Natural language understanding and generation</li>
+          </ul>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Data Access</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            The AI has access to:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li>Current node data (status, metrics, location)</li>
+            <li>Historical snapshots (10-minute intervals)</li>
+            <li>Network statistics and aggregates</li>
+            <li>Geographic location data</li>
+            <li>Credit change history</li>
+          </ul>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-6">Privacy & Security</h3>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            Your conversations are:
+          </p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-4">
+            <li>Processed securely via server-side API routes</li>
+            <li>Not stored permanently (conversation history is session-based)</li>
+            <li>Only used to provide context for follow-up questions</li>
+            <li>Never shared with third parties</li>
           </ul>
         </section>
       </div>
