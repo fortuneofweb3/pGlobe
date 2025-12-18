@@ -692,13 +692,13 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+        className="fixed inset-0 bg-black/80 z-50"
         onClick={onClose}
       />
       
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 pointer-events-none">
+      <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 pointer-events-none">
         <div
-          className="bg-black border-0 sm:border border-border rounded-none sm:rounded-2xl shadow-2xl shadow-black/20 w-full h-full sm:w-full sm:max-w-6xl sm:max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto"
+          className="bg-black border-0 sm:border border-border rounded-xl sm:rounded-2xl shadow-2xl shadow-black/20 w-full h-[calc(100vh-5.5rem)] sm:h-auto sm:w-full sm:max-w-6xl sm:max-h-[90vh] mt-16 sm:mt-0 mb-0 sm:mb-auto overflow-hidden flex flex-col pointer-events-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header - Analytics Style */}

@@ -260,7 +260,14 @@ export function NodesProvider({ children }: { children: ReactNode }) {
             })
             .catch((err) => {
               clearTimeout(timeoutId);
-              console.error('[NodesContext] ❌ Background refresh error:', err);
+              // Only log if it's not a connection error (expected when backend isn't running)
+              if (err?.name !== 'AbortError' && err?.message !== 'fetch failed') {
+                console.warn('[NodesContext] ⚠️  Background refresh trigger failed:', {
+                  success: false,
+                  error: err?.message || 'fetch failed',
+                  timestamp: new Date().toISOString(),
+                });
+              }
             });
         }, { timeout: 5000 });
       } else {

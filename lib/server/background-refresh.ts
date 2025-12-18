@@ -8,7 +8,19 @@
  * - Health monitoring
  */
 
-import { syncNodes } from './sync-nodes';
+// Lazy import to avoid module resolution issues with tsx
+let syncNodesFn: (() => Promise<{ success: boolean; count: number; error?: string }>) | null = null;
+
+async function getSyncNodes() {
+  if (!syncNodesFn) {
+    const module = await import('./sync-nodes');
+    if (typeof module.syncNodes !== 'function') {
+      throw new Error('syncNodes export is not a function');
+    }
+    syncNodesFn = module.syncNodes;
+  }
+  return syncNodesFn;
+}
 
 let refreshInterval: NodeJS.Timeout | null = null;
 let heartbeatInterval: NodeJS.Timeout | null = null;
@@ -54,6 +66,10 @@ export async function performRefresh(): Promise<void> {
   console.log(`[BackgroundRefresh] 🔄 Starting refresh at ${new Date().toISOString()}`);
 
   try {
+    const syncNodes = await getSyncNodes();
+    if (typeof syncNodes !== 'function') {
+      throw new Error('syncNodes is not a function');
+    }
     const result = await syncNodes();
     
     if (result.success) {

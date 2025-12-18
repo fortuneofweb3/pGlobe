@@ -2719,7 +2719,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
 
       {/* Zoom Controls */}
       {isLoaded && (
-        <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-10">
+        <div className="absolute bottom-4 left-4 flex flex-col gap-2 z-10">
           <button
             onClick={handleZoomIn}
             className="p-2 bg-card border border-border rounded hover:bg-muted transition-colors shadow-lg"
