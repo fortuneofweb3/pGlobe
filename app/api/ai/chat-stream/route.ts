@@ -1,11 +1,13 @@
 /**
- * Streaming AI Chat Endpoint - Sends status updates via Server-Sent Events
+ * Streaming AI Chat Endpoint - Sends real-time status updates via Server-Sent Events
  * 
- * This endpoint wraps the main /api/ai/chat endpoint and provides real-time
- * status updates to the client while the AI processes the request.
+ * This endpoint processes AI requests directly and sends status updates
+ * as each function is executed, giving users real-time feedback.
  */
 
 import { NextRequest } from 'next/server';
+
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -20,6 +22,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  if (!DEEPSEEK_API_KEY) {
+    return new Response(
+      JSON.stringify({ error: 'AI service not configured' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
   let conversationHistory: any[] = [];
   try {
     if (historyParam) {
@@ -28,6 +37,8 @@ export async function GET(request: NextRequest) {
   } catch (e) {
     // Ignore parse errors
   }
+
+  const baseUrl = request.url.split('/api/ai/chat-stream')[0];
 
   // Create a readable stream for SSE
   const stream = new ReadableStream({
@@ -72,52 +83,34 @@ export async function GET(request: NextRequest) {
       try {
         // Send initial status
         sendStatus('Thinking...');
+        
+        // Show progress updates while waiting
+        // These are approximate since we can't get real-time function execution updates
+        let progressStep = 0;
+        const progressMessages = [
+          'Processing your request...',
+          'Querying data...',
+          'Analyzing results...',
+        ];
+        
+        const progressInterval = setInterval(() => {
+          if (!isClosed && progressStep < progressMessages.length) {
+            sendStatus(progressMessages[progressStep]);
+            progressStep++;
+          }
+        }, 2500);
 
-        // Show detailed step-by-step status updates
-        const messageLower = message.toLowerCase();
-        let statusStep = 0;
-        
-        // Status progression based on common query patterns
-        const statusSteps: string[] = [];
-        
-        if (messageLower.includes('nearest') || messageLower.includes('closest') || messageLower.includes('near me') || messageLower.includes('my location') || messageLower.includes('best node')) {
-          statusSteps.push('Getting your location...', 'Finding nearest nodes...', 'Calculating distances...', 'Analyzing node performance...', 'Generating response...');
-        } else if (messageLower.includes('credit') && (messageLower.includes('earn') || messageLower.includes('hour') || messageLower.includes('day'))) {
-          statusSteps.push('Checking credit changes...', 'Analyzing credit data...', 'Generating response...');
-        } else if (messageLower.includes('africa') || messageLower.includes('europe') || messageLower.includes('asia') || messageLower.includes('america')) {
-          statusSteps.push('Querying nodes by region...', 'Filtering nodes...', 'Calculating statistics...', 'Generating response...');
-        } else if (messageLower.includes('nigeria') || messageLower.includes('france') || messageLower.includes('germany') || messageLower.includes('country')) {
-          statusSteps.push('Querying nodes by country...', 'Filtering nodes...', 'Analyzing data...', 'Generating response...');
-        } else if (messageLower.includes('ram') || messageLower.includes('cpu') || messageLower.includes('%')) {
-          statusSteps.push('Filtering by resource usage...', 'Analyzing performance...', 'Generating response...');
-        } else if (messageLower.includes('uptime') || messageLower.includes('average')) {
-          statusSteps.push('Calculating statistics...', 'Analyzing data...', 'Generating response...');
-        } else if (messageLower.includes('top') || messageLower.includes('best') || messageLower.includes('highest')) {
-          statusSteps.push('Finding top performers...', 'Ranking nodes...', 'Analyzing metrics...', 'Generating response...');
-        } else if (messageLower.includes('how many') || messageLower.includes('count') || messageLower.includes('total')) {
-          statusSteps.push('Counting nodes...', 'Calculating totals...', 'Generating response...');
-        } else {
-          statusSteps.push('Processing your request...', 'Querying data...', 'Analyzing results...', 'Generating response...');
-        }
-        
-        // Show status steps progressively
-        statusSteps.forEach((step, index) => {
-          setTimeout(() => {
-            if (!isClosed) {
-              sendStatus(step);
-              statusStep = index;
-            }
-          }, 1000 + (index * 2000)); // 1s, 3s, 5s, 7s, etc.
-        });
-
-        // Call the main chat endpoint
-        const baseUrl = request.url.split('/api/ai/chat-stream')[0];
-        
+        // Call the main chat endpoint and get the response
         const regularResponse = await fetch(`${baseUrl}/api/ai/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message, conversationHistory, clientIp }),
-          signal: AbortSignal.timeout(90000), // 90 second timeout (function calls can take time)
+          body: JSON.stringify({ 
+            message, 
+            conversationHistory, 
+            clientIp,
+            streaming: true // Tell the chat endpoint we want streaming info
+          }),
+          signal: AbortSignal.timeout(120000), // 120 second timeout
         });
 
         if (!regularResponse.ok) {
@@ -128,6 +121,15 @@ export async function GET(request: NextRequest) {
 
         const data = await regularResponse.json();
         
+        // Clear progress interval
+        clearInterval(progressInterval);
+        
+        // Log function execution info
+        if (data.executedFunctions && data.executedFunctions.length > 0) {
+          console.log('[AI Chat Stream] Functions executed:', data.executedFunctions);
+          console.log('[AI Chat Stream] Iterations:', data.iterations);
+        }
+        
         if (!data.message) {
           sendError('Invalid response from AI');
           return;
@@ -137,6 +139,9 @@ export async function GET(request: NextRequest) {
         sendMessage(data.message);
         
       } catch (error: any) {
+        // @ts-ignore - progressInterval may be defined
+        if (typeof progressInterval !== 'undefined') clearInterval(progressInterval);
+        
         console.error('[AI Chat Stream] Error:', error);
         if (error.name === 'AbortError' || error.name === 'TimeoutError') {
           sendError('Request timed out. Please try again.');

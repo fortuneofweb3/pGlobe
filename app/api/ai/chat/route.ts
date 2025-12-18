@@ -558,13 +558,13 @@ async function executeFunction(
         const nodesData = await nodesResponse.json();
         const allNodes = nodesData.nodes || [];
         
-        // Find matching nodes
+        // Find matching nodes (case-insensitive comparison)
         const matchedNodes = allNodes.filter((n: any) => {
-          const nodePubkey = n.p || n.pubkey;
-          const nodeAddress = n.a || n.address;
+          const nodePubkey = (n.p || n.pubkey || '').toString().toLowerCase();
+          const nodeAddress = (n.a || n.address || '').toString().toLowerCase();
           
-          return pubkeys.some((pk: string) => nodePubkey === pk) ||
-                 addresses.some((addr: string) => nodeAddress === addr);
+          return pubkeys.some((pk: string) => nodePubkey === pk.toLowerCase()) ||
+                 addresses.some((addr: string) => nodeAddress === addr.toLowerCase());
         });
         
         if (matchedNodes.length === 0) {
@@ -932,8 +932,9 @@ async function processResponse(
   baseUrl: string,
   provider: string,
   clientIp?: string,
-  onStatusUpdate?: (status: string) => void
-): Promise<{ hasToolCalls: boolean; finalResponse?: string; updatedMessages: any[] }> {
+  onStatusUpdate?: (status: string) => void,
+  executedFunctions?: string[] // Track executed function names
+): Promise<{ hasToolCalls: boolean; finalResponse?: string; updatedMessages: any[]; executedFunctions?: string[] }> {
   if (!data.choices || !data.choices[0]) {
     throw new Error(`Invalid response from ${provider}`);
   }
@@ -970,6 +971,10 @@ async function processResponse(
         if (onStatusUpdate) {
           onStatusUpdate(`Executing ${name}...`);
         }
+        // Track executed function
+        if (executedFunctions) {
+          executedFunctions.push(name);
+        }
         const result = await executeFunction(name, parsedArgs, baseUrl, clientIp, onStatusUpdate);
         
         toolResults.push({
@@ -993,13 +998,13 @@ async function processResponse(
     
     updatedMessages.push(...toolResults);
     
-    return { hasToolCalls: true, updatedMessages };
+    return { hasToolCalls: true, updatedMessages, executedFunctions };
   }
   
   // No tool calls - we have a text response
   if (message.content) {
     console.log(`[${provider}] Text response received (no tool calls). Length: ${message.content.length}`);
-    return { hasToolCalls: false, finalResponse: message.content, updatedMessages: messages };
+    return { hasToolCalls: false, finalResponse: message.content, updatedMessages: messages, executedFunctions };
   }
 
   console.error(`[${provider}] No content and no tool calls in response:`, JSON.stringify(message));
@@ -1051,6 +1056,7 @@ export async function POST(request: Request) {
     let maxIterations = 5;
     let iteration = 0;
     let finalResponse = '';
+    const allExecutedFunctions: string[] = []; // Track all functions executed across iterations
     
     while (iteration < maxIterations) {
       iteration++;
@@ -1107,7 +1113,7 @@ export async function POST(request: Request) {
         console.log(`[AI Chat] Status: ${status}`);
       };
       
-      const result = await processResponse(data, messages, baseUrl, 'DeepSeek', clientIp, statusCallback);
+      const result = await processResponse(data, messages, baseUrl, 'DeepSeek', clientIp, statusCallback, allExecutedFunctions);
       
       if (result.hasToolCalls) {
         messages.length = 0; // Clear array
@@ -1128,7 +1134,12 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ message: finalResponse });
+    // Return the response with executed functions for streaming status updates
+    return NextResponse.json({ 
+      message: finalResponse,
+      executedFunctions: allExecutedFunctions,
+      iterations: iteration
+    });
 
   } catch (error: any) {
     console.error('[DeepSeek] Exception:', error);
