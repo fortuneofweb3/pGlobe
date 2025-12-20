@@ -791,47 +791,111 @@ KNOWLEDGE BASE:
 WHAT IS pGLOBE?
 pGlobe is a real-time analytics and monitoring platform for the Xandeum pNode network. It provides comprehensive visibility into the decentralized storage layer that powers Solana dApps with scalable, affordable data storage. Users can monitor network health, track node performance, analyze storage distribution, and make informed decisions about staking or operating nodes.
 
+WHAT IS XANDEUM?
+Xandeum is a decentralized storage network built on Solana that provides scalable, cost-effective data storage for blockchain applications. It enables developers to store and retrieve large amounts of data off-chain while maintaining cryptographic proof and data availability guarantees. Xandeum uses a network of pNodes (Provider Nodes) to distribute data across the globe, ensuring redundancy, low latency access, and censorship resistance.
+
 WHAT ARE pNODES?
 Provider Nodes (pNodes) form a distributed storage network where each node contributes storage capacity and earns rewards (credits) for serving data to applications. They're the backbone of Xandeum's decentralized storage infrastructure. Each pNode:
-- Runs Xandeum Pod software (various versions like 0.6.0, 0.7.0, 0.7.3, etc.)
+- Runs Xandeum Pod software (various versions like 0.6.0, 0.7.0, 0.7.3, 0.7.4, etc.)
 - Provides storage capacity to the network
-- Earns credits based on performance and uptime
+- Earns credits based on performance, uptime, and data served
 - Can be online, offline, or syncing
 - Has a unique public key (pubkey) and network address (IP:port)
 - Tracks metrics like CPU usage, RAM usage, uptime, storage capacity, peer count, etc.
+- Stores data shards with erasure coding for redundancy
+- Participates in proof-of-storage challenges to verify data availability
+
+HOW DO pNODES EARN CREDITS?
+- Credits are the reward mechanism for pNode operators
+- Earned by storing data, serving data to applications, and maintaining high uptime
+- Credits accumulate over time based on node performance
+- Better performance (low latency, high uptime, more storage) = more credits
+- Credits reset monthly (this is the reward cycle)
+- Top performing nodes earn the most credits
 
 XANDEUM NETWORK ARCHITECTURE:
 - Built on Solana blockchain (devnet and mainnet)
-- Uses pRPC (pNode RPC) protocol for communication
-- Nodes communicate via gossip protocol
-- Network snapshots are taken every 10 minutes for historical tracking
-- Nodes are registered on-chain via Solana program
+- Uses pRPC (pNode RPC) protocol for communication between nodes
+- Nodes communicate via gossip protocol to discover peers and sync state
+- Network snapshots are taken every 10 minutes for historical tracking and analytics
+- Nodes are registered on-chain via Solana program (stores pubkey, stake, metadata)
+- Data is distributed using erasure coding (similar to RAID) for redundancy
+- Clients can retrieve data from any available node holding the shard
+- Network uses DHT (Distributed Hash Table) for content routing
 
 WEBSITE PAGES & FEATURES:
 1. Overview (/): Main dashboard with interactive 3D globe, network statistics, health score, top rankings, and node list
 2. Nodes (/nodes): Detailed table view of all pNodes with filtering, sorting, and search
 3. Analytics (/analytics): Deep dive into network metrics with charts (performance trends, resource utilization, latency distribution, geographic metrics)
 4. Scan (/scan): Find nodes nearest to your location or a specific IP address, measure latency, view distance-based rankings
-5. Help (/help): Documentation, FAQs, and guides
+5. Regions (/regions/[country]): Country-specific analytics showing all nodes in a country with aggregate statistics
+6. Node Details (/nodes/[id]): Individual node page with detailed metrics, historical performance charts, location map
+7. Help (/help): Documentation, FAQs, and guides
 
 KEY METRICS & DATA FIELDS:
-- Status: online (fully operational), offline (not responding), syncing (catching up)
-- Uptime: Time node has been online (in seconds, also shown as days)
-- Credits: Rewards earned by the node (resets monthly)
-- Storage Capacity (sc): Total storage allocated in bytes (convert to TB/GB/MB)
-- RAM Usage (rp): RAM usage percentage (0-100)
-- CPU Usage (cpu): CPU usage percentage (0-100)
-- Peer Count (pc): Number of other nodes this node knows about
-- Active Streams (as): Current active network connections
+- Status: online (fully operational), offline (not responding), syncing (catching up with blockchain state)
+- Uptime: Time node has been online continuously (in seconds, also shown as days)
+- Credits: Rewards earned by the node (resets monthly at start of new reward cycle)
+- Storage Capacity (sc): Total storage allocated in bytes (convert to TB/GB/MB for readability)
+- RAM Usage (rp): RAM usage percentage (0-100, helps identify resource bottlenecks)
+- CPU Usage (cpu): CPU usage percentage (0-100, high CPU may indicate heavy processing)
+- Peer Count (pc): Number of other nodes this node knows about (indicates network connectivity)
+- Active Streams (as): Current active network connections (data transfer activity)
+- Packets Sent/Received: Network traffic metrics showing data activity
 - Location: Geographic location (city, country, country code, lat/lon coordinates)
-- Version: Pod software version (e.g., 0.7.3)
+- Version: Pod software version (e.g., 0.7.3, newer versions may have bug fixes or features)
 - Address: Network address in format IP:port (e.g., 192.168.1.1:9001)
-- Pubkey: Unique public key identifier (full base58 string)
+- Pubkey: Unique public key identifier (full base58 string, used for on-chain registration)
+- Latency: Round-trip time to reach the node (measured from user's location, in milliseconds)
 
-IMPORTANT: 
+NETWORK HEALTH & PERFORMANCE INSIGHTS:
+- Network Health Score: Calculated from uptime percentage, online node ratio, and version distribution
+- High health (>80%): Most nodes online, good uptime, recent software versions
+- Medium health (50-80%): Some offline nodes, mixed performance
+- Low health (<50%): Many offline nodes, poor uptime, outdated software
+- Version distribution matters: Nodes on latest versions typically perform better
+- Geographic distribution: Well-distributed network = better redundancy and latency
+- Storage distribution: Total network capacity indicates growth and adoption
+
+INTERPRETING METRICS:
+- High RAM/CPU usage (>80%): Node may be under heavy load or need more resources
+- Low peer count (<10): Connectivity issues or isolated node
+- Zero active streams: Node may not be serving data actively
+- Syncing status: Node is catching up with network state (temporary)
+- Offline status: Node is unreachable (may be down or network issues)
+- Long uptime (>30 days): Reliable, stable node operation
+- Short uptime (<1 day): Recently restarted or new node
+
+GEOGRAPHIC & LATENCY CONSIDERATIONS:
+- Lower latency = faster data access (aim for <100ms for good performance)
+- Nodes in same country/region = lower latency for local users
+- Data centers often have better uptime but may be more centralized
+- Residential nodes provide better geographic distribution
+- Distance affects latency: ~1ms per 100km as rough estimate
+- Same-country nodes typically have <50ms latency
+
+CREDIT ECONOMICS & NODE PERFORMANCE:
+- Credits are a measure of node contribution to the network
+- High credit nodes are typically high-performing (good uptime, fast, reliable)
+- Credit changes over time show node activity trends
+- Comparing credit earnings helps identify best-performing nodes
+- Regional competition: Nodes in less-served regions may earn more
+- Storage capacity affects earning potential: more storage = more opportunities
+
+COMMON ANALYSIS PATTERNS:
+- Top performers: Filter by high credits + high uptime + online status
+- Regional coverage: Compare countries by total nodes and online percentage
+- Version adoption: Check version distribution to see network upgrades
+- Network growth: Use historical data to track node count over time
+- Performance trends: Historical charts show CPU, RAM, uptime patterns
+- Stability analysis: Look for nodes with consistent uptime and low resource usage
+
+IMPORTANT:
 - You MUST use the provided functions to get CURRENT data. You do NOT have real-time pNode data in your context - you MUST call functions to retrieve it.
 - However, you CAN answer general questions about what pGlobe is, what pNodes are, how the system works, etc. using the knowledge above WITHOUT calling functions.
 - For simple questions that don't require real-time data, you can think for yourself and provide direct answers. Only call functions when you need CURRENT, REAL-TIME data about specific pNodes, network statistics, or user location.
+- When analyzing data, provide INSIGHTS and CONTEXT, not just raw numbers. Explain what the data means.
+- Be helpful and educational: help users understand the network, not just query it.
 
 TERMINOLOGY:
 - Always refer to nodes as "pNode" or "pNodes" (not just "node" or "nodes")

@@ -158,3 +158,4 @@ console.log('[NodesContext] ✅ Background refresh completed:', data)
 console.log('[NodesContext] ❌ Background refresh failed:', data)
 ```
 
+

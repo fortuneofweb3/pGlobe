@@ -60,12 +60,14 @@ export default function ScanPage() {
   const [navigateToNodeId, setNavigateToNodeId] = useState<string | null>(null);
 
   // Geo enrichment for map display (runs when nodes update from context)
+  // Only enrich if nodes count changes, not on every render
   useEffect(() => {
     if (nodes.length > 0) {
       // Check if nodes already have geo data
       const hasGeoData = nodes.some(n => n.locationData?.lat !== undefined);
       if (hasGeoData) {
         setNodesWithGeo(nodes);
+        setGeoEnriching(false);
       } else {
         // Enrich with geo data in background (non-blocking)
         setNodesWithGeo(nodes); // Show immediately
@@ -77,8 +79,11 @@ export default function ScanPage() {
           })
           .catch(() => setGeoEnriching(false));
       }
+    } else {
+      setNodesWithGeo([]);
+      setGeoEnriching(false);
     }
-  }, [nodes]);
+  }, [nodes.length]); // Only re-run when nodes count changes, not on every nodes array reference change
 
   // Get user's IP address
   const getUserIp = async () => {
@@ -235,6 +240,139 @@ export default function ScanPage() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Show loading skeleton when loading or no data available
+  const isLoading = loading || (nodes.length === 0 && !error);
+
+  // If loading and no data, show the loading skeleton
+  if (isLoading && nodes.length === 0) {
+    return (
+      <div className="flex flex-col h-screen bg-background overflow-hidden">
+        <Header 
+          showNetworkSelector={false} 
+          activePage="scan"
+          nodeCount={0}
+          lastUpdate={null}
+          loading={true}
+          onRefresh={() => {}}
+        />
+        
+        <div className="flex-1 flex overflow-hidden relative">
+          {/* Left Sidebar - Scan Controls */}
+          <aside className="hidden md:block w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-y-auto">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-base sm:text-lg font-semibold text-foreground flex items-center gap-2">
+                    <Search className="w-4 h-4 sm:w-5 sm:h-5 text-foreground/40" />
+                    Node Scanner
+                  </h2>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Find the closest nodes to any IP address
+                </p>
+              </div>
+
+              {/* IP Input */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-foreground/70 mb-2">
+                    IP Address
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="e.g., 8.8.8.8"
+                      className="flex-1 px-3 py-2 text-base bg-muted/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#F0A741]/50"
+                      disabled
+                    />
+                    <button
+                      disabled
+                      className="px-3 sm:px-4 py-2 bg-[#F0A741]/20 text-[#F0A741] rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 sm:gap-2 min-w-[70px] sm:min-w-[80px] text-xs sm:text-sm"
+                    >
+                      <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">Scan</span>
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  disabled
+                  className="w-full px-3 py-2 text-xs sm:text-sm bg-muted/50 text-foreground rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <Navigation2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  Use My IP Address
+                </button>
+              </div>
+
+              {/* Placeholder for scan location info */}
+              <div className="p-4 bg-muted/30 rounded-lg border border-border animate-pulse">
+                <div className="flex items-start gap-2 mb-2">
+                  <MapPin className="w-4 h-4 text-foreground/40 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="h-4 w-32 bg-muted/40 rounded mb-2" />
+                    <div className="h-3 w-48 bg-muted/30 rounded" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Placeholder for results */}
+              <div>
+                <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-3">
+                  Closest Nodes
+                </h3>
+                <div className="space-y-2">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div
+                      key={i}
+                      className="p-3 bg-muted/30 rounded-lg border border-border animate-pulse"
+                    >
+                      <div className="flex items-start justify-between mb-1">
+                        <div className="h-3 w-32 bg-muted/40 rounded flex-1" />
+                        <div className="h-3 w-12 bg-muted/40 rounded ml-2" />
+                      </div>
+                      <div className="h-3 w-24 bg-muted/30 rounded mb-2" />
+                      <div className="flex items-center gap-2">
+                        <div className="h-5 w-16 bg-muted/30 rounded" />
+                        <div className="h-5 w-12 bg-muted/30 rounded" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          {/* Main Content - Globe */}
+          <main className="flex-1 relative overflow-hidden">
+            {/* Mobile Sidebar Toggle Button */}
+            <button
+              className="md:hidden absolute top-4 left-4 z-50 p-2 bg-black border border-[#F0A741]/20 rounded-lg text-[#F0A741]"
+              disabled
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
+            {/* Globe Skeleton */}
+            <div className="absolute inset-0 w-full h-full bg-black">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-3/4 h-3/4 rounded-full border-2 border-muted/30 animate-pulse">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full bg-muted/40 animate-pulse" style={{ animationDelay: '0s' }} />
+                    <div className="w-2 h-2 rounded-full bg-muted/40 animate-pulse absolute" style={{ left: '30%', top: '40%', animationDelay: '0.2s' }} />
+                    <div className="w-2 h-2 rounded-full bg-muted/40 animate-pulse absolute" style={{ left: '60%', top: '20%', animationDelay: '0.4s' }} />
+                    <div className="w-2 h-2 rounded-full bg-muted/40 animate-pulse absolute" style={{ left: '70%', top: '60%', animationDelay: '0.6s' }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
       <Header 
@@ -243,7 +381,11 @@ export default function ScanPage() {
         nodeCount={nodes.length}
         lastUpdate={lastUpdate}
         loading={loading}
-        onRefresh={() => refreshNodes()}
+        onRefresh={() => {
+          // Only refresh if user explicitly clicks refresh button
+          // Don't trigger automatic refreshes on page load
+          refreshNodes();
+        }}
         networks={availableNetworks}
         currentNetwork={currentNetwork}
         onNetworkChange={(networkId) => {
@@ -261,7 +403,7 @@ export default function ScanPage() {
         )}
 
         {/* Left Sidebar - Scan Controls */}
-        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative w-80 flex-shrink-0 bg-black/90 backdrop-blur-md border-r border-[#F0A741]/20 overflow-y-auto z-50 md:z-40 h-full transition-transform duration-300`}>
+        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative w-80 flex-shrink-0 bg-card/90 backdrop-blur-md border-r border-[#F0A741]/20 overflow-y-auto z-50 md:z-40 h-full transition-transform duration-300`}>
           <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -427,7 +569,7 @@ export default function ScanPage() {
           {/* Mobile Sidebar Toggle Button */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="md:hidden absolute top-4 left-4 z-50 p-2 bg-black/90 backdrop-blur-md border border-[#F0A741]/20 rounded-lg text-[#F0A741] hover:bg-[#F0A741]/10 transition-colors"
+            className="md:hidden absolute top-4 left-4 z-50 p-2 bg-card border border-[#F0A741]/20 rounded-lg text-[#F0A741] hover:bg-[#F0A741]/10 transition-colors"
             aria-label="Toggle sidebar"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -435,7 +577,7 @@ export default function ScanPage() {
             </svg>
           </button>
 
-          {loading || geoEnriching ? (
+          {geoEnriching ? (
             <div className="absolute inset-0 flex items-center justify-center">
               <Loader2 className="w-8 h-8 animate-spin text-foreground/40" />
             </div>

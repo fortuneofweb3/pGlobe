@@ -1,43 +1,28 @@
 'use client';
 
-import { useMemo, useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useMemo, useState, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { PNode } from '@/lib/types/pnode';
 import PNodeTable from '@/components/PNodeTable';
 import Header from '@/components/Header';
-import NodeDetailsModal from '@/components/NodeDetailsModal';
 import { useNodes } from '@/lib/context/NodesContext';
-import { Filter, ChevronDown, RefreshCw } from 'lucide-react';
+import { RefreshCw, Server, TrendingUp, Search, Filter, X, Activity } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
+import { TableSkeleton, CardSkeleton } from '@/components/Skeletons';
 
 function NodesPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  // Use shared nodes data from context (fetched once, updated passively)
-  const { nodes, loading, error, lastUpdate, selectedNetwork, setSelectedNetwork, availableNetworks, currentNetwork, refreshNodes } = useNodes();
+  const { nodes, loading, error, lastUpdate, refreshNodes } = useNodes();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [versionFilter, setVersionFilter] = useState<string>('all');
   const [creditsFilter, setCreditsFilter] = useState<string>('all');
   const [packetsFilter, setPacketsFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<string>('reputation');
+  const [sortBy, setSortBy] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [selectedNode, setSelectedNode] = useState<PNode | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Check for node query parameter and open modal
-  useEffect(() => {
-    const nodeId = searchParams.get('node');
-    if (nodeId && nodes.length > 0) {
-      const node = nodes.find(n => n.id === nodeId || n.pubkey === nodeId || n.publicKey === nodeId);
-      if (node) {
-        setSelectedNode(node);
-        setIsModalOpen(true);
-        // Clear the query parameter from URL
-        window.history.replaceState({}, '', '/nodes');
-      }
-    }
-  }, [searchParams, nodes]);
+  const [showFilters, setShowFilters] = useState(false);
 
   const filteredAndSortedNodes = useMemo(() => {
     let filtered = [...nodes];
@@ -55,7 +40,6 @@ function NodesPageContent() {
 
     if (statusFilter !== 'all') {
       if (statusFilter === 'offline') {
-        // Include offline, syncing, and nodes without status
         filtered = filtered.filter((node) => 
           node.status === 'offline' || 
           node.status === 'syncing' || 
@@ -92,69 +76,33 @@ function NodesPageContent() {
       }
     }
 
-    // Calculate "completeness score" - nodes with more complete details get higher score
-    const getCompletenessScore = (node: PNode): number => {
-      let score = 0;
-      // Core stats
-      if (node.cpuPercent !== undefined && node.cpuPercent !== null) score += 2;
-      if (node.ramUsed !== undefined && node.ramUsed !== null && node.ramTotal !== undefined && node.ramTotal !== null) score += 2;
-      if (node.latency !== undefined && node.latency !== null) score += 2;
-      if (node.uptime !== undefined && node.uptime !== null) score += 2;
-      if (node.uptimePercent !== undefined && node.uptimePercent !== null) score += 1;
-      // Network stats
-      if (node.packetsReceived !== undefined && node.packetsReceived !== null) score += 1;
-      if (node.packetsSent !== undefined && node.packetsSent !== null) score += 1;
-      if (node.activeStreams !== undefined && node.activeStreams !== null) score += 1;
-      // Storage stats
-      if (node.storageCapacity !== undefined && node.storageCapacity !== null) score += 1;
-      // Location data
-      if (node.locationData?.country) score += 1;
-      if (node.locationData?.city) score += 1;
-      // Version
-      if (node.version) score += 1;
-      return score;
-    };
+    // Sort by the selected column (overrides all default sorting)
+    if (sortBy) {
+      filtered.sort((a, b) => {
+        let aVal: any = a[sortBy as keyof PNode];
+        let bVal: any = b[sortBy as keyof PNode];
 
-    filtered.sort((a, b) => {
-      // First, separate registered from unregistered nodes (registered first)
-      const aIsRegistered = a.isRegistered === true || (a.balance !== undefined && a.balance !== null && a.balance > 0);
-      const bIsRegistered = b.isRegistered === true || (b.balance !== undefined && b.balance !== null && b.balance > 0);
-      
-      if (aIsRegistered !== bIsRegistered) {
-        return aIsRegistered ? -1 : 1; // Registered nodes first
-      }
-      
-      // If both are registered (or both unregistered), sort registered nodes by completeness score
-      if (aIsRegistered && bIsRegistered) {
-        const aScore = getCompletenessScore(a);
-        const bScore = getCompletenessScore(b);
-        
-        if (aScore !== bScore) {
-          return bScore - aScore; // Higher score first
+        // Handle undefined/null values
+        if (aVal === undefined || aVal === null) aVal = sortOrder === 'asc' ? Infinity : -Infinity;
+        if (bVal === undefined || bVal === null) bVal = sortOrder === 'asc' ? Infinity : -Infinity;
+
+        // Handle string comparison
+        if (typeof aVal === 'string' && typeof bVal === 'string') {
+          if (sortOrder === 'asc') {
+            return aVal.localeCompare(bVal);
+          } else {
+            return bVal.localeCompare(aVal);
+          }
         }
-      }
-      
-      // If same completeness (or both unregistered), sort by online status (online nodes first)
-      const aIsOnline = a.seenInGossip !== false && a.status === 'online';
-      const bIsOnline = b.seenInGossip !== false && b.status === 'online';
-      
-      if (aIsOnline !== bIsOnline) {
-        return aIsOnline ? -1 : 1;
-      }
-      
-      // If both are same online status, sort by the selected criteria
-      let aVal: any = a[sortBy as keyof PNode];
-      let bVal: any = b[sortBy as keyof PNode];
 
-      if (aVal === undefined || aVal === null) aVal = 0;
-      if (bVal === undefined || bVal === null) bVal = 0;
-
-      if (sortOrder === 'asc') {
-        return aVal > bVal ? 1 : -1;
-      } else {
-        return aVal < bVal ? 1 : -1;
-      }
-    });
+        // Handle numeric comparison
+        if (sortOrder === 'asc') {
+          return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+        } else {
+          return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+        }
+      });
+    }
 
     return filtered;
   }, [nodes, searchQuery, statusFilter, versionFilter, creditsFilter, packetsFilter, sortBy, sortOrder]);
@@ -167,7 +115,6 @@ function NodesPageContent() {
     return Array.from(versionSet).sort();
   }, [nodes]);
 
-  // Calculate status counts for filter
   const statusCounts = useMemo(() => {
     return {
       all: nodes.length,
@@ -176,7 +123,6 @@ function NodesPageContent() {
     };
   }, [nodes]);
 
-  // Calculate credits and packets counts for filters
   const creditsCounts = useMemo(() => {
     return {
       all: nodes.length,
@@ -199,183 +145,432 @@ function NodesPageContent() {
     };
   }, [nodes]);
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'all': return `All (${statusCounts.all})`;
-      case 'online': return `Online (${statusCounts.online})`;
-      case 'offline': return `Offline (${statusCounts.offline})`;
-      default: return 'All';
-    }
-  };
+  const hasActiveFilters = statusFilter !== 'all' || versionFilter !== 'all' || creditsFilter !== 'all' || packetsFilter !== 'all' || searchQuery;
+
+  // Show loading skeleton when loading or no data available
+  const isLoading = loading || (nodes.length === 0 && !error);
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-black text-foreground">
+        <Header activePage="nodes" nodeCount={nodes.length} lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+            <p className="text-red-400">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading skeleton when no data
+  if (isLoading && nodes.length === 0) {
+    return (
+      <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
+        <Header activePage="nodes" loading={true} onRefresh={() => {}} />
+        
+        <main className="flex-1 overflow-hidden">
+          <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
+            <div className="max-w-7xl mx-auto h-full flex flex-col">
+              {/* Header */}
+              <div className="mb-4 sm:mb-6">
+                <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
+                  <Server className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
+                  Network Nodes
+                </h1>
+                <p className="text-foreground/60 text-sm sm:text-base">
+                  Complete overview of all nodes in the network
+                </p>
+              </div>
+
+              {/* Summary Stats - 3 cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 sm:mb-6">
+                <div className="card-stat">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Nodes</span>
+                    <Server className="w-4 h-4 text-foreground/40" />
+                  </div>
+                  <div className="h-8 w-16 bg-muted/50 rounded animate-pulse" />
+                </div>
+
+                <div className="card-stat">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Online Nodes</span>
+                    <TrendingUp className="w-4 h-4 text-foreground/40" />
+                  </div>
+                  <div className="h-8 w-16 bg-muted/50 rounded animate-pulse" />
+                </div>
+
+                <div className="card-stat">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Showing</span>
+                    <Search className="w-4 h-4 text-foreground/40" />
+                  </div>
+                  <div className="h-8 w-16 bg-muted/50 rounded animate-pulse" />
+                </div>
+              </div>
+
+              {/* Search and Filters */}
+              <div className="mb-4 sm:mb-6 space-y-3 sm:space-y-4">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-foreground/40" />
+                  <div className="w-full pl-10 pr-4 py-3 bg-card border border-border/60 rounded-xl">
+                    <div className="h-4 w-48 bg-muted/30 rounded animate-pulse" />
+                  </div>
+                </div>
+
+                {/* Filter Button */}
+                <div className="flex items-center gap-3">
+                  <button className="flex items-center gap-2 px-4 py-2 rounded-xl card text-foreground/60" disabled>
+                    <Filter className="w-4 h-4" />
+                    <span className="text-sm font-medium">Filters</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Node Table */}
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="card overflow-hidden flex-1 flex flex-col" style={{ padding: 0 }}>
+                  {/* Info Banner */}
+                  <div className="px-3 sm:px-4 py-2 bg-muted border-b border-border/60 text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground/60">Note: </span>
+                    <span className="hidden sm:inline">Most operators keep pRPC private for security. Stats shown: <span className="h-3 w-8 bg-muted/40 rounded inline-block animate-pulse" /> uptime, <span className="h-3 w-8 bg-muted/40 rounded inline-block animate-pulse" /> storage, <span className="h-3 w-8 bg-muted/40 rounded inline-block animate-pulse" /> CPU, <span className="h-3 w-8 bg-muted/40 rounded inline-block animate-pulse" /> latency (of <span className="h-3 w-8 bg-muted/40 rounded inline-block animate-pulse" /> total nodes)</span>
+                  </div>
+
+                  {/* Table Header */}
+                  <div className="sticky top-0 z-10 bg-muted border-b border-border/60">
+                    <table className="min-w-full border-collapse" style={{ minWidth: '800px' }}>
+                      <thead>
+                        <tr>
+                          <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                            IP Address
+                          </th>
+                          <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                            Public Key
+                          </th>
+                          <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                            Registered
+                          </th>
+                          <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                            <div className="flex items-center gap-1.5">
+                              <span>Uptime</span>
+                            </div>
+                          </th>
+                          <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                            <div className="flex items-center gap-1.5">
+                              <span>Storage</span>
+                            </div>
+                          </th>
+                          <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                            <div className="flex items-center gap-1.5">
+                              <span>RAM</span>
+                            </div>
+                          </th>
+                          <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                            Location
+                          </th>
+                        </tr>
+                      </thead>
+                    </table>
+                  </div>
+                  
+                  {/* Table Rows */}
+                  <div className="flex-1 overflow-y-auto">
+                    <table className="min-w-full border-collapse" style={{ minWidth: '800px' }}>
+                      <tbody>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((row) => (
+                          <tr key={row} className="card border-b border-border/40">
+                            <td className="px-3 sm:px-5 py-4">
+                              <div className="h-4 w-32 bg-muted/30 rounded animate-pulse" />
+                            </td>
+                            <td className="px-3 sm:px-5 py-4">
+                              <div className="h-4 w-48 bg-muted/30 rounded animate-pulse" />
+                            </td>
+                            <td className="px-3 sm:px-5 py-4 text-center">
+                              <div className="h-5 w-12 bg-muted/30 rounded animate-pulse mx-auto" />
+                            </td>
+                            <td className="px-3 sm:px-5 py-4">
+                              <div className="h-4 w-20 bg-muted/30 rounded animate-pulse" />
+                            </td>
+                            <td className="px-3 sm:px-5 py-4">
+                              <div className="h-4 w-24 bg-muted/30 rounded animate-pulse" />
+                            </td>
+                            <td className="px-3 sm:px-5 py-4">
+                              <div className="h-4 w-20 bg-muted/30 rounded animate-pulse" />
+                            </td>
+                            <td className="px-2 sm:px-4 py-3">
+                              <div className="h-4 w-28 bg-muted/30 rounded animate-pulse" />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
-      {/* Header */}
-      <Header
-        activePage="nodes"
-        nodeCount={nodes.length}
-        lastUpdate={lastUpdate}
-        loading={loading}
-        onRefresh={() => refreshNodes()}
-        networks={availableNetworks}
-        currentNetwork={currentNetwork}
-        onNetworkChange={(networkId) => {
-          setSelectedNetwork(networkId);
-        }}
-        showNetworkSelector={false}
-      />
-
-      {/* Main Content */}
+      <Header activePage="nodes" nodeCount={nodes.length} lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
+      
       <main className="flex-1 overflow-hidden">
-        <div className="h-full w-full p-3 sm:p-6">
-          <div className="h-full flex flex-col">
-            {/* Search and Filters Bar */}
-            <div className="mb-4 sm:mb-6 space-y-3 sm:space-y-4">
-              {/* Search Bar - Full width on mobile */}
-              <div className="w-full">
-                <SearchBar
-                  value={searchQuery}
-                  onChange={setSearchQuery}
+        <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
+          <div className="max-w-7xl mx-auto">
+            {/* Header */}
+            <div className="mb-4 sm:mb-6">
+              <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
+                <Server className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
+                Network Nodes
+              </h1>
+              <p className="text-foreground/60 text-sm sm:text-base">
+                Complete overview of all nodes in the network
+              </p>
+            </div>
+
+            {/* Summary Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6">
+              <div className="card-stat">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Nodes</span>
+                  <Server className="w-4 h-4 text-foreground/40" />
+                </div>
+                <div className="text-2xl font-bold text-foreground">{nodes.length}</div>
+              </div>
+
+              <div className="card-stat">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Online Nodes</span>
+                  <TrendingUp className="w-4 h-4 text-foreground/40" />
+                </div>
+                <div className="text-2xl font-bold text-[#3F8277]">
+                  {statusCounts.online}
+                </div>
+              </div>
+
+              <div className="card-stat">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Syncing</span>
+                  <Activity className="w-4 h-4 text-foreground/40" />
+                </div>
+                <div className="text-2xl font-bold text-[#F0A741]">
+                  {nodes.filter(n => n.status === 'syncing').length}
+                </div>
+              </div>
+
+              <div className="card-stat">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Offline Nodes</span>
+                  <Server className="w-4 h-4 text-foreground/40" />
+                </div>
+                <div className="text-2xl font-bold text-gray-400">
+                  {statusCounts.offline}
+                </div>
+              </div>
+            </div>
+
+            {/* Search and Filters - Compact */}
+            <div className="mb-4 sm:mb-6">
+              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                {/* Search Bar */}
+                <div className="relative flex-1 w-full sm:w-auto">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-foreground/40" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search by IP, public key, or location..."
-                  className="w-full"
+                    className="w-full pl-10 pr-4 py-2 bg-card border border-border/60 rounded-lg text-foreground placeholder-foreground/40 focus:outline-none focus:ring-2 focus:ring-[#F0A741]/20 focus:border-[#F0A741]/60 transition-all text-sm"
                   />
-              </div>
-
-              {/* Filters - Side by side on mobile */}
-              <div className="flex flex-row flex-wrap gap-2 sm:gap-3 items-center">
-                {/* Status Filter Dropdown */}
-                <div className="relative flex-1 min-w-[100px] sm:w-auto sm:flex-none">
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full appearance-none pl-3 sm:pl-4 pr-8 sm:pr-10 py-2 sm:py-2.5 bg-card/50 border border-border/60 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-border transition-all cursor-pointer text-xs sm:text-sm"
-                  >
-                    <option value="all">All ({statusCounts.all})</option>
-                    <option value="online">Online ({statusCounts.online})</option>
-                    <option value="offline">Offline ({statusCounts.offline})</option>
-                  </select>
-                  <ChevronDown className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-foreground/40 pointer-events-none" />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-muted rounded transition-colors"
+                    >
+                      <X className="w-4 h-4 text-foreground/60" />
+                    </button>
+                  )}
                 </div>
 
-                {/* Version Filter Dropdown */}
-                <div className="relative flex-1 min-w-[100px] sm:w-auto sm:flex-none">
-                  <select
-                    value={versionFilter}
-                    onChange={(e) => setVersionFilter(e.target.value)}
-                    className="w-full appearance-none pl-3 sm:pl-4 pr-8 sm:pr-10 py-2 sm:py-2.5 bg-card/50 border border-border/60 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-border transition-all cursor-pointer text-xs sm:text-sm"
-                  >
-                    <option value="all">All Versions</option>
-                    {versions.map((v) => (
-                      <option key={v} value={v}>
-                        {v}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-foreground/40 pointer-events-none" />
-                </div>
+                {/* Filters Button */}
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`flex items-center gap-2 rounded-lg transition-all text-sm border ${
+                    showFilters || hasActiveFilters
+                      ? 'px-4 py-2 bg-[#F0A741]/20 text-[#F0A741] border-[#F0A741]/30'
+                      : 'px-3 py-1.5 card text-foreground/60 hover:text-foreground border-border/60'
+                  }`}
+                >
+                  <Filter className="w-4 h-4" />
+                  <span className="font-medium">Filters</span>
+                  {hasActiveFilters && (
+                    <span className="px-1.5 py-0.5 bg-[#F0A741] text-black text-xs font-bold rounded">
+                      {[statusFilter !== 'all' && 1, versionFilter !== 'all' && 1, creditsFilter !== 'all' && 1, packetsFilter !== 'all' && 1].filter(Boolean).length}
+                    </span>
+                  )}
+                </button>
 
-                {/* Credits Filter Dropdown */}
-                <div className="relative flex-1 min-w-[100px] sm:w-auto sm:flex-none">
-                  <select
-                    value={creditsFilter}
-                    onChange={(e) => setCreditsFilter(e.target.value)}
-                    className="w-full appearance-none pl-3 sm:pl-4 pr-8 sm:pr-10 py-2 sm:py-2.5 bg-card/50 border border-border/60 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-border transition-all cursor-pointer text-xs sm:text-sm"
-                  >
-                    <option value="all">All Credits ({creditsCounts.all})</option>
-                    <option value="with">With Credits ({creditsCounts.with})</option>
-                    <option value="without">No Credits ({creditsCounts.without})</option>
-                  </select>
-                  <ChevronDown className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-foreground/40 pointer-events-none" />
-                </div>
-
-                {/* Packets Filter Dropdown */}
-                <div className="relative flex-1 min-w-[100px] sm:w-auto sm:flex-none">
-                  <select
-                    value={packetsFilter}
-                    onChange={(e) => setPacketsFilter(e.target.value)}
-                    className="w-full appearance-none pl-3 sm:pl-4 pr-8 sm:pr-10 py-2 sm:py-2.5 bg-card/50 border border-border/60 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-border transition-all cursor-pointer text-xs sm:text-sm"
-                  >
-                    <option value="all">All Packets ({packetsCounts.all})</option>
-                    <option value="with">With Packets ({packetsCounts.with})</option>
-                    <option value="without">No Packets ({packetsCounts.without})</option>
-                  </select>
-                  <ChevronDown className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-foreground/40 pointer-events-none" />
-                </div>
-              </div>
-              
-              {/* Clear filters button */}
-              {(statusFilter !== 'all' || versionFilter !== 'all' || creditsFilter !== 'all' || packetsFilter !== 'all') && (
-                <div className="flex justify-end">
+                {hasActiveFilters && (
                   <button
                     onClick={() => {
                       setStatusFilter('all');
                       setVersionFilter('all');
                       setCreditsFilter('all');
                       setPacketsFilter('all');
+                      setSearchQuery('');
                     }}
-                    className="text-xs text-foreground/60 hover:text-foreground transition-colors"
+                    className="text-sm text-foreground/60 hover:text-foreground transition-colors px-3 py-2"
                   >
-                    Clear filters
+                    Clear all
                   </button>
+                )}
+              </div>
+
+              {/* Filter Panel */}
+              {showFilters && (
+                <div className="card-stat mt-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Status Filter */}
+                    <div>
+                      <label className="block text-xs font-medium text-foreground/60 uppercase tracking-wide mb-2">
+                        Status
+                      </label>
+                      <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="input w-full text-foreground focus:outline-none focus:ring-2 focus:ring-[#F0A741]/20 focus:border-[#F0A741]/60 transition-all text-sm"
+                      >
+                        <option value="all">All ({statusCounts.all})</option>
+                        <option value="online">Online ({statusCounts.online})</option>
+                        <option value="offline">Offline ({statusCounts.offline})</option>
+                      </select>
+                    </div>
+
+                    {/* Version Filter */}
+                    <div>
+                      <label className="block text-xs font-medium text-foreground/60 uppercase tracking-wide mb-2">
+                        Version
+                      </label>
+                      <select
+                        value={versionFilter}
+                        onChange={(e) => setVersionFilter(e.target.value)}
+                        className="input w-full text-foreground focus:outline-none focus:ring-2 focus:ring-[#F0A741]/20 focus:border-[#F0A741]/60 transition-all text-sm"
+                      >
+                        <option value="all">All Versions</option>
+                        {versions.map((v) => (
+                          <option key={v} value={v}>
+                            {v}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Credits Filter */}
+                    <div>
+                      <label className="block text-xs font-medium text-foreground/60 uppercase tracking-wide mb-2">
+                        Credits
+                      </label>
+                      <select
+                        value={creditsFilter}
+                        onChange={(e) => setCreditsFilter(e.target.value)}
+                        className="input w-full text-foreground focus:outline-none focus:ring-2 focus:ring-[#F0A741]/20 focus:border-[#F0A741]/60 transition-all text-sm"
+                      >
+                        <option value="all">All ({creditsCounts.all})</option>
+                        <option value="with">With Credits ({creditsCounts.with})</option>
+                        <option value="without">No Credits ({creditsCounts.without})</option>
+                      </select>
+                    </div>
+
+                    {/* Packets Filter */}
+                    <div>
+                      <label className="block text-xs font-medium text-foreground/60 uppercase tracking-wide mb-2">
+                        Packets
+                      </label>
+                      <select
+                        value={packetsFilter}
+                        onChange={(e) => setPacketsFilter(e.target.value)}
+                        className="input w-full text-foreground focus:outline-none focus:ring-2 focus:ring-[#F0A741]/20 focus:border-[#F0A741]/60 transition-all text-sm"
+                      >
+                        <option value="all">All ({packetsCounts.all})</option>
+                        <option value="with">With Packets ({packetsCounts.with})</option>
+                        <option value="without">No Packets ({packetsCounts.without})</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
 
             {/* Node Table */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-              {error && (
-                <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
-                  <p className="text-sm text-red-400">{error}</p>
+            <div className="flex flex-col">
+              <div className="card overflow-hidden flex flex-col" style={{ padding: 0 }}>
+                {error && (
+                  <div className="p-4 bg-red-500/10 border-b border-red-500/20">
+                    <p className="text-sm text-red-400">{error}</p>
+                  </div>
+                )}
+                
+                {isLoading ? (
+                  <TableSkeleton rows={10} columns={7} />
+                ) : (
+                  <PNodeTable 
+                    nodes={filteredAndSortedNodes}
+                    onNodeClick={(node) => {
+                      const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';
+                      if (nodeId) {
+                        router.push(`/nodes/${encodeURIComponent(nodeId)}`);
+                      }
+                    }}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={(field) => {
+                      if (sortBy === field) {
+                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setSortBy(field);
+                        setSortOrder('desc');
+                      }
+                    }}
+                  />
+                )}
+              </div>
+
+              {filteredAndSortedNodes.length === 0 && !loading && (
+                <div className="card text-center" style={{ padding: '2rem' }}>
+                  <p className="text-foreground/60">No nodes found</p>
+                  {hasActiveFilters && (
+                    <button
+                      onClick={() => {
+                        setStatusFilter('all');
+                        setVersionFilter('all');
+                        setCreditsFilter('all');
+                        setPacketsFilter('all');
+                        setSearchQuery('');
+                      }}
+                      className="mt-4 text-sm text-[#F0A741] hover:text-[#F0A741]/80 transition-colors"
+                    >
+                      Clear filters
+                    </button>
+                  )}
                 </div>
               )}
-              
-              <PNodeTable 
-                nodes={filteredAndSortedNodes}
-                onNodeClick={(node) => {
-                  setSelectedNode(node);
-                  setIsModalOpen(true);
-                }}
-                sortBy={sortBy}
-                sortOrder={sortOrder}
-                onSort={(field) => {
-                  if (sortBy === field) {
-                    // Toggle order if clicking same field
-                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                  } else {
-                    // Set new field with default descending order
-                    setSortBy(field);
-                    setSortOrder('desc');
-                  }
-                }}
-              />
             </div>
           </div>
         </div>
       </main>
-
-      {/* Node Details Modal */}
-      <NodeDetailsModal
-        node={selectedNode}
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedNode(null);
-        }}
-      />
     </div>
   );
 }
 
 export default function NodesPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-black text-foreground flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-[#F0A741]" />
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={null}>
       <NodesPageContent />
     </Suspense>
   );

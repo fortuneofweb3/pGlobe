@@ -1,7 +1,7 @@
 'use client';
 
 import { PNode } from '@/lib/types/pnode';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import { scaleBand, scaleLinear } from '@visx/scale';
 import { Group } from '@visx/group';
 import { Bar } from '@visx/shape';
@@ -129,25 +129,62 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
             const chartHeight = Math.max(180, parentHeight);
             const innerWidth = width - margin.left - margin.right;
             const innerHeight = chartHeight - margin.top - margin.bottom;
+            const svgRef = useRef<SVGSVGElement>(null);
+            const hasAnimatedRef = useRef(false);
 
-              const xScale = scaleBand<string>({
-                range: [0, innerWidth],
-                domain: data.map(d => d.range),
-                padding: 0.2,
-              });
+            const xScale = scaleBand<string>({
+              range: [0, innerWidth],
+              domain: data.map(d => d.range),
+              padding: 0.2,
+            });
 
-              const maxValue = Math.max(...data.map(d => Math.max(d.cpu, d.ram)), 1); // Ensure at least 1
-              const yScale = scaleLinear<number>({
-                range: [innerHeight, 0],
-                domain: [0, maxValue * 1.1 || 10], // Ensure domain is valid
-                nice: true,
-              });
+            const maxValue = Math.max(...data.map(d => Math.max(d.cpu, d.ram)), 1); // Ensure at least 1
+            const yScale = scaleLinear<number>({
+              range: [innerHeight, 0],
+              domain: [0, maxValue * 1.1 || 10], // Ensure domain is valid
+              nice: true,
+            });
 
-              const barWidth = xScale.bandwidth() / 2;
+            const barWidth = xScale.bandwidth() / 2;
 
-              return (
-                <>
-                <svg width={width} height={chartHeight}>
+            // Animate bars on mount and when data changes
+            useEffect(() => {
+              if (!svgRef.current || data.length === 0) return;
+              
+              hasAnimatedRef.current = false;
+              
+              const timer = setTimeout(() => {
+                if (!svgRef.current || hasAnimatedRef.current) return;
+                
+                const bars = svgRef.current.querySelectorAll('rect[fill]');
+                
+                bars.forEach((barEl: Element, index) => {
+                  const rect = barEl as SVGRectElement;
+                  const originalHeight = parseFloat(rect.getAttribute('height') || '0');
+                  const originalY = parseFloat(rect.getAttribute('y') || '0');
+                  
+                  if (originalHeight > 0) {
+                    // Start from bottom (full height, at bottom)
+                    rect.setAttribute('height', '0');
+                    rect.setAttribute('y', String(originalY + originalHeight));
+                    rect.style.transition = `height 1s ease-out ${index * 0.05}s, y 1s ease-out ${index * 0.05}s`;
+                    
+                    requestAnimationFrame(() => {
+                      rect.setAttribute('height', String(originalHeight));
+                      rect.setAttribute('y', String(originalY));
+                    });
+                  }
+                });
+                
+                hasAnimatedRef.current = true;
+              }, 50);
+
+              return () => clearTimeout(timer);
+            }, [data.length]);
+
+            return (
+              <>
+              <svg ref={svgRef} width={width} height={chartHeight}>
                   <Group left={margin.left} top={margin.top}>
                       {/* Grid lines for reference */}
                       <GridRows

@@ -14,6 +14,7 @@
 import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
 import { PNode } from '../types/pnode';
 import { getDb } from './mongodb-nodes';
+import { calculateNetworkHealth } from '../utils/network-health';
 
 const COLLECTION_NAME = 'node_history';
 
@@ -44,6 +45,12 @@ export interface HistoricalSnapshot {
   // Geographic distribution
   countries: number;
   cities: number;
+  
+  // Network health score
+  networkHealthScore: number; // Overall network health score (0-100)
+  networkHealthAvailability: number; // Availability component (0-100)
+  networkHealthVersion: number; // Version health component (0-100)
+  networkHealthDistribution: number; // Distribution component (0-100)
   
   // Per-node snapshots (VARIABLE metrics only - these change over time)
   // Note: Uptime is cumulative (increases), but tracking it shows behavior over time
@@ -129,6 +136,9 @@ export async function storeHistoricalSnapshot(
     const interval = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}-${String(date.getUTCHours()).padStart(2, '0')}-${String(minutes).padStart(2, '0')}`;
     const dateStr = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
     
+    // Calculate network health score
+    const networkHealth = calculateNetworkHealth(nodes);
+    
     // Check if we already have a snapshot for this 10-minute interval
     const existing = await collection.findOne({ interval });
     if (existing) {
@@ -149,6 +159,10 @@ export async function storeHistoricalSnapshot(
         versionDistribution: calculateVersionDistribution(nodes),
         countries: new Set(nodes.map(n => n.locationData?.country).filter(Boolean)).size,
         cities: new Set(nodes.map(n => n.locationData?.city).filter(Boolean)).size,
+        networkHealthScore: networkHealth.overall,
+        networkHealthAvailability: networkHealth.availability,
+        networkHealthVersion: networkHealth.versionHealth,
+        networkHealthDistribution: networkHealth.distribution,
         nodeSnapshots: createNodeSnapshots(nodes),
       };
       
@@ -178,6 +192,10 @@ export async function storeHistoricalSnapshot(
       versionDistribution: calculateVersionDistribution(nodes),
       countries: new Set(nodes.map(n => n.locationData?.country).filter(Boolean)).size,
       cities: new Set(nodes.map(n => n.locationData?.city).filter(Boolean)).size,
+      networkHealthScore: networkHealth.overall,
+      networkHealthAvailability: networkHealth.availability,
+      networkHealthVersion: networkHealth.versionHealth,
+      networkHealthDistribution: networkHealth.distribution,
       nodeSnapshots: createNodeSnapshots(nodes),
     };
     

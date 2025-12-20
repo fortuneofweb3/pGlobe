@@ -212,8 +212,29 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     return fetchPromise;
   }, [selectedNetwork, loadCache, saveCache, nodes.length]);
 
+  const hasInitializedRef = useRef(false);
+  
   // Initial fetch - load from cache instantly, then fetch in background
+  // Only run once on mount, not on every page switch
   useEffect(() => {
+    if (hasInitializedRef.current) {
+      // Already initialized, just load cache if needed
+      const cached = loadCache();
+      if (cached?.nodes && cached.nodes.length > 0 && nodes.length === 0) {
+        setNodes(cached.nodes);
+        setLastUpdate(cached.lastUpdate ? new Date(cached.lastUpdate) : null);
+        if (cached.availableNetworks) setAvailableNetworks(cached.availableNetworks);
+        if (cached.currentNetwork) {
+          setCurrentNetwork(cached.currentNetwork);
+          setSelectedNetwork(cached.currentNetwork.id);
+        }
+        setLoading(false);
+      }
+      return;
+    }
+
+    hasInitializedRef.current = true;
+    
     // Hydrate from cache FIRST - show existing data immediately (no loading state)
     const cached = loadCache();
     if (cached?.nodes && cached.nodes.length > 0) {
@@ -330,7 +351,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     } else {
       console.log('[NodesContext] Skipping background refresh (last refresh was', Math.floor((now - parseInt(lastRefreshTime)) / 1000), 'seconds ago)');
     }
-  }, [refreshNodes, loadCache]);
+  }, []);
 
   // Passive polling: Fetch fresh data from MongoDB every minute (matches background refresh interval)
   // Only poll if we have nodes (don't poll if initial load failed)

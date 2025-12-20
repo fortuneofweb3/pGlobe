@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import { PNode } from '@/lib/types/pnode';
 import { scaleTime, scaleLinear } from '@visx/scale';
 import { LinePath } from '@visx/shape';
@@ -115,6 +115,54 @@ function ChartContent({
   showTooltip: (args: any) => void;
   hideTooltip: () => void;
 }) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const hasAnimatedRef = useRef(false);
+
+  // Animate paths on mount and when data changes
+  useEffect(() => {
+    if (!svgRef.current || chartData.length === 0) return;
+    
+    // Reset animation flag when data changes
+    hasAnimatedRef.current = false;
+    
+    // Wait for paths to render, then animate
+    const timer = setTimeout(() => {
+      if (!svgRef.current || hasAnimatedRef.current) return;
+      
+      // Find all path elements in the SVG
+      const paths = svgRef.current.querySelectorAll('path[stroke]');
+      
+      paths.forEach((pathEl: Element) => {
+        const svgPath = pathEl as SVGPathElement;
+        const pathLength = svgPath.getTotalLength();
+        if (pathLength > 0) {
+          svgPath.style.strokeDasharray = `${pathLength}`;
+          svgPath.style.strokeDashoffset = `${pathLength}`;
+          svgPath.style.transition = 'stroke-dashoffset 1.5s ease-out';
+          
+          // Trigger animation
+          requestAnimationFrame(() => {
+            svgPath.style.strokeDashoffset = '0';
+          });
+        }
+      });
+      
+      hasAnimatedRef.current = true;
+      
+      // Clean up after animation
+      const cleanupTimer = setTimeout(() => {
+        paths.forEach((pathEl: Element) => {
+          const svgPath = pathEl as SVGPathElement;
+          svgPath.style.strokeDasharray = 'none';
+          svgPath.style.strokeDashoffset = '0';
+        });
+      }, 1500);
+      
+      return () => clearTimeout(cleanupTimer);
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [chartData.length]);
   const margin = { top: 20, right: 80, bottom: 40, left: 60 };
   const xMax = width - margin.left - margin.right;
   const yMax = height - margin.top - margin.bottom;
@@ -172,7 +220,7 @@ function ChartContent({
 
   return (
     <>
-      <svg width={width} height={height} onMouseMove={handleMouseMove} onMouseLeave={hideTooltip}>
+      <svg ref={svgRef} width={width} height={height} onMouseMove={handleMouseMove} onMouseLeave={hideTooltip}>
         <rect x={0} y={0} width={width} height={height} fill="transparent" />
         <g transform={`translate(${margin.left},${margin.top})`}>
           <GridRows

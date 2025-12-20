@@ -1,7 +1,7 @@
 'use client';
 
 import { PNode } from '@/lib/types/pnode';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import { Package } from 'lucide-react';
 
 interface VersionDistributionProps {
@@ -9,6 +9,9 @@ interface VersionDistributionProps {
 }
 
 export default function VersionDistribution({ nodes }: VersionDistributionProps) {
+  const progressBarRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const hasAnimatedRef = useRef(false);
+
   const versionStats = useMemo(() => {
     const versionMap = new Map<string, number>();
     
@@ -51,6 +54,34 @@ export default function VersionDistribution({ nodes }: VersionDistributionProps)
 
     return { versions: sorted, latestVersion };
   }, [nodes]);
+
+  // Animate progress bars on mount and when data changes
+  useEffect(() => {
+    if (versionStats.versions.length === 0) return;
+    
+    hasAnimatedRef.current = false;
+    
+    const timer = setTimeout(() => {
+      if (hasAnimatedRef.current) return;
+      
+      versionStats.versions.forEach(({ version, percentage }, index) => {
+        const bar = progressBarRefs.current.get(version);
+        if (bar) {
+          // Start from 0 width
+          bar.style.width = '0%';
+          bar.style.transition = `width 1s ease-out ${index * 0.1}s`;
+          
+          requestAnimationFrame(() => {
+            bar.style.width = `${percentage}%`;
+          });
+        }
+      });
+      
+      hasAnimatedRef.current = true;
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [versionStats.versions.length]);
 
   const getVersionLabel = (version: string, isLatest: boolean) => {
     if (version === 'Unknown') return null;
@@ -98,7 +129,10 @@ export default function VersionDistribution({ nodes }: VersionDistributionProps)
               </div>
               <div className="w-full bg-muted/30 rounded-full h-1.5">
                 <div
-                  className={`h-1.5 rounded-full transition-all duration-500 ${
+                  ref={(el) => {
+                    if (el) progressBarRefs.current.set(version, el);
+                  }}
+                  className={`h-1.5 rounded-full ${
                     isLatest ? 'bg-[#3F8277]' : 'bg-[#F0A741]/50'
                   }`}
                   style={{ width: `${percentage}%` }}

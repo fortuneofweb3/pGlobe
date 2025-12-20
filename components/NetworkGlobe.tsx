@@ -309,21 +309,21 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
               <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-10">
                 <button
                   onClick={handleZoomIn}
-                  className="p-2 bg-card border border-border rounded hover:bg-muted transition-colors"
+                  className="card-stat hover:bg-muted transition-colors"
                   title="Zoom In"
                 >
                   <ZoomIn className="w-4 h-4 text-foreground" />
                 </button>
                 <button
                   onClick={handleZoomOut}
-                  className="p-2 bg-card border border-border rounded hover:bg-muted transition-colors"
+                  className="card-stat hover:bg-muted transition-colors"
                   title="Zoom Out"
                 >
                   <ZoomOut className="w-4 h-4 text-foreground" />
                 </button>
                 <button
                   onClick={handleReset}
-                  className="p-2 bg-card border border-border rounded hover:bg-muted transition-colors"
+                  className="card-stat hover:bg-muted transition-colors"
                   title="Reset View"
                 >
                   <RotateCcw className="w-4 h-4 text-foreground" />

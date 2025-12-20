@@ -27,16 +27,23 @@ function getDbName(): string {
 }
 
 async function getClient(retries: number = 3): Promise<MongoClient> {
+  // Check if existing client is still valid
   if (client) {
     try {
+      // Use a fresh db reference to avoid stale connections
+      const testDb = client.db(getDbName());
       await Promise.race([
-        client.db(getDbName()).admin().command({ ping: 1 }),
+        testDb.admin().command({ ping: 1 }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Ping timeout')), 2000))
       ]);
       return client;
-    } catch {
-      console.log('[MongoDB] Connection lost, reconnecting...');
-      try { await client.close(); } catch {}
+    } catch (error: any) {
+      console.log(`[MongoDB] Connection lost, reconnecting... (${error?.message || 'ping failed'})`);
+      try { 
+        await client.close(); 
+      } catch (closeError) {
+        // Ignore close errors
+      }
       client = null;
       db = null;
     }
@@ -49,12 +56,22 @@ async function getClient(retries: number = 3): Promise<MongoClient> {
       if (!uri) throw new Error('MONGODB_URI not set');
       
       const isVercel = !!process.env.VERCEL;
+      const isLocalDev = process.env.NODE_ENV === 'development' && !isVercel;
+      
+      // Use smaller connection pool for local dev to avoid competing with production
+      // Production Render server should use more connections, local dev uses fewer
       client = new MongoClient(uri, {
-        serverSelectionTimeoutMS: isVercel ? 10000 : 5000,
-        connectTimeoutMS: isVercel ? 10000 : 5000,
-        socketTimeoutMS: 30000,
-        maxPoolSize: isVercel ? 1 : 10,
+        serverSelectionTimeoutMS: isVercel ? 15000 : 20000, // Longer timeout for local dev
+        connectTimeoutMS: isVercel ? 15000 : 20000,
+        socketTimeoutMS: 45000,
+        maxPoolSize: isVercel ? 1 : (isLocalDev ? 3 : 10), // Local dev: 3, production: 10
         minPoolSize: 0,
+        retryWrites: true,
+        retryReads: true,
+        // Add heartbeat to keep connection alive
+        heartbeatFrequencyMS: 10000,
+        // For local dev, be more aggressive about closing idle connections
+        maxIdleTimeMS: isLocalDev ? 30000 : 60000, // Close idle connections faster in dev
       });
       
       await client.connect();
@@ -68,8 +85,17 @@ async function getClient(retries: number = 3): Promise<MongoClient> {
     } catch (error: any) {
       lastError = error;
       if (attempt < retries) {
-        console.warn(`[MongoDB] Attempt ${attempt}/${retries} failed, retrying...`);
-        await new Promise(r => setTimeout(r, 1000 * attempt));
+        const delay = 1000 * attempt;
+        console.warn(`[MongoDB] Attempt ${attempt}/${retries} failed: ${error?.message || error}. Retrying in ${delay}ms...`);
+        await new Promise(r => setTimeout(r, delay));
+      } else {
+        console.error(`[MongoDB] All ${retries} connection attempts failed. Last error: ${error?.message || error}`);
+        if (error?.message?.includes('timeout')) {
+          console.error('[MongoDB] 💡 Tip: If production server is connected, it may be using connection pool. Try:');
+          console.error('[MongoDB]   1. Wait a few seconds and retry');
+          console.error('[MongoDB]   2. Check MongoDB Atlas connection limits');
+          console.error('[MongoDB]   3. Use separate database for local dev (set MONGODB_DB_NAME)');
+        }
       }
       if (client) { try { await client.close(); } catch {} }
       client = null;
@@ -81,11 +107,10 @@ async function getClient(retries: number = 3): Promise<MongoClient> {
 }
 
 export async function getDb(): Promise<Db> {
-  if (!db) {
-    const c = await getClient();
-    db = c.db(getDbName());
-  }
-  return db;
+  // Always get a fresh client to ensure connection is valid
+  const c = await getClient();
+  // Get fresh db reference each time to avoid stale connections
+  return c.db(getDbName());
 }
 
 export async function getNodesCollection(): Promise<Collection> {
@@ -114,6 +139,7 @@ export interface NodeDocument {
   packetsSent?: number;
   activeStreams?: number;
   storageCapacity?: number;
+  storageUsed?: number;
   totalPages?: number;
   dataOperationsHandled?: number;
   isPublic?: boolean;
@@ -182,6 +208,7 @@ function nodeToDocument(node: PNode): Partial<NodeDocument> {
     packetsSent: node.packetsSent,
     activeStreams: node.activeStreams,
     storageCapacity: node.storageCapacity,
+    storageUsed: node.storageUsed,
     totalPages: node.totalPages,
     dataOperationsHandled: node.dataOperationsHandled,
     isPublic: node.isPublic,
@@ -227,6 +254,7 @@ export function documentToNode(doc: NodeDocument): PNode {
     packetsSent: doc.packetsSent,
     activeStreams: doc.activeStreams,
     storageCapacity: doc.storageCapacity,
+    storageUsed: doc.storageUsed,
     totalPages: doc.totalPages,
     dataOperationsHandled: doc.dataOperationsHandled,
     isPublic: doc.isPublic,
@@ -353,20 +381,70 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
  * Get all nodes
  */
 export async function getAllNodes(): Promise<PNode[]> {
-  try {
-    await getClient();
-    const collection = await getNodesCollection();
-    const docs = await collection.find({}).sort({ updatedAt: -1 }).toArray();
-    console.log(`[MongoDB] ✅ Retrieved ${docs.length} nodes`);
-    return docs.map(doc => documentToNode(doc as unknown as NodeDocument));
-  } catch (error: any) {
-    console.error('[MongoDB] Error fetching nodes:', error.message);
-    if (error.message?.includes('Topology') || error.message?.includes('connection')) {
-      client = null;
-      db = null;
+  let retries = 3;
+  let lastError: any = null;
+  
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      // Get fresh connection each time
+      await getClient();
+      const collection = await getNodesCollection();
+      
+      // Use explicit cursor to ensure we get all results
+      // Set batchSize to ensure we get all documents in one batch
+      const cursor = collection.find({}).sort({ updatedAt: -1 }).batchSize(1000);
+      const docs = await cursor.toArray();
+      
+      // Double-check we got all results - if we got exactly 101, it might be a batch limit issue
+      if (docs.length === 101) {
+        console.warn('[MongoDB] ⚠️  Got exactly 101 nodes - possible batch limit, checking total count...');
+        const totalCount = await collection.countDocuments({});
+        if (totalCount > 101) {
+          console.warn(`[MongoDB] ⚠️  Database has ${totalCount} nodes but query returned only 101 - retrying with explicit batch handling...`);
+          // Retry with explicit batch handling
+          const allDocs: any[] = [];
+          const batchCursor = collection.find({}).sort({ updatedAt: -1 }).batchSize(1000);
+          for await (const doc of batchCursor) {
+            allDocs.push(doc);
+          }
+          console.log(`[MongoDB] ✅ Retrieved ${allDocs.length} nodes after batch handling`);
+          return allDocs.map(doc => documentToNode(doc as unknown as NodeDocument));
+        }
+      }
+      
+      if (docs.length === 0 && attempt < retries) {
+        console.warn(`[MongoDB] Attempt ${attempt}/${retries}: Retrieved 0 nodes, retrying...`);
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+        continue;
+      }
+      
+      console.log(`[MongoDB] ✅ Retrieved ${docs.length} nodes`);
+      return docs.map(doc => documentToNode(doc as unknown as NodeDocument));
+    } catch (error: any) {
+      lastError = error;
+      const errorMsg = error?.message || String(error);
+      console.error(`[MongoDB] Error fetching nodes (attempt ${attempt}/${retries}):`, errorMsg);
+      
+      // Reset connection on connection errors
+      if (errorMsg.includes('Topology') || 
+          errorMsg.includes('connection') || 
+          errorMsg.includes('session') ||
+          errorMsg.includes('pool')) {
+        client = null;
+        db = null;
+      }
+      
+      if (attempt < retries) {
+        const delay = 1000 * attempt;
+        console.warn(`[MongoDB] Retrying in ${delay}ms...`);
+        await new Promise(r => setTimeout(r, delay));
+      }
     }
-    return [];
   }
+  
+  // If all retries failed, return empty array
+  console.error(`[MongoDB] ❌ All ${retries} attempts failed. Last error:`, lastError?.message || lastError);
+  return [];
 }
 
 /**

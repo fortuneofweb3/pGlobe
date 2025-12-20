@@ -1,7 +1,7 @@
 'use client';
 
 import { PNode } from '@/lib/types/pnode';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { scaleBand, scaleLinear } from '@visx/scale';
 import { Group } from '@visx/group';
 import { Bar } from '@visx/shape';
@@ -339,23 +339,57 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
             const chartHeight = Math.max(200, parentHeight);
             const innerWidth = width - margin.left - margin.right;
             const innerHeight = chartHeight - margin.top - margin.bottom;
+            const svgRef = useRef<SVGSVGElement>(null);
+            const hasAnimatedRef = useRef(false);
 
-              const yScale = scaleBand<string>({
-                range: [innerHeight, 0],
-                domain: data.map(d => d.country),
-                padding: 0.2,
-              });
+            const yScale = scaleBand<string>({
+              range: [innerHeight, 0],
+              domain: data.map(d => d.country),
+              padding: 0.2,
+            });
 
-              const maxValue = Math.max(...data.map(d => d.value), 1); // Ensure at least 1
-              const xScale = scaleLinear<number>({
-                range: [0, innerWidth],
-                domain: [0, maxValue * 1.1 || 10], // Ensure domain is valid
-                nice: true,
-              });
+            const maxValue = Math.max(...data.map(d => d.value), 1); // Ensure at least 1
+            const xScale = scaleLinear<number>({
+              range: [0, innerWidth],
+              domain: [0, maxValue * 1.1 || 10], // Ensure domain is valid
+              nice: true,
+            });
 
-              return (
-                <>
-                <svg width={width} height={chartHeight}>
+            // Animate bars on mount and when data changes
+            useEffect(() => {
+              if (!svgRef.current || data.length === 0) return;
+              
+              hasAnimatedRef.current = false;
+              
+              const timer = setTimeout(() => {
+                if (!svgRef.current || hasAnimatedRef.current) return;
+                
+                const bars = svgRef.current.querySelectorAll('rect[fill]');
+                
+                bars.forEach((barEl: Element, index) => {
+                  const rect = barEl as SVGRectElement;
+                  const originalWidth = parseFloat(rect.getAttribute('width') || '0');
+                  
+                  if (originalWidth > 0) {
+                    // Start from 0 width
+                    rect.setAttribute('width', '0');
+                    rect.style.transition = `width 1s ease-out ${index * 0.05}s`;
+                    
+                    requestAnimationFrame(() => {
+                      rect.setAttribute('width', String(originalWidth));
+                    });
+                  }
+                });
+                
+                hasAnimatedRef.current = true;
+              }, 50);
+
+              return () => clearTimeout(timer);
+            }, [data.length]);
+
+            return (
+              <>
+              <svg ref={svgRef} width={width} height={chartHeight}>
                   <Group left={margin.left} top={margin.top}>
                       {/* Grid lines for reference */}
                       <GridColumns

@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { PNode } from '@/lib/types/pnode';
-import NetworkHealthChart from '@/components/charts/NetworkHealthChart';
 import NetworkHealthScoreDetailed from '@/components/NetworkHealthScoreDetailed';
+import NetworkHealthTrendChart from '@/components/charts/NetworkHealthTrendChart';
 import VersionDistribution from '@/components/VersionDistribution';
 import NodeRankings from '@/components/NodeRankings';
 import LatencyDistribution from '@/components/analytics/LatencyDistribution';
@@ -21,6 +21,10 @@ interface HistoricalDataPoint {
   avgUptime: number;
   onlineCount: number;
   totalNodes: number;
+  networkHealthScore?: number;
+  networkHealthAvailability?: number;
+  networkHealthVersion?: number;
+  networkHealthDistribution?: number;
 }
 
 export default function AnalyticsPage() {
@@ -52,8 +56,12 @@ export default function AnalyticsPage() {
             const transformed = data.data.map((snapshot: any) => ({
               timestamp: snapshot.timestamp,
               avgUptime: snapshot.avgUptimePercent || 0,
-              onlineCount: snapshot.onlineNodes || 0, // Fixed: snapshot stores 'onlineNodes', not 'onlineCount'
+              onlineCount: snapshot.onlineNodes || 0,
               totalNodes: snapshot.totalNodes || 0,
+              networkHealthScore: snapshot.networkHealthScore,
+              networkHealthAvailability: snapshot.networkHealthAvailability,
+              networkHealthVersion: snapshot.networkHealthVersion,
+              networkHealthDistribution: snapshot.networkHealthDistribution,
             }));
             setHistoricalData(transformed);
           } else {
@@ -175,6 +183,62 @@ export default function AnalyticsPage() {
     };
   }, [nodes]);
 
+  // Show loading skeleton when loading and no data
+  if (loading && nodes.length === 0) {
+    return (
+      <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
+        <Header
+          activePage="analytics"
+          loading={true}
+          onRefresh={() => {}}
+          showNetworkSelector={false}
+        />
+
+        <main className="flex-1 overflow-auto">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 space-y-3 sm:space-y-4">
+            {/* Hero */}
+            <div className="card" style={{ borderRadius: '1rem', padding: '1.25rem 1.5rem' }}>
+              <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
+                <BarChart3 className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
+                Network Analytics
+              </h1>
+              <p className="text-foreground/60 text-sm sm:text-base">
+                Comprehensive insights and metrics
+              </p>
+            </div>
+
+            {/* Summary Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              {[
+                { label: 'Total Nodes', icon: Server },
+                { label: 'Online Nodes', icon: TrendingUp },
+                { label: 'Total Storage', icon: HardDrive },
+                { label: 'Network Health', icon: Activity },
+              ].map((stat) => (
+                <div key={stat.label} className="card-stat">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">{stat.label}</span>
+                    <stat.icon className="w-4 h-4 text-foreground/40" />
+                  </div>
+                  <div className="h-8 w-20 bg-muted/40 rounded animate-pulse" />
+                </div>
+              ))}
+            </div>
+
+            {/* Charts Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="card">
+                  <div className="h-[300px] w-full bg-muted/10 rounded-lg animate-pulse" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
       {/* Header */}
@@ -192,53 +256,48 @@ export default function AnalyticsPage() {
         showNetworkSelector={false}
       />
 
-      <main className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 space-y-3 sm:space-y-4">
-          {/* Hero */}
-          <div className="bg-card/40 border border-border/60 rounded-2xl p-4 sm:p-5 shadow-lg shadow-black/20">
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-                    <BarChart3 className="w-4 h-4 text-foreground/40" />
+      <main className="flex-1 overflow-hidden">
+        <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
+          <div className="max-w-7xl mx-auto">
+            {/* Header */}
+            <div className="mb-4 sm:mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                <div className="flex-1">
+                  <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
+                    <BarChart3 className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
                     Network Analytics
-                  </div>
-                  <h1 className="text-xl sm:text-2xl font-bold leading-tight">Health, performance, and capacity at a glance</h1>
-                  <p className="text-xs sm:text-sm text-foreground/70">
-                    Real-time view of pNode availability, storage footprint, and version rollout.
+                  </h1>
+                  <p className="text-foreground/60 text-sm sm:text-base">
+                    Comprehensive analytics and insights into the network
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2 sm:gap-3">
-                  <div className="px-3 sm:px-4 py-2 rounded-xl bg-[#3F8277]/10 border border-[#3F8277]/30 text-xs sm:text-sm font-semibold text-[#3F8277]">
-                    {nodes.length} nodes tracked
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={exportToCSV}
-                      disabled={nodes.length === 0}
-                      className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm bg-muted/40 hover:bg-muted/60 text-foreground rounded-lg border border-border/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-2"
-                      title="Export as CSV"
-                    >
-                      <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">CSV</span>
-                    </button>
-                    <button
-                      onClick={exportToJSON}
-                      disabled={nodes.length === 0}
-                      className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm bg-muted/40 hover:bg-muted/60 text-foreground rounded-lg border border-border/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-2"
-                      title="Export as JSON"
-                    >
-                      <FileJson className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">JSON</span>
-                    </button>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={exportToCSV}
+                    disabled={nodes.length === 0}
+                    className="px-3 py-2 text-sm bg-muted/40 hover:bg-muted/60 text-foreground rounded-lg border border-border/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    title="Export as CSV"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span>CSV</span>
+                  </button>
+                  <button
+                    onClick={exportToJSON}
+                    disabled={nodes.length === 0}
+                    className="px-3 py-2 text-sm bg-muted/40 hover:bg-muted/60 text-foreground rounded-lg border border-border/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    title="Export as JSON"
+                  >
+                    <FileJson className="w-4 h-4" />
+                    <span>JSON</span>
+                  </button>
                 </div>
               </div>
             </div>
-          </div>
+
+            <div className="space-y-4 sm:space-y-6">
 
           {/* Node Comparison Section - Accordion Style */}
-          <div className="bg-card/40 border border-border/60 rounded-xl overflow-hidden">
+          <div className="card overflow-hidden" style={{ padding: 0 }}>
             {/* Header - Clickable */}
             <button
               onClick={() => {
@@ -299,7 +358,7 @@ export default function AnalyticsPage() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
+            <div className="card-stat">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Nodes</span>
                 <Server className="w-4 h-4 text-foreground/40" />
@@ -308,7 +367,7 @@ export default function AnalyticsPage() {
               <p className="text-xs text-muted-foreground mt-1">Across all discovered networks</p>
             </div>
 
-            <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
+            <div className="card-stat">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Online</span>
                 <Activity className="w-4 h-4 text-foreground/40" />
@@ -319,7 +378,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
+            <div className="card-stat">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Storage</span>
                 <HardDrive className="w-4 h-4 text-foreground/40" />
@@ -329,7 +388,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
+            <div className="card-stat">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">RAM</span>
                 <MemoryStick className="w-4 h-4 text-foreground/40" />
@@ -342,7 +401,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
+            <div className="card-stat">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">CPU</span>
                 <Cpu className="w-4 h-4 text-foreground/40" />
@@ -355,7 +414,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
+            <div className="card-stat">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Avg Uptime</span>
                 <TrendingUp className="w-4 h-4 text-foreground/40" />
@@ -370,7 +429,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
+            <div className="card-stat">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Credits</span>
                 <Award className="w-4 h-4 text-foreground/40" />
@@ -383,7 +442,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            <div className="bg-card/50 border border-border rounded-xl p-3 sm:p-4">
+            <div className="card-stat">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Active Streams</span>
                 <Network className="w-4 h-4 text-foreground/40" />
@@ -400,28 +459,29 @@ export default function AnalyticsPage() {
           {/* Main Analytics Sections */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
             {/* Row 1: Health Score */}
-            <div className="bg-card/50 border border-border rounded-xl p-4 flex flex-col">
+            <div className="card flex flex-col">
               <NetworkHealthScoreDetailed nodes={nodes} />
             </div>
-            {/* Row 1: Network Health Chart */}
-            <div className="lg:col-span-2 bg-card/50 border border-border rounded-xl p-4 flex flex-col">
+            {/* Row 1: Network Health Trend Chart */}
+            <div className="lg:col-span-2 card flex flex-col">
               <div className="flex items-center gap-2 mb-3">
-                <Activity className="w-4 h-4 text-foreground/40" />
-                <h2 className="text-base font-semibold text-foreground">Network Health</h2>
+                <TrendingUp className="w-4 h-4 text-foreground/40" />
+                <h2 className="text-base font-semibold text-foreground">Network Health Trend</h2>
               </div>
-              <div className="flex-1 flex items-center">
-                <div className="w-full">
-                  <NetworkHealthChart nodes={nodes} />
-                </div>
+              <div className="flex-1">
+                <NetworkHealthTrendChart 
+                  historicalData={historicalData}
+                  height={300}
+                />
               </div>
             </div>
 
             {/* Row 2: Version Distribution */}
-            <div className="bg-card/50 border border-border rounded-xl p-4 flex flex-col">
+            <div className="card flex flex-col">
               <VersionDistribution nodes={nodes} />
             </div>
             {/* Row 2: Performance Metrics */}
-            <div className="lg:col-span-2 bg-card/50 border border-border rounded-xl p-4 flex flex-col">
+            <div className="lg:col-span-2 card flex flex-col">
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp className="w-4 h-4 text-foreground/40" />
                 <h2 className="text-base font-semibold text-foreground">Performance Metrics</h2>
@@ -433,7 +493,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Row 3: Top Nodes */}
-            <div className="bg-card/50 border border-border rounded-xl p-4 flex flex-col">
+            <div className="card flex flex-col">
               <div className="flex items-center gap-2 mb-3">
                 <Server className="w-4 h-4 text-foreground/40" />
                 <h2 className="text-base font-semibold text-foreground">Top Nodes</h2>
@@ -449,8 +509,10 @@ export default function AnalyticsPage() {
               </div>
             </div>
             {/* Row 3: Geographic Metrics */}
-            <div className="lg:col-span-2 bg-card/50 border border-border rounded-xl p-4 flex flex-col">
+            <div className="lg:col-span-2 card flex flex-col">
               <GeographicMetrics nodes={nodes} />
+            </div>
+          </div>
             </div>
           </div>
         </div>

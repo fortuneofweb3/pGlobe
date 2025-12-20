@@ -29,6 +29,47 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const API_SECRET = process.env.API_SECRET; // Secret for Vercel to authenticate
 
+// In-memory cache for nodes - always returns last known good data
+let cachedNodes: PNode[] = [];
+let cacheTimestamp: Date | null = null;
+let lastSuccessfulFetch: Date | null = null;
+
+// Update cache with fresh data
+const updateCache = (nodes: PNode[]) => {
+  cachedNodes = nodes;
+  cacheTimestamp = new Date();
+  lastSuccessfulFetch = new Date();
+  console.log(`[Cache] ✅ Updated cache with ${nodes.length} nodes`);
+};
+
+// Get nodes - try DB first, fall back to cache
+const getNodesWithFallback = async (): Promise<{ nodes: PNode[]; fromCache: boolean }> => {
+  try {
+    const nodes = await getAllNodes();
+    if (nodes.length > 0) {
+      updateCache(nodes);
+      return { nodes, fromCache: false };
+    }
+    // If DB returns empty but we have cache, use cache
+    if (cachedNodes.length > 0) {
+      console.log(`[Cache] ⚠️  DB returned 0 nodes, using cached ${cachedNodes.length} nodes`);
+      return { nodes: cachedNodes, fromCache: true };
+    }
+    // If no cache and DB is empty, return empty (but log it)
+    console.log(`[Cache] ⚠️  No nodes in DB and no cache available`);
+    return { nodes: [], fromCache: false };
+  } catch (error: any) {
+    console.error('[Cache] ⚠️  DB read failed, using cache:', error?.message);
+    if (cachedNodes.length > 0) {
+      console.log(`[Cache] ✅ Returning ${cachedNodes.length} cached nodes (DB unavailable)`);
+      return { nodes: cachedNodes, fromCache: true };
+    }
+    // Last resort - return empty but log warning
+    console.error(`[Cache] ❌ No cache available and DB failed - returning empty array`);
+    return { nodes: [], fromCache: false };
+  }
+};
+
 // Middleware
 app.use(express.json());
 
@@ -90,25 +131,23 @@ app.post('/api/refresh-nodes', authenticate, async (req, res) => {
     console.log('[RenderAPI] Refresh request received');
     
     // Always respond to client requests
-    // If refresh is already running, return status immediately
+    // If refresh is already running, return status immediately with cached data
     if (isRefreshRunning()) {
       console.log('[RenderAPI] ⏳ Background refresh already in progress');
       
-      // Get current DB count while refresh is running
-      let totalInDb = null;
-      try {
-        const nodes = await getAllNodes();
-        totalInDb = nodes.length;
-      } catch (err) {
-        console.warn('[RenderAPI] Could not read back from DB:', err);
-      }
+      // Return cached data instead of trying to read from DB
+      const { nodes, fromCache } = await getNodesWithFallback();
+      console.log(`[RenderAPI] Returning ${nodes.length} nodes ${fromCache ? 'from cache' : 'from DB'} while refresh in progress`);
       
       return res.json({
         success: true,
         message: 'Background refresh already in progress',
         inProgress: true,
-        totalInDb,
+        nodes,
+        count: nodes.length,
+        totalInDb: nodes.length,
         timestamp: new Date().toISOString(),
+        fromCache,
       });
     }
     
@@ -116,21 +155,18 @@ app.post('/api/refresh-nodes', authenticate, async (req, res) => {
     await performRefresh();
     console.log('[RenderAPI] ✅ Refresh completed');
     
-    // Get summary
-    let totalInDb = null;
-    try {
-      const nodes = await getAllNodes();
-      totalInDb = nodes.length;
-    } catch (err) {
-      console.warn('[RenderAPI] Could not read back from DB:', err);
-    }
+    // Get summary using cache-aware fetch (will have fresh data now)
+    const { nodes, fromCache } = await getNodesWithFallback();
     
     res.json({
       success: true,
       message: 'Background refresh completed',
       inProgress: false,
-      totalInDb,
-      timestamp: new Date().toISOString(),
+      nodes,
+      count: nodes.length,
+      totalInDb: nodes.length,
+      timestamp: cacheTimestamp?.toISOString() || new Date().toISOString(),
+      fromCache,
     });
   } catch (error: any) {
     console.error('[RenderAPI] ❌ Refresh failed:', error);
@@ -160,8 +196,8 @@ app.post('/api/sync-nodes', authenticate, async (req, res) => {
       });
     }
 
-    // Get total count
-    const dbNodes = await getAllNodes();
+    // Get total count - use cache-aware fetch
+    const { nodes: dbNodes } = await getNodesWithFallback();
 
     res.json({
       success: true,
@@ -195,39 +231,47 @@ app.get('/api/pnodes', authenticate, async (req, res) => {
       });
     }
 
-    // Always return from DB (fast)
-    // If DB fails, return empty array with error flag (never hang)
-    let nodes: PNode[] = [];
-    try {
-      nodes = await getAllNodes();
+    // Always return from DB (fast), fall back to cache if DB fails
+    const { nodes, fromCache } = await getNodesWithFallback();
+    
+    if (fromCache) {
+      console.log(`[RenderAPI] Returning ${nodes.length} nodes from cache (DB unavailable or empty)`);
+      res.json({
+        nodes,
+        count: nodes.length,
+        timestamp: cacheTimestamp?.toISOString() || new Date().toISOString(),
+        fromCache: true,
+        warning: 'Database temporarily unavailable, showing cached data',
+      });
+    } else {
       console.log(`[RenderAPI] Returning ${nodes.length} nodes from DB`);
-    } catch (dbError: any) {
-      console.error('[RenderAPI] ⚠️  DB read failed, returning empty array:', dbError?.message);
-      // Still respond to client, just with empty data
-      return res.json({
-        nodes: [],
-        count: 0,
-        error: 'Database temporarily unavailable',
+      res.json({
+        nodes,
+        count: nodes.length,
         timestamp: new Date().toISOString(),
       });
     }
-
-    // Always respond with data
-    res.json({
-      nodes,
-      count: nodes.length,
-      timestamp: new Date().toISOString(),
-    });
   } catch (error: any) {
-    // Final safety net - always respond, even on unexpected errors
+    // Final safety net - always respond with cached data if available
     console.error('[RenderAPI] ❌ Failed to get nodes:', error);
-    res.status(500).json({
-      error: 'Failed to fetch nodes',
-      message: error?.message || 'Unknown error',
-      nodes: [], // Always include nodes array (empty) so client doesn't break
-      count: 0,
-      timestamp: new Date().toISOString(),
-    });
+    if (cachedNodes.length > 0) {
+      console.log(`[RenderAPI] ✅ Returning ${cachedNodes.length} cached nodes as fallback`);
+      res.json({
+        nodes: cachedNodes,
+        count: cachedNodes.length,
+        timestamp: cacheTimestamp?.toISOString() || new Date().toISOString(),
+        fromCache: true,
+        error: 'Failed to fetch fresh data, showing cached data',
+      });
+    } else {
+      res.status(500).json({
+        error: 'Failed to fetch nodes',
+        message: error?.message || 'Unknown error',
+        nodes: [],
+        count: 0,
+        timestamp: new Date().toISOString(),
+      });
+    }
   }
 });
 
@@ -335,26 +379,15 @@ app.get('/api/v1/nodes', authenticate, async (req, res) => {
   try {
     const { searchParams } = new URL(req.url, `http://${req.headers.host}`);
     
-    // Get all nodes - always respond even if DB fails
-    let nodes: PNode[] = [];
-    try {
-      nodes = await getAllNodes();
-    } catch (dbError: any) {
-      console.error('[RenderAPI] ⚠️  DB read failed, returning empty array:', dbError?.message);
-      return res.json({
-        success: false,
-        error: 'Database temporarily unavailable',
-        data: [],
-        meta: {
-          total: 0,
-          page: 1,
-          limit: 100,
-          totalPages: 0,
-        },
-      });
+    // Get all nodes - use cache-aware fetch
+    const { nodes: allNodes, fromCache } = await getNodesWithFallback();
+    
+    if (fromCache && allNodes.length > 0) {
+      console.log(`[RenderAPI] ⚠️  Using ${allNodes.length} cached nodes (DB unavailable)`);
     }
 
     // Apply filters
+    let nodes = allNodes;
     const status = searchParams.get('status');
     if (status) {
       nodes = nodes.filter(n => n.status === status);
@@ -467,7 +500,7 @@ app.get('/api/v1/nodes/:id', authenticate, async (req, res) => {
  */
 app.get('/api/v1/network/health', authenticate, async (req, res) => {
   try {
-    const nodes = await getAllNodes();
+    const { nodes } = await getNodesWithFallback();
     
     if (nodes.length === 0) {
       return res.status(404).json({
@@ -546,17 +579,11 @@ app.get('/api/v1/network/health', authenticate, async (req, res) => {
  */
 app.get('/api/v1/network/stats', authenticate, async (req, res) => {
   try {
-    // Always respond, even if DB fails
-    let nodes: PNode[] = [];
-    try {
-      nodes = await getAllNodes();
-    } catch (dbError: any) {
-      console.error('[RenderAPI] ⚠️  DB read failed:', dbError?.message);
-      return res.status(500).json({
-        success: false,
-        error: 'Database temporarily unavailable',
-        message: dbError?.message || 'Unknown error',
-      });
+    // Always respond, use cache if DB fails
+    const { nodes, fromCache } = await getNodesWithFallback();
+    
+    if (fromCache && nodes.length > 0) {
+      console.log(`[RenderAPI] ⚠️  Using ${nodes.length} cached nodes for stats (DB unavailable)`);
     }
     
     if (nodes.length === 0) {

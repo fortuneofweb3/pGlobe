@@ -6,9 +6,10 @@ import { RefreshCw, Menu, X } from 'lucide-react';
 import NetworkSelector from './NetworkSelector';
 import NetToggle from './NetToggle';
 import { NetworkConfig } from '@/lib/server/network-config';
+import { useNodes } from '@/lib/context/NodesContext';
 
 interface HeaderProps {
-  activePage?: 'overview' | 'nodes' | 'analytics' | 'help' | 'scan';
+  activePage?: 'overview' | 'nodes' | 'analytics' | 'help' | 'scan' | 'regions';
   nodeCount?: number;
   lastUpdate?: Date | null;
   loading?: boolean;
@@ -22,16 +23,23 @@ interface HeaderProps {
 
 export default function Header({
   activePage = 'overview',
-  nodeCount = 0,
-  lastUpdate,
-  loading = false,
+  nodeCount: propNodeCount,
+  lastUpdate: propLastUpdate,
+  loading: propLoading = false,
   onRefresh,
-  networks = [],
-  currentNetwork,
+  networks: propNetworks = [],
+  currentNetwork: propCurrentNetwork,
   switchingNetwork,
   onNetworkChange,
   showNetworkSelector = false,
 }: HeaderProps) {
+  // Get values from context as fallback to prevent header from clearing on page transitions
+  const context = useNodes();
+  const nodeCount = propNodeCount ?? context?.nodes.length ?? 0;
+  const lastUpdate = propLastUpdate ?? context?.lastUpdate ?? null;
+  const loading = propLoading || context?.loading || false;
+  const networks = propNetworks.length > 0 ? propNetworks : (context?.availableNetworks ?? []);
+  const currentNetwork = propCurrentNetwork ?? context?.currentNetwork ?? null;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedNet, setSelectedNet] = useState<'devnet' | 'mainnet'>('devnet');
 
@@ -52,11 +60,11 @@ export default function Header({
   };
 
   return (
-    <header className="flex-shrink-0 z-50 bg-black/90 backdrop-blur-md border-b border-[#F0A741]/20">
-      <div className="w-full px-4 py-3">
-        <div className="flex items-center justify-between">
+    <header className="flex-shrink-0 z-50 bg-black border-b border-[#F0A741]/20">
+      <div className="w-full px-4 py-3 bg-black">
+        <div className="flex items-center justify-between bg-black">
           {/* Left side - Title and Navigation */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 bg-black">
             <Link 
               href="/" 
               className="text-xl sm:text-2xl font-bold text-[#F0A741] hover:text-[#F0A741]/80 transition-colors" 
@@ -100,6 +108,17 @@ export default function Header({
                 Analytics
               </Link>
               <Link
+                href="/regions"
+                prefetch={true}
+                className={`px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+                  activePage === 'regions'
+                    ? 'text-[#F0A741] bg-[#F0A741]/10'
+                    : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
+                }`}
+              >
+                Regions
+              </Link>
+              <Link
                 href="/scan"
                 prefetch={true}
                 className={`px-4 py-2 text-sm font-medium rounded-xl transition-all ${
@@ -125,9 +144,9 @@ export default function Header({
           </div>
 
           {/* Right side - Controls */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 bg-black">
             {showNetworkSelector && networks.length > 0 && (
-              <div className="hidden sm:block px-3 py-1.5">
+              <div className="hidden sm:block px-3 py-1.5 bg-muted">
                 <NetworkSelector
                   networks={networks}
                   currentNetwork={currentNetwork ?? null}
@@ -138,15 +157,15 @@ export default function Header({
               </div>
             )}
             {lastUpdate && (
-              <div className="hidden sm:block px-3 py-1.5">
+              <div className="hidden sm:block px-3 py-1.5 bg-muted/20">
                 <span className="text-xs text-foreground/60 font-mono">
                   {formatTimeAgo(lastUpdate)}
                 </span>
               </div>
             )}
-            {onRefresh && (
+            {(onRefresh !== undefined || context?.refreshNodes !== undefined) && (
               <button
-                onClick={onRefresh}
+                onClick={onRefresh || context?.refreshNodes || (() => {})}
                 disabled={loading}
                 className="px-2 sm:px-4 py-2 rounded-xl text-sm flex items-center gap-2 text-foreground/80 hover:text-foreground hover:bg-foreground/10 transition-all disabled:opacity-50"
               >
@@ -156,7 +175,7 @@ export default function Header({
             )}
             
             {/* Network Toggle (DevNet/MainNet) - Extreme Right */}
-            <div className="hidden sm:block">
+            <div className="hidden sm:block bg-black/90">
               <NetToggle currentNet={selectedNet} onNetChange={handleNetChange} />
             </div>
 
@@ -178,10 +197,10 @@ export default function Header({
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-[#F0A741]/20 bg-black/95 backdrop-blur-md">
-          <nav className="px-4 py-3 space-y-2">
+        <div className="md:hidden border-t border-[#F0A741]/20 bg-black">
+          <nav className="px-4 py-3 space-y-2 bg-black">
             {/* Network Toggle for Mobile */}
-            <div className="px-4 py-2">
+            <div className="px-4 py-2 bg-muted">
               <NetToggle currentNet={selectedNet} onNetChange={handleNetChange} />
             </div>
             
@@ -222,6 +241,18 @@ export default function Header({
               Analytics
             </Link>
             <Link
+              href="/regions"
+              prefetch={true}
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+                activePage === 'regions'
+                  ? 'text-[#F0A741] bg-[#F0A741]/10'
+                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
+              }`}
+            >
+              Regions
+            </Link>
+            <Link
               href="/scan"
               prefetch={true}
               onClick={() => setMobileMenuOpen(false)}
@@ -246,18 +277,18 @@ export default function Header({
               Help
             </Link>
             {showNetworkSelector && networks.length > 0 && (
-              <div className="px-4 py-2">
+              <div className="px-4 py-2 bg-muted">
                 <NetworkSelector
                   networks={networks}
                   currentNetwork={currentNetwork ?? null}
                   switchingNetwork={switchingNetwork}
                   loading={loading}
-                  onNetworkChange={onNetworkChange || (() => {})}
+                  onNetworkChange={onNetworkChange || context?.setSelectedNetwork || (() => {})}
                 />
               </div>
             )}
             {lastUpdate && (
-              <div className="px-4 py-2">
+              <div className="px-4 py-2 bg-muted">
                 <span className="text-xs text-foreground/60 font-mono">
                   {formatTimeAgo(lastUpdate)}
                 </span>

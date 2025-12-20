@@ -6,14 +6,13 @@ import { PNode } from '@/lib/types/pnode';
 import StatsCard from '@/components/StatsCard';
 import dynamic from 'next/dynamic';
 
+import { GlobeSkeleton, CardSkeleton } from '@/components/Skeletons';
+
 const MapLibreGlobe = dynamic(() => import('@/components/MapLibreGlobe'), {
   ssr: false,
   loading: () => (
-    <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black">
-      <div className="text-center">
-        <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[#F0A741]" />
-        <p className="text-xs text-muted-foreground">Loading map...</p>
-      </div>
+    <div className="absolute inset-0 w-full h-full bg-black">
+      <GlobeSkeleton height={600} />
     </div>
   ),
 });
@@ -399,6 +398,175 @@ function HomeContent() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Show loading skeleton when loading or no data available
+  const isLoading = loading || (nodes.length === 0 && !error);
+
+  // If loading and no data, show the loading skeleton
+  if (isLoading && nodes.length === 0) {
+    return (
+      <div className="fixed inset-0 w-full h-full flex flex-col" style={{ backgroundColor: '#000000' }}>
+        <Header
+          activePage="overview"
+          loading={true}
+          onRefresh={() => {}}
+          showNetworkSelector={false}
+        />
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex overflow-hidden relative">
+          {/* Left Sidebar */}
+          <aside className="hidden md:block w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-y-auto">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+              <div>
+                <h2 className="text-xs font-semibold text-foreground/60 mb-3 sm:mb-4 uppercase tracking-wide">Network Stats</h2>
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs sm:text-sm text-foreground/70">Total Nodes</span>
+                    <span className="h-4 w-12 bg-muted/40 rounded animate-pulse" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5">
+                      Online
+                      <InfoTooltip content="Seen in gossip network within last 5 minutes" />
+                    </span>
+                    <span className="h-4 w-12 bg-muted/40 rounded animate-pulse" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5">
+                      Syncing
+                      <InfoTooltip content="Seen within last hour, still synchronizing with network" />
+                    </span>
+                    <span className="h-4 w-12 bg-muted/40 rounded animate-pulse" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5">
+                      Offline
+                      <InfoTooltip content="Not seen in gossip network for over an hour" />
+                    </span>
+                    <span className="h-4 w-12 bg-muted/40 rounded animate-pulse" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 sm:pt-6 border-t border-border">
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                  <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Performance</h2>
+                  <InfoTooltip content="Stats from nodes with public pRPC only (~10 of 135 nodes). Most operators keep pRPC private (localhost-only) for security.">
+                    <span className="h-3 w-16 bg-muted/40 rounded animate-pulse hidden sm:inline-block" />
+                  </InfoTooltip>
+                </div>
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground/70">Avg Uptime</span>
+                    <span className="h-4 w-16 bg-muted/40 rounded animate-pulse" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground/70">Avg CPU</span>
+                    <span className="h-4 w-16 bg-muted/40 rounded animate-pulse" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground/70">Avg RAM</span>
+                    <span className="h-4 w-16 bg-muted/40 rounded animate-pulse" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground/70">Avg Latency</span>
+                    <span className="h-4 w-16 bg-muted/40 rounded animate-pulse" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 sm:pt-6 border-t border-border">
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                  <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Storage & Memory</h2>
+                </div>
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground/70">Total Storage</span>
+                    <span className="h-4 w-20 bg-muted/40 rounded animate-pulse" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground/70">Total RAM</span>
+                    <span className="h-4 w-20 bg-muted/40 rounded animate-pulse" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground/70">Used RAM</span>
+                    <span className="h-4 w-20 bg-muted/40 rounded animate-pulse" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground/70">Avg RAM Usage</span>
+                    <span className="h-4 w-16 bg-muted/40 rounded animate-pulse" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 sm:pt-6 border-t border-border">
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                  <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Network Activity</h2>
+                  <InfoTooltip content="From nodes with public pRPC only. Most nodes keep pRPC private.">
+                    <span className="h-3 w-16 bg-muted/40 rounded animate-pulse hidden sm:inline-block" />
+                  </InfoTooltip>
+                </div>
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground/70">Active Streams</span>
+                    <span className="h-4 w-20 bg-muted/40 rounded animate-pulse" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground/70">Packets Received</span>
+                    <span className="h-4 w-24 bg-muted/40 rounded animate-pulse" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground/70">Packets Sent</span>
+                    <span className="h-4 w-24 bg-muted/40 rounded animate-pulse" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground/70">Avg Packet Rate</span>
+                    <span className="h-4 w-20 bg-muted/40 rounded animate-pulse" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground/70">Total Credits</span>
+                    <span className="h-4 w-20 bg-muted/40 rounded animate-pulse" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          {/* Center - Globe */}
+          <main className="flex-1 relative overflow-hidden">
+            {/* Mobile Sidebar Toggle */}
+            <button className="md:hidden absolute top-4 left-4 z-50 p-2 bg-black border border-[#F0A741]/20 rounded-lg text-[#F0A741]">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
+            {/* Search Bar */}
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4 md:px-0">
+              <div className="w-full pl-10 pr-4 py-3 bg-card border border-border/60 rounded-xl">
+                <div className="h-4 w-48 bg-muted/30 rounded animate-pulse" />
+              </div>
+            </div>
+
+            {/* Globe */}
+            <div className="absolute inset-0 w-full h-full bg-black">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-3/4 h-3/4 rounded-full border-2 border-muted/30 animate-pulse">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full bg-muted/40 animate-pulse" style={{ animationDelay: '0s' }} />
+                    <div className="w-2 h-2 rounded-full bg-muted/40 animate-pulse absolute" style={{ left: '30%', top: '40%', animationDelay: '0.2s' }} />
+                    <div className="w-2 h-2 rounded-full bg-muted/40 animate-pulse absolute" style={{ left: '60%', top: '20%', animationDelay: '0.4s' }} />
+                    <div className="w-2 h-2 rounded-full bg-muted/40 animate-pulse absolute" style={{ left: '70%', top: '60%', animationDelay: '0.6s' }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 w-full h-full flex flex-col" style={{ backgroundColor: '#000000' }}>
       {/* Header - Fixed at top */}
@@ -427,7 +595,7 @@ function HomeContent() {
         )}
 
         {/* Left Sidebar */}
-        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative w-80 flex-shrink-0 bg-black/90 backdrop-blur-md border-r border-[#F0A741]/20 overflow-y-auto z-50 md:z-40 h-full transition-transform duration-300`}>
+        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-y-auto z-50 md:z-40 h-full transition-transform duration-300`}>
           <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             {/* Mobile close button */}
             <div className="flex items-center justify-between mb-2 md:hidden">
@@ -688,9 +856,11 @@ function HomeContent() {
                           }
                         }}
                         onPopupClick={(node) => {
-                          // Open node details modal when popup is clicked
-                          setSelectedNode(node);
-                          setIsNodeModalOpen(true);
+                          // Navigate to node details page when popup is clicked
+                          const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';
+                          if (nodeId) {
+                            router.push(`/nodes/${encodeURIComponent(nodeId)}`);
+                          }
                         }}
                       />
                       {geoEnriching && (
@@ -727,14 +897,7 @@ function HomeContent() {
 
 export default function Home() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-black text-foreground flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-[#F0A741]" />
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={null}>
       <HomeContent />
     </Suspense>
   );

@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { PNode } from '@/lib/types/pnode';
 import dynamic from 'next/dynamic';
+import { MapSkeleton } from './Skeletons';
 
 // Dynamically import Leaflet components to avoid SSR issues
 const MapContainer = dynamic(
@@ -96,9 +97,7 @@ export default function NetworkMap({ nodes }: NetworkMapProps) {
     return (
       <div>
         <h3 className="text-h3 text-foreground mb-4">Global Node Distribution</h3>
-        <div className="h-[400px] flex items-center justify-center text-muted-foreground">
-          Loading map...
-        </div>
+        <MapSkeleton height={400} />
       </div>
     );
   }
@@ -134,15 +133,19 @@ export default function NetworkMap({ nodes }: NetworkMapProps) {
         >
           {isClient && mapLoaded && nodesWithLocation.length > 0 ? (
             <MapContainer
+              key={`network-map-${nodesWithLocation.length}`}
               center={center}
               zoom={2}
               scrollWheelZoom={true}
               style={{ height: '100%', width: '100%' }}
               className="z-0"
+              attributionControl={false}
             >
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution=""
+                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                subdomains="abcd"
+                maxZoom={20}
               />
               {nodesWithLocation.map((node) => {
                 const status = node.status || 'offline';
@@ -154,32 +157,17 @@ export default function NetworkMap({ nodes }: NetworkMapProps) {
                   <CircleMarker
                     key={node.id}
                     center={[lat, lon]}
-                    radius={8}
+                    radius={10}
                     pathOptions={{
                       fillColor: color,
-                      fillOpacity: 0.7,
-                      color: color,
+                      fillOpacity: 0.8,
+                      color: '#fff',
                       weight: 2,
                     }}
                     eventHandlers={{
                       click: () => router.push(`/nodes/${node.id}`),
                     }}
                   >
-                    <Tooltip>
-                      <div className="text-body-small">
-                        <div className="font-mono font-semibold">
-                          {node.pubkey ? `${node.pubkey.slice(0, 8)}...${node.pubkey.slice(-4)}` : node.id.slice(0, 8)}
-                        </div>
-                        {node.locationData?.city && (
-                          <div>{node.locationData.city}, {node.locationData.country}</div>
-                        )}
-                        <div className="capitalize mt-1">
-                          <span className={`inline-block w-2 h-2 rounded-full mr-1`} style={{ backgroundColor: color }} />
-                          {status}
-                        </div>
-                        {node.version && <div className="text-gray-500">v{node.version}</div>}
-                      </div>
-                    </Tooltip>
                     <Popup>
                       <div className="text-body">
                         <div className="font-semibold mb-2">Node Details</div>
@@ -208,9 +196,7 @@ export default function NetworkMap({ nodes }: NetworkMapProps) {
               </div>
             </div>
           ) : (
-            <div className="h-full flex items-center justify-center text-muted-foreground">
-              Loading map...
-            </div>
+            <MapSkeleton height={400} />
           )}
         </div>
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { PNode } from '@/lib/types/pnode';
 import { X, Copy, Check, RefreshCw, HardDrive, Cpu, MemoryStick, Network, MapPin, Clock, CheckCircle2, XCircle, Globe, TrendingUp, Server, Activity } from 'lucide-react';
@@ -95,6 +95,8 @@ function HistoricalLineChart({
 }) {
   const { tooltipData, tooltipLeft, tooltipTop, tooltipOpen, showTooltip, hideTooltip } = useTooltip<any>();
   const margin = { top: 30, right: 30, left: 60, bottom: 70 };
+  const svgRef = useRef<SVGSVGElement>(null);
+  const hasAnimatedRef = useRef(false);
 
   // Interpolate missing data points to fill gaps smoothly
   const chartData = useMemo(() => {
@@ -258,6 +260,7 @@ function HistoricalLineChart({
             return (
               <>
                 <svg
+                  ref={svgRef}
                   width={width}
                   height={height}
                   onMouseMove={handleMouseMove}

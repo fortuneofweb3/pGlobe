@@ -382,19 +382,19 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
   }, [nodes]);
 
   return (
-    <div className="flex flex-col h-full bg-card/30 border border-border/60 rounded-lg overflow-hidden">
+    <div className="card flex flex-col h-full overflow-hidden" style={{ padding: 0 }}>
       {/* Info Banner */}
       {statsWithData.total > 0 && (
-        <div className="px-3 sm:px-4 py-2 bg-muted/20 border-b border-border/60 text-xs text-muted-foreground flex-shrink-0">
+        <div className="px-3 sm:px-4 py-2 bg-muted border-b border-border/60 text-xs text-muted-foreground flex-shrink-0">
           <span className="font-medium text-foreground/60">Note: </span>
           <span className="hidden sm:inline">Most operators keep pRPC private for security. Stats shown: {statsWithData.withUptime} uptime, {statsWithData.withStorage} storage, {statsWithData.withCPU} CPU, {statsWithData.withLatency} latency (of {statsWithData.total} total nodes)</span>
           <span className="sm:hidden">Limited stats: {statsWithData.withUptime} uptime, {statsWithData.withStorage} storage, {statsWithData.withCPU} CPU, {statsWithData.withLatency} latency</span>
         </div>
       )}
       
-      <div className="flex flex-col flex-1 overflow-hidden min-h-0 -mt-px">
+      <div className="flex flex-col flex-1 overflow-hidden min-h-0 -mt-px bg-card">
         {/* Scrollable Container with Sticky Header */}
-        <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0" style={{ margin: 0, padding: 0, marginTop: '-1px' }}>
+        <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0 bg-card" style={{ margin: 0, padding: 0, marginTop: '-1px' }}>
           <table className="min-w-full border-collapse m-0 border-spacing-0" style={{ minWidth: '800px', borderCollapse: 'collapse', margin: 0, padding: 0 }}>
             <colgroup>
               <col className="w-[9%]" />
@@ -413,19 +413,19 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
             </colgroup>
             <thead className="sticky top-0 z-10 bg-muted border-b border-border/60" style={{ margin: 0, padding: 0 }}>
               <tr>
-                <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   IP Address
                 </th>
-                <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   Public Key
                 </th>
-                <th className="px-2 sm:px-4 py-3 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   Registered
                 </th>
                 {onSort ? (
                   <>
                     <th 
-                      className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                      className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                       onClick={() => onSort('uptime')}
                     >
                       <div className="flex items-center gap-1.5">
@@ -438,7 +438,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                       </div>
                     </th>
                     <th 
-                      className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                      className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                       onClick={() => onSort('storageCapacity')}
                     >
                       <div className="flex items-center gap-1.5">
@@ -451,7 +451,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                       </div>
                     </th>
                     <th 
-                      className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                      className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                       onClick={() => onSort?.('ramTotal')}
                     >
                       <div className="flex items-center gap-1.5">
@@ -480,7 +480,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                       </div>
                     </th>
                     <th 
-                      className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                      className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                       onClick={() => onSort('cpuPercent')}
                     >
                       <div className="flex items-center gap-1.5">
@@ -519,7 +519,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                       </div>
                     </th>
                     <th 
-                      className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                      className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                       onClick={() => onSort('packetsReceived')}
                     >
                       <div className="flex items-center gap-1.5">
@@ -532,7 +532,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                       </div>
                     </th>
                     <th 
-                      className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                      className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                       onClick={() => onSort('packetsSent')}
                     >
                       <div className="flex items-center gap-1.5">
@@ -550,34 +550,34 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                   </>
                 ) : (
                   <>
-                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                    <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                       Uptime
                     </th>
-                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                    <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                       Storage
                     </th>
-                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                    <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                       Location
                     </th>
-                    <th className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                    <th className="px-3 sm:px-5 py-4 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                       Latency
                     </th>
-                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                    <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                       CPU
                     </th>
-                    <th className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                    <th className="px-3 sm:px-5 py-4 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                       Balance
                     </th>
-                    <th className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                    <th className="px-3 sm:px-5 py-4 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                       Credits
                     </th>
-                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                    <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                       Packets Rx
                     </th>
-                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                    <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                       Packets Tx
                     </th>
-                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                    <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                       Version
                     </th>
                   </>
@@ -602,14 +602,17 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         if (onNodeClick) {
                           onNodeClick(node);
                         } else {
-                          router.push(`/nodes/${node.id}`);
+                          const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';
+                          if (nodeId) {
+                            router.push(`/nodes/${encodeURIComponent(nodeId)}`);
+                          }
                         }
                       }}
-                      className={`hover:bg-muted/30 cursor-pointer transition-colors border-b border-border/20 ${
-                        duplicate ? 'bg-warning/5 border-l-2 border-warning' : ''
-                      } ${isTrynet ? 'bg-orange-500/5' : ''}`}
+                      className={`bg-card/30 hover:bg-muted/30 cursor-pointer transition-colors border-b border-border/40 ${
+                        duplicate ? 'bg-warning/10 border-l-2 border-warning' : ''
+                      } ${isTrynet ? 'bg-orange-500/10' : ''}`}
                     >
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
                         <a
                           href={`/?node=${encodeURIComponent(node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '')}`}
                           onClick={(e) => {
@@ -622,7 +625,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           {formatNodeId(node.id, node.address)}
                         </a>
                       </td>
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
                         <div className="flex items-center gap-2">
                           <span className="text-xs sm:text-sm font-mono text-foreground/70">
                             {formatPublicKey(node.pubkey || node.publicKey) || renderEmptyCell('Public key not available')}
@@ -637,7 +640,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           )}
                         </div>
                       </td>
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-center">
+                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap text-center bg-card/20">
                         {(() => {
                           const balance = balances[node.id] !== undefined ? balances[node.id] : node.balance;
                           const isRegistered = balance !== undefined && balance !== null && balance > 0;
@@ -652,12 +655,12 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           );
                         })()}
                       </td>
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
                         <span className="text-xs sm:text-sm text-foreground/80">
                           {formatUptime(node.uptime) || renderEmptyCell()}
                         </span>
                       </td>
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
                         {(() => {
                           const capacity = node.storageCapacity;
                           const hasCapacity = capacity !== undefined && capacity !== null;
@@ -672,7 +675,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           return renderEmptyCell();
                         })()}
                       </td>
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
                         {(() => {
                           const ramUsed = node.ramUsed;
                           const ramTotal = node.ramTotal;
@@ -690,15 +693,28 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           return renderEmptyCell();
                         })()}
                       </td>
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
                         {(() => {
                           if (!node.location) return renderEmptyCell();
-                          
-                          const flag = node.locationData?.countryCode 
+
+                          const flag = node.locationData?.countryCode
                             ? getFlagForCountry(node.locationData.country, node.locationData.countryCode)
                             : '';
-                          
-                          return (
+
+                          const country = node.locationData?.country;
+
+                          return country ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/regions?country=${encodeURIComponent(country)}`);
+                              }}
+                              className="text-xs sm:text-sm text-foreground/80 flex items-center gap-1.5 hover:text-[#F0A741] transition-colors cursor-pointer group"
+                            >
+                              {flag && <span className="text-base leading-none group-hover:scale-110 transition-transform">{flag}</span>}
+                              <span className="group-hover:underline">{node.location}</span>
+                            </button>
+                          ) : (
                             <span className="text-xs sm:text-sm text-foreground/80 flex items-center gap-1.5">
                               {flag && <span className="text-base leading-none">{flag}</span>}
                               {node.location}
@@ -706,7 +722,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           );
                         })()}
                       </td>
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-right">
+                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap text-right bg-card/20">
                         {(() => {
                           // Don't show latency for nodes not seen in gossip (offline)
                           if (node.seenInGossip === false) {
@@ -737,14 +753,14 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           return renderEmptyCell('Node not reachable');
                         })()}
                       </td>
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
                         <span className="text-xs sm:text-sm text-foreground/80">
                           {node.cpuPercent !== undefined && node.cpuPercent !== null 
                             ? `${node.cpuPercent.toFixed(1)}%`
                             : renderEmptyCell()}
                         </span>
                       </td>
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-right">
+                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap text-right bg-card/20">
                         {(() => {
                           const balance = balances[node.id] !== undefined ? balances[node.id] : node.balance;
                           const isFetching = fetchingBalances.has(node.id);
@@ -769,7 +785,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           return renderEmptyCell();
                         })()}
                       </td>
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-right">
+                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap text-right bg-card/20">
                         {node.credits !== undefined && node.credits !== null ? (
                           <span className="text-xs sm:text-sm font-mono text-foreground/80">
                             {node.credits.toLocaleString()}
@@ -778,7 +794,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           renderEmptyCell()
                         )}
                       </td>
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
                         {node.packetsReceived !== undefined && node.packetsReceived !== null ? (
                           <span className="text-xs sm:text-sm font-mono text-foreground/80">
                             {node.packetsReceived.toLocaleString()}
@@ -787,7 +803,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           renderEmptyCell()
                         )}
                       </td>
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
                         {node.packetsSent !== undefined && node.packetsSent !== null ? (
                           <span className="text-xs sm:text-sm font-mono text-foreground/80">
                             {node.packetsSent.toLocaleString()}
@@ -796,7 +812,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           renderEmptyCell()
                         )}
                       </td>
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
                         {node.version ? (
                           <VersionTooltip version={node.version} abbreviated={abbreviateVersion(node.version)} />
                         ) : (

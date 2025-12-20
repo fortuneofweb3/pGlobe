@@ -32,6 +32,7 @@ export interface PNode {
       packetsSent?: number; // Total packets sent (cumulative counter from stats.packets_sent)
   activeStreams?: number; // Active network streams (from stats.active_streams)
   storageCapacity?: number; // Total storage capacity in bytes (from storage_committed via get-pods-with-stats)
+  storageUsed?: number; // Used storage in bytes (from storage_used via get-pods-with-stats)
   totalPages?: number; // Total pages (from metadata.total_pages)
   isPublic?: boolean; // Whether pRPC is publicly accessible (from get-pods-with-stats v0.7.0+)
   rpcPort?: number; // RPC port number (from get-pods-with-stats v0.7.0+)

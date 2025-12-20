@@ -133,6 +133,7 @@ interface RawPod {
   last_seen_timestamp?: number;
   uptime?: number;
   storage_committed?: number;
+  storage_used?: number;
   total_pages?: number;
   data_operations_handled?: number;
   is_public?: boolean;
@@ -160,6 +161,7 @@ function rawPodToNode(pod: RawPod, index: number): PNode | null {
     lastSeen,
     uptime: pod.uptime,
     storageCapacity: pod.storage_committed,
+    storageUsed: pod.storage_used,
     totalPages: pod.total_pages,
     dataOperationsHandled: pod.data_operations_handled,
     isPublic: pod.is_public,

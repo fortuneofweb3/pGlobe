@@ -252,8 +252,22 @@ body {
 .card {
   background-color: rgb(var(--card));
   border: 1px solid rgb(var(--border));
-  border-radius: 4px;
-  padding: 20px;
+  border-radius: 0.75rem; /* 12px */
+  padding: 1.25rem; /* 20px */
+}
+
+.card-stat {
+  background-color: rgb(var(--card));
+  border: 1px solid rgb(var(--border));
+  border-radius: 0.75rem; /* 12px */
+  padding: 1rem; /* 16px */
+}
+
+.card-section {
+  background-color: rgb(var(--card));
+  border: 1px solid rgb(var(--border));
+  border-radius: 0.75rem; /* 12px */
+  padding: 1.5rem; /* 24px */
 }
 
 /* Status Badges */

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import { PNode } from '@/lib/types/pnode';
 import { scaleBand, scaleLinear } from '@visx/scale';
 import { Group } from '@visx/group';
@@ -102,6 +102,40 @@ export default function NetworkHealthChart({ nodes }: NetworkHealthChartProps) {
   }
 
   const margin = { top: 5, right: 30, left: 80, bottom: 5 };
+  const svgRef = useRef<SVGSVGElement>(null);
+  const hasAnimatedRef = useRef(false);
+
+  // Animate bars on mount and when data changes
+  useEffect(() => {
+    if (!svgRef.current || data.length === 0) return;
+    
+    hasAnimatedRef.current = false;
+    
+    const timer = setTimeout(() => {
+      if (!svgRef.current || hasAnimatedRef.current) return;
+      
+      const bars = svgRef.current.querySelectorAll('rect[fill]');
+      
+      bars.forEach((barEl: Element, index) => {
+        const rect = barEl as SVGRectElement;
+        const originalWidth = parseFloat(rect.getAttribute('width') || '0');
+        
+        if (originalWidth > 0) {
+          // Start from 0 width
+          rect.setAttribute('width', '0');
+          rect.style.transition = `width 1s ease-out ${index * 0.1}s`;
+          
+          requestAnimationFrame(() => {
+            rect.setAttribute('width', String(originalWidth));
+          });
+        }
+      });
+      
+      hasAnimatedRef.current = true;
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [data.length]);
   
   return (
     <div className="h-full flex flex-col">
@@ -127,7 +161,7 @@ export default function NetworkHealthChart({ nodes }: NetworkHealthChartProps) {
 
             return (
               <>
-              <svg width={width} height={chartHeight}>
+              <svg ref={svgRef} width={width} height={chartHeight}>
                 <Group left={margin.left} top={margin.top}>
                   {data.map((d) => {
                     const barHeight = yScale.bandwidth();
