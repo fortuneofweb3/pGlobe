@@ -184,7 +184,7 @@ function NodesPageContent() {
               </div>
 
               {/* Summary Stats - 3 cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 sm:mb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6">
                 <div className="card-stat">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Nodes</span>
@@ -335,7 +335,7 @@ function NodesPageContent() {
             </div>
 
             {/* Summary Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6">
               <div className="card-stat">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Nodes</span>
@@ -377,9 +377,9 @@ function NodesPageContent() {
 
             {/* Search and Filters - Compact */}
             <div className="mb-4 sm:mb-6">
-              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+              <div className="flex flex-row gap-2 sm:gap-3 items-center">
                 {/* Search Bar */}
-                <div className="relative flex-1 w-full sm:w-auto">
+                <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-foreground/40" />
                   <input
                     type="text"
@@ -401,14 +401,14 @@ function NodesPageContent() {
                 {/* Filters Button */}
                 <button
                   onClick={() => setShowFilters(!showFilters)}
-                  className={`flex items-center gap-2 rounded-lg transition-all text-sm border ${
+                  className={`flex items-center justify-center gap-2 rounded-lg transition-all text-sm border whitespace-nowrap h-[42px] ${
                     showFilters || hasActiveFilters
-                      ? 'px-4 py-2 bg-[#F0A741]/20 text-[#F0A741] border-[#F0A741]/30'
-                      : 'px-3 py-1.5 card text-foreground/60 hover:text-foreground border-border/60'
+                      ? 'px-3 sm:px-4 bg-[#F0A741]/20 text-[#F0A741] border-[#F0A741]/30'
+                      : 'px-3 bg-card text-foreground/60 hover:text-foreground hover:border-[#F0A741]/30 border-border/60'
                   }`}
                 >
                   <Filter className="w-4 h-4" />
-                  <span className="font-medium">Filters</span>
+                  <span className="hidden sm:inline font-medium">Filters</span>
                   {hasActiveFilters && (
                     <span className="px-1.5 py-0.5 bg-[#F0A741] text-black text-xs font-bold rounded">
                       {[statusFilter !== 'all' && 1, versionFilter !== 'all' && 1, creditsFilter !== 'all' && 1, packetsFilter !== 'all' && 1].filter(Boolean).length}

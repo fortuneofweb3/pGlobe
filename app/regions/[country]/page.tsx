@@ -162,48 +162,54 @@ function HistoricalLineChart({
   // Animate paths on mount and when data changes
   useEffect(() => {
     if (!svgRef.current || chartData.length === 0) return;
-    
+
     // Reset animation flag when data changes
     hasAnimatedRef.current = false;
-    
+
     // Wait for paths to render, then animate
     const timer = setTimeout(() => {
       if (!svgRef.current || hasAnimatedRef.current) return;
-      
+
       // Find all path elements in the SVG
-      const paths = svgRef.current.querySelectorAll('path[stroke]');
-      
+      const paths = svgRef.current.querySelectorAll('path[stroke]:not([fill])');
+
       paths.forEach((pathEl: Element) => {
         const svgPath = pathEl as SVGPathElement;
-        const pathLength = svgPath.getTotalLength();
-        if (pathLength > 0) {
-          svgPath.style.strokeDasharray = `${pathLength}`;
-          svgPath.style.strokeDashoffset = `${pathLength}`;
-          svgPath.style.transition = 'stroke-dashoffset 1.5s ease-out';
-          
-          // Trigger animation
-          requestAnimationFrame(() => {
-            svgPath.style.strokeDashoffset = '0';
-          });
+        try {
+          const pathLength = svgPath.getTotalLength();
+          if (pathLength > 0) {
+            // Set initial state
+            svgPath.style.strokeDasharray = `${pathLength}`;
+            svgPath.style.strokeDashoffset = `${pathLength}`;
+
+            // Trigger animation on next frame
+            requestAnimationFrame(() => {
+              svgPath.style.transition = 'stroke-dashoffset 1.5s ease-out';
+              svgPath.style.strokeDashoffset = '0';
+            });
+          }
+        } catch (e) {
+          // getTotalLength might fail on some elements, skip them
         }
       });
-      
+
       hasAnimatedRef.current = true;
-      
+
       // Clean up after animation
       const cleanupTimer = setTimeout(() => {
         paths.forEach((pathEl: Element) => {
           const svgPath = pathEl as SVGPathElement;
           svgPath.style.strokeDasharray = 'none';
           svgPath.style.strokeDashoffset = '0';
+          svgPath.style.transition = '';
         });
-      }, 1500);
-      
+      }, 1600);
+
       return () => clearTimeout(cleanupTimer);
-    }, 50);
+    }, 100);
 
     return () => clearTimeout(timer);
-  }, [chartData.length, data.length]);
+  }, [chartData, data]);
   
   const smartYFormatter = useMemo(() => {
     if (yTickFormatter) {
@@ -219,6 +225,64 @@ function HistoricalLineChart({
       return val.toFixed(0);
     };
   }, [yDomain, yTickFormatter]);
+
+  // Calculate dynamic Y-axis domain with smart zoom for nearly flat lines
+  const dynamicYDomain = useMemo(() => {
+    // Skip dynamic zoom for status charts (discrete values) and if custom ticks are provided
+    if (yTicks) return yDomain;
+
+    const [minDomain, maxDomain] = yDomain;
+
+    // Only apply dynamic zoom for percentage-based charts (0-100)
+    if (minDomain === 0 && maxDomain === 100) {
+      const values: number[] = [];
+
+      if (multiLine) {
+        // Collect all values from all lines
+        multiLine.forEach(line => {
+          chartData.forEach(d => {
+            const val = d[line.key];
+            if (val !== undefined && val !== null && !isNaN(val)) {
+              values.push(val);
+            }
+          });
+        });
+      } else {
+        // Collect values from single line
+        chartData.forEach(d => {
+          if (d.value !== undefined && d.value !== null && !isNaN(d.value)) {
+            values.push(d.value);
+          }
+        });
+      }
+
+      if (values.length === 0) return yDomain;
+
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const range = max - min;
+
+      // If the range is very small (nearly flat line), zoom in
+      if (range < 10) {
+        const center = (min + max) / 2;
+        const padding = Math.max(5, range * 0.5); // At least 5% padding, or 50% of range
+        return [
+          Math.max(0, Math.floor(center - padding)),
+          Math.min(100, Math.ceil(center + padding))
+        ];
+      }
+
+      // Otherwise, add 10% padding to top and bottom
+      const padding = range * 0.1;
+      return [
+        Math.max(0, Math.floor(min - padding)),
+        Math.min(100, Math.ceil(max + padding))
+      ];
+    }
+
+    // For non-percentage charts, use the original domain
+    return yDomain;
+  }, [yDomain, chartData, multiLine, yTicks]);
 
   return (
     <div className="space-y-3">
@@ -246,7 +310,7 @@ function HistoricalLineChart({
 
             const yScale = scaleLinear<number>({
               range: [yMax, 0],
-              domain: yDomain,
+              domain: dynamicYDomain,
               nice: true,
             });
 
@@ -471,6 +535,8 @@ function CountryDetailContent() {
   }>>([]);
   const [timeRange, setTimeRange] = useState<'30m' | '1h' | '24h' | '1w'>('24h');
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const fetchingHistoryRef = useRef(false);
+  const fetchHistoryAbortControllerRef = useRef<AbortController | null>(null);
 
   // Filter nodes by country
   const countryNodes = useMemo(() => {
@@ -479,10 +545,27 @@ function CountryDetailContent() {
     );
   }, [nodes, countryName]);
 
-  // Fetch historical data for all nodes in this country
+  // Fetch historical data for all nodes in this country with deduplication
   useEffect(() => {
     const fetchHistoricalData = async () => {
+      // Request deduplication - prevent multiple simultaneous fetches
+      if (fetchingHistoryRef.current) {
+        console.log('[RegionPage] Already fetching history, skipping duplicate request');
+        return;
+      }
+
+      // Cancel any pending request
+      if (fetchHistoryAbortControllerRef.current) {
+        fetchHistoryAbortControllerRef.current.abort();
+      }
+
+      fetchingHistoryRef.current = true;
       setLoadingHistory(true);
+
+      // Create new abort controller for this request
+      const abortController = new AbortController();
+      fetchHistoryAbortControllerRef.current = abortController;
+
       try {
         const endTime = Date.now();
         const startTime = endTime - (7 * 24 * 60 * 60 * 1000); // Always fetch 7 days
@@ -493,30 +576,78 @@ function CountryDetailContent() {
         if (nodeIds.length === 0) {
           setHistoricalData([]);
           setLoadingHistory(false);
+          fetchingHistoryRef.current = false;
           return;
         }
 
         console.log(`[RegionPage] Fetching history for ${nodeIds.length} nodes in ${countryName}`);
 
-        // Fetch all node histories in parallel (limit to 20 nodes to avoid overload)
-        const nodesToFetch = nodeIds.slice(0, 20);
-        const historyPromises = nodesToFetch.map(async (nodeId) => {
-          try {
-            const url = `/api/history?nodeId=${encodeURIComponent(nodeId)}&startTime=${startTime}&endTime=${endTime}`;
-            const response = await fetch(url);
-            if (response.ok) {
-              const data = await response.json();
-              return data.data || [];
-            }
-          } catch (err) {
-            console.warn(`[RegionPage] Failed to fetch history for node ${nodeId}:`, err);
-            return [];
+        // Use bulk API for faster loading with abort signal
+        let allHistories: any[] = [];
+        try {
+          const url = `/api/history/bulk?nodeIds=${nodeIds.map(id => encodeURIComponent(id)).join(',')}&startTime=${startTime}&endTime=${endTime}`;
+          const response = await fetch(url, {
+            signal: abortController.signal,
+            cache: 'no-store', // Don't cache to ensure fresh data
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            // Bulk API returns object with nodeId as keys
+            allHistories = nodeIds.map(nodeId => data.data?.[nodeId] || []);
+            console.log(`[RegionPage] Fetched ${allHistories.length} histories via bulk API, total points: ${allHistories.reduce((sum, h) => sum + h.length, 0)}`);
+          } else {
+            // Fallback to individual requests if bulk API fails
+            console.warn('[RegionPage] Bulk API failed, falling back to individual requests');
+            const historyPromises = nodeIds.map(async (nodeId) => {
+              try {
+                const url = `/api/history?nodeId=${encodeURIComponent(nodeId)}&startTime=${startTime}&endTime=${endTime}`;
+                const response = await fetch(url);
+                if (response.ok) {
+                  const data = await response.json();
+                  return data.data || [];
+                }
+              } catch (err) {
+                console.warn(`[RegionPage] Failed to fetch history for node ${nodeId}:`, err);
+                return [];
+              }
+              return [];
+            });
+            allHistories = await Promise.all(historyPromises);
+            console.log(`[RegionPage] Fetched ${allHistories.length} histories individually, total points: ${allHistories.reduce((sum, h) => sum + h.length, 0)}`);
           }
-          return [];
+        } catch (err) {
+          console.error('[RegionPage] Failed to fetch histories:', err);
+          allHistories = [];
+        }
+
+        // Aggregate data by timestamp with proper credit tracking
+        // Key insight: Credits should use last-known-value, not just sum of reporting nodes
+
+        // First, collect all unique timestamps
+        const allTimestamps = new Set<number>();
+        allHistories.forEach((history) => {
+          history.forEach((point: any) => {
+            allTimestamps.add(point.timestamp);
+          });
         });
 
-        const allHistories = await Promise.all(historyPromises);
-        console.log(`[RegionPage] Fetched ${allHistories.length} histories, total points: ${allHistories.reduce((sum, h) => sum + h.length, 0)}`);
+        const sortedTimestamps = Array.from(allTimestamps).sort((a, b) => a - b);
+
+        // Track last known credits for each node
+        const lastKnownCredits: Record<string, number> = {};
+
+        // Build index of node data by timestamp
+        const nodeDataByTimestamp: Record<number, Record<string, any>> = {};
+        allHistories.forEach((history, nodeIndex) => {
+          const nodeId = `node_${nodeIndex}`;
+          history.forEach((point: any) => {
+            if (!nodeDataByTimestamp[point.timestamp]) {
+              nodeDataByTimestamp[point.timestamp] = {};
+            }
+            nodeDataByTimestamp[point.timestamp][nodeId] = point;
+          });
+        });
 
         // Aggregate data by timestamp
         const aggregatedData: Record<number, {
@@ -532,30 +663,39 @@ function CountryDetailContent() {
           ramCount: number;
         }> = {};
 
-        allHistories.forEach((history) => {
-          history.forEach((point: any) => {
-            const ts = point.timestamp;
-            if (!aggregatedData[ts]) {
-              aggregatedData[ts] = {
-                timestamp: ts,
-                onlineCount: 0,
-                totalNodes: 0,
-                totalPacketsReceived: 0,
-                totalPacketsSent: 0,
-                totalCredits: 0,
-                avgCPU: 0,
-                avgRAM: 0,
-                cpuCount: 0,
-                ramCount: 0,
-              };
-            }
+        sortedTimestamps.forEach(ts => {
+          const nodesAtTimestamp = nodeDataByTimestamp[ts] || {};
 
-            const agg = aggregatedData[ts];
-            agg.totalNodes++;
+          // Update last known credits for nodes reporting at this timestamp
+          Object.entries(nodesAtTimestamp).forEach(([nodeId, point]: [string, any]) => {
+            if (point.credits !== undefined && point.credits !== null) {
+              lastKnownCredits[nodeId] = point.credits;
+            }
+          });
+
+          // Sum all last known credits (carry forward from previous timestamps)
+          const totalCredits = Object.values(lastKnownCredits).reduce((sum, credits) => sum + credits, 0);
+
+          aggregatedData[ts] = {
+            timestamp: ts,
+            onlineCount: 0,
+            totalNodes: Object.keys(nodesAtTimestamp).length,
+            totalPacketsReceived: 0,
+            totalPacketsSent: 0,
+            totalCredits: totalCredits,
+            avgCPU: 0,
+            avgRAM: 0,
+            cpuCount: 0,
+            ramCount: 0,
+          };
+
+          const agg = aggregatedData[ts];
+
+          // Aggregate other metrics from nodes reporting at this timestamp
+          Object.values(nodesAtTimestamp).forEach((point: any) => {
             if (point.status === 'online') agg.onlineCount++;
             if (point.packetsReceived) agg.totalPacketsReceived += point.packetsReceived;
             if (point.packetsSent) agg.totalPacketsSent += point.packetsSent;
-            if (point.credits) agg.totalCredits += point.credits;
             if (point.cpuPercent !== undefined && point.cpuPercent !== null) {
               agg.avgCPU += point.cpuPercent;
               agg.cpuCount++;
@@ -583,11 +723,16 @@ function CountryDetailContent() {
 
         setHistoricalData(aggregatedArray);
         console.log(`[RegionPage] Aggregated ${aggregatedArray.length} data points`);
-      } catch (err) {
-        console.error('[RegionPage] Failed to fetch historical data:', err);
+      } catch (err: any) {
+        // Don't log error if request was aborted (intentional cancellation)
+        if (err?.name !== 'AbortError') {
+          console.error('[RegionPage] Failed to fetch historical data:', err);
+        }
         setHistoricalData([]);
       } finally {
         setLoadingHistory(false);
+        fetchingHistoryRef.current = false;
+        fetchHistoryAbortControllerRef.current = null;
       }
     };
 
@@ -595,29 +740,39 @@ function CountryDetailContent() {
       fetchHistoricalData();
     } else {
       setLoadingHistory(false);
+      fetchingHistoryRef.current = false;
     }
+
+    // Cleanup function - abort pending request on unmount
+    return () => {
+      if (fetchHistoryAbortControllerRef.current) {
+        fetchHistoryAbortControllerRef.current.abort();
+      }
+      fetchingHistoryRef.current = false;
+    };
   }, [countryNodes.length, countryName]);
 
-  // Calculate country stats
+  // Calculate country stats with stabilized values to prevent flickering
   const stats = useMemo(() => {
     const onlineNodes = countryNodes.filter(n => n.status === 'online').length;
     const offlineNodes = countryNodes.filter(n => n.status === 'offline' || !n.status).length;
     const syncingNodes = countryNodes.filter(n => n.status === 'syncing').length;
-    
+
     const totalStorage = countryNodes.reduce((sum, n) => sum + (n.storageCapacity || 0), 0);
+    const usedStorage = countryNodes.reduce((sum, n) => sum + (n.storageUsed || 0), 0);
     const totalRAM = countryNodes.reduce((sum, n) => sum + (n.ramTotal || 0), 0);
     const usedRAM = countryNodes.reduce((sum, n) => sum + (n.ramUsed || 0), 0);
-    
+
     const nodesWithUptime = countryNodes.filter(n => n.uptime !== undefined && n.uptime > 0);
     const avgUptimeSeconds = nodesWithUptime.length > 0
       ? nodesWithUptime.reduce((sum, n) => sum + (n.uptime || 0), 0) / nodesWithUptime.length
       : 0;
-    
+
     const nodesWithCPU = countryNodes.filter(n => n.cpuPercent !== undefined);
     const avgCPU = nodesWithCPU.length > 0
       ? nodesWithCPU.reduce((sum, n) => sum + (n.cpuPercent || 0), 0) / nodesWithCPU.length
       : 0;
-    
+
     const nodesWithRAM = countryNodes.filter(n => n.ramTotal !== undefined);
     const avgRAMUsage = nodesWithRAM.length > 0
       ? nodesWithRAM.reduce((sum, n) => {
@@ -625,21 +780,27 @@ function CountryDetailContent() {
           return sum + usage;
         }, 0) / nodesWithRAM.length
       : 0;
-    
+
     const latencies = countryNodes
       .map(n => n.latency)
       .filter((lat): lat is number => lat !== undefined && lat !== null && lat > 0);
     const avgLatency = latencies.length > 0
       ? Math.round(latencies.reduce((sum, lat) => sum + lat, 0) / latencies.length)
       : 0;
-    
+
     const totalPacketsReceived = countryNodes.reduce((sum, n) => sum + (n.packetsReceived || 0), 0);
     const totalPacketsSent = countryNodes.reduce((sum, n) => sum + (n.packetsSent || 0), 0);
     const totalActiveStreams = countryNodes.reduce((sum, n) => sum + (n.activeStreams || 0), 0);
-    const totalCredits = countryNodes.reduce((sum, n) => sum + (n.credits || 0), 0);
-    
+
+    // Calculate credits with validation - filter out nodes with missing/invalid credit data
+    // Only count nodes that have actual credit values to prevent 0s from skewing the total
+    const nodesWithCredits = countryNodes.filter(n =>
+      n.credits !== undefined && n.credits !== null && n.credits > 0
+    );
+    const totalCredits = nodesWithCredits.reduce((sum, n) => sum + (n.credits || 0), 0);
+
     // Calculate average packet rate
-    const nodesWithPackets = countryNodes.filter(n => 
+    const nodesWithPackets = countryNodes.filter(n =>
       (n.packetsReceived !== undefined && n.packetsReceived > 0) ||
       (n.packetsSent !== undefined && n.packetsSent > 0)
     );
@@ -660,6 +821,7 @@ function CountryDetailContent() {
       offlineNodes,
       syncingNodes,
       totalStorage,
+      usedStorage,
       totalRAM,
       usedRAM,
       avgUptimeSeconds,
@@ -670,6 +832,7 @@ function CountryDetailContent() {
       totalPacketsSent,
       totalActiveStreams,
       totalCredits,
+      nodesReportingCredits: nodesWithCredits.length,
       avgPacketRate,
     };
   }, [countryNodes]);
@@ -763,18 +926,27 @@ function CountryDetailContent() {
         <main className="flex-1 overflow-hidden">
           <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
             <div className="max-w-7xl mx-auto">
-              {/* Back button skeleton */}
-              <div className="mb-4">
-                <div className="h-4 w-32 bg-muted/20 rounded animate-pulse" />
-              </div>
+              {/* Back button - show immediately */}
+              <Link href="/regions" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-4 transition-colors">
+                <ArrowLeft className="w-4 h-4" />
+                Back to Regions
+              </Link>
 
-              {/* Cover image skeleton */}
-              <div className="relative h-56 sm:h-72 rounded-2xl overflow-hidden bg-muted/20 animate-pulse mb-8">
-                <div className="absolute bottom-0 left-0 right-0 p-8">
-                  <div className="h-10 w-48 bg-muted/30 rounded mb-3" />
-                  <div className="h-6 w-64 bg-muted/20 rounded" />
-                </div>
-              </div>
+              {/* Cover image - show immediately with known country info */}
+              {(() => {
+                const countryNameFromUrl = decodeURIComponent(params.country as string);
+                return (
+                  <div className="relative h-56 sm:h-72 rounded-2xl overflow-hidden shadow-2xl mb-8 bg-muted/10">
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black" />
+                    <div className="relative h-full flex flex-col justify-end p-8">
+                      <h1 className="text-4xl sm:text-5xl font-bold text-white drop-shadow-lg mb-3">
+                        {countryNameFromUrl}
+                      </h1>
+                      <div className="h-6 w-64 bg-white/10 rounded animate-pulse" />
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Stats grid skeleton */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
@@ -883,13 +1055,14 @@ function CountryDetailContent() {
                       <img
                         src={flagUrl}
                         alt={countryName}
-                        className="w-full h-full object-fill blur-[2px]"
+                        className="w-full h-full object-fill blur-[3px] scale-110"
                         crossOrigin="anonymous"
                         referrerPolicy="no-referrer"
                       />
-                      {/* Multi-layer gradient for better blending */}
-                      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+                      {/* Enhanced multi-layer gradient for better diffusion */}
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-black/90" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+                      <div className="absolute inset-0 bg-gradient-to-br from-black/30 via-transparent to-black/40" />
                     </div>
 
                     {/* Content overlay */}
@@ -909,8 +1082,8 @@ function CountryDetailContent() {
                       </p>
                     </div>
 
-                    {/* Bottom fade to match page background */}
-                    <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-black to-transparent" />
+                    {/* Enhanced bottom fade to seamlessly match page background */}
+                    <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black via-black/80 to-transparent" />
                   </div>
                 </div>
               );
@@ -960,6 +1133,11 @@ function CountryDetailContent() {
                   <HardDrive className="w-4 h-4 text-foreground/40" />
                 </div>
                 <div className="text-2xl font-bold text-foreground">{formatStorageBytes(stats.totalStorage)}</div>
+                {stats.usedStorage > 0 && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {formatStorageBytes(stats.usedStorage)} used ({((stats.usedStorage / stats.totalStorage) * 100).toFixed(1)}%)
+                  </div>
+                )}
               </div>
 
               <div className="card-stat">
@@ -1006,7 +1184,7 @@ function CountryDetailContent() {
                 </div>
                 <div className="text-xl font-bold text-[#F0A741]">{stats.totalCredits.toLocaleString()}</div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  {countryNodes.filter(n => n.credits && n.credits > 0).length} nodes reporting
+                  {stats.nodesReportingCredits} nodes reporting
                 </div>
               </div>
 
@@ -1028,7 +1206,7 @@ function CountryDetailContent() {
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-[#F0A741]" />
-                  Historical Performance
+                  Analytics
                 </h2>
                 <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
                   {(['30m', '1h', '24h', '1w'] as const).map((range) => (
@@ -1047,20 +1225,40 @@ function CountryDetailContent() {
                 </div>
               </div>
 
-              {/* Loading State */}
+              {/* Loading State - Show empty charts with axes */}
               {loadingHistory && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <div className="card p-6">
-                    <div className="animate-pulse space-y-3">
-                      <div className="h-4 w-48 bg-muted/30 rounded" />
-                      <div className="h-[250px] bg-muted/20 rounded" />
-                    </div>
+                  <div className="card">
+                    <HistoricalLineChart
+                      title="Network Activity (Packet Rate)"
+                      data={[]}
+                      height={250}
+                      yDomain={[0, 100]}
+                      strokeColor="#3F8277"
+                      yLabel="Packets/s"
+                      tooltipFormatter={() => <div />}
+                      headerContent={
+                        <span className="text-xs text-muted-foreground">
+                          Loading data...
+                        </span>
+                      }
+                    />
                   </div>
-                  <div className="card p-6">
-                    <div className="animate-pulse space-y-3">
-                      <div className="h-4 w-48 bg-muted/30 rounded" />
-                      <div className="h-[250px] bg-muted/20 rounded" />
-                    </div>
+                  <div className="card">
+                    <HistoricalLineChart
+                      title="Credits Earned History"
+                      data={[]}
+                      height={250}
+                      yDomain={[-10, 10]}
+                      strokeColor="#F0A741"
+                      yLabel="Credits"
+                      tooltipFormatter={() => <div />}
+                      headerContent={
+                        <span className="text-xs text-muted-foreground">
+                          Loading data...
+                        </span>
+                      }
+                    />
                   </div>
                 </div>
               )}
@@ -1144,6 +1342,7 @@ function CountryDetailContent() {
                 }
 
                 let creditsEarned = 0;
+
                 if (previous && previousIndex >= 0) {
                   const prevCredits = previous.totalCredits || 0;
                   const currCredits = current.totalCredits || 0;
@@ -1156,6 +1355,39 @@ function CountryDetailContent() {
                   _totalCredits: current.totalCredits,
                 };
               });
+
+              // Add current live data point if it's newer than last historical point
+              const lastHistoricalTimestamp = sorted.length > 0 ? sorted[sorted.length - 1].timestamp : 0;
+              const currentTimestamp = Date.now();
+              if (currentTimestamp - lastHistoricalTimestamp > 60000) { // More than 1 minute old
+                // Calculate credits earned since last historical point
+                const lastHistoricalCredits = sorted.length > 0 ? sorted[sorted.length - 1].totalCredits || 0 : 0;
+                const currentTotalCredits = stats.totalCredits;
+                const creditsEarnedSinceLast = currentTotalCredits - lastHistoricalCredits;
+
+                console.log('[RegionPage] Adding current credit point:', {
+                  lastHistorical: lastHistoricalCredits,
+                  current: currentTotalCredits,
+                  earned: creditsEarnedSinceLast,
+                  timeDiff: (currentTimestamp - lastHistoricalTimestamp) / 1000 / 60 + ' mins'
+                });
+
+                creditsData.push({
+                  timestamp: currentTimestamp,
+                  value: creditsEarnedSinceLast,
+                  _totalCredits: currentTotalCredits,
+                });
+              }
+
+              // Log credit data for debugging large swings
+              const largeSwings = creditsData.filter(d => Math.abs(d.value) > 100000);
+              if (largeSwings.length > 0) {
+                console.log('[RegionPage] Large credit swings detected:', largeSwings.map(d => ({
+                  time: new Date(d.timestamp).toLocaleTimeString(),
+                  change: d.value,
+                  total: d._totalCredits
+                })));
+              }
 
               const maxPacketRate = Math.max(...packetRateData.map(d => d.value || 0), 1);
               const minCredits = Math.min(...creditsData.map(d => d.value || 0), 0);
@@ -1180,12 +1412,30 @@ function CountryDetailContent() {
               const maxCPU = Math.max(...cpuData.map(d => d.value), 10);
               const maxRAM = Math.max(...ramData.map(d => d.value), 10);
 
-              // Calculate network health score
+              // Calculate network health score (composite metric)
               const healthData = filteredData.map(d => {
                 const onlineRate = d.totalNodes > 0 ? (d.onlineCount / d.totalNodes) * 100 : 0;
+
+                // Health score = weighted average of multiple factors
+                // - 60% availability (online vs total)
+                // - 20% resource efficiency (inverse of avg CPU/RAM usage)
+                // - 20% network activity (packet rate relative to baseline)
+                const cpuHealth = d.avgCPU !== undefined ? Math.max(0, 100 - d.avgCPU) : 100;
+                const ramHealth = d.avgRAM !== undefined ? Math.max(0, 100 - d.avgRAM) : 100;
+                const resourceHealth = (cpuHealth + ramHealth) / 2;
+
+                // Activity health - nodes with higher packet rates are healthier
+                const activityHealth = onlineRate; // For now, use availability as proxy
+
+                const healthScore = (
+                  onlineRate * 0.6 +
+                  resourceHealth * 0.2 +
+                  activityHealth * 0.2
+                );
+
                 return {
                   timestamp: d.timestamp,
-                  networkHealthScore: onlineRate,
+                  networkHealthScore: Math.min(100, Math.max(0, healthScore)),
                   networkHealthAvailability: onlineRate,
                 };
               });
@@ -1272,7 +1522,7 @@ function CountryDetailContent() {
                           title="Average CPU Usage"
                           data={cpuData}
                           height={250}
-                          yDomain={[0, Math.min(100, maxCPU * 1.2)]}
+                          yDomain={[0, 100]}
                           strokeColor="#F0A741"
                           yLabel="CPU %"
                           yTickFormatter={(v) => `${v.toFixed(0)}%`}
@@ -1302,7 +1552,7 @@ function CountryDetailContent() {
                           title="Average RAM Usage"
                           data={ramData}
                           height={250}
-                          yDomain={[0, Math.min(100, maxRAM * 1.2)]}
+                          yDomain={[0, 100]}
                           strokeColor="#9CA3AF"
                           yLabel="RAM %"
                           yTickFormatter={(v) => `${v.toFixed(0)}%`}

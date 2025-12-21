@@ -40,28 +40,21 @@ export default function AnalyticsPage() {
   useEffect(() => {
     const fetchHistoricalData = async () => {
       try {
-        // Get last 7 days of history
-        const endTime = Date.now();
-        const startTime = endTime - (7 * 24 * 60 * 60 * 1000);
-        
-        const params = new URLSearchParams();
-        params.set('startTime', startTime.toString());
-        params.set('endTime', endTime.toString());
-        
-        const response = await fetch(`/api/history?${params.toString()}`);
+        // Use the new public API endpoint for network health history
+        const response = await fetch(`/api/v1/network/health/history?period=7d`);
         if (response.ok) {
-          const data = await response.json();
-          // Transform snapshots to HistoricalDataPoint format
-          if (data.data && Array.isArray(data.data)) {
-            const transformed = data.data.map((snapshot: any) => ({
+          const result = await response.json();
+          // Transform health data to HistoricalDataPoint format
+          if (result.success && result.data && Array.isArray(result.data.health)) {
+            const transformed = result.data.health.map((snapshot: any) => ({
               timestamp: snapshot.timestamp,
-              avgUptime: snapshot.avgUptimePercent || 0,
+              avgUptime: 0, // Not provided by this endpoint
               onlineCount: snapshot.onlineNodes || 0,
               totalNodes: snapshot.totalNodes || 0,
-              networkHealthScore: snapshot.networkHealthScore,
-              networkHealthAvailability: snapshot.networkHealthAvailability,
-              networkHealthVersion: snapshot.networkHealthVersion,
-              networkHealthDistribution: snapshot.networkHealthDistribution,
+              networkHealthScore: snapshot.overall,
+              networkHealthAvailability: snapshot.availability,
+              networkHealthVersion: snapshot.versionHealth,
+              networkHealthDistribution: snapshot.distribution,
             }));
             setHistoricalData(transformed);
           } else {
@@ -75,7 +68,7 @@ export default function AnalyticsPage() {
         setHistoricalData([]);
       }
     };
-    
+
     // Defer historical data fetch until after initial render
     if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
       requestIdleCallback(() => {

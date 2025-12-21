@@ -56,7 +56,7 @@ export default function NetworkHealthTrendChart({
 
   const chartData = useMemo(() => {
     if (historicalData.length === 0) return [];
-    
+
     return historicalData
       .filter(d => d.networkHealthScore !== undefined && d.networkHealthScore !== null)
       .map(d => ({
@@ -69,51 +69,84 @@ export default function NetworkHealthTrendChart({
       .sort((a, b) => a.timestamp - b.timestamp);
   }, [historicalData]);
 
+  // Calculate dynamic Y-axis domain for better zoom
+  const yDomain = useMemo(() => {
+    if (chartData.length === 0) return [0, 100];
+
+    const values = chartData.map(d => d.overall);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min;
+
+    // If the range is very small (nearly flat line), zoom in
+    if (range < 10) {
+      const center = (min + max) / 2;
+      const padding = Math.max(5, range * 0.5); // At least 5% padding, or 50% of range
+      return [
+        Math.max(0, Math.floor(center - padding)),
+        Math.min(100, Math.ceil(center + padding))
+      ];
+    }
+
+    // Otherwise, add 10% padding to top and bottom
+    const padding = range * 0.1;
+    return [
+      Math.max(0, Math.floor(min - padding)),
+      Math.min(100, Math.ceil(max + padding))
+    ];
+  }, [chartData]);
+
   // Animate paths on mount and when data changes
   useEffect(() => {
     if (!svgRef.current || chartData.length === 0) return;
-    
+
     // Reset animation flag when data changes
     hasAnimatedRef.current = false;
-    
+
     // Wait for paths to render, then animate
     const timer = setTimeout(() => {
       if (!svgRef.current || hasAnimatedRef.current) return;
-      
+
       // Find all path elements in the SVG
-      const paths = svgRef.current.querySelectorAll('path[stroke]');
-      
+      const paths = svgRef.current.querySelectorAll('path[stroke]:not([fill])');
+
       paths.forEach((pathEl: Element) => {
         const svgPath = pathEl as SVGPathElement;
-        const pathLength = svgPath.getTotalLength();
-        if (pathLength > 0) {
-          svgPath.style.strokeDasharray = `${pathLength}`;
-          svgPath.style.strokeDashoffset = `${pathLength}`;
-          svgPath.style.transition = 'stroke-dashoffset 1.5s ease-out';
-          
-          // Trigger animation
-          requestAnimationFrame(() => {
-            svgPath.style.strokeDashoffset = '0';
-          });
+        try {
+          const pathLength = svgPath.getTotalLength();
+          if (pathLength > 0) {
+            // Set initial state
+            svgPath.style.strokeDasharray = `${pathLength}`;
+            svgPath.style.strokeDashoffset = `${pathLength}`;
+
+            // Trigger animation on next frame
+            requestAnimationFrame(() => {
+              svgPath.style.transition = 'stroke-dashoffset 1.5s ease-out';
+              svgPath.style.strokeDashoffset = '0';
+            });
+          }
+        } catch (e) {
+          // getTotalLength might fail on some elements, skip them
         }
       });
-      
+
       hasAnimatedRef.current = true;
-      
+
       // Clean up after animation
       const cleanupTimer = setTimeout(() => {
         paths.forEach((pathEl: Element) => {
           const svgPath = pathEl as SVGPathElement;
           svgPath.style.strokeDasharray = 'none';
           svgPath.style.strokeDashoffset = '0';
+          svgPath.style.transition = '';
         });
-      }, 1500);
-      
+      }, 1600);
+
       return () => clearTimeout(cleanupTimer);
-    }, 50);
+    }, 100);
 
     return () => clearTimeout(timer);
-  }, [chartData.length]);
+  }, [chartData]);
 
   if (chartData.length === 0) {
     return (
@@ -141,7 +174,7 @@ export default function NetworkHealthTrendChart({
 
           const yScale = scaleLinear<number>({
             range: [yMax, 0],
-            domain: [0, 100],
+            domain: yDomain,
             nice: true,
           });
 
@@ -206,42 +239,6 @@ export default function NetworkHealthTrendChart({
                     y={(d) => yScale(d.overall)}
                     stroke="#F0A741"
                     strokeWidth={3}
-                    curve={curveMonotoneX}
-                  />
-
-                  {/* Availability Component Line */}
-                  <LinePath
-                    data={chartData}
-                    x={(d) => xScale(d.timestamp)}
-                    y={(d) => yScale(d.availability)}
-                    stroke="#3F8277"
-                    strokeWidth={2}
-                    strokeDasharray="5,5"
-                    opacity={0.6}
-                    curve={curveMonotoneX}
-                  />
-
-                  {/* Version Health Component Line */}
-                  <LinePath
-                    data={chartData}
-                    x={(d) => xScale(d.timestamp)}
-                    y={(d) => yScale(d.version)}
-                    stroke="#9CA3AF"
-                    strokeWidth={2}
-                    strokeDasharray="5,5"
-                    opacity={0.6}
-                    curve={curveMonotoneX}
-                  />
-
-                  {/* Distribution Component Line */}
-                  <LinePath
-                    data={chartData}
-                    x={(d) => xScale(d.timestamp)}
-                    y={(d) => yScale(d.distribution)}
-                    stroke="#6366F1"
-                    strokeWidth={2}
-                    strokeDasharray="5,5"
-                    opacity={0.6}
                     curve={curveMonotoneX}
                   />
 
@@ -326,17 +323,17 @@ export default function NetworkHealthTrendChart({
                       {timeFormat('%b %d, %H:%M')(new Date(tooltipData.timestamp))}
                     </div>
                     <div className="font-semibold text-foreground">
-                      Overall: <span className="text-[#F0A741]">{tooltipData.overall}%</span>
+                      Overall: <span className="text-[#F0A741]">{tooltipData.overall.toFixed(2)}%</span>
                     </div>
                     <div className="text-xs space-y-0.5">
                       <div className="text-[#3F8277]">
-                        Availability: {tooltipData.availability}%
+                        Availability: {tooltipData.availability.toFixed(2)}%
                       </div>
                       <div className="text-gray-400">
-                        Version: {tooltipData.version}%
+                        Version: {tooltipData.version.toFixed(2)}%
                       </div>
                       <div className="text-[#6366F1]">
-                        Distribution: {tooltipData.distribution}%
+                        Distribution: {tooltipData.distribution.toFixed(2)}%
                       </div>
                     </div>
                   </div>

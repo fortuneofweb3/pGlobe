@@ -596,7 +596,7 @@ function HomeContent() {
 
         {/* Left Sidebar */}
         <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-y-auto z-50 md:z-40 h-full transition-transform duration-300`}>
-          <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+          <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
             {/* Mobile close button */}
             <div className="flex items-center justify-between mb-2 md:hidden">
               <h2 className="text-sm font-semibold text-foreground/60 uppercase tracking-wide">Network Stats</h2>
@@ -610,9 +610,10 @@ function HomeContent() {
                 </svg>
               </button>
             </div>
+
             <div>
-              <h2 className="text-xs font-semibold text-foreground/60 mb-3 sm:mb-4 uppercase tracking-wide hidden md:block">Network Stats</h2>
-              <div className="space-y-2 sm:space-y-3">
+              <h2 className="text-xs font-semibold text-foreground/60 mb-2 uppercase tracking-wide hidden md:block">Network Stats</h2>
+              <div className="space-y-1.5 sm:space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs sm:text-sm text-foreground/70">Total Nodes</span>
                   <span className="text-xs sm:text-sm font-semibold text-foreground">{stats.totalNodes}</span>

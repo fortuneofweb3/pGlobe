@@ -182,12 +182,70 @@ function HistoricalLineChart({
   }, [data, multiLine]);
   
   // Smart Y-axis formatter
+  // Calculate dynamic Y-axis domain with smart zoom for nearly flat lines
+  const dynamicYDomain = useMemo(() => {
+    // Skip dynamic zoom for status charts (discrete values) and if custom ticks are provided
+    if (yTicks) return yDomain;
+
+    const [minDomain, maxDomain] = yDomain;
+
+    // Only apply dynamic zoom for percentage-based charts (0-100)
+    if (minDomain === 0 && maxDomain === 100) {
+      const values: number[] = [];
+
+      if (multiLine) {
+        // Collect all values from all lines
+        multiLine.forEach(line => {
+          chartData.forEach(d => {
+            const val = d[line.key];
+            if (val !== undefined && val !== null && !isNaN(val)) {
+              values.push(val);
+            }
+          });
+        });
+      } else {
+        // Collect values from single line
+        chartData.forEach(d => {
+          if (d.value !== undefined && d.value !== null && !isNaN(d.value)) {
+            values.push(d.value);
+          }
+        });
+      }
+
+      if (values.length === 0) return yDomain;
+
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const range = max - min;
+
+      // If the range is very small (nearly flat line), zoom in
+      if (range < 10) {
+        const center = (min + max) / 2;
+        const padding = Math.max(5, range * 0.5); // At least 5% padding, or 50% of range
+        return [
+          Math.max(0, Math.floor(center - padding)),
+          Math.min(100, Math.ceil(center + padding))
+        ];
+      }
+
+      // Otherwise, add 10% padding to top and bottom
+      const padding = range * 0.1;
+      return [
+        Math.max(0, Math.floor(min - padding)),
+        Math.min(100, Math.ceil(max + padding))
+      ];
+    }
+
+    // For non-percentage charts, use the original domain
+    return yDomain;
+  }, [yDomain, chartData, multiLine, yTicks]);
+
   const smartYFormatter = useMemo(() => {
     if (yTickFormatter) {
       return (d: any) => yTickFormatter(typeof d === 'number' ? d : d.valueOf());
     }
-    
-    const maxValue = Math.max(...yDomain);
+
+    const maxValue = Math.max(...dynamicYDomain);
     if (maxValue >= 1000) {
       return (d: any) => formatNumber(typeof d === 'number' ? d : d.valueOf());
     }
@@ -195,7 +253,59 @@ function HistoricalLineChart({
       const val = typeof d === 'number' ? d : d.valueOf();
       return val.toFixed(0);
     };
-  }, [yDomain, yTickFormatter]);
+  }, [dynamicYDomain, yTickFormatter]);
+
+  // Animate paths on mount and when data changes
+  useEffect(() => {
+    if (!svgRef.current || chartData.length === 0) return;
+
+    // Reset animation flag when data changes
+    hasAnimatedRef.current = false;
+
+    // Wait for paths to render, then animate
+    const timer = setTimeout(() => {
+      if (!svgRef.current || hasAnimatedRef.current) return;
+
+      // Find all path elements in the SVG
+      const paths = svgRef.current.querySelectorAll('path[stroke]:not([fill])');
+
+      paths.forEach((pathEl: Element) => {
+        const svgPath = pathEl as SVGPathElement;
+        try {
+          const pathLength = svgPath.getTotalLength();
+          if (pathLength > 0) {
+            // Set initial state
+            svgPath.style.strokeDasharray = `${pathLength}`;
+            svgPath.style.strokeDashoffset = `${pathLength}`;
+
+            // Trigger animation on next frame
+            requestAnimationFrame(() => {
+              svgPath.style.transition = 'stroke-dashoffset 1.5s ease-out';
+              svgPath.style.strokeDashoffset = '0';
+            });
+          }
+        } catch (e) {
+          // getTotalLength might fail on some elements, skip them
+        }
+      });
+
+      hasAnimatedRef.current = true;
+
+      // Clean up after animation
+      const cleanupTimer = setTimeout(() => {
+        paths.forEach((pathEl: Element) => {
+          const svgPath = pathEl as SVGPathElement;
+          svgPath.style.strokeDasharray = 'none';
+          svgPath.style.strokeDashoffset = '0';
+          svgPath.style.transition = '';
+        });
+      }, 1600);
+
+      return () => clearTimeout(cleanupTimer);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [chartData, data]);
 
   return (
     <div className="space-y-3">
@@ -223,7 +333,7 @@ function HistoricalLineChart({
 
             const yScale = scaleLinear<number>({
               range: [yMax, 0],
-              domain: yDomain,
+              domain: dynamicYDomain,
               nice: true,
             });
 
@@ -1340,20 +1450,30 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                         // Calculate credits earned or lost (not rate - absolute credits change)
                         let creditsEarned = 0;
                         let previousCredits = undefined;
-                        
+                        let shouldFilter = false;
+
                         if (previous && previousIndex >= 0) {
                           // Both must have credits defined to calculate earned/lost
                           const prevCredits = previous.credits;
                           const currCredits = current.credits;
-                          
-                          if (prevCredits !== undefined && prevCredits !== null && 
+
+                          if (prevCredits !== undefined && prevCredits !== null &&
                               currCredits !== undefined && currCredits !== null) {
                             const creditsDiff = currCredits - prevCredits;
                             creditsEarned = creditsDiff; // Can be positive (earned) or negative (lost)
                             previousCredits = prevCredits;
+
+                            // Filter out anomalous drops (likely missing data)
+                            // If credits dropped by more than 90%, it's likely missing data - filter out this point
+                            if (prevCredits > 0 && currCredits >= 0) {
+                              const dropPercentage = ((prevCredits - currCredits) / prevCredits) * 100;
+                              if (dropPercentage > 90) {
+                                shouldFilter = true;
+                              }
+                            }
                           }
                         }
-                        
+
                         return {
                           timestamp: current.timestamp,
                           value: creditsEarned,
@@ -1361,8 +1481,9 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                           _credits: current.credits,
                           _previousCredits: previousCredits,
                           _originalCredits: current.credits,
+                          _shouldFilter: shouldFilter,
                         };
-                      });
+                      }).filter(d => !d._shouldFilter);
                       
                       // Don't fix first point - 0 is valid for first data point with no previous
                       
@@ -1374,6 +1495,7 @@ export default function NodeDetailsModal({ node, isOpen, onClose }: NodeDetailsM
                           _credits: node.credits,
                           _previousCredits: undefined,
                           _originalCredits: node.credits,
+                          _shouldFilter: false,
                         });
                       }
                       

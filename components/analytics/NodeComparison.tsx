@@ -360,22 +360,35 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
 
       {/* Comparison Table */}
       {selectedNodes.length >= 2 && (
-        <div className="bg-gradient-to-br from-card/40 via-card/30 to-card/40 border border-border/40 rounded-2xl overflow-hidden shadow-xl shadow-black/10">
-          <div className="overflow-x-auto">
+        <div className="relative bg-gradient-to-br from-black/40 via-card/50 to-black/40 border-2 border-[#F0A741]/20 rounded-3xl overflow-hidden shadow-2xl">
+          {/* Decorative gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-[#F0A741]/5 via-transparent to-[#3F8277]/5 pointer-events-none" />
+
+          <div className="relative overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b-2 border-border/40 bg-gradient-to-r from-muted/30 via-muted/20 to-muted/30">
-                  <th className="px-6 py-4 text-left">
-                    <span className="text-xs font-bold text-foreground/70 uppercase tracking-widest">Metric</span>
+                <tr className="border-b-2 border-[#F0A741]/30 bg-gradient-to-r from-black/60 via-black/40 to-black/60 backdrop-blur-sm">
+                  <th className="px-6 py-5 text-left sticky left-0 bg-black/80 backdrop-blur-md z-10">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1 h-8 bg-[#F0A741] rounded-full" />
+                      <span className="text-xs font-black text-[#F0A741] uppercase tracking-widest">Metric</span>
+                    </div>
                   </th>
                   {selectedNodes.map((node, idx) => (
-                    <th key={node.id} className="px-6 py-4 text-center min-w-[200px] bg-gradient-to-b from-[#F0A741]/5 to-transparent">
-                      <div className="space-y-1">
-                        <div className="font-mono text-sm font-bold text-foreground truncate">
+                    <th key={node.id} className="px-6 py-5 text-center min-w-[220px] bg-gradient-to-b from-[#F0A741]/10 via-[#F0A741]/5 to-transparent">
+                      <div className="space-y-2">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#F0A741]/10 border border-[#F0A741]/30 rounded-lg">
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#F0A741] animate-pulse" />
+                          <span className="font-mono text-sm font-bold text-foreground truncate">
+                            Node {idx + 1}
+                          </span>
+                        </div>
+                        <div className="font-mono text-xs font-semibold text-foreground/90 truncate px-2">
                           {formatIdentifier(node)}
                         </div>
                         {node.locationData?.city && (
-                          <div className="text-xs text-foreground/50 truncate">
+                          <div className="text-xs text-foreground/50 truncate flex items-center justify-center gap-1">
+                            <MapPin className="w-3 h-3" />
                             {node.locationData.city}
                           </div>
                         )}
@@ -384,15 +397,15 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/30">
+              <tbody className="divide-y divide-[#F0A741]/10">
                 {/* Status */}
-                <tr className="hover:bg-muted/20 transition-colors bg-gradient-to-r from-transparent via-muted/5 to-transparent">
-                  <td className="px-6 py-4">
+                <tr className="group hover:bg-[#F0A741]/5 transition-all duration-300 bg-gradient-to-r from-transparent via-muted/5 to-transparent">
+                  <td className="px-6 py-5 sticky left-0 bg-black/60 backdrop-blur-md z-10 group-hover:bg-[#F0A741]/10">
                     <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-lg bg-[#F0A741]/10">
+                      <div className="p-2 rounded-xl bg-gradient-to-br from-[#F0A741]/20 to-[#F0A741]/10 border border-[#F0A741]/20 group-hover:scale-110 transition-transform">
                         <Activity className="w-4 h-4 text-[#F0A741]" />
                       </div>
-                      <span className="text-sm font-semibold text-foreground">Status</span>
+                      <span className="text-sm font-bold text-foreground group-hover:text-[#F0A741] transition-colors">Status</span>
                     </div>
                   </td>
                   {selectedNodes.map((node) => (

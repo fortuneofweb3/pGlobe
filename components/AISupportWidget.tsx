@@ -10,6 +10,28 @@ interface Message {
   timestamp: Date;
 }
 
+// Client-only time display to avoid hydration errors
+function TimeDisplay({ timestamp }: { timestamp: Date }) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <span>--:--</span>;
+  }
+
+  return (
+    <span suppressHydrationWarning>
+      {timestamp.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      })}
+    </span>
+  );
+}
+
 // Format message content, detecting and styling pubkeys
 function formatMessageWithPubkeys(content: string): JSX.Element[] {
   // Solana pubkey pattern: 32-44 base58 characters (A-Z, a-z, 0-9, excluding 0, O, I, l)
@@ -409,10 +431,7 @@ export default function AISupportWidget() {
                         {formatMessageWithPubkeys(message.content)}
                       </div>
                       <p className="text-xs mt-1 opacity-60">
-                        {message.timestamp.toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        <TimeDisplay timestamp={message.timestamp} />
                       </p>
                     </div>
                     {message.role === 'user' && (

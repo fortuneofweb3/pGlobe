@@ -353,18 +353,19 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Passive polling: Fetch fresh data from MongoDB every minute (matches background refresh interval)
+  // Passive polling: Fetch fresh data from MongoDB every 2 minutes
+  // Reduced frequency to minimize flickering and improve performance
   // Only poll if we have nodes (don't poll if initial load failed)
   useEffect(() => {
     // Only start polling if we have nodes
     if (nodes.length === 0) return;
-    
-    console.log('[NodesContext] Starting passive polling (every 60s)');
+
+    console.log('[NodesContext] Starting passive polling (every 2 minutes)');
     const interval = setInterval(() => {
       console.log('[NodesContext] Passive polling tick - fetching fresh data...');
       // Fetch in background - UI already has data, this just updates it
       refreshNodes();
-    }, 60 * 1000); // 1 minute
+    }, 120 * 1000); // 2 minutes - reduced from 1 minute to prevent excessive updates
     return () => {
       console.log('[NodesContext] Stopping passive polling');
       clearInterval(interval);

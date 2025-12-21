@@ -68,10 +68,12 @@ export interface HistoricalSnapshot {
     uptime?: number; // seconds - cumulative, but tracks if node stays online
     uptimePercent?: number; // calculated from uptime
     storageCapacity?: number; // bytes - total capacity allocated
+    storageUsed?: number; // bytes - actual storage used - changes over time
     credits?: number; // cumulative credits earned - changes over time
     // Static-ish metadata (for context)
     version?: string; // changes occasionally
     isRegistered?: boolean; // changes occasionally
+    isPublic?: boolean; // pRPC publicly accessible - changes occasionally
     location?: string; // usually static
   }>;
 }
@@ -314,6 +316,7 @@ export async function getNodeHistory(
           credits: '$nodeSnapshots.credits',
           version: '$nodeSnapshots.version',
           isRegistered: '$nodeSnapshots.isRegistered',
+          isPublic: '$nodeSnapshots.isPublic',
           location: '$nodeSnapshots.location',
           nodeLocation: '$nodeSnapshots.nodeLocation',
         }
@@ -372,6 +375,7 @@ export async function getNodeHistory(
       credits: doc.credits,
       version: doc.version,
       isRegistered: doc.isRegistered,
+      isPublic: doc.isPublic,
       location: doc.location,
     }));
     
@@ -407,6 +411,7 @@ export async function getNodeHistory(
             credits: '$nodeSnapshots.credits',
             version: '$nodeSnapshots.version',
             isRegistered: '$nodeSnapshots.isRegistered',
+            isPublic: '$nodeSnapshots.isPublic',
             location: '$nodeSnapshots.location',
           }
         },
@@ -433,6 +438,7 @@ export async function getNodeHistory(
           credits: doc.credits,
           version: doc.version,
           isRegistered: doc.isRegistered,
+          isPublic: doc.isPublic,
           location: doc.location,
           nodeLocation: doc.nodeLocation,
           serverRegionId: doc.serverRegionId,
@@ -636,12 +642,14 @@ function createNodeSnapshots(nodes: PNode[]): HistoricalSnapshot['nodeSnapshots'
       uptime: node.uptime !== undefined && node.uptime !== null ? node.uptime : undefined,
       uptimePercent: node.uptimePercent !== undefined && node.uptimePercent !== null ? node.uptimePercent : undefined,
       storageCapacity: node.storageCapacity !== undefined && node.storageCapacity !== null ? node.storageCapacity : undefined,
+      storageUsed: node.storageUsed !== undefined && node.storageUsed !== null ? node.storageUsed : undefined,
       credits: node.credits !== undefined && node.credits !== null ? node.credits : undefined,
       // Static-ish metadata (for context)
       version: node.version || undefined,
       isRegistered: node.isRegistered !== undefined ? node.isRegistered : undefined,
-      location: node.location || (node.locationData?.city && node.locationData?.country 
-        ? `${node.locationData.city}, ${node.locationData.country}` 
+      isPublic: node.isPublic !== undefined ? node.isPublic : undefined,
+      location: node.location || (node.locationData?.city && node.locationData?.country
+        ? `${node.locationData.city}, ${node.locationData.country}`
         : undefined),
     };
   }).filter(snapshot => snapshot.pubkey); // Only include nodes with a valid pubkey

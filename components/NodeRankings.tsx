@@ -43,9 +43,9 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
       const ratesMap = new Map<string, { rxRate: number; txRate: number; totalRate: number }>();
       const endTime = Date.now();
       const startTime = endTime - (24 * 60 * 60 * 1000); // Last 24 hours
-      
-      // Fetch for up to 20 nodes (to avoid too many requests)
-      const nodesToFetch = nodesWithPackets.slice(0, 20);
+
+      // Fetch for all nodes to get accurate packet rates
+      const nodesToFetch = nodesWithPackets;
       
       await Promise.all(
         nodesToFetch.map(async (node) => {

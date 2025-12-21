@@ -419,10 +419,18 @@ function RegionsPageContent() {
             </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="card-stat">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Continents</span>
+              <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Nodes</span>
+              <Server className="w-4 h-4 text-foreground/40" />
+            </div>
+            <div className="text-2xl font-bold text-foreground">{nodes.length}</div>
+          </div>
+
+          <div className="card-stat">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Continents</span>
               <MapPin className="w-4 h-4 text-foreground/40" />
             </div>
             <div className="text-2xl font-bold text-foreground">{stats.continents}</div>
@@ -430,7 +438,7 @@ function RegionsPageContent() {
 
           <div className="card-stat">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Countries</span>
+              <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Countries</span>
               <MapPin className="w-4 h-4 text-foreground/40" />
             </div>
             <div className="text-2xl font-bold text-foreground">{stats.countries}</div>
@@ -438,7 +446,7 @@ function RegionsPageContent() {
 
           <div className="card-stat">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Cities</span>
+              <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Cities</span>
               <MapPin className="w-4 h-4 text-foreground/40" />
             </div>
             <div className="text-2xl font-bold text-foreground">{stats.cities}</div>
@@ -446,7 +454,7 @@ function RegionsPageContent() {
         </div>
 
         {/* Countries Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {regionData
             .filter(country => !selectedCountry || country.name === selectedCountry)
             .map((country) => {

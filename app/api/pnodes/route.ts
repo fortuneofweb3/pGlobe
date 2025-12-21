@@ -61,17 +61,20 @@ export async function GET(request: Request) {
         }
 
     console.log(`[VercelProxy] ✅ Returning ${data.nodes?.length || 0} nodes from Render`);
-    
+
     // Format response to match expected format
     return NextResponse.json(
       {
         nodes: data.nodes || [],
         totalNodes: data.count || data.nodes?.length || 0,
         timestamp: data.timestamp || Date.now(),
+        networks: data.networks,
+        currentNetwork: data.currentNetwork,
       },
       {
       headers: {
-        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+        // Cache for 1 minute, allow stale content for 2 minutes while revalidating
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
       },
       }
     );

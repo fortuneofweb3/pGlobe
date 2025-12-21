@@ -26,10 +26,10 @@ import ParentSize from '@visx/responsive/lib/components/ParentSize';
 import Header from '@/components/Header';
 import dynamic from 'next/dynamic';
 
-// Dynamically import Leaflet components to avoid SSR issues
+// Dynamically import Leaflet components to avoid SSR issues - import from single module
 const MapContainer = dynamic(
   () => import('react-leaflet').then((mod) => mod.MapContainer),
-  { ssr: false }
+  { ssr: false, loading: () => <div className="h-full w-full bg-muted/20 rounded-lg animate-pulse" /> }
 );
 
 const TileLayer = dynamic(
@@ -198,54 +198,60 @@ function HistoricalLineChart({
   // Animate paths on mount and when data changes
   useEffect(() => {
     if (!svgRef.current || chartData.length === 0) return;
-    
+
     // Reset animation flag when data changes
     hasAnimatedRef.current = false;
-    
+
     // Wait for paths to render, then animate
     const timer = setTimeout(() => {
       if (!svgRef.current || hasAnimatedRef.current) return;
-      
+
       // Find all path elements in the SVG
-      const paths = svgRef.current.querySelectorAll('path[stroke]');
-      
+      const paths = svgRef.current.querySelectorAll('path[stroke]:not([fill])');
+
       paths.forEach((pathEl: Element) => {
         const svgPath = pathEl as SVGPathElement;
-        const pathLength = svgPath.getTotalLength();
-        if (pathLength > 0) {
-          svgPath.style.strokeDasharray = `${pathLength}`;
-          svgPath.style.strokeDashoffset = `${pathLength}`;
-          svgPath.style.transition = 'stroke-dashoffset 1.5s ease-out';
-          
-          // Trigger animation
-          requestAnimationFrame(() => {
-            svgPath.style.strokeDashoffset = '0';
-          });
+        try {
+          const pathLength = svgPath.getTotalLength();
+          if (pathLength > 0) {
+            // Set initial state
+            svgPath.style.strokeDasharray = `${pathLength}`;
+            svgPath.style.strokeDashoffset = `${pathLength}`;
+
+            // Trigger animation on next frame
+            requestAnimationFrame(() => {
+              svgPath.style.transition = 'stroke-dashoffset 1.5s ease-out';
+              svgPath.style.strokeDashoffset = '0';
+            });
+          }
+        } catch (e) {
+          // getTotalLength might fail on some elements, skip them
         }
       });
-      
+
       hasAnimatedRef.current = true;
-      
+
       // Clean up after animation
       const cleanupTimer = setTimeout(() => {
         paths.forEach((pathEl: Element) => {
           const svgPath = pathEl as SVGPathElement;
           svgPath.style.strokeDasharray = 'none';
           svgPath.style.strokeDashoffset = '0';
+          svgPath.style.transition = '';
         });
-      }, 1500);
-      
+      }, 1600);
+
       return () => clearTimeout(cleanupTimer);
-    }, 50);
+    }, 100);
 
     return () => clearTimeout(timer);
-  }, [chartData.length, data.length]);
+  }, [chartData, data]);
   
   const smartYFormatter = useMemo(() => {
     if (yTickFormatter) {
       return (d: any) => yTickFormatter(typeof d === 'number' ? d : d.valueOf());
     }
-    
+
     const maxValue = Math.max(...yDomain);
     if (maxValue >= 1000) {
       return (d: any) => formatNumber(typeof d === 'number' ? d : d.valueOf());
@@ -255,6 +261,64 @@ function HistoricalLineChart({
       return val.toFixed(0);
     };
   }, [yDomain, yTickFormatter]);
+
+  // Calculate dynamic Y-axis domain with smart zoom for nearly flat lines
+  const dynamicYDomain = useMemo(() => {
+    // Skip dynamic zoom for status charts (discrete values) and if custom ticks are provided
+    if (yTicks) return yDomain;
+
+    const [minDomain, maxDomain] = yDomain;
+
+    // Only apply dynamic zoom for percentage-based charts (0-100)
+    if (minDomain === 0 && maxDomain === 100) {
+      const values: number[] = [];
+
+      if (multiLine) {
+        // Collect all values from all lines
+        multiLine.forEach(line => {
+          chartData.forEach(d => {
+            const val = d[line.key];
+            if (val !== undefined && val !== null && !isNaN(val)) {
+              values.push(val);
+            }
+          });
+        });
+      } else {
+        // Collect values from single line
+        chartData.forEach(d => {
+          if (d.value !== undefined && d.value !== null && !isNaN(d.value)) {
+            values.push(d.value);
+          }
+        });
+      }
+
+      if (values.length === 0) return yDomain;
+
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const range = max - min;
+
+      // If the range is very small (nearly flat line), zoom in
+      if (range < 10) {
+        const center = (min + max) / 2;
+        const padding = Math.max(5, range * 0.5); // At least 5% padding, or 50% of range
+        return [
+          Math.max(0, Math.floor(center - padding)),
+          Math.min(100, Math.ceil(center + padding))
+        ];
+      }
+
+      // Otherwise, add 10% padding to top and bottom
+      const padding = range * 0.1;
+      return [
+        Math.max(0, Math.floor(min - padding)),
+        Math.min(100, Math.ceil(max + padding))
+      ];
+    }
+
+    // For non-percentage charts, use the original domain
+    return yDomain;
+  }, [yDomain, chartData, multiLine, yTicks]);
 
   return (
     <div className="space-y-3">
@@ -282,7 +346,7 @@ function HistoricalLineChart({
 
             const yScale = scaleLinear<number>({
               range: [yMax, 0],
-              domain: yDomain,
+              domain: dynamicYDomain,
               nice: true,
             });
 
@@ -946,101 +1010,91 @@ function NodeDetailContent() {
         <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
             {/* Back to Nodes */}
-            <Link href="/nodes" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-4 transition-colors">
+            <Link href="/nodes" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6 transition-colors">
               <ArrowLeft className="w-4 h-4" />
               Back to Nodes
             </Link>
 
-            {/* Hero Header Card */}
-            <div className="card mb-6 overflow-hidden relative">
-              {/* Gradient background */}
-              <div className="absolute inset-0 bg-gradient-to-br from-[#F0A741]/10 via-transparent to-[#3F8277]/10" />
-
-              <div className="relative p-6 sm:p-8">
-                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
-                  {/* Left side - Node info */}
-                  <div className="flex-1 space-y-4">
-                    {/* Status badge and title */}
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        {getStatusBadge(node.status)}
-                        {node.version && node.version.includes('-trynet') && (
-                          <span className="text-xs px-2 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 font-medium">
-                            TRYNET
-                          </span>
-                        )}
-                      </div>
-
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Server className="w-5 h-5 text-[#F0A741]" />
-                          <h1 className="text-2xl sm:text-3xl font-bold font-mono text-foreground">
-                            {gossipAddress}
-                          </h1>
-                        </div>
-                        {node.version && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-foreground/60">Version</span>
-                            <span className="text-sm font-semibold text-foreground">{node.version}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Public Key */}
-                    <div className="flex items-center gap-2 pt-3 border-t border-border/40">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs text-foreground/60 uppercase tracking-wide mb-1">Public Key</div>
-                        <p className="text-sm font-mono text-foreground/80 truncate">{pubkey}</p>
-                      </div>
-                      <button
-                        onClick={async () => {
-                          if (pubkey) {
-                            await navigator.clipboard.writeText(pubkey);
-                            setCopied(true);
-                            setTimeout(() => setCopied(false), 2000);
-                          }
-                        }}
-                        className="p-2 hover:bg-muted/40 rounded transition-colors border border-border/60 shrink-0"
-                        title="Copy Public Key"
-                      >
-                        {copied ? (
-                          <Check className="w-4 h-4 text-[#3F8277]" />
-                        ) : (
-                          <Copy className="w-4 h-4 text-foreground/60" />
-                        )}
-                      </button>
-                    </div>
+            {/* Page Header */}
+            <div className="mb-6">
+              {/* Title and Status Row */}
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3 flex-wrap mb-3">
+                    {getStatusBadge(node.status)}
+                    {node.version && node.version.includes('-trynet') && (
+                      <span className="text-xs px-2 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 font-medium">
+                        TRYNET
+                      </span>
+                    )}
                   </div>
 
-                  {/* Right side - Quick stats */}
-                  <div className="grid grid-cols-2 lg:grid-cols-1 gap-3 lg:min-w-[200px]">
-                    <div className="bg-muted/30 rounded-lg p-3 border border-border/40">
-                      <div className="text-xs text-foreground/60 mb-1">Uptime</div>
-                      <div className="text-lg font-bold text-foreground">{formatUptime(node.uptime)}</div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <Server className="w-6 h-6 text-[#F0A741]" />
+                    <h1 className="text-2xl sm:text-3xl font-bold font-mono text-foreground">
+                      {gossipAddress}
+                    </h1>
+                  </div>
+
+                  {node.version && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-foreground/60">Version</span>
+                      <span className="font-semibold text-foreground">{node.version}</span>
                     </div>
-                    <div className="bg-muted/30 rounded-lg p-3 border border-border/40">
-                      <div className="text-xs text-foreground/60 mb-1">Latency</div>
-                      <div className="text-lg font-bold text-foreground">
-                        {nodeLatency !== null && nodeLatency !== undefined
+                  )}
+                </div>
+
+                {/* Quick Stats - Inline */}
+                <div className="hidden lg:flex items-center gap-4">
+                  <div className="text-right">
+                    <div className="text-xs text-foreground/60 mb-1">Uptime</div>
+                    <div className="text-lg font-bold text-foreground">{formatUptime(node.uptime)}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-foreground/60 mb-1">Latency</div>
+                    <div className="text-lg font-bold text-foreground">
+                      {nodeLatency !== null && nodeLatency !== undefined
                           ? `${nodeLatency.toFixed(0)}ms`
                           : measuringLatency
                           ? <span className="text-sm text-muted-foreground">...</span>
                           : <span className="text-sm text-muted-foreground">N/A</span>
                         }
-                      </div>
                     </div>
                   </div>
+                  {/* Refresh button */}
+                  <button
+                    onClick={handleRefresh}
+                    disabled={refreshingStats}
+                    className="p-2 hover:bg-muted/40 rounded-lg transition-colors disabled:opacity-50 border border-border/60"
+                    title="Refresh Stats"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${refreshingStats ? 'animate-spin' : ''}`} />
+                  </button>
                 </div>
+              </div>
 
-                {/* Refresh button */}
+              {/* Public Key Row */}
+              <div className="flex items-center gap-3 pb-4 border-b border-border/40">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-foreground/60 uppercase tracking-wide mb-1">Public Key</div>
+                  <p className="text-sm font-mono text-foreground/80 truncate">{pubkey}</p>
+                </div>
                 <button
-                  onClick={handleRefresh}
-                  disabled={refreshingStats}
-                  className="absolute top-4 right-4 p-2 hover:bg-muted/40 rounded-lg transition-colors disabled:opacity-50 border border-border/60"
-                  title="Refresh Stats"
+                  onClick={async () => {
+                    if (pubkey) {
+                      await navigator.clipboard.writeText(pubkey);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }
+                  }}
+                  className="p-2 hover:bg-muted/40 rounded transition-colors border border-border/60 shrink-0"
+                  title="Copy Public Key"
                 >
-                  <RefreshCw className={`w-4 h-4 ${refreshingStats ? 'animate-spin' : ''}`} />
+                  {copied ? (
+                    <Check className="w-4 h-4 text-[#3F8277]" />
+                  ) : (
+                    <Copy className="w-4 h-4 text-foreground/60" />
+                  )}
                 </button>
               </div>
             </div>
@@ -1092,6 +1146,10 @@ function NodeDetailContent() {
                 .leaflet-container {
                   background: #000;
                 }
+                .custom-pin-icon {
+                  background: transparent !important;
+                  border: none !important;
+                }
               `}</style>
               {isClient && node.locationData?.lat && node.locationData?.lon ? (
                 <MapContainer
@@ -1111,7 +1169,7 @@ function NodeDetailContent() {
                   />
                   {(() => {
                     if (!node.locationData?.lat || !node.locationData?.lon) return null;
-                    
+
                     const nodeLat = node.locationData.lat;
                     const nodeLon = node.locationData.lon;
                     
@@ -1128,34 +1186,83 @@ function NodeDetailContent() {
                       offline: '#ED1C24',
                     };
                     
+                    // Create custom pin icon for main node using L.divIcon
+                    const createPinIcon = (color: string) => {
+                      if (typeof window === 'undefined') return undefined;
+                      const L = (window as any).L;
+                      if (!L) return undefined;
+
+                      return L.divIcon({
+                        html: `
+                          <div style="position: relative; width: 32px; height: 40px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 24 30" fill="none">
+                              <path d="M12 0C7.03 0 3 4.03 3 9c0 5.25 9 21 9 21s9-15.75 9-21c0-4.97-4.03-9-9-9zm0 12.5c-1.93 0-3.5-1.57-3.5-3.5S10.07 5.5 12 5.5s3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+                            </svg>
+                            <div style="position: absolute; top: 6px; left: 50%; transform: translateX(-50%); width: 7px; height: 7px; background: white; border-radius: 50%;"></div>
+                          </div>
+                        `,
+                        className: 'custom-pin-icon',
+                        iconSize: [32, 40],
+                        iconAnchor: [16, 40],
+                        popupAnchor: [0, -40]
+                      });
+                    };
+
+                    const pinColor = statusColors[node.status || 'offline'] || statusColors.offline;
+                    const pinIcon = createPinIcon(pinColor);
+
                     return (
                       <>
-                        {/* Main node marker */}
-                        <CircleMarker
-                          center={[node.locationData.lat, node.locationData.lon]}
-                          radius={12}
-                          pathOptions={{
-                            fillColor: statusColors[node.status || 'offline'] || statusColors.offline,
-                            fillOpacity: 0.8,
-                            color: '#fff',
-                            weight: 2,
-                          }}
-                        >
-                          <Popup>
-                            <div className="text-sm">
-                              <div className="font-semibold mb-2">{node.locationData.city || 'Unknown'}, {node.locationData.country || 'Unknown'}</div>
-                              <div className="text-xs text-gray-400 mt-1">
-                                {node.locationData.lat.toFixed(4)}, {node.locationData.lon.toFixed(4)}
+                        {/* Main node marker with pin icon */}
+                        {pinIcon ? (
+                          <Marker
+                            position={[node.locationData.lat, node.locationData.lon]}
+                            icon={pinIcon}
+                          >
+                            <Popup>
+                              <div className="text-sm">
+                                <div className="font-semibold mb-2 text-[#F0A741]">📍 Current Node</div>
+                                <div className="font-semibold mb-2">{node.locationData.city || 'Unknown'}, {node.locationData.country || 'Unknown'}</div>
+                                <div className="text-xs text-gray-400 mt-1">
+                                  {node.locationData.lat.toFixed(4)}, {node.locationData.lon.toFixed(4)}
+                                </div>
+                                <div className="mt-2 text-xs">
+                                  <strong>Status:</strong> <span className="capitalize">{node.status || 'offline'}</span>
+                                </div>
+                                {node.address && (
+                                  <div className="mt-1 text-xs font-mono">{node.address}</div>
+                                )}
                               </div>
-                              <div className="mt-2 text-xs">
-                                <strong>Status:</strong> <span className="capitalize">{node.status || 'offline'}</span>
+                            </Popup>
+                          </Marker>
+                        ) : (
+                          <CircleMarker
+                            center={[node.locationData.lat, node.locationData.lon]}
+                            radius={12}
+                            pathOptions={{
+                              fillColor: statusColors[node.status || 'offline'] || statusColors.offline,
+                              fillOpacity: 0.8,
+                              color: '#fff',
+                              weight: 2,
+                            }}
+                          >
+                            <Popup>
+                              <div className="text-sm">
+                                <div className="font-semibold mb-2 text-[#F0A741]">📍 Current Node</div>
+                                <div className="font-semibold mb-2">{node.locationData.city || 'Unknown'}, {node.locationData.country || 'Unknown'}</div>
+                                <div className="text-xs text-gray-400 mt-1">
+                                  {node.locationData.lat.toFixed(4)}, {node.locationData.lon.toFixed(4)}
+                                </div>
+                                <div className="mt-2 text-xs">
+                                  <strong>Status:</strong> <span className="capitalize">{node.status || 'offline'}</span>
+                                </div>
+                                {node.address && (
+                                  <div className="mt-1 text-xs font-mono">{node.address}</div>
+                                )}
                               </div>
-                              {node.address && (
-                                <div className="mt-1 text-xs font-mono">{node.address}</div>
-                              )}
-                            </div>
-                          </Popup>
-                        </CircleMarker>
+                            </Popup>
+                          </CircleMarker>
+                        )}
                         
                         {/* Other nodes */}
                         {otherNodes.map((nearbyNode) => {
@@ -1854,27 +1961,38 @@ function NodeDetailContent() {
                     
                     let creditsEarned = 0;
                     let previousCredits = undefined;
-                    
+                    let shouldFilter = false;
+
                     if (previous && previousIndex >= 0) {
                       const prevCredits = previous.credits;
                       const currCredits = current.credits;
-                      
-                      if (prevCredits !== undefined && prevCredits !== null && 
+
+                      if (prevCredits !== undefined && prevCredits !== null &&
                           currCredits !== undefined && currCredits !== null) {
                         const creditsDiff = currCredits - prevCredits;
                         creditsEarned = creditsDiff;
                         previousCredits = prevCredits;
+
+                        // Filter out anomalous drops (likely missing data)
+                        // If credits dropped by more than 90%, it's likely missing data - filter out this point
+                        if (prevCredits > 0 && currCredits >= 0) {
+                          const dropPercentage = ((prevCredits - currCredits) / prevCredits) * 100;
+                          if (dropPercentage > 90) {
+                            shouldFilter = true;
+                          }
+                        }
                       }
                     }
-                    
+
                     return {
                       timestamp: current.timestamp,
                       value: creditsEarned,
                       _credits: current.credits,
                       _previousCredits: previousCredits,
                       _originalCredits: current.credits,
+                      _shouldFilter: shouldFilter,
                     };
-                  });
+                  }).filter(d => !d._shouldFilter);
                   
                   if (creditsData.length === 0 && node.credits !== undefined && node.credits !== null) {
                     creditsData.push({
@@ -1883,6 +2001,7 @@ function NodeDetailContent() {
                       _credits: node.credits,
                       _previousCredits: undefined,
                       _originalCredits: node.credits,
+                      _shouldFilter: false,
                     });
                   }
                   
@@ -1952,11 +2071,50 @@ function NodeDetailContent() {
           <div className="card mb-6">
             <div className="space-y-6">
               <div className="space-y-4">
-                <ChartSkeleton height={250} />
+                <HistoricalLineChart
+                  title="Node Status"
+                  data={[]}
+                  height={250}
+                  yDomain={[0, 3]}
+                  strokeColor="#3F8277"
+                  yLabel="Status"
+                  tooltipFormatter={() => <div />}
+                  headerContent={
+                    <span className="text-xs text-muted-foreground">
+                      Loading historical data...
+                    </span>
+                  }
+                />
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                <ChartSkeleton height={250} />
-                <ChartSkeleton height={250} />
+                <HistoricalLineChart
+                  title="Resource Utilization"
+                  data={[]}
+                  height={250}
+                  yDomain={[0, 100]}
+                  strokeColor="#F0A741"
+                  yLabel="%"
+                  tooltipFormatter={() => <div />}
+                  headerContent={
+                    <span className="text-xs text-muted-foreground">
+                      Loading historical data...
+                    </span>
+                  }
+                />
+                <HistoricalLineChart
+                  title="Network Activity"
+                  data={[]}
+                  height={250}
+                  yDomain={[0, 100]}
+                  strokeColor="#3F8277"
+                  yLabel="Packets/s"
+                  tooltipFormatter={() => <div />}
+                  headerContent={
+                    <span className="text-xs text-muted-foreground">
+                      Loading historical data...
+                    </span>
+                  }
+                />
               </div>
             </div>
           </div>

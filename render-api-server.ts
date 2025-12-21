@@ -704,6 +704,80 @@ app.get('/api/history', authenticate, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/history/bulk
+ * Returns historical snapshots for multiple nodes in one request
+ * Query params:
+ *   - nodeIds: comma-separated list of node IDs
+ *   - startTime: optional start timestamp (ms)
+ *   - endTime: optional end timestamp (ms)
+ * Returns: { data: { [nodeId]: [...snapshots] }, count: number }
+ */
+app.get('/api/history/bulk', authenticate, async (req, res) => {
+  try {
+    const nodeIdsParam = req.query.nodeIds as string | undefined;
+    if (!nodeIdsParam) {
+      return res.status(400).json({
+        error: 'nodeIds parameter is required (comma-separated list)',
+        data: {},
+        count: 0,
+      });
+    }
+
+    const nodeIds = nodeIdsParam.split(',').map(id => id.trim()).filter(id => id.length > 0);
+    const startTime = req.query.startTime ? parseInt(req.query.startTime as string) : undefined;
+    const endTime = req.query.endTime ? parseInt(req.query.endTime as string) : undefined;
+
+    console.log('[RenderAPI] Fetching bulk node history:', {
+      nodeCount: nodeIds.length,
+      startTime: startTime ? new Date(startTime).toISOString() : undefined,
+      endTime: endTime ? new Date(endTime).toISOString() : undefined,
+    });
+
+    // Fetch histories for all nodes in parallel
+    const historyPromises = nodeIds.map(async (nodeId) => {
+      try {
+        const history = await getNodeHistory(nodeId, startTime, endTime);
+        return { nodeId, history };
+      } catch (err) {
+        console.warn(`[RenderAPI] Failed to fetch history for node ${nodeId}:`, err);
+        return { nodeId, history: [] };
+      }
+    });
+
+    const results = await Promise.all(historyPromises);
+
+    // Build response object with nodeId as keys
+    const data: Record<string, any[]> = {};
+    let totalPoints = 0;
+
+    results.forEach(({ nodeId, history }) => {
+      data[nodeId] = history;
+      totalPoints += history.length;
+    });
+
+    console.log('[RenderAPI] Bulk history result:', {
+      nodeCount: nodeIds.length,
+      totalPoints,
+      avgPointsPerNode: Math.round(totalPoints / nodeIds.length),
+    });
+
+    return res.json({
+      data,
+      count: totalPoints,
+      nodeCount: nodeIds.length,
+    });
+  } catch (error: any) {
+    console.error('[RenderAPI] ❌ Failed to get bulk history:', error);
+    res.status(500).json({
+      error: 'Failed to fetch bulk historical data',
+      message: error?.message || 'Unknown error',
+      data: {},
+      count: 0,
+    });
+  }
+});
+
 // Initialize server with background refresh
 async function startServer() {
   console.log('[RenderAPI] Starting server...');
