@@ -2000,13 +2000,13 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                           'interpolate',
                           ['linear'],
                           ['zoom'],
-                          0, 0.3,     // Low opacity at zoom 0 (only major countries)
-                          1, 0.5,     // More visible at zoom 1
-                          2.2, 0.7,   // Default zoom (~2.2) - good visibility
-                          3, 0.85,    // Mostly visible at zoom 3
-                          4, 0.9,     // Full opacity at zoom 4
-                          6, 0.9,     // Maintain at higher zoom
-                          8, 0.9      // Keep max at very high zoom
+                          0, 0.15,    // Very low opacity at zoom 0 (only major countries)
+                          1, 0.25,    // More visible at zoom 1
+                          2.2, 0.4,   // Default zoom (~2.2) - moderate visibility
+                          3, 0.5,     // Medium visible at zoom 3
+                          4, 0.6,     // Higher opacity at zoom 4
+                          6, 0.7,     // Maintain at higher zoom
+                          8, 0.7      // Keep max at very high zoom
                         ]);
                         map.setPaintProperty(layer.id, 'text-halo-width', 1.5); // Thicker outline for countries
                         map.setPaintProperty(layer.id, 'text-halo-color', 'rgba(0, 0, 0, 0.6)');
@@ -2043,13 +2043,13 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                           'interpolate',
                           ['linear'],
                           ['zoom'],
-                          1, 0.2,     // Very low opacity at zoom 1 (few states)
-                          2.2, 0.5,   // Default zoom (~2.2) - some states visible
-                          3, 0.7,     // More visible at zoom 3
-                          4, 0.85,    // Mostly visible at zoom 4
-                          5, 0.9,     // Full opacity at zoom 5
-                          7, 0.9,     // Maintain at higher zoom
-                          8, 0.9      // Keep max at very high zoom
+                          1, 0.1,     // Very low opacity at zoom 1 (few states)
+                          2.2, 0.25,  // Default zoom (~2.2) - some states visible
+                          3, 0.4,     // More visible at zoom 3
+                          4, 0.5,     // Medium visible at zoom 4
+                          5, 0.6,     // Higher opacity at zoom 5
+                          7, 0.65,    // Maintain at higher zoom
+                          8, 0.65     // Keep max at very high zoom
                         ]);
                         map.setPaintProperty(layer.id, 'text-halo-width', 1); // Medium outline
                         map.setPaintProperty(layer.id, 'text-halo-color', 'rgba(0, 0, 0, 0.5)');
@@ -2079,13 +2079,13 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                           'interpolate',
                           ['linear'],
                           ['zoom'],
-                          2, 0.1,     // Very low opacity at zoom 2 (only major cities)
-                          3, 0.3,     // Some cities at zoom 3
-                          4, 0.6,     // More cities at zoom 4
-                          5, 0.8,     // Many cities at zoom 5
-                          6, 0.9,     // Full opacity at zoom 6
-                          8, 0.9,     // Maintain at higher zoom
-                          10, 0.9     // Keep max at very high zoom
+                          2, 0.05,    // Very low opacity at zoom 2 (only major cities)
+                          3, 0.15,    // Some cities at zoom 3
+                          4, 0.3,     // More cities at zoom 4
+                          5, 0.45,    // More cities at zoom 5
+                          6, 0.55,    // Medium opacity at zoom 6
+                          8, 0.6,     // Maintain at higher zoom
+                          10, 0.6     // Keep max at very high zoom
                         ]);
                         map.setPaintProperty(layer.id, 'text-halo-width', 0.5); // Thinnest outline for cities
                         map.setPaintProperty(layer.id, 'text-halo-color', 'rgba(0, 0, 0, 0.4)');
@@ -2113,13 +2113,13 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                           'interpolate',
                           ['linear'],
                           ['zoom'],
-                          1.5, 0.3,   // Low opacity at zoom 1.5
-                          2.2, 0.5,   // Default zoom (~2.2) - some labels
-                          3, 0.7,     // More visible at zoom 3
-                          4, 0.85,    // Mostly visible at zoom 4
-                          5, 0.9,     // Full opacity at zoom 5
-                          7, 0.9,     // Maintain at higher zoom
-                          8, 0.9      // Keep max at very high zoom
+                          1.5, 0.15,  // Low opacity at zoom 1.5
+                          2.2, 0.25,  // Default zoom (~2.2) - some labels
+                          3, 0.4,     // More visible at zoom 3
+                          4, 0.5,     // Medium visible at zoom 4
+                          5, 0.6,     // Higher opacity at zoom 5
+                          7, 0.65,    // Maintain at higher zoom
+                          8, 0.65     // Keep max at very high zoom
                         ]);
                         map.setPaintProperty(layer.id, 'text-halo-width', 1);
                         map.setPaintProperty(layer.id, 'text-halo-color', 'rgba(0, 0, 0, 0.5)');

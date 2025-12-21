@@ -12,7 +12,7 @@ export default function HelpPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
+    <div className="fixed inset-0 w-full h-full flex flex-col bg-[#0a0a0a] text-foreground">
       <Header
         activePage="help"
         nodeCount={nodes.length}
@@ -36,19 +36,19 @@ export default function HelpPage() {
 
         {/* Sidebar Navigation */}
         <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          } md:translate-x-0 fixed md:relative w-64 border-r border-border bg-black overflow-y-auto flex-shrink-0 z-50 md:z-auto h-full transition-transform duration-300`}>
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Documentation</h2>
+          } md:translate-x-0 fixed md:relative w-80 border-r border-[#F0A741]/20 bg-card overflow-y-auto flex-shrink-0 z-50 md:z-40 h-full transition-transform duration-300`}>
+          <div className="p-3 sm:p-4">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h2 className="text-xs sm:text-sm font-semibold text-foreground/60 uppercase tracking-wide">Documentation</h2>
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="md:hidden p-1 text-muted-foreground hover:text-foreground"
+                className="md:hidden p-1 text-foreground/60 hover:text-foreground"
                 aria-label="Close sidebar"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <nav className="space-y-1">
+            <nav className="space-y-1 sm:space-y-2">
               <button
                 onClick={() => {
                   setActiveDoc(null);
@@ -149,7 +149,7 @@ export default function HelpPage() {
 
 function QuickStartGuide() {
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground mb-2">pGlobe Documentation</h1>
         <p className="text-muted-foreground">
@@ -213,6 +213,26 @@ function QuickStartGuide() {
             </div>
             <div className="border border-border rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
+                <Server className="w-5 h-5 text-muted-foreground" />
+                <h4 className="font-medium text-foreground">Nodes</h4>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Comprehensive node list with advanced search, filters, sorting, and export capabilities.
+                View all nodes in a detailed table format.
+              </p>
+            </div>
+            <div className="border border-border rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <MapPin className="w-5 h-5 text-muted-foreground" />
+                <h4 className="font-medium text-foreground">Regions</h4>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Browse nodes by geographic location. View statistics by country and continent with
+                detailed breakdowns of node distribution.
+              </p>
+            </div>
+            <div className="border border-border rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
                 <Search className="w-5 h-5 text-muted-foreground" />
                 <h4 className="font-medium text-foreground">Scan</h4>
               </div>
@@ -247,9 +267,90 @@ function QuickStartGuide() {
             </li>
             <li className="flex items-start gap-2">
               <span className="text-muted-foreground mt-1">•</span>
-              <span><strong>Export Data:</strong> Use the export button in the Scan page to download node data as CSV or JSON</span>
+              <span><strong>Export Data:</strong> Use the export button in the Nodes page to download all node data as CSV or JSON</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-muted-foreground mt-1">•</span>
+              <span><strong>Search Nodes:</strong> Use the search bar on the Nodes page to find nodes by IP, public key, location, or version</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-muted-foreground mt-1">•</span>
+              <span><strong>Filter Nodes:</strong> Apply filters by status, version, credits, or packets to narrow down the node list</span>
             </li>
           </ul>
+        </div>
+      </section>
+
+      {/* Using Filters and Search */}
+      <section className="mb-12">
+        <h2 className="text-2xl font-semibold text-foreground mb-4">Using Filters & Search</h2>
+        <div className="prose prose-gray prose-invert max-w-none">
+          <p className="text-foreground mb-4">
+            The Nodes page provides powerful filtering and search capabilities to help you find specific nodes or analyze subsets of the network.
+          </p>
+
+          <h3 className="text-xl font-semibold text-foreground mb-3">Search Bar</h3>
+          <p className="text-foreground mb-3">
+            The search bar lets you quickly find nodes by entering any of the following:
+          </p>
+          <ul className="list-disc list-inside text-foreground space-y-1 mb-4">
+            <li>IP address (e.g., "173.212.207.32")</li>
+            <li>Public key or Node ID (full or partial)</li>
+            <li>Location (city, country, or continent)</li>
+            <li>Version number (e.g., "0.7.0")</li>
+          </ul>
+
+          <h3 className="text-xl font-semibold text-foreground mb-3">Available Filters</h3>
+          <dl className="space-y-3 mb-6">
+            <div>
+              <dt className="text-sm font-medium text-foreground mb-1">Status Filter</dt>
+              <dd className="text-sm text-muted-foreground">
+                Show only Online, Syncing, or Offline nodes. Useful for monitoring network health or troubleshooting.
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-foreground mb-1">Version Filter</dt>
+              <dd className="text-sm text-muted-foreground">
+                Filter nodes by software version. Helps identify nodes that need updates or track version adoption.
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-foreground mb-1">Credits Filter</dt>
+              <dd className="text-sm text-muted-foreground">
+                Show nodes with or without credits. Credits indicate active participation in the network.
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-foreground mb-1">Packets Filter</dt>
+              <dd className="text-sm text-muted-foreground">
+                Filter by nodes that have packet activity. Useful for finding actively serving nodes.
+              </dd>
+            </div>
+          </dl>
+
+          <h3 className="text-xl font-semibold text-foreground mb-3">Sorting</h3>
+          <p className="text-foreground mb-3">
+            Click any column header in the nodes table to sort by that metric:
+          </p>
+          <ul className="list-disc list-inside text-foreground space-y-1 mb-4">
+            <li>Status (online first)</li>
+            <li>Uptime (highest first)</li>
+            <li>CPU usage (lowest first)</li>
+            <li>RAM usage (lowest first)</li>
+            <li>Storage capacity (highest first)</li>
+            <li>Credits (highest first)</li>
+            <li>Latency (lowest first)</li>
+            <li>Location (alphabetically)</li>
+          </ul>
+          <p className="text-sm text-muted-foreground">
+            Click the same column again to reverse the sort order (ascending ↔ descending).
+          </p>
+
+          <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Filter Badges</h3>
+          <p className="text-foreground mb-3">
+            Active filters appear as badges at the top of the page. Click the "×" on any badge to remove that filter,
+            or use "Clear all" to reset all filters at once.
+          </p>
         </div>
       </section>
 
@@ -384,6 +485,100 @@ function QuickStartGuide() {
               in the header. Historical data is stored at ~10-minute intervals, so trend charts show data points at 10-minute intervals.
             </p>
           </div>
+          <div className="border border-border rounded-lg p-4">
+            <h3 className="font-semibold text-foreground mb-2">How do I export node data?</h3>
+            <p className="text-sm text-muted-foreground">
+              Go to the Nodes page and look for the "Export" button in the top right. You can download all node data
+              in CSV format (for Excel/spreadsheets) or JSON format (for developers/scripts). Exports include all current
+              node metrics and status information.
+            </p>
+          </div>
+          <div className="border border-border rounded-lg p-4">
+            <h3 className="font-semibold text-foreground mb-2">How does the Scan feature work?</h3>
+            <p className="text-sm text-muted-foreground">
+              The Scan page uses your IP address (or any IP you enter) to calculate the geographic distance to each node.
+              It then ranks nodes by proximity, showing you the 20 closest nodes. This is useful for finding low-latency
+              nodes near your location or testing network coverage in specific regions.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Regions & Geographic Browsing */}
+      <section className="mb-12">
+        <h2 className="text-2xl font-semibold text-foreground mb-4">Regions & Geographic Browsing</h2>
+        <div className="prose prose-gray prose-invert max-w-none">
+          <p className="text-foreground mb-4">
+            The Regions page lets you explore the network's geographic distribution and browse nodes by location.
+          </p>
+
+          <h3 className="text-xl font-semibold text-foreground mb-3">Country View</h3>
+          <p className="text-foreground mb-3">
+            Each country card displays:
+          </p>
+          <ul className="list-disc list-inside text-foreground space-y-1 mb-4">
+            <li><strong>Country flag</strong> for quick visual identification</li>
+            <li><strong>Total nodes</strong> in that country</li>
+            <li><strong>Status breakdown</strong> (online, syncing, offline counts)</li>
+            <li><strong>Total storage capacity</strong> contributed by nodes in that country</li>
+            <li><strong>Total credits</strong> earned by nodes in that country</li>
+            <li><strong>Average latency</strong> to nodes in that country (from your location)</li>
+          </ul>
+
+          <h3 className="text-xl font-semibold text-foreground mb-3">Continent Overview</h3>
+          <p className="text-foreground mb-3">
+            The page header shows how many continents have active nodes, giving you a quick sense of global distribution.
+          </p>
+
+          <h3 className="text-xl font-semibold text-foreground mb-3">Drilling Down</h3>
+          <p className="text-foreground mb-3">
+            Click any country card to view all nodes in that country. You can then apply additional filters or sort by
+            specific metrics to analyze regional node performance.
+          </p>
+        </div>
+      </section>
+
+      {/* Scan Feature */}
+      <section className="mb-12">
+        <h2 className="text-2xl font-semibold text-foreground mb-4">Using the Scan Feature</h2>
+        <div className="prose prose-gray prose-invert max-w-none">
+          <p className="text-foreground mb-4">
+            The Scan feature helps you find the closest nodes to any location by calculating geographic distances and ranking nodes by proximity.
+          </p>
+
+          <h3 className="text-xl font-semibold text-foreground mb-3">How to Scan</h3>
+          <ol className="list-decimal list-inside text-foreground space-y-2 mb-4">
+            <li>Navigate to the Scan page</li>
+            <li>Either click "Use My IP Address" for auto-detection, or manually enter any IP address</li>
+            <li>Click "Scan" to start the proximity search</li>
+            <li>View the top 20 closest nodes ranked by distance</li>
+          </ol>
+
+          <h3 className="text-xl font-semibold text-foreground mb-3">Understanding Results</h3>
+          <p className="text-foreground mb-3">
+            Each result shows:
+          </p>
+          <ul className="list-disc list-inside text-foreground space-y-1 mb-4">
+            <li><strong>Distance</strong> in kilometers (km) or meters (m) from the scan location</li>
+            <li><strong>Ranking badge</strong> (1st, 2nd, 3rd for top 3 nodes)</li>
+            <li><strong>Status indicator</strong> (color-coded: green = online, yellow = syncing, red = offline)</li>
+            <li><strong>City and country</strong> location of the node</li>
+            <li><strong>Node details</strong> (click any node to view full information)</li>
+          </ul>
+
+          <h3 className="text-xl font-semibold text-foreground mb-3">Globe Integration</h3>
+          <p className="text-foreground mb-3">
+            After scanning, the 3D globe automatically navigates to the scanned location and highlights nearby nodes,
+            giving you a visual representation of node proximity.
+          </p>
+
+          <h3 className="text-xl font-semibold text-foreground mb-3">Use Cases</h3>
+          <ul className="list-disc list-inside text-foreground space-y-1 mb-4">
+            <li>Find low-latency nodes for optimal data access</li>
+            <li>Test network coverage in specific geographic regions</li>
+            <li>Identify redundancy and failover options near your location</li>
+            <li>Analyze regional node distribution patterns</li>
+          </ul>
         </div>
       </section>
 
@@ -404,7 +599,7 @@ function QuickStartGuide() {
 
 function DeploymentDocs({ onClose }: { onClose: () => void }) {
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8 bg-black">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Deployment Documentation</h1>
@@ -578,7 +773,7 @@ function DeploymentDocs({ onClose }: { onClose: () => void }) {
 
 function AnalyticsDocs({ onClose }: { onClose: () => void }) {
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8 bg-black">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Analytics & Metrics Guide</h1>
@@ -926,7 +1121,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
 
 function ArchitectureDocs({ onClose }: { onClose: () => void }) {
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8 bg-black">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">System Architecture</h1>
@@ -1061,7 +1256,7 @@ function ArchitectureDocs({ onClose }: { onClose: () => void }) {
 
 function AIFeaturesDocs({ onClose }: { onClose: () => void }) {
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8 bg-black">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">AI Assistant</h1>

@@ -307,7 +307,8 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
     );
   }
 
-  const margin = { top: 10, right: 30, left: 120, bottom: 40 };
+  // Base margin - will be adjusted based on chart width
+  const baseMargin = { top: 10, right: 30, left: 120, bottom: 40 };
 
   return (
     <div className="h-full flex flex-col">
@@ -337,6 +338,12 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
           {({ width: parentWidth = 800, height: parentHeight = 200 }) => {
             const width = parentWidth;
             const chartHeight = Math.max(200, parentHeight);
+            // Responsive left margin - less space on mobile since we only show flags
+            const isMobile = width < 640;
+            const margin = {
+              ...baseMargin,
+              left: isMobile ? 50 : baseMargin.left,
+            };
             const innerWidth = width - margin.left - margin.right;
             const innerHeight = chartHeight - margin.top - margin.bottom;
             const svgRef = useRef<SVGSVGElement>(null);
@@ -440,14 +447,20 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
                       const flag = countryData?.countryCode 
                         ? getFlagForCountry(countryData.fullCountry || d, countryData.countryCode)
                         : '';
-                      return flag ? `${flag} ${d}` : d;
+                      // On mobile, show only flag, on desktop show flag + country name
+                      return isMobile ? (flag || '🌍') : (flag ? `${flag} ${d}` : d);
                     }}
                     tickLabelProps={() => ({
                       fill: '#E5E7EB',
-                      fontSize: 11,
+                      fontSize: isMobile ? 16 : 11,
                       textAnchor: 'end',
                       dy: '0.33em',
-                      dx: -10,
+                      dx: isMobile ? -5 : -10,
+                      style: { 
+                        overflow: 'visible',
+                        textOverflow: 'clip',
+                        whiteSpace: 'nowrap'
+                      }
                     })}
                   />
                   <AxisBottom

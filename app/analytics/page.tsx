@@ -11,6 +11,7 @@ import ResourceUtilization from '@/components/analytics/ResourceUtilization';
 import GeographicMetrics from '@/components/analytics/GeographicMetrics';
 import NodeComparison from '@/components/analytics/NodeComparison';
 import Header from '@/components/Header';
+import WorldMapHeatmap from '@/components/WorldMapHeatmap';
 import NodeDetailsModal from '@/components/NodeDetailsModal';
 import { useNodes } from '@/lib/context/NodesContext';
 import { formatStorageBytes } from '@/lib/utils/storage';
@@ -448,6 +449,9 @@ export default function AnalyticsPage() {
               </div>
             </div>
           </div>
+
+          {/* World Map Heatmap */}
+          <WorldMapHeatmap nodes={nodes} />
 
           {/* Main Analytics Sections */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
