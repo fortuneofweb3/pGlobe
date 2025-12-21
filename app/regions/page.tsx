@@ -74,7 +74,7 @@ const getContinentFromCountryCode = (countryCode?: string): string | null => {
     'GQ': 'Africa', 'GA': 'Africa', 'CG': 'Africa', 'CD': 'Africa',
     'ST': 'Africa', 'CV': 'Africa', 'DJ': 'Africa', 'SC': 'Africa',
     'MU': 'Africa', 'KM': 'Africa', 'BW': 'Africa', 'NA': 'Africa',
-    'LS': 'Africa', 'SZ': 'Africa', 'MZ': 'Africa',
+    'LS': 'Africa', 'SZ': 'Africa',
     // Oceania
     'AU': 'Oceania', 'NZ': 'Oceania', 'PG': 'Oceania', 'FJ': 'Oceania',
     'NC': 'Oceania', 'PF': 'Oceania', 'SB': 'Oceania', 'VU': 'Oceania',
