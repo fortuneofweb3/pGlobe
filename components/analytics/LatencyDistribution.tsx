@@ -12,6 +12,7 @@ import { localPoint } from '@visx/event';
 import ParentSize from '@visx/responsive/lib/components/ParentSize';
 import { Wifi } from 'lucide-react';
 import { measureNodesLatency, getCachedNodesLatencies } from '@/lib/utils/client-latency';
+import AnimatedNumber from '@/components/AnimatedNumber';
 
 interface LatencyDistributionProps {
   nodes: PNode[];
@@ -154,7 +155,9 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-3">
         <div className="text-sm text-muted-foreground">
-          Avg: <span className="text-foreground font-semibold">{avgLatency}ms</span>
+          Avg: <span className="text-foreground font-semibold">
+            <AnimatedNumber value={avgLatency} decimals={0} suffix="ms" />
+          </span>
         </div>
       </div>
       <div className="flex-1" style={{ width: '100%', minHeight: 180, position: 'relative' }}>

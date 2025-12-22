@@ -608,7 +608,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           }
                         }
                       }}
-                      className={`bg-card/30 hover:bg-muted/30 cursor-pointer transition-colors border-b border-border/40 ${
+                      className={`bg-card/30 hover:bg-muted/40 cursor-pointer transition-all duration-300 hover:shadow-md hover:translate-x-1 border-b border-border/40 ${
                         duplicate ? 'bg-warning/10 border-l-2 border-warning' : ''
                       } ${isTrynet ? 'bg-orange-500/10' : ''}`}
                     >

@@ -6,13 +6,20 @@ import { PNode } from '@/lib/types/pnode';
 import StatsCard from '@/components/StatsCard';
 import dynamic from 'next/dynamic';
 
-import { GlobeSkeleton, CardSkeleton } from '@/components/Skeletons';
+import { CardSkeleton } from '@/components/Skeletons';
 
 const MapLibreGlobe = dynamic(() => import('@/components/MapLibreGlobe'), {
   ssr: false,
   loading: () => (
-    <div className="absolute inset-0 w-full h-full bg-black">
-      <GlobeSkeleton height={600} />
+    <div className="absolute inset-0 flex items-center justify-center text-muted-foreground z-10 bg-background/80">
+      <div className="flex items-center gap-2">
+        <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <circle cx="12" cy="12" r="10" strokeWidth="2" strokeLinecap="round" strokeDasharray="32" strokeDashoffset="0">
+            <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite"/>
+          </circle>
+        </svg>
+        <span>Loading 3D Globe...</span>
+      </div>
     </div>
   ),
 });
@@ -26,8 +33,8 @@ import { Activity, Server, HardDrive, TrendingUp, RefreshCw, BarChart3, Network,
 import SearchBar from '@/components/SearchBar';
 import { NetworkConfig } from '@/lib/server/network-config';
 import { useNodes } from '@/lib/context/NodesContext';
-import NodeDetailsModal from '@/components/NodeDetailsModal';
 import { measureNodesLatency, getCachedNodesLatencies } from '@/lib/utils/client-latency';
+import AnimatedNumber from '@/components/AnimatedNumber';
 
 // Helper function to format uptime seconds as human-readable duration
 function formatUptimeDuration(seconds: number): string {
@@ -71,8 +78,6 @@ function HomeContent() {
   const [globeSearchQuery, setGlobeSearchQuery] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [navigateToNodeId, setNavigateToNodeId] = useState<string | null>(null);
-  const [selectedNode, setSelectedNode] = useState<PNode | null>(null);
-  const [isNodeModalOpen, setIsNodeModalOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
@@ -550,16 +555,6 @@ function HomeContent() {
 
             {/* Globe */}
             <div className="absolute inset-0 w-full h-full bg-black">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-3/4 h-3/4 rounded-full border-2 border-muted/30 animate-pulse">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-2 h-2 rounded-full bg-muted/40 animate-pulse" style={{ animationDelay: '0s' }} />
-                    <div className="w-2 h-2 rounded-full bg-muted/40 animate-pulse absolute" style={{ left: '30%', top: '40%', animationDelay: '0.2s' }} />
-                    <div className="w-2 h-2 rounded-full bg-muted/40 animate-pulse absolute" style={{ left: '60%', top: '20%', animationDelay: '0.4s' }} />
-                    <div className="w-2 h-2 rounded-full bg-muted/40 animate-pulse absolute" style={{ left: '70%', top: '60%', animationDelay: '0.6s' }} />
-                  </div>
-                </div>
-              </div>
             </div>
           </main>
         </div>
@@ -595,58 +590,62 @@ function HomeContent() {
         )}
 
         {/* Left Sidebar */}
-        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-y-auto z-50 md:z-40 h-full transition-transform duration-300`}>
+        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-y-auto z-50 md:z-40 h-full transition-transform duration-300 ease-in-out`}>
           <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
             {/* Mobile close button */}
             <div className="flex items-center justify-between mb-2 md:hidden">
               <h2 className="text-sm font-semibold text-foreground/60 uppercase tracking-wide">Network Stats</h2>
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="p-1 text-foreground/60 hover:text-foreground"
+                className="p-1 text-foreground/60 hover:text-foreground transition-all duration-300 hover:scale-110 active:scale-100 hover:rotate-90"
                 aria-label="Close sidebar"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
-            <div>
+            <div className="animate-fade-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
               <h2 className="text-xs font-semibold text-foreground/60 mb-2 uppercase tracking-wide hidden md:block">Network Stats</h2>
               <div className="space-y-1.5 sm:space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs sm:text-sm text-foreground/70">Total Nodes</span>
-                  <span className="text-xs sm:text-sm font-semibold text-foreground">{stats.totalNodes}</span>
+                <div className="flex items-center justify-between group">
+                  <span className="text-xs sm:text-sm text-foreground/70 transition-colors duration-300 group-hover:text-foreground">Total Nodes</span>
+                  <span className="text-xs sm:text-sm font-semibold text-foreground transition-all duration-300 group-hover:scale-110">
+                    <AnimatedNumber value={stats.totalNodes} />
+                  </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5">
+                <div className="flex items-center justify-between group">
+                  <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5 transition-colors duration-300 group-hover:text-foreground">
                     Online
                     <InfoTooltip content="Seen in gossip network within last 5 minutes" />
                   </span>
-                  <span className="text-xs sm:text-sm font-semibold text-[#3F8277]">{stats.onlineNodes}</span>
+                  <span className="text-xs sm:text-sm font-semibold text-[#3F8277] transition-all duration-300 group-hover:scale-110">
+                    <AnimatedNumber value={stats.onlineNodes} />
+                  </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5">
+                <div className="flex items-center justify-between group">
+                  <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5 transition-colors duration-300 group-hover:text-foreground">
                     Syncing
                     <InfoTooltip content="Seen within last hour, still synchronizing with network" />
                   </span>
-                  <span className="text-xs sm:text-sm font-semibold text-[#F0A741]">
-                    {nodes.filter(n => n.status === 'syncing').length}
+                  <span className="text-xs sm:text-sm font-semibold text-[#F0A741] transition-all duration-300 group-hover:scale-110">
+                    <AnimatedNumber value={nodes.filter(n => n.status === 'syncing').length} />
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5">
+                <div className="flex items-center justify-between group">
+                  <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5 transition-colors duration-300 group-hover:text-foreground">
                     Offline
                     <InfoTooltip content="Not seen in gossip network for over an hour" />
                   </span>
-                  <span className="text-xs sm:text-sm font-semibold text-red-400">
-                    {nodes.filter(n => n.status === 'offline').length}
+                  <span className="text-xs sm:text-sm font-semibold text-red-400 transition-all duration-300 group-hover:scale-110">
+                    <AnimatedNumber value={nodes.filter(n => n.status === 'offline').length} />
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="pt-4 sm:pt-6 border-t border-border">
+            <div className="pt-4 sm:pt-6 border-t border-border animate-slide-in-left" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Performance</h2>
                 <InfoTooltip content="Stats from nodes with public pRPC only (~10 of 135 nodes). Most operators keep pRPC private (localhost-only) for security.">
@@ -664,17 +663,23 @@ function HomeContent() {
                 />
                 <MetricRow
                   label="Avg CPU"
-                  value={stats.avgCPU > 0 ? `${stats.avgCPU.toFixed(1)}%` : 'N/A'}
+                  value={stats.avgCPU}
+                  animateValue={true}
+                  valueFormatter={(v) => v > 0 ? `${v.toFixed(1)}%` : 'N/A'}
                   tooltip="Average CPU utilization across all nodes with public stats. Shows how much of each node's processor capacity is being used. Lower typically means more headroom."
                 />
                 <MetricRow
                   label="Avg RAM"
-                  value={stats.avgRAMUsage > 0 ? `${stats.avgRAMUsage.toFixed(1)}%` : 'N/A'}
+                  value={stats.avgRAMUsage}
+                  animateValue={true}
+                  valueFormatter={(v) => v > 0 ? `${v.toFixed(1)}%` : 'N/A'}
                   tooltip="Average memory (RAM) usage as percentage of total available RAM on each node. Shows how much memory pNode software is consuming."
                 />
                 <MetricRow
                   label="Avg Latency"
-                  value={stats.avgLatency > 0 ? `${stats.avgLatency.toFixed(0)}ms` : 'N/A'}
+                  value={stats.avgLatency}
+                  animateValue={true}
+                  valueFormatter={(v) => v > 0 ? `${v.toFixed(0)}ms` : 'N/A'}
                   tooltip={stats.avgLatency > 0 
                     ? `Average latency: ${stats.avgLatency.toFixed(0)}ms (from ${Object.values(nodeLatencies).filter(lat => lat !== null && lat !== undefined).length} reachable nodes)`
                     : 'No latency data available'
@@ -683,7 +688,7 @@ function HomeContent() {
             </div>
           </div>
 
-            <div className="pt-4 sm:pt-6 border-t border-border">
+            <div className="pt-4 sm:pt-6 border-t border-border animate-fade-in" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Storage & Memory</h2>
               </div>
@@ -705,14 +710,16 @@ function HomeContent() {
                 />
                 <MetricRow
                   label="Avg RAM Usage"
-                  value={stats.avgRAMUsage > 0 ? `${stats.avgRAMUsage.toFixed(1)}%` : 'N/A'}
+                  value={stats.avgRAMUsage}
+                  animateValue={true}
+                  valueFormatter={(v) => v > 0 ? `${v.toFixed(1)}%` : 'N/A'}
                   tooltip="Average RAM usage percentage across all nodes."
                 />
               </div>
                   </div>
 
             {/* Network Activity Section */}
-            <div className="pt-4 sm:pt-6 border-t border-border">
+            <div className="pt-4 sm:pt-6 border-t border-border animate-scale-in" style={{ animationDelay: '0.4s', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Network Activity</h2>
                 <InfoTooltip content="From nodes with public pRPC only. Most nodes keep pRPC private.">
@@ -724,29 +731,39 @@ function HomeContent() {
               <div className="space-y-2 sm:space-y-3">
                 <MetricRow
                   label="Active Streams"
-                  value={stats.totalActiveStreams > 0 ? stats.totalActiveStreams.toLocaleString() : 'N/A'}
+                  value={stats.totalActiveStreams}
+                  animateValue={true}
+                  valueFormatter={(v) => v > 0 ? v.toLocaleString() : 'N/A'}
                   valueColor="text-[#3F8277]"
                   tooltip="Total active network connections across all nodes. Streams are peer-to-peer connections for data transfer."
                 />
                 <MetricRow
                   label="Packets Received"
-                  value={stats.totalPacketsReceived > 0 ? `${stats.totalPacketsReceived.toLocaleString()}` : 'N/A'}
+                  value={stats.totalPacketsReceived}
+                  animateValue={true}
+                  valueFormatter={(v) => v > 0 ? v.toLocaleString() : 'N/A'}
                   tooltip="Total cumulative packets received across all reporting nodes since they started."
                 />
                 <MetricRow
                   label="Packets Sent"
-                  value={stats.totalPacketsSent > 0 ? `${stats.totalPacketsSent.toLocaleString()}` : 'N/A'}
+                  value={stats.totalPacketsSent}
+                  animateValue={true}
+                  valueFormatter={(v) => v > 0 ? v.toLocaleString() : 'N/A'}
                   tooltip="Total cumulative packets sent across all reporting nodes since they started."
                 />
                 <MetricRow
                   label="Avg Packet Rate"
-                  value={stats.avgPacketRate > 0 ? formatPacketRate(stats.avgPacketRate) : 'N/A'}
+                  value={stats.avgPacketRate}
+                  animateValue={true}
+                  valueFormatter={(v) => v > 0 ? formatPacketRate(v) : 'N/A'}
                   valueColor="text-[#F0A741]"
                   tooltip="Average packet transfer rate (Rx + Tx) across nodes. Estimated from cumulative totals divided by uptime."
                 />
                 <MetricRow
                   label="Total Credits"
-                  value={stats.totalCredits > 0 ? stats.totalCredits.toLocaleString() : 'N/A'}
+                  value={stats.totalCredits}
+                  animateValue={true}
+                  valueFormatter={(v) => v > 0 ? v.toLocaleString() : 'N/A'}
                   tooltip="Total credits earned across all nodes"
                 />
               </div>
@@ -759,10 +776,10 @@ function HomeContent() {
           {/* Mobile Sidebar Toggle Button */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="md:hidden absolute top-4 left-4 z-50 p-2 bg-black/90 backdrop-blur-md border border-[#F0A741]/20 rounded-lg text-[#F0A741] hover:bg-[#F0A741]/10 transition-colors"
+            className="md:hidden absolute top-4 left-4 z-50 p-2 bg-black/90 backdrop-blur-md border border-[#F0A741]/20 rounded-lg text-[#F0A741] hover:bg-[#F0A741]/10 transition-all duration-300 hover:scale-110 active:scale-100 hover:border-[#F0A741]/40 hover:shadow-lg hover:shadow-[#F0A741]/20"
             aria-label="Toggle sidebar"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
@@ -789,7 +806,7 @@ function HomeContent() {
             >
               {/* Search Results Dropdown */}
               {showSearchResults && globeSearchQuery.trim() && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-black/95 backdrop-blur-md border border-[#F0A741]/20 rounded-lg shadow-xl max-h-64 sm:max-h-96 overflow-y-auto z-50">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-black/95 backdrop-blur-md border border-[#F0A741]/20 rounded-lg shadow-xl max-h-64 sm:max-h-96 overflow-y-auto z-50 dropdown-animate">
                   {globeSearchResults.length === 0 ? (
                     <div className="p-4 text-sm text-muted-foreground text-center">
                       No nodes found
@@ -803,7 +820,7 @@ function HomeContent() {
                             handleNodeSelect(node);
                             setSidebarOpen(false);
                           }}
-                          className="w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-muted/30 transition-colors border-b border-border/20 last:border-b-0"
+                          className="w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-muted/30 transition-all duration-300 hover:translate-x-1 hover:shadow-md border-b border-border/20 last:border-b-0"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
@@ -883,15 +900,6 @@ function HomeContent() {
           </div>
         )}
 
-        {/* Node Details Modal */}
-        <NodeDetailsModal
-          node={selectedNode}
-          isOpen={isNodeModalOpen}
-          onClose={() => {
-            setIsNodeModalOpen(false);
-            setSelectedNode(null);
-          }}
-        />
     </div>
   );
 }

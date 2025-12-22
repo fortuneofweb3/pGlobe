@@ -86,18 +86,19 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
   const nodeClickHandledRef = useRef(false);
   const [legendOpen, setLegendOpen] = useState(false); // Mobile legend open state
   const legendRef = useRef<HTMLDivElement>(null); // Ref for legend container
+  const stylesAppliedRef = useRef(false); // Track if label styles have been applied
   
   // Calculate initial zoom based on screen size to ensure full globe is visible
   const calculateInitialZoom = useCallback(() => {
     if (typeof window === 'undefined') {
-      return centerLocation ? 4 : 2.2; // Default for SSR
+      return centerLocation ? 4.8 : 2.5; // Default for SSR
     }
-    
+
     const width = window.innerWidth;
     const height = window.innerHeight;
-    
+
     // Base zoom values
-    const baseZoom = centerLocation ? 4 : 2.2;
+    const baseZoom = centerLocation ? 4.8 : 2.5;
     
     // Calculate zoom adjustment based on screen dimensions
     // Smaller screens need more zoom out to see full globe
@@ -586,7 +587,13 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                 }
                 
                 // Keep FILL layers (land, water, buildings) visible  
-                if (layer.type === 'fill') {
+                // Don't modify water layers here - they're handled separately
+                if (layer.type === 'fill' && !(
+                  layer.id.toLowerCase().includes('water') || 
+                  layer.id.toLowerCase().includes('ocean') ||
+                  layer.id.toLowerCase().includes('sea') ||
+                  layer.id.toLowerCase().includes('marine')
+                )) {
                   const currentOpacity = map.getPaintProperty(layer.id, 'fill-opacity') as number | undefined;
                   if (currentOpacity === undefined || (typeof currentOpacity === 'number' && currentOpacity >= 0.5)) {
                     map.setPaintProperty(layer.id, 'fill-opacity', currentOpacity ?? 1.0);
@@ -603,13 +610,14 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                   map.setPaintProperty(layer.id, 'circle-opacity', 1.0);
                 }
                 
-                // For SYMBOL layers (labels), prevent culling
+                // For SYMBOL layers (labels), prevent culling but don't reset opacity/color
+                // This prevents labels from disappearing during animation without resetting styles
                 if (layer.type === 'symbol') {
                   map.setLayoutProperty(layer.id, 'text-allow-overlap', true);
                   map.setLayoutProperty(layer.id, 'icon-allow-overlap', true);
                   map.setLayoutProperty(layer.id, 'text-optional', false);
                   map.setLayoutProperty(layer.id, 'icon-optional', false);
-                  map.setPaintProperty(layer.id, 'text-opacity', 1.0);
+                  // Don't reset text-opacity here - it's set by the style application below
                   map.setPaintProperty(layer.id, 'icon-opacity', 1.0);
                 }
                 
@@ -845,7 +853,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
     if (mapRef.current && containerRef.current) {
       const containerHeight = containerRef.current.clientHeight;
       // Subtle zoom calculation - stay closer to default
-      const zoom = Math.max(2.0, Math.min(2.3, 2.2 + (containerHeight - 600) / 2000));
+      const zoom = Math.max(2.3, Math.min(2.7, 2.5 + (containerHeight - 600) / 2000));
       
       // Use easeTo for smooth but subtle zoom animation
       mapRef.current.easeTo({
@@ -863,16 +871,16 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
 
   // Calculate zoom to fit globe height in container
   const calculateFitZoom = useCallback(() => {
-    if (!containerRef.current) return 2.2;
+    if (!containerRef.current) return 2.5;
     const containerHeight = containerRef.current.clientHeight;
     // For globe projection, approximate zoom based on container height
     // Smaller containers need higher zoom, larger containers need lower zoom
     // Formula: zoom = log2(containerHeight / baseHeight) + baseZoom
     const baseHeight = 600; // Reference height
-    const baseZoom = 2.2; // Base zoom level (2.2x)
+    const baseZoom = 2.5; // Base zoom level
     const zoom = Math.log2(containerHeight / baseHeight) + baseZoom;
-    // Clamp between 2.0 and 3.2
-    return Math.max(2.0, Math.min(3.2, zoom));
+    // Clamp between 2.3 and 3.7
+    return Math.max(2.3, Math.min(3.7, zoom));
   }, []);
 
   // Handle clicks outside legend to close it on mobile
@@ -948,10 +956,12 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
           // Rotate around X axis (horizontal rotation) by changing longitude
           const currentCenter = map.getCenter();
           const newLon = (currentCenter.lng + rotationSpeed * deltaTime) % 360;
-          
+
           // Mark that we're doing programmatic rotation to prevent move events from stopping it
           isProgrammaticRotationRef.current = true;
-          map.setCenter([newLon, currentCenter.lat]);
+          // Keep latitude at centerLocation if provided, otherwise 15 degrees to show more of Europe/Northern hemisphere
+          const targetLat = centerLocation?.lat ?? 15;
+          map.setCenter([newLon, targetLat]);
           // Reset flag after a brief moment (move events fire asynchronously)
           setTimeout(() => {
             isProgrammaticRotationRef.current = false;
@@ -1599,13 +1609,13 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
           
           // Only close if we didn't click on a node
           if (!clickedOnNode) {
-          setSelectedNodeId((currentId) => {
+            setSelectedNodeId((currentId) => {
               if (currentId) {
-              console.debug('Map clicked (not on node), closing popup');
-              return null;
-            }
-            return currentId;
-          });
+                console.debug('Map clicked (not on node), closing popup');
+                return null;
+              }
+              return currentId;
+            });
           }
         };
         
@@ -1712,13 +1722,20 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
     };
   }, [isLoaded, nodesWithLocation.length, handleUserInteraction]);
 
-  return (
-    <>
-      <style>{`
+  // Inject styles into document head
+  useEffect(() => {
+    const styleId = 'maplibre-globe-styles';
+    if (document.getElementById(styleId)) {
+      return; // Styles already injected
+    }
+    
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
         @keyframes fadeInUp {
           from {
             opacity: 0;
-            transform: translateY(10px);
+            transform: translateY(4px);
           }
           to {
             opacity: 1;
@@ -1793,7 +1810,19 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
         .maplibregl-canvas-container.maplibregl-interactive {
           cursor: default;
         }
-      `}</style>
+      `;
+    document.head.appendChild(style);
+    
+    return () => {
+      const existingStyle = document.getElementById(styleId);
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+    };
+  }, []);
+
+  return (
+    <>
       <div 
         ref={containerRef}
         className="absolute inset-0 w-full h-full overflow-hidden"
@@ -1806,7 +1835,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
         mapLib={maplibregl}
         initialViewState={{
           longitude: centerLocation?.lon ?? 0,
-          latitude: centerLocation?.lat ?? 0,
+          latitude: centerLocation?.lat ?? 15, // Tilt globe forward to show more of Europe/northern hemisphere
           // Calculate zoom dynamically based on screen size to ensure full globe is visible
           zoom: calculateInitialZoom(),
           pitch: 0,
@@ -1864,7 +1893,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                   'space-color': '#000000', // Pure black space
                   'horizon-blend': 0.08, // Subtle atmosphere blend
                   'star-intensity': 0.15, // Subtle stars in space
-              });
+                });
               } else if (typeof mapAny.setAtmosphere === 'function') {
                 mapAny.setAtmosphere({
                   color: '#0a0f1a',
@@ -1876,6 +1905,63 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
             } catch (e) {
               // Fog/atmosphere might not be available in all versions
             }
+            
+            // Apply water and land colors immediately on load (before style is fully rendered to prevent flashing)
+            const applyFillColors = () => {
+              try {
+                const style = map.getStyle();
+                if (style && style.layers) {
+                  // Log all fill layers to debug
+                  const fillLayers = style.layers.filter((l: any) => l.type === 'fill');
+                  console.debug('Found fill layers:', fillLayers.map((l: any) => l.id));
+
+                  style.layers.forEach((layer: any) => {
+                    // Set background layer (land) to black
+                    if (layer.type === 'background') {
+                      try {
+                        console.debug('Setting background (land) color to black');
+                        map.setPaintProperty(layer.id, 'background-color', '#000000');
+                      } catch (e) {
+                        console.debug('Could not set background color:', e);
+                      }
+                    }
+
+                    if (layer.type === 'fill') {
+                      const isWater = layer.id.toLowerCase().includes('water') ||
+                                      layer.id.toLowerCase().includes('ocean') ||
+                                      layer.id.toLowerCase().includes('sea') ||
+                                      layer.id.toLowerCase().includes('marine');
+
+                      try {
+                        if (isWater) {
+                          // Water: match sidebar background color
+                          console.debug('Setting water color for layer:', layer.id);
+                          map.setPaintProperty(layer.id, 'fill-color', '#0f0f0f');
+                        } else {
+                          // Land/landcover: black
+                          console.debug('Setting land color to black for layer:', layer.id);
+                          map.setPaintProperty(layer.id, 'fill-color', '#000000');
+                        }
+                        map.setPaintProperty(layer.id, 'fill-opacity', 1.0);
+                      } catch (e) {
+                        console.debug('Could not set fill color for layer:', layer.id, e);
+                      }
+                    }
+                  });
+                }
+              } catch (e) {
+                console.debug('Error applying fill colors:', e);
+              }
+            };
+            
+            // Apply immediately and also on style load to catch any delayed layers
+            applyFillColors();
+            map.on('styledata', applyFillColors);
+            
+            // Also try applying after delays to catch any layers that load later
+            setTimeout(applyFillColors, 500);
+            setTimeout(applyFillColors, 1000);
+            setTimeout(applyFillColors, 2000);
             
             // Prevent tiles from being culled during animations
             // This keeps labels visible during flyTo/easeTo
@@ -1920,18 +2006,22 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
             
             // Make all label layers use billboard effect (face camera)
             // Differentiate countries, states, and cities by size/thickness
-            try {
-              const style = map.getStyle();
-              if (style && style.layers) {
-                // Log all label layers to understand structure
-                const labelLayers = style.layers.filter((l: any) => l.type === 'symbol' && l.layout && l.layout['text-field']);
-                console.debug('Found label layers:', labelLayers.map((l: any) => ({
-                  id: l.id,
-                  'source-layer': l['source-layer'],
-                  'text-field': l.layout?.['text-field']
-                })));
-                
-                style.layers.forEach((layer: any) => {
+            // Apply on style load and reapply on styledata to handle zoom resets
+            const applyLabelStyles = () => {
+              try {
+                const style = map.getStyle();
+                if (style && style.layers) {
+                  // Log all label layers to understand structure (only on first run)
+                  if (!stylesAppliedRef.current) {
+                    const labelLayers = style.layers.filter((l: any) => l.type === 'symbol' && l.layout && l.layout['text-field']);
+                    console.debug('Found label layers:', labelLayers.map((l: any) => ({
+                      id: l.id,
+                      'source-layer': l['source-layer'],
+                      'text-field': l.layout?.['text-field']
+                    })));
+                  }
+
+                  style.layers.forEach((layer: any) => {
                   // Apply billboard effect to text labels
                   if (layer.type === 'symbol' && layer.layout && layer.layout['text-field']) {
                     try {
@@ -2000,13 +2090,13 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                           'interpolate',
                           ['linear'],
                           ['zoom'],
-                          0, 0.15,    // Very low opacity at zoom 0 (only major countries)
-                          1, 0.25,    // More visible at zoom 1
-                          2.2, 0.4,   // Default zoom (~2.2) - moderate visibility
-                          3, 0.5,     // Medium visible at zoom 3
-                          4, 0.6,     // Higher opacity at zoom 4
-                          6, 0.7,     // Maintain at higher zoom
-                          8, 0.7      // Keep max at very high zoom
+                          0, 0.3,     // Low opacity at zoom 0 (only major countries)
+                          1, 0.5,     // More visible at zoom 1
+                          2.2, 0.7,   // Default zoom (~2.2) - good visibility
+                          3, 0.85,    // Mostly visible at zoom 3
+                          4, 0.9,     // Full opacity at zoom 4
+                          6, 0.9,     // Maintain at higher zoom
+                          8, 0.9      // Keep max at very high zoom
                         ]);
                         map.setPaintProperty(layer.id, 'text-halo-width', 1.5); // Thicker outline for countries
                         map.setPaintProperty(layer.id, 'text-halo-color', 'rgba(0, 0, 0, 0.6)');
@@ -2043,13 +2133,13 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                           'interpolate',
                           ['linear'],
                           ['zoom'],
-                          1, 0.1,     // Very low opacity at zoom 1 (few states)
-                          2.2, 0.25,  // Default zoom (~2.2) - some states visible
-                          3, 0.4,     // More visible at zoom 3
-                          4, 0.5,     // Medium visible at zoom 4
-                          5, 0.6,     // Higher opacity at zoom 5
-                          7, 0.65,    // Maintain at higher zoom
-                          8, 0.65     // Keep max at very high zoom
+                          1, 0.2,     // Very low opacity at zoom 1 (few states)
+                          2.2, 0.5,   // Default zoom (~2.2) - some states visible
+                          3, 0.7,     // More visible at zoom 3
+                          4, 0.85,    // Mostly visible at zoom 4
+                          5, 0.9,     // Full opacity at zoom 5
+                          7, 0.9,     // Maintain at higher zoom
+                          8, 0.9      // Keep max at very high zoom
                         ]);
                         map.setPaintProperty(layer.id, 'text-halo-width', 1); // Medium outline
                         map.setPaintProperty(layer.id, 'text-halo-color', 'rgba(0, 0, 0, 0.5)');
@@ -2079,13 +2169,13 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                           'interpolate',
                           ['linear'],
                           ['zoom'],
-                          2, 0.05,    // Very low opacity at zoom 2 (only major cities)
-                          3, 0.15,    // Some cities at zoom 3
-                          4, 0.3,     // More cities at zoom 4
-                          5, 0.45,    // More cities at zoom 5
-                          6, 0.55,    // Medium opacity at zoom 6
-                          8, 0.6,     // Maintain at higher zoom
-                          10, 0.6     // Keep max at very high zoom
+                          2, 0.1,     // Very low opacity at zoom 2 (only major cities)
+                          3, 0.3,     // Some cities at zoom 3
+                          4, 0.6,     // More cities at zoom 4
+                          5, 0.8,     // Many cities at zoom 5
+                          6, 0.9,     // Full opacity at zoom 6
+                          8, 0.9,     // Maintain at higher zoom
+                          10, 0.9     // Keep max at very high zoom
                         ]);
                         map.setPaintProperty(layer.id, 'text-halo-width', 0.5); // Thinnest outline for cities
                         map.setPaintProperty(layer.id, 'text-halo-color', 'rgba(0, 0, 0, 0.4)');
@@ -2113,13 +2203,13 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                           'interpolate',
                           ['linear'],
                           ['zoom'],
-                          1.5, 0.15,  // Low opacity at zoom 1.5
-                          2.2, 0.25,  // Default zoom (~2.2) - some labels
-                          3, 0.4,     // More visible at zoom 3
-                          4, 0.5,     // Medium visible at zoom 4
-                          5, 0.6,     // Higher opacity at zoom 5
-                          7, 0.65,    // Maintain at higher zoom
-                          8, 0.65     // Keep max at very high zoom
+                          1.5, 0.3,   // Low opacity at zoom 1.5
+                          2.2, 0.5,   // Default zoom (~2.2) - some labels
+                          3, 0.7,     // More visible at zoom 3
+                          4, 0.85,    // Mostly visible at zoom 4
+                          5, 0.9,     // Full opacity at zoom 5
+                          7, 0.9,     // Maintain at higher zoom
+                          8, 0.9      // Keep max at very high zoom
                         ]);
                         map.setPaintProperty(layer.id, 'text-halo-width', 1);
                         map.setPaintProperty(layer.id, 'text-halo-color', 'rgba(0, 0, 0, 0.5)');
@@ -2139,43 +2229,84 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                           duration: 800,
                           delay: 0
                         });
-              } catch (e) {
+                      } catch (e) {
                         // Some layers might not support transition properties
                       }
-                        } catch (e) {
+                    } catch (e) {
                       // Some layers might not support these properties
                     }
                   }
-                  
-                  // Make oceans/water fully opaque
+                });
+
+                  stylesAppliedRef.current = true;
+                }
+              } catch (e) {
+                console.debug('Could not access map style:', e);
+              }
+            };
+
+            // Apply label styles immediately and on style reload
+            applyLabelStyles();
+            map.on('styledata', applyLabelStyles);
+            
+            // Make oceans/water match sidebar background color
+            // Apply this regardless of stylesAppliedRef to ensure water color is correct
+            try {
+              const style = map.getStyle();
+              if (style && style.layers) {
+                // Log all layers to find water layers
+                const waterLayers = style.layers.filter((l: any) => 
+                  l.type === 'fill' && (
+                    l.id.toLowerCase().includes('water') || 
+                    l.id.toLowerCase().includes('ocean') ||
+                    l.id.toLowerCase().includes('sea') ||
+                    l.id.toLowerCase().includes('marine')
+                  )
+                );
+                console.debug('Found water layers:', waterLayers.map((l: any) => l.id));
+                
+                style.layers.forEach((layer: any) => {
+                  // Make oceans/water match sidebar background color (#0f0f0f)
                   if (layer.type === 'fill' && (
-                    layer.id.includes('water') || 
-                    layer.id.includes('ocean') ||
-                    layer.id.includes('sea')
+                    layer.id.toLowerCase().includes('water') || 
+                    layer.id.toLowerCase().includes('ocean') ||
+                    layer.id.toLowerCase().includes('sea') ||
+                    layer.id.toLowerCase().includes('marine')
                   )) {
                     try {
-                      map.setPaintProperty(layer.id, 'fill-color', '#2a2a2a'); // Slightly brighter water
+                      console.debug('Setting water color for layer:', layer.id);
+                      map.setPaintProperty(layer.id, 'fill-color', '#0f0f0f'); // Match sidebar background color
                       map.setPaintProperty(layer.id, 'fill-opacity', 1.0); // Fully opaque
                     } catch (e) {
-                      // Some layers might not support these properties
+                      console.debug('Could not set water color for layer:', layer.id, e);
                     }
                   }
                   
                   // Make lines fully opaque (boundaries, coastlines, etc.)
                   if (layer.type === 'line' && (
-                    layer.id.includes('boundary') || 
-                    layer.id.includes('admin') || 
+                    layer.id.includes('boundary') ||
+                    layer.id.includes('admin') ||
                     layer.id.includes('border') ||
                     layer.id.includes('coastline') ||
                     layer.id.includes('waterway') ||
                     layer.id.includes('road')
                   )) {
                     try {
-                      // Get current line color and make it slightly brighter
-                      const currentColor = layer.paint?.['line-color'] || '#666666';
-                      map.setPaintProperty(layer.id, 'line-color', '#555555'); // Slightly brighter gray
-                      map.setPaintProperty(layer.id, 'line-opacity', 1.0); // Fully opaque
-                      map.setPaintProperty(layer.id, 'line-width', 
+                      // Determine if this is a country boundary/border
+                      const isCountryBoundary = layer.id.includes('boundary_country') ||
+                                               layer.id.includes('admin') ||
+                                               layer.id.includes('border');
+
+                      // Country boundaries: use header border color (#F0A741 with 20% opacity = rgba(240, 167, 65, 0.2))
+                      if (isCountryBoundary) {
+                        map.setPaintProperty(layer.id, 'line-color', '#F0A741');
+                        map.setPaintProperty(layer.id, 'line-opacity', 0.2);
+                      } else {
+                        // Other lines: darker gray
+                        map.setPaintProperty(layer.id, 'line-color', '#1a1a1a');
+                        map.setPaintProperty(layer.id, 'line-opacity', 1.0);
+                      }
+                      map.setPaintProperty(layer.id, 'line-width',
                         layer.paint?.['line-width'] ? ['*', ['get', 'line-width'], 0.85] : 1
                       );
                     } catch (e) {
@@ -2183,11 +2314,18 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                     }
                   }
                   
-                  // Make all fill layers fully opaque
-                  if (layer.type === 'fill') {
+                  // Make land fill layers black
+                  if (layer.type === 'fill' && !(
+                    layer.id.toLowerCase().includes('water') || 
+                    layer.id.toLowerCase().includes('ocean') ||
+                    layer.id.toLowerCase().includes('sea') ||
+                    layer.id.toLowerCase().includes('marine')
+                  )) {
                     try {
+                      // Set land to black
+                      map.setPaintProperty(layer.id, 'fill-color', '#000000');
                       map.setPaintProperty(layer.id, 'fill-opacity', 1.0); // Fully opaque
-              } catch (e) {
+                    } catch (e) {
                       // Some layers might not support these properties
                     }
                   }
@@ -2200,11 +2338,11 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                       // Some layers might not support these properties
                     }
                   }
-                });
+                  });
+                }
+              } catch (e) {
+                console.debug('Could not apply water/line colors:', e);
               }
-            } catch (e) {
-              console.debug('Could not apply billboard effect to labels or adjust water/line colors:', e);
-            }
             
             // Configure tile caching more aggressively
             try {
@@ -2371,8 +2509,8 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                 'line-color': [
                   'case',
                   ['==', ['get', 'connectorId'], activeScanConnector || ''],
-                  '#F0A741',
-                  'rgba(147, 51, 234, 0.7)', // Purple/violet color for scan connectors
+                  '#FFFFFF', // White when active/selected
+                  'rgba(240, 167, 65, 0.7)', // Gold color for scan connectors
                 ],
                 'line-width': [
                   'interpolate',
@@ -2464,7 +2602,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                   'line-join': 'round',
                 }}
                 paint={{
-                  'line-color': 'rgba(147, 51, 234, 0.8)', // Purple/violet to match connection lines
+                  'line-color': 'rgba(240, 167, 65, 0.8)', // Gold color to match connection lines
                   'line-width': [
                     'interpolate',
                     ['linear'],
@@ -2526,11 +2664,22 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
             anchor="bottom"
           >
             <div className="relative">
-              <MapPin 
-                className="w-8 h-8 text-foreground/40 drop-shadow-lg" 
-                fill="currentColor"
+              {/* Pulsing ring effect */}
+              <div
+                className="absolute inset-0 w-8 h-8 rounded-full animate-ping"
+                style={{
+                  backgroundColor: 'rgba(240, 167, 65, 0.3)',
+                  animationDuration: '2s',
+                }}
+              />
+              <MapPin
+                className="w-8 h-8 drop-shadow-lg"
+                fill="#F0A741"
+                stroke="#000"
+                strokeWidth={1}
                 style={{
                   filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5))',
+                  color: '#F0A741',
                 }}
               />
             </div>

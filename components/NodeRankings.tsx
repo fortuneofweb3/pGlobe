@@ -6,6 +6,7 @@ import { formatStorageBytes } from '@/lib/utils/storage';
 import { getLatestVersion } from '@/lib/utils/network-health';
 import NodeStatusBadge from './NodeStatusBadge';
 import { calculatePacketRates, formatPacketRate } from '@/lib/utils/packet-rates';
+import AnimatedNumber from './AnimatedNumber';
 
 interface NodeRankingsProps {
   nodes: PNode[];
@@ -284,12 +285,12 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
               {/* Value */}
               <span className="text-xs font-semibold text-[#3F8277] whitespace-nowrap">
                 {activeTab === 'uptime'
-                  ? `${(node.uptimePercent || 0).toFixed(1)}%`
+                  ? <AnimatedNumber value={node.uptimePercent || 0} decimals={1} suffix="%" />
                   : activeTab === 'storage'
                   ? formatStorageBytes(node.storageCapacity || 0)
                   : activeTab === 'credits'
                   ? (node.credits !== undefined && node.credits !== null)
-                    ? node.credits.toLocaleString()
+                    ? <AnimatedNumber value={node.credits} />
                     : 'N/A'
                   : (() => {
                       const nodeWithRate = node as NodeWithPacketRate;

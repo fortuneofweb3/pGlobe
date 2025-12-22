@@ -149,9 +149,13 @@ interface MetricRowProps {
   value: string | number;
   tooltip?: string;
   valueColor?: string;
+  animateValue?: boolean;
+  valueFormatter?: (value: number) => string;
 }
 
-export function MetricRow({ label, value, tooltip, valueColor = 'text-foreground' }: MetricRowProps) {
+export function MetricRow({ label, value, tooltip, valueColor = 'text-foreground', animateValue = false, valueFormatter }: MetricRowProps) {
+  const AnimatedNumber = animateValue && typeof value === 'number' ? require('@/components/AnimatedNumber').default : null;
+  
   return (
     <div className="flex items-center justify-between">
       <span className="text-sm text-foreground/70 flex items-center gap-1.5">
@@ -159,7 +163,11 @@ export function MetricRow({ label, value, tooltip, valueColor = 'text-foreground
         {tooltip && <InfoTooltip content={tooltip} />}
       </span>
       <span className={`text-sm font-semibold ${valueColor}`}>
-        {value}
+        {animateValue && typeof value === 'number' && AnimatedNumber ? (
+          <AnimatedNumber value={value} formatter={valueFormatter} />
+        ) : (
+          value
+        )}
       </span>
     </div>
   );

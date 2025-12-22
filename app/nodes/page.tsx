@@ -9,6 +9,7 @@ import { useNodes } from '@/lib/context/NodesContext';
 import { RefreshCw, Server, TrendingUp, Search, Filter, X, Activity } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 import { TableSkeleton, CardSkeleton } from '@/components/Skeletons';
+import AnimatedNumber from '@/components/AnimatedNumber';
 
 function NodesPageContent() {
   const router = useRouter();
@@ -324,7 +325,7 @@ function NodesPageContent() {
         <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
-            <div className="mb-4 sm:mb-6">
+            <div className="mb-4 sm:mb-6 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }}>
               <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
                 <Server className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
                 Network Nodes
@@ -335,13 +336,15 @@ function NodesPageContent() {
             </div>
 
             {/* Summary Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6 stagger-children">
               <div className="card-stat">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Nodes</span>
                   <Server className="w-4 h-4 text-foreground/40" />
                 </div>
-                <div className="text-2xl font-bold text-foreground">{nodes.length}</div>
+                <div className="text-2xl font-bold text-foreground">
+                  <AnimatedNumber value={nodes.length} />
+                </div>
               </div>
 
               <div className="card-stat">
@@ -350,7 +353,7 @@ function NodesPageContent() {
                   <TrendingUp className="w-4 h-4 text-foreground/40" />
                 </div>
                 <div className="text-2xl font-bold text-[#3F8277]">
-                  {statusCounts.online}
+                  <AnimatedNumber value={statusCounts.online} />
                 </div>
               </div>
 
@@ -360,7 +363,7 @@ function NodesPageContent() {
                   <Activity className="w-4 h-4 text-foreground/40" />
                 </div>
                 <div className="text-2xl font-bold text-[#F0A741]">
-                  {nodes.filter(n => n.status === 'syncing').length}
+                  <AnimatedNumber value={nodes.filter(n => n.status === 'syncing').length} />
                 </div>
               </div>
 
@@ -370,13 +373,13 @@ function NodesPageContent() {
                   <Server className="w-4 h-4 text-foreground/40" />
                 </div>
                 <div className="text-2xl font-bold text-gray-400">
-                  {statusCounts.offline}
+                  <AnimatedNumber value={statusCounts.offline} />
                 </div>
               </div>
             </div>
 
             {/* Search and Filters - Compact */}
-            <div className="mb-4 sm:mb-6">
+            <div className="mb-4 sm:mb-6 animate-slide-in-bottom" style={{ animationDelay: '0.15s', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex flex-row gap-2 sm:gap-3 items-center">
                 {/* Search Bar */}
                 <div className="relative flex-1">
@@ -509,7 +512,7 @@ function NodesPageContent() {
 
             {/* Node Table */}
             <div className="flex flex-col">
-              <div className="card overflow-hidden flex flex-col" style={{ padding: 0 }}>
+              <div className="card overflow-hidden flex flex-col animate-fade-in" style={{ padding: 0, animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
                 {error && (
                   <div className="p-4 bg-red-500/10 border-b border-red-500/20">
                     <p className="text-sm text-red-400">{error}</p>

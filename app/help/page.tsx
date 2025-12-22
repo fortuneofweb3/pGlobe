@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
-import { BookOpen, ChevronRight, X, FileText, Settings, BarChart3, MapPin, Search, HelpCircle, Bot } from 'lucide-react';
+import { BookOpen, ChevronRight, X, FileText, Settings, BarChart3, MapPin, Search, HelpCircle, Bot, Server } from 'lucide-react';
 
 export default function HelpPage() {
   const { nodes, loading, lastUpdate, availableNetworks, currentNetwork, refreshNodes } = useNodes();
@@ -150,7 +150,7 @@ export default function HelpPage() {
 function QuickStartGuide() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <div className="mb-8">
+      <div className="mb-8 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }}>
         <h1 className="text-3xl font-bold text-foreground mb-2">pGlobe Documentation</h1>
         <p className="text-muted-foreground">
           Real-time analytics and monitoring platform for the Xandeum pNode network
@@ -158,7 +158,7 @@ function QuickStartGuide() {
       </div>
 
       {/* What is pGlobe */}
-      <section className="mb-12">
+      <section className="mb-12 animate-slide-in-right" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
         <h2 className="text-2xl font-semibold text-foreground mb-4">What is pGlobe?</h2>
         <div className="prose prose-gray prose-invert max-w-none">
           <p className="text-foreground leading-relaxed mb-4">
@@ -186,7 +186,7 @@ function QuickStartGuide() {
       </section>
 
       {/* Getting Started */}
-      <section className="mb-12">
+      <section className="mb-12 animate-slide-in-left" style={{ animationDelay: '0.15s', opacity: 0, animationFillMode: 'forwards' }}>
         <h2 className="text-2xl font-semibold text-foreground mb-4">Getting Started</h2>
         <div className="prose prose-gray prose-invert max-w-none">
           <h3 className="text-xl font-semibold text-foreground mb-3">Navigation</h3>
@@ -282,7 +282,7 @@ function QuickStartGuide() {
       </section>
 
       {/* Using Filters and Search */}
-      <section className="mb-12">
+      <section className="mb-12 animate-scale-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
         <h2 className="text-2xl font-semibold text-foreground mb-4">Using Filters & Search</h2>
         <div className="prose prose-gray prose-invert max-w-none">
           <p className="text-foreground mb-4">
@@ -355,7 +355,7 @@ function QuickStartGuide() {
       </section>
 
       {/* Understanding Metrics */}
-      <section className="mb-12">
+      <section className="mb-12 animate-fade-in" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
         <h2 className="text-2xl font-semibold text-foreground mb-4">Understanding Metrics</h2>
         <div className="prose prose-gray prose-invert max-w-none">
           <h3 className="text-xl font-semibold text-foreground mb-3">Node Status</h3>
@@ -467,7 +467,7 @@ function QuickStartGuide() {
       </section>
 
       {/* FAQ */}
-      <section className="mb-12">
+      <section className="mb-12 animate-slide-in-bottom" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
         <h2 className="text-2xl font-semibold text-foreground mb-4">Frequently Asked Questions</h2>
         <div className="space-y-4">
           <div className="border border-border rounded-lg p-4">
@@ -505,7 +505,7 @@ function QuickStartGuide() {
       </section>
 
       {/* Regions & Geographic Browsing */}
-      <section className="mb-12">
+      <section className="mb-12 animate-slide-in-right" style={{ animationDelay: '0.35s', opacity: 0, animationFillMode: 'forwards' }}>
         <h2 className="text-2xl font-semibold text-foreground mb-4">Regions & Geographic Browsing</h2>
         <div className="prose prose-gray prose-invert max-w-none">
           <p className="text-foreground mb-4">
@@ -539,7 +539,7 @@ function QuickStartGuide() {
       </section>
 
       {/* Scan Feature */}
-      <section className="mb-12">
+      <section className="mb-12 animate-slide-in-left" style={{ animationDelay: '0.4s', opacity: 0, animationFillMode: 'forwards' }}>
         <h2 className="text-2xl font-semibold text-foreground mb-4">Using the Scan Feature</h2>
         <div className="prose prose-gray prose-invert max-w-none">
           <p className="text-foreground mb-4">

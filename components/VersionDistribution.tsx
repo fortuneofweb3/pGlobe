@@ -3,6 +3,7 @@
 import { PNode } from '@/lib/types/pnode';
 import { useMemo, useEffect, useRef } from 'react';
 import { Package } from 'lucide-react';
+import AnimatedNumber from './AnimatedNumber';
 
 interface VersionDistributionProps {
   nodes: PNode[];
@@ -98,7 +99,7 @@ export default function VersionDistribution({ nodes }: VersionDistributionProps)
           <h2 className="text-base font-semibold text-foreground">Version Distribution</h2>
         </div>
         <span className="text-xs text-muted-foreground">
-          {versionStats.versions.length} {versionStats.versions.length === 1 ? 'version' : 'versions'}
+          <AnimatedNumber value={versionStats.versions.length} /> {versionStats.versions.length === 1 ? 'version' : 'versions'}
         </span>
       </div>
 
@@ -123,7 +124,7 @@ export default function VersionDistribution({ nodes }: VersionDistributionProps)
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">
-                    {count} ({percentage.toFixed(0)}%)
+                    <AnimatedNumber value={count} /> (<AnimatedNumber value={percentage} decimals={0} suffix="%" />)
                   </span>
                 </div>
               </div>

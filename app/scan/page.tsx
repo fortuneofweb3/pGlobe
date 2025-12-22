@@ -17,9 +17,9 @@ const MapLibreGlobe = dynamic(() => import('@/components/MapLibreGlobe'), {
 });
 import Header from '@/components/Header';
 import { Search, MapPin, Navigation2, Loader2, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { enrichNodesWithGeo } from '@/lib/utils/geo';
 import { useNodes } from '@/lib/context/NodesContext';
-import NodeDetailsModal from '@/components/NodeDetailsModal';
 
 /**
  * Calculate distance between two coordinates using Haversine formula
@@ -55,8 +55,7 @@ export default function ScanPage() {
   const [scanLocation, setScanLocation] = useState<{ lat: number; lon: number; city?: string; country?: string } | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const [closestNodes, setClosestNodes] = useState<NodeWithDistance[]>([]);
-  const [selectedNode, setSelectedNode] = useState<PNode | null>(null);
-  const [isNodeModalOpen, setIsNodeModalOpen] = useState(false);
+  const router = useRouter();
   const [navigateToNodeId, setNavigateToNodeId] = useState<string | null>(null);
 
   // Geo enrichment for map display (runs when nodes update from context)
@@ -259,7 +258,7 @@ export default function ScanPage() {
         <div className="flex-1 flex overflow-hidden relative">
           {/* Left Sidebar - Scan Controls */}
           <aside className="hidden md:block w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-y-auto">
-            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+            <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-base sm:text-lg font-semibold text-foreground flex items-center gap-2">
@@ -273,23 +272,23 @@ export default function ScanPage() {
               </div>
 
               {/* IP Input */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-foreground/70 mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-foreground/70 mb-1.5">
                     IP Address
                   </label>
                   <div className="flex gap-2">
                     <input
                       type="text"
                       placeholder="e.g., 8.8.8.8"
-                      className="flex-1 px-3 py-2 text-base bg-muted/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#F0A741]/50"
+                      className="flex-1 px-3 py-2 text-sm bg-muted/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#F0A741]/50"
                       disabled
                     />
                     <button
                       disabled
-                      className="px-3 sm:px-4 py-2 bg-[#F0A741]/20 text-[#F0A741] rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 sm:gap-2 min-w-[70px] sm:min-w-[80px] text-xs sm:text-sm"
+                      className="px-3 py-2 bg-[#F0A741]/20 text-[#F0A741] rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 min-w-[70px] text-xs sm:text-sm"
                     >
-                      <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <Search className="w-3.5 h-3.5" />
                       <span className="hidden sm:inline">Scan</span>
                     </button>
                   </div>
@@ -299,17 +298,17 @@ export default function ScanPage() {
                   disabled
                   className="w-full px-3 py-2 text-xs sm:text-sm bg-muted/50 text-foreground rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  <Navigation2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <Navigation2 className="w-3.5 h-3.5" />
                   Use My IP Address
                 </button>
               </div>
 
               {/* Placeholder for scan location info */}
-              <div className="p-4 bg-muted/30 rounded-lg border border-border animate-pulse">
-                <div className="flex items-start gap-2 mb-2">
+              <div className="p-3 bg-muted/30 rounded-lg border border-border animate-pulse">
+                <div className="flex items-start gap-2">
                   <MapPin className="w-4 h-4 text-foreground/40 mt-0.5" />
                   <div className="flex-1">
-                    <div className="h-4 w-32 bg-muted/40 rounded mb-2" />
+                    <div className="h-4 w-32 bg-muted/40 rounded mb-1.5" />
                     <div className="h-3 w-48 bg-muted/30 rounded" />
                   </div>
                 </div>
@@ -317,23 +316,23 @@ export default function ScanPage() {
 
               {/* Placeholder for results */}
               <div>
-                <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-3">
+                <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-2">
                   Closest Nodes
                 </h3>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {[1, 2, 3, 4, 5].map((i) => (
                     <div
                       key={i}
-                      className="p-3 bg-muted/30 rounded-lg border border-border animate-pulse"
+                      className="p-2 bg-muted/30 rounded-lg border border-border animate-pulse"
                     >
                       <div className="flex items-start justify-between mb-1">
                         <div className="h-3 w-32 bg-muted/40 rounded flex-1" />
                         <div className="h-3 w-12 bg-muted/40 rounded ml-2" />
                       </div>
-                      <div className="h-3 w-24 bg-muted/30 rounded mb-2" />
+                      <div className="h-3 w-24 bg-muted/30 rounded mb-1.5" />
                       <div className="flex items-center gap-2">
-                        <div className="h-5 w-16 bg-muted/30 rounded" />
-                        <div className="h-5 w-12 bg-muted/30 rounded" />
+                        <div className="h-4 w-14 bg-muted/30 rounded" />
+                        <div className="h-4 w-10 bg-muted/30 rounded" />
                       </div>
                     </div>
                   ))}
@@ -403,9 +402,9 @@ export default function ScanPage() {
         )}
 
         {/* Left Sidebar - Scan Controls */}
-        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative w-80 flex-shrink-0 bg-card/90 backdrop-blur-md border-r border-[#F0A741]/20 overflow-y-auto z-50 md:z-40 h-full transition-transform duration-300`}>
-          <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-            <div>
+        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-y-auto z-50 md:z-40 h-full transition-transform duration-300 ease-in-out`}>
+          <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+            <div className="animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-base sm:text-lg font-semibold text-foreground flex items-center gap-2">
                   <Search className="w-4 h-4 sm:w-5 sm:h-5 text-foreground/40" />
@@ -425,9 +424,9 @@ export default function ScanPage() {
             </div>
 
             {/* IP Input */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-foreground/70 mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-foreground/70 mb-1.5">
                   IP Address
                 </label>
                 <div className="flex gap-2">
@@ -441,19 +440,19 @@ export default function ScanPage() {
                       }
                     }}
                     placeholder="e.g., 8.8.8.8"
-                    className="flex-1 px-3 py-2 text-base bg-muted/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#F0A741]/50"
+                    className="flex-1 px-3 py-2 text-sm bg-muted/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#F0A741]/50"
                     disabled={scanning}
                   />
                   <button
                     onClick={handleScan}
                     disabled={scanning}
-                    className="px-3 sm:px-4 py-2 bg-[#F0A741]/20 hover:bg-[#F0A741]/30 text-[#F0A741] rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 sm:gap-2 min-w-[70px] sm:min-w-[80px] text-xs sm:text-sm"
+                    className="px-3 py-2 bg-[#F0A741]/20 hover:bg-[#F0A741]/30 text-[#F0A741] rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 min-w-[70px] text-xs sm:text-sm"
                   >
                     {scanning ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <>
-                        <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        <Search className="w-3.5 h-3.5" />
                         <span className="hidden sm:inline">Scan</span>
                       </>
                     )}
@@ -466,29 +465,29 @@ export default function ScanPage() {
                 disabled={scanning}
                 className="w-full px-3 py-2 text-xs sm:text-sm bg-muted/50 hover:bg-muted/70 text-foreground rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                <Navigation2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <Navigation2 className="w-3.5 h-3.5" />
                 Use My IP Address
               </button>
             </div>
 
             {/* Error Message */}
             {scanError && (
-              <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-sm text-red-400">
+              <div className="p-2 bg-red-500/20 border border-red-500/50 rounded-lg text-xs text-red-400">
                 {scanError}
               </div>
             )}
 
             {/* Scan Location Info */}
             {scanLocation && (
-              <div className="p-4 bg-muted/30 rounded-lg border border-border">
-                <div className="flex items-start gap-2 mb-2">
-                  <MapPin className="w-4 h-4 text-foreground/40 mt-0.5" />
+              <div className="p-3 bg-muted/30 rounded-lg border border-border">
+                <div className="flex items-start gap-2">
+                  <MapPin className="w-4 h-4 text-[#F0A741] mt-0.5" />
                   <div className="flex-1">
                     <div className="text-sm font-medium text-foreground">
                       {scanLocation.city || 'Unknown City'}
                       {scanLocation.country && `, ${scanLocation.country}`}
                     </div>
-                    <div className="text-xs text-muted-foreground mt-1">
+                    <div className="text-xs text-muted-foreground mt-0.5">
                       {scanLocation.lat.toFixed(4)}, {scanLocation.lon.toFixed(4)}
                     </div>
                   </div>
@@ -499,16 +498,16 @@ export default function ScanPage() {
             {/* Results - Closest Nodes */}
             {closestNodes.length > 0 && (
               <div>
-                <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-3">
+                <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-2">
                   {scanIp === userIp ? 'Nodes Near Me' : 'Closest Nodes'} ({closestNodes.length})
                 </h3>
 
                 {/* Results list - scrollable for top 20 */}
-                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
+                <div className="space-y-1.5 max-h-[calc(100vh-450px)] overflow-y-auto pr-1 scrollbar-thin">
                   {closestNodes.map((node, index) => (
                     <div
                       key={node.id}
-                      className="p-3 bg-muted/30 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer"
+                      className="p-2 bg-muted/30 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer"
                       onClick={() => {
                         // Navigate globe to this node
                         setNavigateToNodeId(node.id);
@@ -557,7 +556,7 @@ export default function ScanPage() {
             )}
 
             {!scanning && !scanLocation && !scanError && (
-              <div className="text-center py-8 text-sm text-muted-foreground">
+              <div className="text-center py-6 text-xs text-muted-foreground">
                 Enter an IP address and click Scan to find the closest nodes
               </div>
             )}
@@ -609,24 +608,17 @@ export default function ScanPage() {
                 setTimeout(() => setNavigateToNodeId(null), 100);
               }}
               onPopupClick={(node) => {
-                // Open node details modal when popup is clicked
-                setSelectedNode(node);
-                setIsNodeModalOpen(true);
+                // Navigate to node details page when popup is clicked
+                const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';
+                if (nodeId) {
+                  router.push(`/nodes/${encodeURIComponent(nodeId)}`);
+                }
               }}
             />
           )}
         </main>
       </div>
 
-      {/* Node Details Modal */}
-      <NodeDetailsModal
-        node={selectedNode}
-        isOpen={isNodeModalOpen}
-        onClose={() => {
-          setIsNodeModalOpen(false);
-          setSelectedNode(null);
-        }}
-      />
     </div>
   );
 }

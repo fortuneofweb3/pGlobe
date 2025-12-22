@@ -103,6 +103,8 @@ export default function NetworkHealthTrendChart({
     // Reset animation flag when data changes
     hasAnimatedRef.current = false;
 
+    let cleanupTimer: NodeJS.Timeout | null = null;
+
     // Wait for paths to render, then animate
     const timer = setTimeout(() => {
       if (!svgRef.current || hasAnimatedRef.current) return;
@@ -121,7 +123,7 @@ export default function NetworkHealthTrendChart({
 
             // Trigger animation on next frame
             requestAnimationFrame(() => {
-              svgPath.style.transition = 'stroke-dashoffset 1.5s ease-out';
+              svgPath.style.transition = 'stroke-dashoffset 1.2s ease-out';
               svgPath.style.strokeDashoffset = '0';
             });
           }
@@ -132,20 +134,21 @@ export default function NetworkHealthTrendChart({
 
       hasAnimatedRef.current = true;
 
-      // Clean up after animation
-      const cleanupTimer = setTimeout(() => {
+      // Clean up after animation completes
+      cleanupTimer = setTimeout(() => {
         paths.forEach((pathEl: Element) => {
           const svgPath = pathEl as SVGPathElement;
           svgPath.style.strokeDasharray = 'none';
           svgPath.style.strokeDashoffset = '0';
           svgPath.style.transition = '';
         });
-      }, 1600);
-
-      return () => clearTimeout(cleanupTimer);
+      }, 1500);
     }, 100);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (cleanupTimer) clearTimeout(cleanupTimer);
+    };
   }, [chartData]);
 
   if (chartData.length === 0) {

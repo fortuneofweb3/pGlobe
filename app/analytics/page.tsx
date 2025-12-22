@@ -12,10 +12,11 @@ import GeographicMetrics from '@/components/analytics/GeographicMetrics';
 import NodeComparison from '@/components/analytics/NodeComparison';
 import Header from '@/components/Header';
 import WorldMapHeatmap from '@/components/WorldMapHeatmap';
-import NodeDetailsModal from '@/components/NodeDetailsModal';
 import { useNodes } from '@/lib/context/NodesContext';
 import { formatStorageBytes } from '@/lib/utils/storage';
 import { Activity, HardDrive, TrendingUp, Server, BarChart3, Download, FileJson, FileSpreadsheet, ArrowDown, MemoryStick, Cpu, Award, Network } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import AnimatedNumber from '@/components/AnimatedNumber';
 
 interface HistoricalDataPoint {
   timestamp: number;
@@ -33,9 +34,8 @@ export default function AnalyticsPage() {
   const { nodes, loading, error, lastUpdate, selectedNetwork, setSelectedNetwork, availableNetworks, currentNetwork, refreshNodes } = useNodes();
   
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
-  const [selectedNode, setSelectedNode] = useState<PNode | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isComparisonOpen, setIsComparisonOpen] = useState(false);
+  const router = useRouter();
 
   // Fetch historical data for charts (deferred to avoid blocking initial render)
   useEffect(() => {
@@ -269,7 +269,7 @@ export default function AnalyticsPage() {
                   <button
                     onClick={exportToCSV}
                     disabled={nodes.length === 0}
-                    className="px-3 py-2 text-sm bg-muted/40 hover:bg-muted/60 text-foreground rounded-lg border border-border/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-3 py-2 text-sm bg-muted/40 hover:bg-muted/60 text-foreground rounded-lg border border-border/60 transition-all duration-200 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     title="Export as CSV"
                   >
                     <FileSpreadsheet className="w-4 h-4" />
@@ -278,7 +278,7 @@ export default function AnalyticsPage() {
                   <button
                     onClick={exportToJSON}
                     disabled={nodes.length === 0}
-                    className="px-3 py-2 text-sm bg-muted/40 hover:bg-muted/60 text-foreground rounded-lg border border-border/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-3 py-2 text-sm bg-muted/40 hover:bg-muted/60 text-foreground rounded-lg border border-border/60 transition-all duration-200 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     title="Export as JSON"
                   >
                     <FileJson className="w-4 h-4" />
@@ -297,7 +297,7 @@ export default function AnalyticsPage() {
               onClick={() => {
                 setIsComparisonOpen(!isComparisonOpen);
               }}
-              className="w-full px-4 py-3 text-left hover:bg-muted/10 transition-colors"
+              className="w-full px-4 py-3 text-left hover:bg-muted/10 transition-all duration-300 hover:shadow-md"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -351,101 +351,127 @@ export default function AnalyticsPage() {
           )}
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div className="card-stat">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 stagger-children">
+            <div className="card-stat card-hover group">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Nodes</span>
-                <Server className="w-4 h-4 text-foreground/40" />
+                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide transition-colors duration-300 group-hover:text-foreground">Total Nodes</span>
+                <Server className="w-4 h-4 text-foreground/40 transition-all duration-300 group-hover:scale-110 group-hover:text-[#F0A741]" />
               </div>
-              <div className="text-xl sm:text-2xl font-bold text-foreground">{stats.totalNodes}</div>
-              <p className="text-xs text-muted-foreground mt-1">Across all discovered networks</p>
+              <div className="text-xl sm:text-2xl font-bold text-foreground transition-all duration-300 group-hover:scale-105">
+                <AnimatedNumber value={stats.totalNodes} />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 transition-colors duration-300 group-hover:text-foreground/70">Across all discovered networks</p>
             </div>
 
-            <div className="card-stat">
+            <div className="card-stat card-hover group">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Online</span>
-                <Activity className="w-4 h-4 text-foreground/40" />
+                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide transition-colors duration-300 group-hover:text-foreground">Online</span>
+                <Activity className="w-4 h-4 text-foreground/40 transition-all duration-300 group-hover:scale-110 group-hover:text-[#3F8277]" />
               </div>
-              <div className="text-xl sm:text-2xl font-bold text-foreground">{stats.onlineNodes}</div>
-              <div className="text-xs text-foreground/50 mt-1">
-                {stats.totalNodes > 0 ? Math.round((stats.onlineNodes / stats.totalNodes) * 100) : 0}% of network
+              <div className="text-xl sm:text-2xl font-bold text-foreground transition-all duration-300 group-hover:scale-105">
+                <AnimatedNumber value={stats.onlineNodes} />
+              </div>
+              <div className="text-xs text-foreground/50 mt-1 transition-colors duration-300 group-hover:text-foreground/70">
+                {stats.totalNodes > 0 ? (
+                  <AnimatedNumber value={Math.round((stats.onlineNodes / stats.totalNodes) * 100)} suffix="%" />
+                ) : (
+                  '0%'
+                )} of network
               </div>
             </div>
 
-            <div className="card-stat">
+            <div className="card-stat card-hover group">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Storage</span>
-                <HardDrive className="w-4 h-4 text-foreground/40" />
+                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide transition-colors duration-300 group-hover:text-foreground">Storage</span>
+                <HardDrive className="w-4 h-4 text-foreground/40 transition-all duration-300 group-hover:scale-110 group-hover:text-[#F0A741]" />
               </div>
-              <div className="text-xl sm:text-2xl font-bold text-foreground">
+              <div className="text-xl sm:text-2xl font-bold text-foreground transition-all duration-300 group-hover:scale-105">
                 {stats.totalStorageCapacity > 0 ? formatStorageBytes(stats.totalStorageCapacity) : 'N/A'}
               </div>
             </div>
 
-            <div className="card-stat">
+            <div className="card-stat card-hover group">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">RAM</span>
-                <MemoryStick className="w-4 h-4 text-foreground/40" />
+                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide transition-colors duration-300 group-hover:text-foreground">RAM</span>
+                <MemoryStick className="w-4 h-4 text-foreground/40 transition-all duration-300 group-hover:scale-110 group-hover:text-[#F0A741]" />
               </div>
-              <div className="text-xl sm:text-2xl font-bold text-foreground">
+              <div className="text-xl sm:text-2xl font-bold text-foreground transition-all duration-300 group-hover:scale-105">
                 {stats.totalRAM > 0 ? formatStorageBytes(stats.totalRAM) : 'N/A'}
               </div>
-              <div className="text-xs text-foreground/50 mt-1">
-                {stats.avgRAMUsage > 0 ? `${stats.avgRAMUsage.toFixed(1)}% avg usage` : 'N/A'}
+              <div className="text-xs text-foreground/50 mt-1 transition-colors duration-300 group-hover:text-foreground/70">
+                {stats.avgRAMUsage > 0 ? (
+                  <>
+                    <AnimatedNumber value={stats.avgRAMUsage} decimals={1} suffix="%" /> avg usage
+                  </>
+                ) : (
+                  'N/A'
+                )}
               </div>
             </div>
 
-            <div className="card-stat">
+            <div className="card-stat card-hover group">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">CPU</span>
-                <Cpu className="w-4 h-4 text-foreground/40" />
+                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide transition-colors duration-300 group-hover:text-foreground">CPU</span>
+                <Cpu className="w-4 h-4 text-foreground/40 transition-all duration-300 group-hover:scale-110 group-hover:text-[#F0A741]" />
               </div>
-              <div className="text-xl sm:text-2xl font-bold text-foreground">
-                {stats.avgCPU > 0 ? `${stats.avgCPU.toFixed(1)}%` : 'N/A'}
+              <div className="text-xl sm:text-2xl font-bold text-foreground transition-all duration-300 group-hover:scale-105">
+                {stats.avgCPU > 0 ? (
+                  <AnimatedNumber value={stats.avgCPU} decimals={1} suffix="%" />
+                ) : (
+                  'N/A'
+                )}
               </div>
-              <div className="text-xs text-foreground/50 mt-1">
-                {stats.nodesWithCPU} nodes reporting
+              <div className="text-xs text-foreground/50 mt-1 transition-colors duration-300 group-hover:text-foreground/70">
+                <AnimatedNumber value={stats.nodesWithCPU} /> nodes reporting
               </div>
             </div>
 
-            <div className="card-stat">
+            <div className="card-stat card-hover group">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Avg Uptime</span>
-                <TrendingUp className="w-4 h-4 text-foreground/40" />
+                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide transition-colors duration-300 group-hover:text-foreground">Avg Uptime</span>
+                <TrendingUp className="w-4 h-4 text-foreground/40 transition-all duration-300 group-hover:scale-110 group-hover:text-[#F0A741]" />
               </div>
-              <div className="text-xl sm:text-2xl font-bold text-foreground">
+              <div className="text-xl sm:text-2xl font-bold text-foreground transition-all duration-300 group-hover:scale-105">
                 {stats.avgUptime > 0 
                   ? `${Math.floor(stats.avgUptime / 86400)}d ${Math.floor((stats.avgUptime % 86400) / 3600)}h`
                   : 'N/A'}
               </div>
-              <div className="text-xs text-foreground/50 mt-1">
-                {nodes.filter(n => n.uptime && n.uptime > 0).length} nodes reporting
+              <div className="text-xs text-foreground/50 mt-1 transition-colors duration-300 group-hover:text-foreground/70">
+                <AnimatedNumber value={nodes.filter(n => n.uptime && n.uptime > 0).length} /> nodes reporting
               </div>
             </div>
 
-            <div className="card-stat">
+            <div className="card-stat card-hover group">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Credits</span>
-                <Award className="w-4 h-4 text-foreground/40" />
+                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide transition-colors duration-300 group-hover:text-foreground">Total Credits</span>
+                <Award className="w-4 h-4 text-foreground/40 transition-all duration-300 group-hover:scale-110 group-hover:text-[#F0A741]" />
               </div>
-              <div className="text-xl sm:text-2xl font-bold text-foreground">
-                {stats.totalCredits > 0 ? stats.totalCredits.toLocaleString() : 'N/A'}
+              <div className="text-xl sm:text-2xl font-bold text-foreground transition-all duration-300 group-hover:scale-105">
+                {stats.totalCredits > 0 ? (
+                  <AnimatedNumber value={stats.totalCredits} />
+                ) : (
+                  'N/A'
+                )}
               </div>
-              <div className="text-xs text-foreground/50 mt-1">
-                {stats.nodesWithCredits} nodes reporting
+              <div className="text-xs text-foreground/50 mt-1 transition-colors duration-300 group-hover:text-foreground/70">
+                <AnimatedNumber value={stats.nodesWithCredits} /> nodes reporting
               </div>
             </div>
 
-            <div className="card-stat">
+            <div className="card-stat card-hover group">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Active Streams</span>
-                <Network className="w-4 h-4 text-foreground/40" />
+                <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide transition-colors duration-300 group-hover:text-foreground">Active Streams</span>
+                <Network className="w-4 h-4 text-foreground/40 transition-all duration-300 group-hover:scale-110 group-hover:text-[#3F8277]" />
               </div>
-              <div className="text-xl sm:text-2xl font-bold text-foreground">
-                {stats.totalActiveStreams > 0 ? stats.totalActiveStreams.toLocaleString() : 'N/A'}
+              <div className="text-xl sm:text-2xl font-bold text-foreground transition-all duration-300 group-hover:scale-105">
+                {stats.totalActiveStreams > 0 ? (
+                  <AnimatedNumber value={stats.totalActiveStreams} />
+                ) : (
+                  'N/A'
+                )}
               </div>
-              <div className="text-xs text-foreground/50 mt-1">
-                {stats.nodesWithStreams} nodes active
+              <div className="text-xs text-foreground/50 mt-1 transition-colors duration-300 group-hover:text-foreground/70">
+                <AnimatedNumber value={stats.nodesWithStreams} /> nodes active
               </div>
             </div>
           </div>
@@ -456,11 +482,11 @@ export default function AnalyticsPage() {
           {/* Main Analytics Sections */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
             {/* Row 1: Health Score */}
-            <div className="card flex flex-col">
+            <div className="card flex flex-col animate-scale-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
               <NetworkHealthScoreDetailed nodes={nodes} />
             </div>
             {/* Row 1: Network Health Trend Chart */}
-            <div className="lg:col-span-2 card flex flex-col">
+            <div className="lg:col-span-2 card flex flex-col animate-slide-in-right" style={{ animationDelay: '0.15s', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp className="w-4 h-4 text-foreground/40" />
                 <h2 className="text-base font-semibold text-foreground">Network Health Trend</h2>
@@ -474,11 +500,11 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Row 2: Version Distribution */}
-            <div className="card flex flex-col">
+            <div className="card flex flex-col animate-fade-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
               <VersionDistribution nodes={nodes} />
             </div>
             {/* Row 2: Performance Metrics */}
-            <div className="lg:col-span-2 card flex flex-col">
+            <div className="lg:col-span-2 card flex flex-col animate-slide-in-bottom" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp className="w-4 h-4 text-foreground/40" />
                 <h2 className="text-base font-semibold text-foreground">Performance Metrics</h2>
@@ -490,7 +516,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Row 3: Top Nodes */}
-            <div className="card flex flex-col">
+            <div className="card flex flex-col animate-slide-in-left" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex items-center gap-2 mb-3">
                 <Server className="w-4 h-4 text-foreground/40" />
                 <h2 className="text-base font-semibold text-foreground">Top Nodes</h2>
@@ -499,14 +525,16 @@ export default function AnalyticsPage() {
                 <NodeRankings 
                   nodes={nodes} 
                   onNodeClick={(node) => {
-                    setSelectedNode(node);
-                    setIsModalOpen(true);
+                    const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';
+                    if (nodeId) {
+                      router.push(`/nodes/${encodeURIComponent(nodeId)}`);
+                    }
                   }}
                 />
               </div>
             </div>
             {/* Row 3: Geographic Metrics */}
-            <div className="lg:col-span-2 card flex flex-col">
+            <div className="lg:col-span-2 card flex flex-col animate-scale-in" style={{ animationDelay: '0.35s', opacity: 0, animationFillMode: 'forwards' }}>
               <GeographicMetrics nodes={nodes} />
             </div>
           </div>
@@ -515,15 +543,6 @@ export default function AnalyticsPage() {
         </div>
       </main>
 
-      {/* Node Details Modal */}
-      <NodeDetailsModal
-        node={selectedNode}
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedNode(null);
-        }}
-      />
     </div>
   );
 }

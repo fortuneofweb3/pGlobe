@@ -12,6 +12,7 @@ import { localPoint } from '@visx/event';
 import ParentSize from '@visx/responsive/lib/components/ParentSize';
 import { LegendItem, LegendLabel, LegendOrdinal } from '@visx/legend';
 import { Cpu, MemoryStick } from 'lucide-react';
+import AnimatedNumber from '@/components/AnimatedNumber';
 
 interface ResourceUtilizationProps {
   nodes: PNode[];
@@ -85,7 +86,7 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
     const nodesWithCPU = nodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null);
     if (nodesWithCPU.length === 0) return 0;
     const sum = nodesWithCPU.reduce((acc, n) => acc + (n.cpuPercent || 0), 0);
-    return (sum / nodesWithCPU.length).toFixed(1);
+    return sum / nodesWithCPU.length;
   }, [nodes]);
 
   const avgRAM = useMemo(() => {
@@ -95,7 +96,7 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
       const percent = n.ramTotal && n.ramUsed ? (n.ramUsed / n.ramTotal) * 100 : 0;
       return acc + percent;
     }, 0);
-    return (sum / nodesWithRAM.length).toFixed(1);
+    return sum / nodesWithRAM.length;
   }, [nodes]);
 
   if (data.length === 0 || data.every(d => d.cpu === 0 && d.ram === 0)) {
@@ -113,12 +114,16 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-1">
-            <Cpu className="w-4 h-4" />
-            <span>CPU: <span className="text-foreground font-semibold">{avgCPU}%</span></span>
+            <Cpu className="w-4 h-4 transition-transform duration-300 hover:scale-110" />
+            <span>CPU: <span className="text-foreground font-semibold">
+              <AnimatedNumber value={avgCPU} decimals={1} suffix="%" />
+            </span></span>
           </div>
           <div className="flex items-center gap-1">
-            <MemoryStick className="w-4 h-4" />
-            <span>RAM: <span className="text-foreground font-semibold">{avgRAM}%</span></span>
+            <MemoryStick className="w-4 h-4 transition-transform duration-300 hover:scale-110" />
+            <span>RAM: <span className="text-foreground font-semibold">
+              <AnimatedNumber value={avgRAM} decimals={1} suffix="%" />
+            </span></span>
           </div>
         </div>
       </div>

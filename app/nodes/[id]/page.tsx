@@ -202,6 +202,8 @@ function HistoricalLineChart({
     // Reset animation flag when data changes
     hasAnimatedRef.current = false;
 
+    let cleanupTimer: NodeJS.Timeout | null = null;
+
     // Wait for paths to render, then animate
     const timer = setTimeout(() => {
       if (!svgRef.current || hasAnimatedRef.current) return;
@@ -220,7 +222,7 @@ function HistoricalLineChart({
 
             // Trigger animation on next frame
             requestAnimationFrame(() => {
-              svgPath.style.transition = 'stroke-dashoffset 1.5s ease-out';
+              svgPath.style.transition = 'stroke-dashoffset 1.2s ease-out';
               svgPath.style.strokeDashoffset = '0';
             });
           }
@@ -231,20 +233,21 @@ function HistoricalLineChart({
 
       hasAnimatedRef.current = true;
 
-      // Clean up after animation
-      const cleanupTimer = setTimeout(() => {
+      // Clean up after animation completes
+      cleanupTimer = setTimeout(() => {
         paths.forEach((pathEl: Element) => {
           const svgPath = pathEl as SVGPathElement;
           svgPath.style.strokeDasharray = 'none';
           svgPath.style.strokeDashoffset = '0';
           svgPath.style.transition = '';
         });
-      }, 1600);
-
-      return () => clearTimeout(cleanupTimer);
+      }, 1500);
     }, 100);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (cleanupTimer) clearTimeout(cleanupTimer);
+    };
   }, [chartData, data]);
   
   const smartYFormatter = useMemo(() => {
@@ -1007,16 +1010,16 @@ function NodeDetailContent() {
       <Header activePage="nodes" nodeCount={allNodes.length} lastUpdate={lastUpdate} loading={loading} onRefresh={handleRefresh} />
 
       <main className="flex-1 overflow-hidden">
-        <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
+          <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
             {/* Back to Nodes */}
-            <Link href="/nodes" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6 transition-colors">
+            <Link href="/nodes" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6 transition-all duration-300 hover:translate-x-[-4px] hover:scale-105">
               <ArrowLeft className="w-4 h-4" />
               Back to Nodes
             </Link>
 
             {/* Page Header */}
-            <div className="mb-6">
+            <div className="mb-6 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }}>
               {/* Title and Status Row */}
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div className="flex-1 min-w-0">
@@ -1101,7 +1104,7 @@ function NodeDetailContent() {
 
         {/* 2D Map Section */}
         {node.locationData && node.locationData.lat && node.locationData.lon && (
-          <div className="card mb-6">
+          <div className="card mb-6 animate-slide-in-right" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-foreground/40" />
@@ -1322,7 +1325,7 @@ function NodeDetailContent() {
         {/* Performance Metrics Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
           {/* Resource Usage Card */}
-          <div className="card">
+          <div className="card animate-slide-in-left" style={{ animationDelay: '0.15s', opacity: 0, animationFillMode: 'forwards' }}>
             <div className="flex items-center gap-2 mb-4">
               <Activity className="w-4 h-4 text-[#F0A741]" />
               <h3 className="text-sm font-semibold text-foreground">Resource Usage</h3>
@@ -1359,7 +1362,7 @@ function NodeDetailContent() {
           </div>
 
           {/* Network Activity Card */}
-          <div className="card">
+          <div className="card animate-scale-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
             <div className="flex items-center gap-2 mb-4">
               <Network className="w-4 h-4 text-[#3F8277]" />
               <h3 className="text-sm font-semibold text-foreground">Network Activity</h3>
@@ -1391,7 +1394,7 @@ function NodeDetailContent() {
           </div>
 
           {/* Status & Credits Card */}
-          <div className="card">
+          <div className="card animate-slide-in-right" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="w-4 h-4 text-[#F0A741]" />
               <h3 className="text-sm font-semibold text-foreground">Status & Performance</h3>

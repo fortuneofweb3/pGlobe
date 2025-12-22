@@ -4,6 +4,7 @@ import { PNode } from '@/lib/types/pnode';
 import { useMemo } from 'react';
 import { Info, Activity } from 'lucide-react';
 import { calculateNetworkHealth, getLatestVersion } from '@/lib/utils/network-health';
+import AnimatedNumber from './AnimatedNumber';
 
 interface NetworkHealthScoreDetailedProps {
   nodes: PNode[];
@@ -35,7 +36,9 @@ export default function NetworkHealthScoreDetailed({ nodes }: NetworkHealthScore
       {/* Overall Score - Large Display */}
       <div className="text-center py-3 border-b border-border">
         <div className="text-4xl font-bold mb-1">
-          <span className={getScoreColor(healthMetrics.overall)}>{healthMetrics.overall}</span>
+          <span className={getScoreColor(healthMetrics.overall)}>
+            <AnimatedNumber value={healthMetrics.overall} decimals={0} />
+          </span>
         </div>
         <div className="text-xs text-muted-foreground">
           Overall Score
@@ -53,7 +56,7 @@ export default function NetworkHealthScoreDetailed({ nodes }: NetworkHealthScore
               </button>
             </div>
             <span className={`text-sm font-bold ${getScoreColor(healthMetrics.availability)}`}>
-              {healthMetrics.availability}%
+              <AnimatedNumber value={healthMetrics.availability} decimals={0} suffix="%" />
             </span>
           </div>
           <div className="w-full bg-muted/30 rounded-full h-2">
@@ -63,7 +66,7 @@ export default function NetworkHealthScoreDetailed({ nodes }: NetworkHealthScore
             />
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            {nodes.filter(n => n.status === 'online').length} / {nodes.length} nodes online
+            <AnimatedNumber value={nodes.filter(n => n.status === 'online').length} /> / <AnimatedNumber value={nodes.length} /> nodes online
           </div>
         </div>
 
@@ -76,7 +79,7 @@ export default function NetworkHealthScoreDetailed({ nodes }: NetworkHealthScore
               </button>
             </div>
             <span className={`text-sm font-bold ${getScoreColor(healthMetrics.versionHealth)}`}>
-              {healthMetrics.versionHealth}%
+              <AnimatedNumber value={healthMetrics.versionHealth} decimals={0} suffix="%" />
             </span>
           </div>
           <div className="w-full bg-muted/30 rounded-full h-2">
@@ -86,11 +89,11 @@ export default function NetworkHealthScoreDetailed({ nodes }: NetworkHealthScore
             />
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            {(() => {
+            <AnimatedNumber value={(() => {
               const versions = nodes.map(n => n.version).filter((v): v is string => !!v);
               const latest = getLatestVersion(versions);
               return latest ? nodes.filter(n => n.version === latest).length : 0;
-            })()} nodes on latest version
+            })()} /> nodes on latest version
           </div>
         </div>
 
@@ -103,7 +106,7 @@ export default function NetworkHealthScoreDetailed({ nodes }: NetworkHealthScore
               </button>
             </div>
             <span className={`text-sm font-bold ${getScoreColor(healthMetrics.distribution)}`}>
-              {healthMetrics.distribution}%
+              <AnimatedNumber value={healthMetrics.distribution} decimals={0} suffix="%" />
             </span>
           </div>
           <div className="w-full bg-muted/30 rounded-full h-2">
@@ -113,7 +116,7 @@ export default function NetworkHealthScoreDetailed({ nodes }: NetworkHealthScore
             />
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            {healthMetrics.countries} countries, {healthMetrics.cities} cities
+            <AnimatedNumber value={healthMetrics.countries} /> countries, <AnimatedNumber value={healthMetrics.cities} /> cities
           </div>
         </div>
       </div>

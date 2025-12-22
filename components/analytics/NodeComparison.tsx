@@ -7,6 +7,7 @@ import { formatStorageBytes } from '@/lib/utils/storage';
 import { getLatestVersion } from '@/lib/utils/network-health';
 import NodeStatusBadge from '../NodeStatusBadge';
 import { formatPacketRate } from '@/lib/utils/packet-rates';
+import AnimatedNumber from '../AnimatedNumber';
 
 interface NodeComparisonProps {
   nodes: PNode[];
@@ -206,7 +207,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
         {comparisonNodes.length < 3 && (
           <button
             onClick={addThirdSlot}
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-foreground/70 hover:text-foreground bg-muted/30 hover:bg-muted/50 border border-border/50 rounded-lg transition-all"
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-foreground/70 hover:text-foreground bg-muted/30 hover:bg-muted/50 border border-border/50 rounded-lg transition-all duration-300 hover:scale-105 active:scale-100 hover:shadow-md"
           >
             <span>+</span>
             <span>Add Third Node</span>
@@ -220,11 +221,11 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
           <div key={index} className="relative">
             {comparison.node ? (
               /* Selected Node Card */
-              <div className="group relative bg-card border border-[#F0A741]/30 rounded-xl p-3 hover:border-[#F0A741]/50 transition-all duration-200 overflow-hidden">
+              <div className="group relative bg-card border border-[#F0A741]/30 rounded-xl p-3 hover:border-[#F0A741]/50 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] overflow-hidden">
                 {/* Remove button */}
                 <button
                   onClick={() => clearNode(index)}
-                  className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 p-1.5 text-foreground/40 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-all duration-200"
+                  className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 p-1.5 text-foreground/40 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-all duration-300 hover:scale-110 active:scale-100"
                   title="Remove node"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -261,7 +262,9 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                     {comparison.node.credits !== undefined && comparison.node.credits !== null && (
                       <div className="flex items-center gap-1.5 text-xs">
                         <Activity className="w-3 h-3 text-[#3F8277] flex-shrink-0" />
-                        <span className="font-semibold text-foreground/80">{comparison.node.credits.toLocaleString()}</span>
+                        <span className="font-semibold text-foreground/80">
+                          <AnimatedNumber value={comparison.node.credits} />
+                        </span>
                         <span className="text-foreground/50">credits</span>
                       </div>
                     )}
@@ -269,7 +272,9 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                     {comparison.node.uptimePercent !== undefined && (
                       <div className="flex items-center gap-1.5 text-xs">
                         <Clock className="w-3 h-3 text-foreground/40 flex-shrink-0" />
-                        <span className="font-semibold text-foreground/80">{comparison.node.uptimePercent.toFixed(1)}%</span>
+                        <span className="font-semibold text-foreground/80">
+                          <AnimatedNumber value={comparison.node.uptimePercent} decimals={1} suffix="%" />
+                        </span>
                         <span className="text-foreground/50">uptime</span>
                       </div>
                     )}
@@ -288,7 +293,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                     onChange={(e) => updateSearch(index, e.target.value)}
                     onFocus={() => updateSearch(index, comparison.searchQuery)}
                     placeholder={`Search node ${index + 1}...`}
-                    className="w-full pl-10 pr-3 py-2.5 bg-muted/20 border border-border/50 rounded-lg text-base font-medium text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-[#F0A741]/40 focus:border-[#F0A741]/60 transition-all"
+                    className="w-full pl-10 pr-3 py-2.5 bg-muted/20 border border-border/50 rounded-lg text-base font-medium text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-[#F0A741]/40 focus:border-[#F0A741]/60 transition-all duration-300 hover:bg-muted/30"
                   />
                 </div>
                 
@@ -313,7 +318,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                           <button
                             key={node.id}
                             onClick={() => selectNode(index, node)}
-                            className="w-full px-4 py-3 text-left hover:bg-[#F0A741]/10 active:bg-[#F0A741]/15 transition-colors border-b border-border/10 last:border-b-0 group"
+                            className="w-full px-4 py-3 text-left hover:bg-[#F0A741]/10 active:bg-[#F0A741]/15 transition-all duration-300 hover:translate-x-1 border-b border-border/10 last:border-b-0 group"
                           >
                             <div className="flex items-start gap-3">
                               <div className="mt-0.5 w-1.5 h-1.5 rounded-full bg-[#F0A741]/40 group-hover:bg-[#F0A741] transition-colors flex-shrink-0"></div>
@@ -348,7 +353,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
             {comparisonNodes.length > 2 && (
               <button
                 onClick={() => removeSlot(index)}
-                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-full flex items-center justify-center text-red-400 hover:text-red-300 transition-all shadow-lg"
+                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-full flex items-center justify-center text-red-400 hover:text-red-300 transition-all duration-300 hover:scale-110 active:scale-100 shadow-lg"
                 title="Remove slot"
               >
                 <X className="w-3.5 h-3.5" />
@@ -399,7 +404,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
               </thead>
               <tbody className="divide-y divide-[#F0A741]/10">
                 {/* Status */}
-                <tr className="group hover:bg-[#F0A741]/5 transition-all duration-300 bg-gradient-to-r from-transparent via-muted/5 to-transparent">
+                <tr className="group hover:bg-[#F0A741]/5 transition-all duration-300 hover:shadow-md bg-gradient-to-r from-transparent via-muted/5 to-transparent">
                   <td className="px-6 py-5 sticky left-0 bg-black/60 backdrop-blur-md z-10 group-hover:bg-[#F0A741]/10">
                     <div className="flex items-center gap-3">
                       <div className="p-2 rounded-xl bg-gradient-to-br from-[#F0A741]/20 to-[#F0A741]/10 border border-[#F0A741]/20 group-hover:scale-110 transition-transform">
@@ -416,7 +421,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Version */}
-                <tr className="hover:bg-muted/20 transition-colors">
+                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="p-1.5 rounded-lg bg-foreground/5">
@@ -435,7 +440,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Uptime */}
-                <tr className="hover:bg-muted/20 transition-colors bg-gradient-to-r from-transparent via-muted/5 to-transparent">
+                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm bg-gradient-to-r from-transparent via-muted/5 to-transparent">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="p-1.5 rounded-lg bg-[#3F8277]/10">
@@ -453,7 +458,9 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                         <div className="flex items-center justify-center gap-2">
                           {uptime !== null ? (
                             <>
-                              <span className="text-base font-bold text-foreground">{uptime.toFixed(1)}%</span>
+                              <span className="text-base font-bold text-foreground">
+                                <AnimatedNumber value={uptime} decimals={1} suffix="%" />
+                              </span>
                               {icon === 'up' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
                               {icon === 'down' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
                               {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
@@ -468,7 +475,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Storage Capacity */}
-                <tr className="hover:bg-muted/20 transition-colors">
+                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="p-1.5 rounded-lg bg-foreground/5">
@@ -501,7 +508,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* CPU Usage */}
-                <tr className="hover:bg-muted/20 transition-colors bg-gradient-to-r from-transparent via-muted/5 to-transparent">
+                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm bg-gradient-to-r from-transparent via-muted/5 to-transparent">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="p-1.5 rounded-lg bg-[#F0A741]/10">
@@ -519,7 +526,9 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                         <div className="flex items-center justify-center gap-2">
                           {cpu !== null ? (
                             <>
-                              <span className="text-base font-bold text-foreground">{cpu.toFixed(1)}%</span>
+                              <span className="text-base font-bold text-foreground">
+                                <AnimatedNumber value={cpu} decimals={1} suffix="%" />
+                              </span>
                               {icon === 'up' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
                               {icon === 'down' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
                               {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
@@ -534,7 +543,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* RAM Usage */}
-                <tr className="hover:bg-muted/20 transition-colors">
+                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="p-1.5 rounded-lg bg-foreground/5">
@@ -552,7 +561,9 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                         <div className="flex items-center justify-center gap-2">
                           {ram !== null ? (
                             <>
-                              <span className="text-base font-bold text-foreground">{ram.toFixed(1)}%</span>
+                              <span className="text-base font-bold text-foreground">
+                                <AnimatedNumber value={ram} decimals={1} suffix="%" />
+                              </span>
                               {icon === 'up' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
                               {icon === 'down' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
                               {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
@@ -567,7 +578,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Latency */}
-                <tr className="hover:bg-muted/20 transition-colors bg-gradient-to-r from-transparent via-muted/5 to-transparent">
+                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm bg-gradient-to-r from-transparent via-muted/5 to-transparent">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="p-1.5 rounded-lg bg-foreground/5">
@@ -585,7 +596,9 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                         <div className="flex items-center justify-center gap-2">
                           {latency !== null ? (
                             <>
-                              <span className="text-base font-bold text-foreground">{Math.round(latency)}ms</span>
+                              <span className="text-base font-bold text-foreground">
+                                <AnimatedNumber value={Math.round(latency)} suffix="ms" />
+                              </span>
                               {icon === 'up' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
                               {icon === 'down' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
                               {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
@@ -600,7 +613,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Location */}
-                <tr className="hover:bg-muted/20 transition-colors">
+                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="p-1.5 rounded-lg bg-foreground/5">
@@ -621,7 +634,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Packets Received */}
-                <tr className="hover:bg-muted/20 transition-colors bg-gradient-to-r from-transparent via-muted/5 to-transparent">
+                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm bg-gradient-to-r from-transparent via-muted/5 to-transparent">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="p-1.5 rounded-lg bg-[#3F8277]/10">
@@ -639,7 +652,9 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                         <div className="flex items-center justify-center gap-2">
                           {packetsRx !== null ? (
                             <>
-                              <span className="text-base font-bold text-foreground">{packetsRx.toLocaleString()}</span>
+                              <span className="text-base font-bold text-foreground">
+                                <AnimatedNumber value={packetsRx} />
+                              </span>
                               {icon === 'up' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
                               {icon === 'down' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
                               {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
@@ -654,7 +669,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Packets Sent */}
-                <tr className="hover:bg-muted/20 transition-colors">
+                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="p-1.5 rounded-lg bg-[#3F8277]/10">
@@ -672,7 +687,9 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                         <div className="flex items-center justify-center gap-2">
                           {packetsTx !== null ? (
                             <>
-                              <span className="text-base font-bold text-foreground">{packetsTx.toLocaleString()}</span>
+                              <span className="text-base font-bold text-foreground">
+                                <AnimatedNumber value={packetsTx} />
+                              </span>
                               {icon === 'up' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
                               {icon === 'down' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
                               {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
@@ -687,7 +704,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Packets Rx Rate */}
-                <tr className="hover:bg-muted/20 transition-colors bg-gradient-to-r from-transparent via-muted/5 to-transparent">
+                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm bg-gradient-to-r from-transparent via-muted/5 to-transparent">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="p-1.5 rounded-lg bg-[#3F8277]/10">
@@ -720,7 +737,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Packets Tx Rate */}
-                <tr className="hover:bg-muted/20 transition-colors">
+                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="p-1.5 rounded-lg bg-[#3F8277]/10">
@@ -753,7 +770,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Credits */}
-                <tr className="hover:bg-muted/20 transition-colors bg-gradient-to-r from-transparent via-muted/5 to-transparent">
+                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm bg-gradient-to-r from-transparent via-muted/5 to-transparent">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="p-1.5 rounded-lg bg-[#3F8277]/10">
@@ -771,7 +788,9 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                         <div className="flex items-center justify-center gap-2">
                           {credits !== null ? (
                             <>
-                              <span className="text-base font-bold text-foreground">{credits.toLocaleString()}</span>
+                              <span className="text-base font-bold text-foreground">
+                                <AnimatedNumber value={credits} />
+                              </span>
                               {icon === 'up' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
                               {icon === 'down' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
                               {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
@@ -786,7 +805,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                 </tr>
 
                 {/* Registered */}
-                <tr className="hover:bg-muted/20 transition-colors bg-gradient-to-r from-transparent via-muted/5 to-transparent">
+                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm bg-gradient-to-r from-transparent via-muted/5 to-transparent">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="p-1.5 rounded-lg bg-foreground/5">

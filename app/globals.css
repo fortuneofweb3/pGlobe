@@ -372,3 +372,347 @@ body {
     transform: translateY(0);
   }
 }
+
+/* Professional Animation Keyframes */
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+
+/* Utility Classes for Animations */
+.animate-slide-in-left {
+  animation: slideInFromLeft 0.4s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slideInFromRight 0.4s ease-out;
+}
+
+.animate-slide-in-top {
+  animation: slideInFromTop 0.4s ease-out;
+}
+
+.animate-slide-in-bottom {
+  animation: slideInFromBottom 0.4s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Smooth Transitions */
+.transition-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.transition-bounce {
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Card Hover Effects */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateZ(0);
+  will-change: transform, box-shadow, border-color;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px) scale(1.02);
+  border-color: rgba(240, 167, 65, 0.3);
+}
+
+/* Button Hover Effects */
+.btn-hover {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-hover::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.btn-hover:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+.btn-hover:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(240, 167, 65, 0.2);
+}
+
+.btn-hover:active {
+  transform: translateY(0);
+}
+
+/* Stagger Animation Delays */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.3s; }
+.stagger-7 { animation-delay: 0.35s; }
+.stagger-8 { animation-delay: 0.4s; }
+
+/* Modal Animations */
+@keyframes modalBackdrop {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalContent {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-backdrop {
+  animation: modalBackdrop 0.2s ease-out;
+}
+
+.modal-content {
+  animation: modalContent 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Search Results Dropdown Animation */
+@keyframes dropdownSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.dropdown-animate {
+  animation: dropdownSlide 0.2s ease-out;
+}
+
+/* Page Entrance Animations */
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pageSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pageSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes chartFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes barGrow {
+  from {
+    transform: scaleY(0);
+    transform-origin: bottom;
+  }
+  to {
+    transform: scaleY(1);
+    transform-origin: bottom;
+  }
+}
+
+/* Page-level animation classes */
+.page-enter {
+  animation: pageFadeIn 0.4s ease-out;
+}
+
+.page-enter-slide {
+  animation: pageSlideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Varied chart animations */
+.chart-enter {
+  animation: chartFadeIn 0.5s ease-out;
+}
+
+.chart-enter:nth-of-type(1) {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.chart-enter:nth-of-type(2) {
+  animation: slideInFromRight 0.5s ease-out;
+}
+
+.chart-enter:nth-of-type(3) {
+  animation: scaleIn 0.5s ease-out;
+}
+
+.chart-enter:nth-of-type(4) {
+  animation: slideInFromBottom 0.5s ease-out;
+}
+
+.chart-enter:nth-of-type(5) {
+  animation: fadeIn 0.5s ease-out;
+  animation-delay: 0.1s;
+}
+
+.chart-enter:nth-of-type(6) {
+  animation: slideInFromLeft 0.5s ease-out;
+}
+
+/* Staggered children animations - varied and contextual */
+.stagger-children > * {
+  opacity: 0;
+}
+
+/* Varied animation styles for visual interest */
+.stagger-children > *:nth-child(1) { 
+  animation: fadeIn 0.4s ease-out 0.05s forwards; 
+}
+.stagger-children > *:nth-child(2) { 
+  animation: slideInFromLeft 0.4s ease-out 0.1s forwards; 
+}
+.stagger-children > *:nth-child(3) { 
+  animation: scaleIn 0.4s ease-out 0.15s forwards; 
+}
+.stagger-children > *:nth-child(4) { 
+  animation: slideInFromRight 0.4s ease-out 0.2s forwards; 
+}
+.stagger-children > *:nth-child(5) { 
+  animation: fadeIn 0.4s ease-out 0.25s forwards; 
+}
+.stagger-children > *:nth-child(6) { 
+  animation: scaleIn 0.4s ease-out 0.3s forwards; 
+}
+.stagger-children > *:nth-child(7) { 
+  animation: slideInFromBottom 0.4s ease-out 0.35s forwards; 
+}
+.stagger-children > *:nth-child(8) { 
+  animation: fadeIn 0.4s ease-out 0.4s forwards; 
+}
+.stagger-children > *:nth-child(9) { 
+  animation: slideInFromLeft 0.4s ease-out 0.45s forwards; 
+}
+.stagger-children > *:nth-child(10) { 
+  animation: scaleIn 0.4s ease-out 0.5s forwards; 
+}
+.stagger-children > *:nth-child(11) { 
+  animation: fadeIn 0.4s ease-out 0.55s forwards; 
+}
+.stagger-children > *:nth-child(12) { 
+  animation: slideInFromBottom 0.4s ease-out 0.6s forwards; 
+}

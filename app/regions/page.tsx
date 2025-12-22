@@ -8,6 +8,7 @@ import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
 import { getFlagForCountry } from '@/lib/utils/country-flags';
 import { RefreshCw, MapPin, Server, Users, TrendingUp, X } from 'lucide-react';
+import AnimatedNumber from '@/components/AnimatedNumber';
 
 const formatBytes = (bytes: number) => {
   if (bytes === 0) return '0 B';
@@ -141,7 +142,9 @@ function CountryCard({ country, flagUrl }: {
             </h3>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-bold text-foreground">{country.nodeCount}</div>
+            <div className="text-2xl font-bold text-foreground">
+              <AnimatedNumber value={country.nodeCount} />
+            </div>
             <div className="text-xs text-foreground/60">nodes</div>
           </div>
         </div>
@@ -150,15 +153,21 @@ function CountryCard({ country, flagUrl }: {
         <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="bg-[#3F8277]/25 border border-[#3F8277]/40 rounded-lg p-2">
             <div className="text-xs text-foreground/60 mb-1">Online</div>
-            <div className="text-lg font-bold text-[#3F8277]">{country.online}</div>
+            <div className="text-lg font-bold text-[#3F8277]">
+              <AnimatedNumber value={country.online} />
+            </div>
           </div>
           <div className="bg-[#F0A741]/25 border border-[#F0A741]/40 rounded-lg p-2">
             <div className="text-xs text-foreground/60 mb-1">Syncing</div>
-            <div className="text-lg font-bold text-[#F0A741]">{country.syncing}</div>
+            <div className="text-lg font-bold text-[#F0A741]">
+              <AnimatedNumber value={country.syncing} />
+            </div>
           </div>
           <div className="bg-gray-500/25 border border-gray-500/40 rounded-lg p-2">
             <div className="text-xs text-foreground/60 mb-1">Offline</div>
-            <div className="text-lg font-bold text-gray-400">{country.offline}</div>
+            <div className="text-lg font-bold text-gray-400">
+              <AnimatedNumber value={country.offline} />
+            </div>
           </div>
         </div>
 
@@ -176,7 +185,7 @@ function CountryCard({ country, flagUrl }: {
             <div className="flex justify-between items-center">
               <span className="text-foreground/60">Total Credits</span>
               <span className="font-mono font-semibold text-foreground">
-                {country.totalCredits.toLocaleString()}
+                <AnimatedNumber value={country.totalCredits} />
               </span>
             </div>
           )}
@@ -184,7 +193,7 @@ function CountryCard({ country, flagUrl }: {
             <div className="flex justify-between items-center">
               <span className="text-foreground/60">Avg Latency</span>
               <span className="font-mono font-semibold text-foreground">
-                {country.avgLatency.toFixed(0)}ms
+                <AnimatedNumber value={country.avgLatency} decimals={0} suffix="ms" />
               </span>
             </div>
           )}
@@ -388,7 +397,7 @@ function RegionsPageContent() {
         <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
-            <div className="mb-4 sm:mb-6">
+            <div className="mb-4 sm:mb-6 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
@@ -419,13 +428,15 @@ function RegionsPageContent() {
             </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 stagger-children">
           <div className="card-stat">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Nodes</span>
               <Server className="w-4 h-4 text-foreground/40" />
             </div>
-            <div className="text-2xl font-bold text-foreground">{nodes.length}</div>
+            <div className="text-2xl font-bold text-foreground">
+              <AnimatedNumber value={nodes.length} />
+            </div>
           </div>
 
           <div className="card-stat">
@@ -433,7 +444,9 @@ function RegionsPageContent() {
               <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Continents</span>
               <MapPin className="w-4 h-4 text-foreground/40" />
             </div>
-            <div className="text-2xl font-bold text-foreground">{stats.continents}</div>
+            <div className="text-2xl font-bold text-foreground">
+              <AnimatedNumber value={stats.continents} />
+            </div>
           </div>
 
           <div className="card-stat">
@@ -441,7 +454,9 @@ function RegionsPageContent() {
               <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Countries</span>
               <MapPin className="w-4 h-4 text-foreground/40" />
             </div>
-            <div className="text-2xl font-bold text-foreground">{stats.countries}</div>
+            <div className="text-2xl font-bold text-foreground">
+              <AnimatedNumber value={stats.countries} />
+            </div>
           </div>
 
           <div className="card-stat">
@@ -449,12 +464,14 @@ function RegionsPageContent() {
               <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Cities</span>
               <MapPin className="w-4 h-4 text-foreground/40" />
             </div>
-            <div className="text-2xl font-bold text-foreground">{stats.cities}</div>
+            <div className="text-2xl font-bold text-foreground">
+              <AnimatedNumber value={stats.cities} />
+            </div>
           </div>
         </div>
 
         {/* Countries Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 stagger-children">
           {regionData
             .filter(country => !selectedCountry || country.name === selectedCountry)
             .map((country) => {

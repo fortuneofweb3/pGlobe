@@ -166,6 +166,8 @@ function HistoricalLineChart({
     // Reset animation flag when data changes
     hasAnimatedRef.current = false;
 
+    let cleanupTimer: NodeJS.Timeout | null = null;
+
     // Wait for paths to render, then animate
     const timer = setTimeout(() => {
       if (!svgRef.current || hasAnimatedRef.current) return;
@@ -184,7 +186,7 @@ function HistoricalLineChart({
 
             // Trigger animation on next frame
             requestAnimationFrame(() => {
-              svgPath.style.transition = 'stroke-dashoffset 1.5s ease-out';
+              svgPath.style.transition = 'stroke-dashoffset 1.2s ease-out';
               svgPath.style.strokeDashoffset = '0';
             });
           }
@@ -195,20 +197,21 @@ function HistoricalLineChart({
 
       hasAnimatedRef.current = true;
 
-      // Clean up after animation
-      const cleanupTimer = setTimeout(() => {
+      // Clean up after animation completes
+      cleanupTimer = setTimeout(() => {
         paths.forEach((pathEl: Element) => {
           const svgPath = pathEl as SVGPathElement;
           svgPath.style.strokeDasharray = 'none';
           svgPath.style.strokeDashoffset = '0';
           svgPath.style.transition = '';
         });
-      }, 1600);
-
-      return () => clearTimeout(cleanupTimer);
+      }, 1500);
     }, 100);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (cleanupTimer) clearTimeout(cleanupTimer);
+    };
   }, [chartData, data]);
   
   const smartYFormatter = useMemo(() => {
@@ -1106,7 +1109,7 @@ function CountryDetailContent() {
             )}
 
             {/* Summary Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6 stagger-children">
               <div className="card-stat">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Nodes</span>
@@ -1201,7 +1204,7 @@ function CountryDetailContent() {
             </div>
 
             {/* Historical Performance Section */}
-            <div className="mb-4 sm:mb-6 space-y-4">
+            <div className="mb-4 sm:mb-6 space-y-4 animate-slide-in-left" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
               {/* Time Range Selector */}
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
@@ -1588,7 +1591,7 @@ function CountryDetailContent() {
             </div>
 
             {/* Nodes Table - Collapsible */}
-            <div className="flex flex-col">
+            <div className="flex flex-col animate-scale-in" style={{ animationDelay: '0.4s', opacity: 0, animationFillMode: 'forwards' }}>
               <button
                 onClick={() => setTableExpanded(!tableExpanded)}
                 className="flex items-center justify-between p-4 card mb-2 hover:bg-muted/50 transition-colors"

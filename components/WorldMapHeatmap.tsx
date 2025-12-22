@@ -131,6 +131,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
   const [isMobile, setIsMobile] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const lastTouchDistanceRef = useRef<number | null>(null);
+  const hasAnimatedRef = useRef(false);
 
   // Check if mobile on mount and resize
   useEffect(() => {
@@ -443,6 +444,95 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
     };
   }, []);
 
+  // Animate borders drawing, then fade in colors
+  useEffect(() => {
+    if (!svgRef.current) return;
+
+    // Create a unique key based on nodes to reset animation when data changes significantly
+    const nodesKey = `${nodes.length}-${Object.keys(countryData).length}`;
+    const hasAnimatedKey = `animated-${nodesKey}`;
+    
+    // Check if we've already animated this data set
+    if (hasAnimatedRef.current && (svgRef.current as any).dataset.animatedKey === hasAnimatedKey) {
+      return;
+    }
+
+    let cleanupTimers: NodeJS.Timeout[] = [];
+
+    // Wait for paths to render, then animate
+    const timer = setTimeout(() => {
+      if (!svgRef.current) return;
+
+      // Find all country path elements
+      const paths = svgRef.current.querySelectorAll('path[d]');
+      
+      if (paths.length === 0) return;
+
+      paths.forEach((pathEl: Element, index) => {
+        const svgPath = pathEl as SVGPathElement;
+        try {
+          // Step 1: Animate border drawing
+          const pathLength = svgPath.getTotalLength();
+          if (pathLength > 0) {
+            // Store original fill for later
+            const originalFill = svgPath.getAttribute('fill') || '';
+            
+            // Set initial stroke state for drawing animation
+            svgPath.style.strokeDasharray = `${pathLength}`;
+            svgPath.style.strokeDashoffset = `${pathLength}`;
+            
+            // Set initial fill opacity to 0 (will fade in after border)
+            svgPath.style.fillOpacity = '0';
+
+            // Stagger the border drawing animation for visual effect
+            const borderDelay = index * 6; // 6ms delay between each country (faster stagger)
+            
+            const borderTimer = setTimeout(() => {
+              // Animate border drawing
+              svgPath.style.transition = 'stroke-dashoffset 0.9s ease-out';
+              svgPath.style.strokeDashoffset = '0';
+
+              // After border finishes drawing, fade in the fill color
+              const fillTimer = setTimeout(() => {
+                svgPath.style.transition = 'fill-opacity 0.7s ease-out';
+                svgPath.style.fillOpacity = '1';
+                
+                // Clean up stroke animation after fill animation completes
+                const cleanupTimer = setTimeout(() => {
+                  svgPath.style.strokeDasharray = 'none';
+                  svgPath.style.strokeDashoffset = '0';
+                  // Keep transitions for hover states
+                  svgPath.style.transition = 'fill 0.15s ease';
+                }, 700);
+                
+                cleanupTimers.push(cleanupTimer);
+              }, 900); // Start fill fade after border animation completes
+              
+              cleanupTimers.push(fillTimer);
+            }, borderDelay);
+            
+            cleanupTimers.push(borderTimer);
+          }
+        } catch (e) {
+          // getTotalLength might fail on some elements, skip them
+          console.debug('[WorldMapHeatmap] Animation error for path:', e);
+        }
+      });
+
+      // Mark as animated with current data key
+      if (svgRef.current) {
+        (svgRef.current as any).dataset.animatedKey = hasAnimatedKey;
+        hasAnimatedRef.current = true;
+      }
+    }, 150);
+
+    cleanupTimers.push(timer);
+
+    return () => {
+      cleanupTimers.forEach(t => clearTimeout(t));
+    };
+  }, [nodes.length, Object.keys(countryData).join(',')]);
+
   return (
     <div className="card overflow-hidden" style={{ padding: 0 }}>
       <div className="flex flex-col lg:grid lg:grid-cols-[1fr_280px] h-[350px] sm:h-[400px] lg:h-[500px]">
@@ -511,18 +601,22 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
                     strokeWidth="0.5"
                     style={{ 
                       pointerEvents: 'auto',
-                      transition: 'fill 0.15s ease',
+                      transition: 'fill 0.15s ease, fill-opacity 0.7s ease-out',
                     }}
                     className={nodeCount > 0 ? 'cursor-pointer' : ''}
                     onMouseEnter={(e) => {
-                      e.currentTarget.setAttribute('fill', hoverColor);
+                      const path = e.currentTarget;
+                      path.setAttribute('fill', hoverColor);
+                      path.style.fillOpacity = '1'; // Ensure opacity is 1 on hover
                       handlePathMouseEnter(e, tooltipText);
                     }}
                     onMouseMove={(e) => {
                       handlePathMouseMove(e, tooltipText);
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.setAttribute('fill', fillColor);
+                      const path = e.currentTarget;
+                      path.setAttribute('fill', fillColor);
+                      path.style.fillOpacity = '1'; // Keep opacity at 1
                       handlePathMouseLeave();
                     }}
                     onClick={() => handleCountryClick(country.name)}
@@ -576,7 +670,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
           <div className="flex flex-col gap-2 lg:gap-4">
             {/* Header */}
             <div>
-              <h3 className="text-sm lg:text-base font-semibold text-foreground mb-0.5 lg:mb-1">Heat Map</h3>
+              <h3 className="text-lg lg:text-xl font-semibold text-foreground mb-0.5 lg:mb-1">Heat Map</h3>
               <p className="text-xs text-muted-foreground">
                 {Object.keys(countryData).length} countries
               </p>
