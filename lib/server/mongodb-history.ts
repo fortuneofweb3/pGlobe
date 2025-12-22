@@ -263,7 +263,18 @@ export async function getHistoricalSnapshots(
 
 /**
  * Get aggregated historical data for a region (country)
- * Filters snapshots to only include nodes from the specified country and aggregates their metrics
+ * 
+ * IMPORTANT: This function AGGREGATES from EXISTING historical snapshots stored in the database.
+ * It does NOT create new snapshots - it reads and aggregates from snapshots that were already
+ * created by storeHistoricalSnapshot() during background refresh cycles.
+ * 
+ * The aggregation:
+ * 1. Finds all historical snapshots within the time range
+ * 2. Filters nodes by country/countryCode
+ * 3. Groups nodes by their original snapshot timestamp (preserving historical timestamps)
+ * 4. Aggregates metrics (online count, packets, credits, CPU, RAM) for each timestamp
+ * 
+ * This ensures we're showing true historical data, not creating new data points.
  */
 export async function getRegionHistory(
   country: string,
@@ -299,6 +310,7 @@ export async function getRegionHistory(
     });
     
     // Use aggregation pipeline to filter by country and aggregate
+    // IMPORTANT: This aggregates from EXISTING historical snapshots, not creating new ones
     const pipeline: any[] = [
       // Match snapshots within time range
       {
@@ -306,20 +318,16 @@ export async function getRegionHistory(
           ...timeQuery,
         }
       },
-      // Unwind nodeSnapshots to work with individual nodes, preserving snapshot timestamp
+      // Unwind nodeSnapshots to work with individual nodes
+      // The parent document's timestamp is preserved automatically
       { 
         $unwind: {
           path: '$nodeSnapshots',
           preserveNullAndEmptyArrays: false
         }
       },
-      // Add snapshot timestamp to each node document for grouping
-      {
-        $addFields: {
-          snapshotTimestamp: '$timestamp'
-        }
-      },
       // Filter nodes by country (try both country name and countryCode)
+      // This ensures we only aggregate nodes from the specified region
       {
         $match: {
           $or: [
@@ -328,12 +336,13 @@ export async function getRegionHistory(
           ]
         }
       },
-      // Group by snapshot timestamp and aggregate metrics
+      // Group by the original snapshot timestamp to aggregate all nodes from that region at that time
+      // This preserves the historical snapshot timestamps - we're NOT creating new timestamps
       {
         $group: {
-          _id: '$snapshotTimestamp',
-          timestamp: { $first: '$snapshotTimestamp' },
-          nodes: { $push: '$nodeSnapshots' },
+          _id: '$timestamp', // Use the original snapshot timestamp (preserved from parent document)
+          timestamp: { $first: '$timestamp' }, // Preserve the original snapshot timestamp
+          nodes: { $push: '$nodeSnapshots' }, // Collect all nodes from this region at this timestamp
         }
       },
       // Calculate aggregated metrics
@@ -418,9 +427,18 @@ export async function getRegionHistory(
     
     const results = await collection.aggregate(pipeline, { maxTimeMS: 40000 }).toArray();
     
+    console.log(`[MongoDB History] Aggregation results: ${results.length} snapshots found for ${country}`);
+    if (results.length > 0) {
+      const firstResult = results[0];
+      const lastResult = results[results.length - 1];
+      console.log(`[MongoDB History] Time range: ${new Date(firstResult.timestamp).toISOString()} to ${new Date(lastResult.timestamp).toISOString()}`);
+      console.log(`[MongoDB History] Sample snapshot: ${firstResult.totalNodes} nodes, ${firstResult.onlineCount} online`);
+    }
+    
     // Map to expected format
+    // IMPORTANT: These timestamps are from HISTORICAL snapshots, not newly created
     const aggregatedData = results.map((result: any) => ({
-      timestamp: result.timestamp,
+      timestamp: result.timestamp, // This is the original snapshot timestamp
       onlineCount: result.onlineCount || 0,
       totalNodes: result.totalNodes || 0,
       totalPacketsReceived: result.totalPacketsReceived || 0,
@@ -430,7 +448,7 @@ export async function getRegionHistory(
       avgRAM: result.avgRAM ? Math.round(result.avgRAM * 10) / 10 : 0,
     }));
     
-    console.log(`[MongoDB History] ✅ Region history: ${aggregatedData.length} data points for ${country}`);
+    console.log(`[MongoDB History] ✅ Region history: ${aggregatedData.length} aggregated data points for ${country} (from historical snapshots)`);
     
     return aggregatedData;
   } catch (error: any) {
