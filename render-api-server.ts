@@ -622,6 +622,176 @@ app.get('/api/v1/network/stats', authenticate, async (req, res) => {
 });
 
 /**
+ * GET /api/v1/network/health/history
+ * Public API v1: Network health history
+ * Query params:
+ *   - period: 1h, 6h, 24h, 7d, 30d (default: 7d)
+ * Returns historical network health scores over time
+ */
+app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
+  try {
+    const period = (req.query.period as string) || '7d';
+
+    // Calculate time range based on period
+    const now = Date.now();
+    let startTime: number;
+
+    switch (period) {
+      case '1h':
+        startTime = now - (1 * 60 * 60 * 1000);
+        break;
+      case '6h':
+        startTime = now - (6 * 60 * 60 * 1000);
+        break;
+      case '24h':
+        startTime = now - (24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        startTime = now - (7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startTime = now - (30 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startTime = now - (7 * 24 * 60 * 60 * 1000); // Default to 7d
+    }
+
+    console.log(`[RenderAPI] Fetching health history for period: ${period} (${new Date(startTime).toISOString()} to ${new Date(now).toISOString()})`);
+
+    // Fetch historical snapshots
+    const snapshots = await getHistoricalSnapshots(startTime, now, 1000);
+
+    if (snapshots.length === 0) {
+      console.log('[RenderAPI] No historical snapshots found');
+      return res.json({
+        success: true,
+        data: {
+          period,
+          dataPoints: 0,
+          health: [],
+          summary: {
+            current: 0,
+            average: 0,
+            min: 0,
+            max: 0,
+            trend: 'stable',
+          },
+        },
+      });
+    }
+
+    console.log(`[RenderAPI] Found ${snapshots.length} historical snapshots`);
+
+    // Extract network health data points
+    // If health fields are missing, calculate them from snapshot data
+    const healthData = snapshots.map(snapshot => {
+      // Calculate availability if missing
+      const availability = snapshot.networkHealthAvailability !== undefined && snapshot.networkHealthAvailability !== null
+        ? snapshot.networkHealthAvailability
+        : snapshot.totalNodes > 0 
+          ? (snapshot.onlineNodes / snapshot.totalNodes) * 100 
+          : 0;
+      
+      // Calculate version health if missing (use version distribution)
+      const versionHealth = snapshot.networkHealthVersion !== undefined && snapshot.networkHealthVersion !== null
+        ? snapshot.networkHealthVersion
+        : snapshot.versionDistribution && Object.keys(snapshot.versionDistribution).length > 0
+          ? (() => {
+              // Find most common version
+              const versions = Object.entries(snapshot.versionDistribution);
+              if (versions.length === 0) return 0;
+              const mostCommon = versions.reduce((max, [v, count]) => 
+                count > max[1] ? [v, count] : max, versions[0]
+              );
+              return mostCommon[1] > 0 ? (mostCommon[1] / snapshot.totalNodes) * 100 : 0;
+            })()
+          : 0;
+      
+      // Calculate distribution if missing
+      const distribution = snapshot.networkHealthDistribution !== undefined && snapshot.networkHealthDistribution !== null
+        ? snapshot.networkHealthDistribution
+        : (() => {
+            // Normalize: 10+ countries = 100%, 1 country = 10%
+            const countryDiversity = Math.min(100, (snapshot.countries / 10) * 100);
+            const cityDiversity = Math.min(100, (snapshot.cities / 20) * 100);
+            return (countryDiversity * 0.6 + cityDiversity * 0.4);
+          })();
+      
+      // Calculate overall if missing
+      const overall = snapshot.networkHealthScore !== undefined && snapshot.networkHealthScore !== null
+        ? snapshot.networkHealthScore
+        : (availability * 0.40 + versionHealth * 0.35 + distribution * 0.25);
+      
+      return {
+        timestamp: snapshot.timestamp,
+        interval: snapshot.interval,
+        overall: Math.round(overall * 10) / 10,
+        availability: Math.round(availability * 10) / 10,
+        versionHealth: Math.round(versionHealth * 10) / 10,
+        distribution: Math.round(distribution * 10) / 10,
+        totalNodes: snapshot.totalNodes,
+        onlineNodes: snapshot.onlineNodes,
+        offlineNodes: snapshot.offlineNodes,
+        syncingNodes: snapshot.syncingNodes,
+      };
+    });
+
+    // Calculate summary stats
+    const healthScores = healthData.map(d => d.overall);
+    const current = healthScores[healthScores.length - 1] || 0;
+    const average = healthScores.length > 0 
+      ? healthScores.reduce((sum, val) => sum + val, 0) / healthScores.length 
+      : 0;
+    const min = healthScores.length > 0 ? Math.min(...healthScores) : 0;
+    const max = healthScores.length > 0 ? Math.max(...healthScores) : 0;
+
+    // Determine trend (compare first half vs second half)
+    let trend: 'improving' | 'declining' | 'stable' = 'stable';
+    if (healthScores.length >= 2) {
+      const midpoint = Math.floor(healthScores.length / 2);
+      const firstHalf = healthScores.slice(0, midpoint);
+      const secondHalf = healthScores.slice(midpoint);
+      const firstAvg = firstHalf.reduce((sum, val) => sum + val, 0) / firstHalf.length;
+      const secondAvg = secondHalf.reduce((sum, val) => sum + val, 0) / secondHalf.length;
+      const diff = secondAvg - firstAvg;
+
+      if (diff > 2) {
+        trend = 'improving';
+      } else if (diff < -2) {
+        trend = 'declining';
+      }
+    }
+
+    console.log(`[RenderAPI] ✅ Returning health history: ${healthData.length} data points, current: ${current}, trend: ${trend}`);
+
+    res.json({
+      success: true,
+      data: {
+        period,
+        dataPoints: healthData.length,
+        health: healthData,
+        summary: {
+          current: Math.round(current * 10) / 10,
+          average: Math.round(average * 10) / 10,
+          min: Math.round(min * 10) / 10,
+          max: Math.round(max * 10) / 10,
+          trend,
+          changePercent: healthScores.length >= 2 
+            ? Math.round(((healthScores[healthScores.length - 1] - healthScores[0]) / healthScores[0]) * 1000) / 10 
+            : 0,
+        },
+      },
+    });
+  } catch (error: any) {
+    console.error('[RenderAPI] ❌ Failed to fetch health history:', error);
+    res.status(500).json({
+      success: false,
+      error: error?.message || 'Failed to fetch network health history',
+    });
+  }
+});
+
+/**
  * GET /api/history
  * Returns historical snapshots from MongoDB
  */
