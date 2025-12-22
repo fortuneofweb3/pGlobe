@@ -4,7 +4,7 @@ import React, { useMemo, useState, useEffect, Suspense, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PNode } from '@/lib/types/pnode';
-import { Copy, Check, RefreshCw, HardDrive, Cpu, MemoryStick, Network, MapPin, Clock, CheckCircle2, XCircle, TrendingUp, Server, ArrowLeft, Activity, Award } from 'lucide-react';
+import { Copy, Check, RefreshCw, HardDrive, Cpu, MemoryStick, Network, MapPin, Clock, CheckCircle2, XCircle, TrendingUp, Server, ArrowLeft, Activity, Award, Globe, Lock } from 'lucide-react';
 import { ChartSkeleton, MapSkeleton, CardSkeleton } from '@/components/Skeletons';
 import { detectDataCenter, getRegionName } from '@/lib/utils/dataCenter';
 import { formatBytes, formatStorageBytes } from '@/lib/utils/storage';
@@ -1025,6 +1025,18 @@ function NodeDetailContent() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 flex-wrap mb-3">
                     {getStatusBadge(node.status)}
+                    {node.isPublic === true && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30" title="Public node - pRPC is publicly accessible">
+                        <Globe className="w-3 h-3" />
+                        Public
+                      </span>
+                    )}
+                    {node.isPublic === false && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30" title="Private node - pRPC is not publicly accessible">
+                        <Lock className="w-3 h-3" />
+                        Private
+                      </span>
+                    )}
                     {node.version && node.version.includes('-trynet') && (
                       <span className="text-xs px-2 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 font-medium">
                         TRYNET
@@ -1322,6 +1334,112 @@ function NodeDetailContent() {
           </div>
         )}
 
+        {/* Private Node View */}
+        {node.isPublic === false ? (
+          <>
+            {/* Private Node Notice */}
+            <div className="card mb-6 bg-orange-500/10 border-orange-500/30 animate-fade-in" style={{ animationDelay: '0.15s', opacity: 0, animationFillMode: 'forwards' }}>
+              <div className="flex items-start gap-3">
+                <Lock className="w-5 h-5 text-orange-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-orange-400 mb-1">Private Node</h3>
+                  <p className="text-xs text-foreground/70 leading-relaxed">
+                    This node's pRPC is not publicly accessible. Detailed performance metrics, resource usage, and historical data are not available. Only basic information from network gossip is shown.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Private Node Info Grid - Well-arranged layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+              {/* Basic Information Card */}
+              <div className="card animate-slide-in-left" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
+                <div className="flex items-center gap-2 mb-4">
+                  <Server className="w-4 h-4 text-[#F0A741]" />
+                  <h3 className="text-sm font-semibold text-foreground">Basic Information</h3>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-foreground/60" />
+                      <span className="text-sm text-foreground/80">Uptime</span>
+                    </div>
+                    <span className="text-lg font-bold text-foreground">{formatUptime(node.uptime)}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-foreground/60" />
+                      <span className="text-sm text-foreground/80">Status</span>
+                    </div>
+                    {getStatusBadge(node.status)}
+                  </div>
+                  {node.version && (
+                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                      <span className="text-sm text-foreground/80">Version</span>
+                      <span className="text-sm font-mono font-semibold text-foreground">{node.version}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Network & Registration Card */}
+              <div className="card animate-slide-in-right" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
+                <div className="flex items-center gap-2 mb-4">
+                  <Network className="w-4 h-4 text-[#3F8277]" />
+                  <h3 className="text-sm font-semibold text-foreground">Network & Registration</h3>
+                </div>
+                <div className="space-y-3">
+                  {node.credits !== undefined && node.credits !== null && (
+                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Award className="w-4 h-4 text-foreground/60" />
+                        <span className="text-sm text-foreground/80">Credits</span>
+                      </div>
+                      <span className="text-lg font-bold text-[#F0A741]">
+                        {node.credits.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                    <span className="text-sm text-foreground/80">Registered</span>
+                    <div className="flex items-center gap-1.5">
+                      {node.isRegistered || (node.balance && node.balance > 0) ? (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 text-[#3F8277]" />
+                          <span className="text-sm text-[#3F8277] font-semibold">Yes</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm text-gray-400">No</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {node.balance !== undefined && node.balance !== null && (
+                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                      <span className="text-sm text-foreground/80">Balance</span>
+                      <BalanceDisplay
+                        balance={node.balance} 
+                        className="text-sm font-mono"
+                      />
+                    </div>
+                  )}
+                  {nodeLatency !== null && nodeLatency !== undefined && (
+                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                      <span className="text-sm text-foreground/80">Latency</span>
+                      <span className="text-lg font-bold text-foreground">
+                        {nodeLatency.toFixed(0)}ms
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          /* Public Node View - Full Details */
+          <>
         {/* Performance Metrics Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
           {/* Resource Usage Card */}
@@ -1691,10 +1809,11 @@ function NodeDetailContent() {
             </div>
           </div>
         </div>
+          </>
+        )}
 
-
-        {/* Historical Data Section */}
-        {historicalData.length > 0 && (() => {
+        {/* Historical Data Section - Only for public nodes */}
+        {node.isPublic !== false && historicalData.length > 0 && (() => {
           const now = Date.now();
           const timeRangeMs = {
             '30m': 30 * 60 * 1000,
@@ -2123,7 +2242,7 @@ function NodeDetailContent() {
           </div>
         )}
 
-        {!loadingHistory && historicalData.length === 0 && (
+        {!loadingHistory && historicalData.length === 0 && node.isPublic !== false && (
           <div className="card mb-6">
             <p className="text-sm text-foreground/60">No historical data available for this node</p>
           </div>

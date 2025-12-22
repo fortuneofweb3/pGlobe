@@ -14,7 +14,7 @@ import { fetchNodeBalance } from '@/lib/utils/balance';
 import BalanceDisplay from './BalanceDisplay';
 import { formatBytes, formatStorageBytes } from '@/lib/utils/storage';
 import { getFlagForCountry } from '@/lib/utils/country-flags';
-import { Check, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { Check, X, ArrowUp, ArrowDown, Globe, Lock } from 'lucide-react';
 
 interface PNodeTableProps {
   nodes: PNode[];
@@ -422,6 +422,9 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                 <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   Registered
                 </th>
+                <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                  Access
+                </th>
                 {onSort ? (
                   <>
                     <th 
@@ -653,6 +656,35 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                               )}
                             </span>
                           );
+                        })()}
+                      </td>
+                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap text-center bg-card/20">
+                        {(() => {
+                          const isPublic = node.isPublic === true;
+                          const isPrivate = node.isPublic === false;
+                          
+                          if (isPublic) {
+                            return (
+                              <span 
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-green-500/20 text-green-400 border border-green-500/30"
+                                title="Public node - pRPC is publicly accessible"
+                              >
+                                <Globe className="w-3 h-3" />
+                                <span className="hidden sm:inline">Public</span>
+                              </span>
+                            );
+                          } else if (isPrivate) {
+                            return (
+                              <span 
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30"
+                                title="Private node - pRPC is not publicly accessible"
+                              >
+                                <Lock className="w-3 h-3" />
+                                <span className="hidden sm:inline">Private</span>
+                              </span>
+                            );
+                          }
+                          return <span className="text-xs text-foreground/40">—</span>;
                         })()}
                       </td>
                       <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">

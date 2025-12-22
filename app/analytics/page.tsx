@@ -126,7 +126,15 @@ export default function AnalyticsPage() {
     const offlineNodes = nodes.filter(n => n.status === 'offline').length;
     const syncingNodes = nodes.filter(n => n.status === 'syncing').length;
     const totalStorageCapacity = nodes.reduce((sum, n) => sum + (n.storageCapacity || 0), 0);
+    const totalStorageUsed = nodes.reduce((sum, n) => sum + (n.storageUsed || 0), 0);
     const nodesWithStorage = nodes.filter(n => n.storageCapacity && n.storageCapacity > 0).length;
+    const nodesWithStorageUsage = nodes.filter(n => n.storageCapacity && n.storageUsed !== undefined && n.storageCapacity > 0);
+    const avgStorageUsage = nodesWithStorageUsage.length > 0
+      ? nodesWithStorageUsage.reduce((sum, n) => {
+          const usage = n.storageCapacity && n.storageUsed ? (n.storageUsed / n.storageCapacity) * 100 : 0;
+          return sum + usage;
+        }, 0) / nodesWithStorageUsage.length
+      : 0;
     const avgUptime = nodes
       .filter(n => n.uptime && n.uptime > 0)
       .reduce((sum, n) => sum + (n.uptime || 0), 0) / nodes.filter(n => n.uptime && n.uptime > 0).length || 0;
@@ -162,7 +170,10 @@ export default function AnalyticsPage() {
       offlineNodes,
       syncingNodes,
       totalStorageCapacity,
+      totalStorageUsed,
       nodesWithStorage,
+      avgStorageUsage,
+      nodesWithStorageUsage: nodesWithStorageUsage.length,
       avgUptime,
       totalRAM,
       usedRAM,
@@ -250,9 +261,8 @@ export default function AnalyticsPage() {
         showNetworkSelector={false}
       />
 
-      <main className="flex-1 overflow-hidden">
-        <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
-          <div className="max-w-7xl mx-auto">
+      <main className="flex-1 overflow-y-auto">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-3 sm:pt-6 pb-4">
             {/* Header */}
             <div className="mb-4 sm:mb-6">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
@@ -288,10 +298,8 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            <div className="space-y-4 sm:space-y-6">
-
           {/* Node Comparison Section - Accordion Style */}
-          <div className="card overflow-hidden" style={{ padding: 0 }}>
+          <div className="card overflow-hidden mt-4 sm:mt-6" style={{ padding: 0 }}>
             {/* Header - Clickable */}
             <button
               onClick={() => {
@@ -351,7 +359,7 @@ export default function AnalyticsPage() {
           )}
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 stagger-children">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-4 sm:mt-6 stagger-children">
             <div className="card-stat card-hover group">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide transition-colors duration-300 group-hover:text-foreground">Total Nodes</span>
@@ -371,12 +379,14 @@ export default function AnalyticsPage() {
               <div className="text-xl sm:text-2xl font-bold text-foreground transition-all duration-300 group-hover:scale-105">
                 <AnimatedNumber value={stats.onlineNodes} />
               </div>
-              <div className="text-xs text-foreground/50 mt-1 transition-colors duration-300 group-hover:text-foreground/70">
+              <div className="text-xs text-foreground/50 mt-1 transition-colors duration-300 group-hover:text-foreground/70 flex items-baseline">
                 {stats.totalNodes > 0 ? (
-                  <AnimatedNumber value={Math.round((stats.onlineNodes / stats.totalNodes) * 100)} suffix="%" />
+                  <>
+                    <AnimatedNumber value={Math.round((stats.onlineNodes / stats.totalNodes) * 100)} suffix="%" /> <span className="ml-1">of network</span>
+                  </>
                 ) : (
-                  '0%'
-                )} of network
+                  '0% of network'
+                )}
               </div>
             </div>
 
@@ -387,6 +397,15 @@ export default function AnalyticsPage() {
               </div>
               <div className="text-xl sm:text-2xl font-bold text-foreground transition-all duration-300 group-hover:scale-105">
                 {stats.totalStorageCapacity > 0 ? formatStorageBytes(stats.totalStorageCapacity) : 'N/A'}
+              </div>
+              <div className="text-xs text-foreground/50 mt-1 transition-colors duration-300 group-hover:text-foreground/70">
+                {stats.avgStorageUsage > 0 ? (
+                  <>
+                    <AnimatedNumber value={stats.avgStorageUsage} decimals={1} suffix="%" className="align-baseline" /> <span className="align-baseline">avg usage</span>
+                  </>
+                ) : (
+                  'N/A'
+                )}
               </div>
             </div>
 
@@ -401,7 +420,7 @@ export default function AnalyticsPage() {
               <div className="text-xs text-foreground/50 mt-1 transition-colors duration-300 group-hover:text-foreground/70">
                 {stats.avgRAMUsage > 0 ? (
                   <>
-                    <AnimatedNumber value={stats.avgRAMUsage} decimals={1} suffix="%" /> avg usage
+                    <AnimatedNumber value={stats.avgRAMUsage} decimals={1} suffix="%" className="align-baseline" /> <span className="align-baseline">avg usage</span>
                   </>
                 ) : (
                   'N/A'
@@ -422,7 +441,7 @@ export default function AnalyticsPage() {
                 )}
               </div>
               <div className="text-xs text-foreground/50 mt-1 transition-colors duration-300 group-hover:text-foreground/70">
-                <AnimatedNumber value={stats.nodesWithCPU} /> nodes reporting
+                <AnimatedNumber value={stats.nodesWithCPU} className="align-baseline" /> <span className="align-baseline">nodes reporting</span>
               </div>
             </div>
 
@@ -437,7 +456,7 @@ export default function AnalyticsPage() {
                   : 'N/A'}
               </div>
               <div className="text-xs text-foreground/50 mt-1 transition-colors duration-300 group-hover:text-foreground/70">
-                <AnimatedNumber value={nodes.filter(n => n.uptime && n.uptime > 0).length} /> nodes reporting
+                <AnimatedNumber value={nodes.filter(n => n.uptime && n.uptime > 0).length} className="align-baseline" /> <span className="align-baseline">nodes reporting</span>
               </div>
             </div>
 
@@ -453,8 +472,8 @@ export default function AnalyticsPage() {
                   'N/A'
                 )}
               </div>
-              <div className="text-xs text-foreground/50 mt-1 transition-colors duration-300 group-hover:text-foreground/70">
-                <AnimatedNumber value={stats.nodesWithCredits} /> nodes reporting
+              <div className="text-xs text-foreground/50 mt-1 transition-colors duration-300 group-hover:text-foreground/70 flex items-baseline">
+                <AnimatedNumber value={stats.nodesWithCredits} /> <span className="ml-1">nodes reporting</span>
               </div>
             </div>
 
@@ -470,17 +489,19 @@ export default function AnalyticsPage() {
                   'N/A'
                 )}
               </div>
-              <div className="text-xs text-foreground/50 mt-1 transition-colors duration-300 group-hover:text-foreground/70">
-                <AnimatedNumber value={stats.nodesWithStreams} /> nodes active
+              <div className="text-xs text-foreground/50 mt-1 transition-colors duration-300 group-hover:text-foreground/70 flex items-baseline">
+                <AnimatedNumber value={stats.nodesWithStreams} /> <span className="ml-1">nodes active</span>
               </div>
             </div>
           </div>
 
           {/* World Map Heatmap */}
-          <WorldMapHeatmap nodes={nodes} />
+          <div className="mt-4 sm:mt-6">
+            <WorldMapHeatmap nodes={nodes} />
+          </div>
 
           {/* Main Analytics Sections */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mt-4 sm:mt-6 mb-0">
             {/* Row 1: Health Score */}
             <div className="card flex flex-col animate-scale-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
               <NetworkHealthScoreDetailed nodes={nodes} />
@@ -536,8 +557,6 @@ export default function AnalyticsPage() {
             {/* Row 3: Geographic Metrics */}
             <div className="lg:col-span-2 card flex flex-col animate-scale-in" style={{ animationDelay: '0.35s', opacity: 0, animationFillMode: 'forwards' }}>
               <GeographicMetrics nodes={nodes} />
-            </div>
-          </div>
             </div>
           </div>
         </div>

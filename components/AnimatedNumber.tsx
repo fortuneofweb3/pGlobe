@@ -61,25 +61,35 @@ export default function AnimatedNumber({
   };
 
   useEffect(() => {
-    if (value === previousValueRef.current) {
+    // Skip if value hasn't changed or if already animating
+    if (value === previousValueRef.current || isAnimating) {
       return;
     }
 
     const currentFormatted = formatNumber(displayValue);
     const targetFormatted = formatNumber(value);
-    targetValueRef.current = value;
     
+    // Skip if formatted values are the same
     if (currentFormatted === targetFormatted) {
       setDisplayValue(value);
       previousValueRef.current = value;
+      targetValueRef.current = value;
       return;
     }
 
+    // Mark as animating and update target
     setIsAnimating(true);
+    targetValueRef.current = value;
 
     // Animate each digit that changed
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        // Double-check we're still animating the same value
+        if (targetValueRef.current !== value) {
+          setIsAnimating(false);
+          return;
+        }
+
         const currentParsed = parseFormattedString(currentFormatted);
         const targetParsed = parseFormattedString(targetFormatted);
         
@@ -113,24 +123,29 @@ export default function AnimatedNumber({
         }
 
         // Update display value after animation completes
-        setTimeout(() => {
-          setDisplayValue(value);
-          setIsAnimating(false);
-          previousValueRef.current = value;
-          
-          // Reset positions for next animation
-          digitRefs.current.forEach((data) => {
-            if (data.old && data.new) {
-              data.old.style.transform = 'translateY(0)';
-              data.old.style.opacity = '1';
-              data.new.style.transform = 'translateY(100%)';
-              data.new.style.opacity = '0';
-            }
-          });
+        const timeoutId = setTimeout(() => {
+          // Only update if this is still the target value
+          if (targetValueRef.current === value) {
+            setDisplayValue(value);
+            setIsAnimating(false);
+            previousValueRef.current = value;
+            
+            // Reset positions for next animation
+            digitRefs.current.forEach((data) => {
+              if (data.old && data.new) {
+                data.old.style.transform = 'translateY(0)';
+                data.old.style.opacity = '1';
+                data.new.style.transform = 'translateY(100%)';
+                data.new.style.opacity = '0';
+              }
+            });
+          }
         }, duration);
+
+        return () => clearTimeout(timeoutId);
       });
     });
-  }, [value, duration, decimals, formatter, displayValue]);
+  }, [value, duration, decimals, formatter]);
 
   const formattedValue = formatNumber(displayValue);
   const targetFormatted = formatNumber(targetValueRef.current);
@@ -169,16 +184,38 @@ export default function AnimatedNumber({
   // Combine unitPart from formatter with suffix prop (suffix takes precedence if both exist)
   const finalUnit = suffix || unitPart;
 
+  // Build the plain text value for copy/paste
+  const plainTextValue = `${prefix}${targetParsed.numberPart}${finalUnit}`;
+
   return (
-    <span className={`inline-flex items-end ${className}`} style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-      {prefix && <span className="inline-block">{prefix}</span>}
-      <span className="inline-flex items-end">
+    <span className={`inline ${className}`} style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+      {/* Hidden text for copy/paste - visually hidden but selectable */}
+      <span
+        aria-hidden="false"
+        style={{
+          position: 'absolute',
+          width: '1px',
+          height: '1px',
+          padding: 0,
+          margin: '-1px',
+          overflow: 'hidden',
+          clip: 'rect(0, 0, 0, 0)',
+          whiteSpace: 'nowrap',
+          border: 0,
+          userSelect: 'text',
+          WebkitUserSelect: 'text',
+        }}
+      >
+        {plainTextValue}
+      </span>
+      {/* Visual display - not selectable */}
+      {prefix && <span className="inline" style={{ verticalAlign: 'baseline', userSelect: 'none', WebkitUserSelect: 'none' }}>{prefix}</span>}
+      <span className="inline" style={{ verticalAlign: 'baseline', userSelect: 'none', WebkitUserSelect: 'none' }}>
         {numberDisplay.map((item, idx) => {
           if (item.type === 'separator') {
             return (
-              <span 
+              <span
                 key={`sep-${idx}`}
-                className="inline-block"
                 style={{
                   lineHeight: '1',
                 }}
@@ -216,12 +253,13 @@ export default function AnimatedNumber({
                 width: '0.6em',
                 textAlign: 'center',
                 display: 'inline-block',
+                verticalAlign: '-0.12em',
               }}
             >
               {/* Old digit (current value) */}
               <span
                 data-old-digit
-                className="absolute inset-0 flex items-end justify-center"
+                className="absolute inset-0 flex items-center justify-center"
                 style={{
                   transform: 'translateY(0)',
                   opacity: 1,
@@ -235,7 +273,7 @@ export default function AnimatedNumber({
               {/* New digit (target value, starts below) */}
               <span
                 data-new-digit
-                className="absolute inset-0 flex items-end justify-center"
+                className="absolute inset-0 flex items-center justify-center"
                 style={{
                   transform: 'translateY(100%)',
                   opacity: 0,
@@ -251,7 +289,7 @@ export default function AnimatedNumber({
       </span>
       {/* Unit part (ms, %, /s, etc.) - render as single unit with proper spacing */}
       {finalUnit && (
-        <span className="inline-block ml-0.5" style={{ lineHeight: '1' }}>
+        <span className="inline ml-0.5" style={{ verticalAlign: 'baseline', userSelect: 'none', WebkitUserSelect: 'none' }}>
           {finalUnit}
         </span>
       )}
