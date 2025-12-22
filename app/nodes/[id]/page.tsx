@@ -1462,8 +1462,7 @@ function NodeDetailContent() {
                                   className: 'custom-pin-icon',
                                   iconSize: [32, 40],
                                   iconAnchor: [16, 40],
-                                  popupAnchor: [0, -40],
-                                  iconSize: [32, 40]
+                                  popupAnchor: [0, -40]
                                 });
                                 pinIconCache.set(color, pinIcon);
                               } else {

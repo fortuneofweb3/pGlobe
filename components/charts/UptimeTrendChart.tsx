@@ -195,8 +195,6 @@ export default function UptimeTrendChart({ nodes, historicalData }: UptimeTrendC
               tooltipOpen={tooltipOpen}
               showTooltip={showTooltip}
               hideTooltip={hideTooltip}
-              showCircle={showCircle}
-              pathGroupRef={pathGroupRef}
             />
           )}
         </ParentSize>
@@ -215,8 +213,6 @@ function ChartContent({
   tooltipOpen,
   showTooltip,
   hideTooltip,
-  showCircle,
-  pathGroupRef,
 }: {
   width: number;
   height: number;
@@ -227,10 +223,9 @@ function ChartContent({
   tooltipOpen: boolean;
   showTooltip: (args: any) => void;
   hideTooltip: () => void;
-  showCircle: boolean;
-  pathGroupRef: React.RefObject<SVGGElement>;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // Animation refs and state
   const pathGroupRef = useRef<SVGGElement | null>(null);
@@ -609,6 +604,7 @@ function ChartContent({
                 stroke="#000"
                 strokeWidth={2}
               />
+              <circle
                 cx={xScale(tooltipData.timestamp)}
                 cy={yScaleOnline(tooltipData.online)}
                 r={5}
