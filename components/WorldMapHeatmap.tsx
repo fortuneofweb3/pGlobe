@@ -58,19 +58,26 @@ const EXCLUDED_COUNTRIES = new Set([
   // Add other polar/remote territories if needed
 ]);
 
+// Map from node data country names to map path display names
+const countryNameMap: Record<string, string> = {
+  'United States': 'United States of America',
+  'USA': 'United States of America',
+  'US': 'United States of America',
+  'United Kingdom': 'United Kingdom',
+  'UK': 'United Kingdom',
+  'Great Britain': 'United Kingdom',
+  // Add other common variations as needed
+};
+
+// Reverse map: from map path display names back to the most common node data name
+const reverseCountryNameMap: Record<string, string> = {
+  'United States of America': 'United States',
+  // Add other reverse mappings as needed
+};
+
 // Helper function to normalize country names (map node country names to map path names)
 const normalizeCountryName = (countryName: string): string => {
   if (!countryName) return 'Unknown';
-  
-  const countryNameMap: Record<string, string> = {
-    'United States': 'United States of America',
-    'USA': 'United States of America',
-    'US': 'United States of America',
-    'United Kingdom': 'United Kingdom',
-    'UK': 'United Kingdom',
-    'Great Britain': 'United Kingdom',
-    // Add other common variations as needed
-  };
 
   // Check exact match first
   if (countryNameMap[countryName]) {
@@ -400,7 +407,9 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
   const handleCountryClick = (countryName: string) => {
     const data = countryData[countryName];
     if (data && data.count > 0) {
-      router.push(`/regions/${encodeURIComponent(countryName)}`);
+      // Use reverse map to get the original node data country name for the URL
+      const urlCountryName = reverseCountryNameMap[countryName] || countryName;
+      router.push(`/regions/${encodeURIComponent(urlCountryName)}`);
     }
   };
 

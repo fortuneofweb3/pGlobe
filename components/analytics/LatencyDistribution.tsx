@@ -151,9 +151,9 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
         <div className="text-sm text-muted-foreground">
           {hasData ? (
             <>
-              Avg: <span className="text-foreground font-semibold">
-                <AnimatedNumber value={avgLatency} decimals={0} suffix="ms" />
-              </span>
+          Avg: <span className="text-foreground font-semibold">
+            <AnimatedNumber value={avgLatency} decimals={0} suffix="ms" />
+          </span>
             </>
           ) : (
             <span className="text-foreground/40">Loading latency data...</span>

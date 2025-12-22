@@ -517,14 +517,18 @@ export async function getRegionHistory(
         }
       });
       
-      // Calculate health from aggregated fields (same logic as network health endpoint)
-      const availability = result.totalNodes > 0 
-        ? (result.onlineCount / result.totalNodes) * 100 
+      // Calculate region-specific health score
+      // For regions, we focus on availability and version health since geographic
+      // distribution doesn't make sense when already scoped to a single country
+
+      // 1. Availability (50% weight) - most important for region health
+      const availability = result.totalNodes > 0
+        ? (result.onlineCount / result.totalNodes) * 100
         : 0;
-      
-      // Version health - calculate from version distribution
+
+      // 2. Version Health (50% weight) - are nodes on latest version?
       let versionHealth = 0;
-      if (Object.keys(versionDistribution).length > 0) {
+      if (Object.keys(versionDistribution).length > 0 && result.totalNodes > 0) {
         const versions = Object.keys(versionDistribution);
         const latestVersion = getLatestVersion(versions);
         if (latestVersion) {
@@ -532,45 +536,39 @@ export async function getRegionHistory(
           versionHealth = (latestVersionCount / result.totalNodes) * 100;
         }
       }
-      
-      // Distribution - for a single region, we use city diversity
-      // Normalize: 20+ cities = 100%, 1 city = 5%
-      const cityDiversity = Math.min(100, (cities.size / 20) * 100);
-      const distribution = cityDiversity; // For regions, city diversity is the main factor
-      
-      // Overall health score (same formula as network health)
+
+      // Overall score: 50% availability + 50% version health
+      // No distribution penalty since we're already in a single region
       const overall = Math.round(
-        availability * 0.40 +
-        versionHealth * 0.35 +
-        distribution * 0.25
+        availability * 0.50 +
+        versionHealth * 0.50
       );
 
       console.log(`[MongoDB History] Region health calculation for ${country}:`, {
         timestamp: result.timestamp,
         totalNodes: result.totalNodes,
         onlineCount: result.onlineCount,
-        availability,
-        versionHealth,
-        distribution,
+        availability: Math.round(availability),
+        versionHealth: Math.round(versionHealth),
         overall,
         versionDistributionKeys: Object.keys(versionDistribution),
         citiesCount: cities.size,
       });
 
       return {
-        timestamp: result.timestamp, // This is the original snapshot timestamp
-        onlineCount: result.onlineCount || 0,
-        totalNodes: result.totalNodes || 0,
-        totalPacketsReceived: result.totalPacketsReceived || 0,
-        totalPacketsSent: result.totalPacketsSent || 0,
-        totalCredits: result.totalCredits || 0,
-        avgCPU: result.avgCPU ? Math.round(result.avgCPU * 10) / 10 : 0,
-        avgRAM: result.avgRAM ? Math.round(result.avgRAM * 10) / 10 : 0,
-        // Health metrics (calculated from node snapshots, same as network health)
+      timestamp: result.timestamp, // This is the original snapshot timestamp
+      onlineCount: result.onlineCount || 0,
+      totalNodes: result.totalNodes || 0,
+      totalPacketsReceived: result.totalPacketsReceived || 0,
+      totalPacketsSent: result.totalPacketsSent || 0,
+      totalCredits: result.totalCredits || 0,
+      avgCPU: result.avgCPU ? Math.round(result.avgCPU * 10) / 10 : 0,
+      avgRAM: result.avgRAM ? Math.round(result.avgRAM * 10) / 10 : 0,
+        // Health metrics for region (50/50 availability/version, no distribution penalty)
         networkHealthScore: overall,
         networkHealthAvailability: Math.round(availability),
         networkHealthVersion: Math.round(versionHealth),
-        networkHealthDistribution: Math.round(distribution),
+        networkHealthDistribution: 0, // Not used for region health calculation
         versionDistribution: versionDistribution,
         cities: cities.size,
       };

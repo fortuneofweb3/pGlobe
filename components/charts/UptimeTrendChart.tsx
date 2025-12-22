@@ -281,7 +281,7 @@ function ChartContent({
       const length = path.getTotalLength();
       if (length === 0) {
         // Path not ready, retry once more
-        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
           const retryPath = pathGroupRef.current?.querySelector('path');
           if (retryPath) {
             const retryLength = retryPath.getTotalLength();
@@ -488,12 +488,12 @@ function ChartContent({
           {/* Highlighted lines - show if we have data, even if loading new data */}
           {highlightedData.length > 0 && (
             <g ref={pathGroupRef} key={`lines-${dataKey || 'loading'}`} className="line-initial-hidden">
-              <LinePath
+          <LinePath
                 data={highlightedData}
-                x={(d) => xScale(d.timestamp)}
-                y={(d) => yScaleUptime(d.uptime)}
-                stroke="#F0A741"
-                strokeWidth={2.5}
+            x={(d) => xScale(d.timestamp)}
+            y={(d) => yScaleUptime(d.uptime)}
+            stroke="#F0A741"
+            strokeWidth={2.5}
                 strokeOpacity={1}
                 curve={curveMonotoneX}
               />
@@ -504,8 +504,8 @@ function ChartContent({
                 stroke="#3F8277"
                 strokeWidth={2.5}
                 strokeOpacity={1}
-                curve={curveMonotoneX}
-              />
+            curve={curveMonotoneX}
+          />
             </g>
           )}
 
@@ -521,15 +521,15 @@ function ChartContent({
                 strokeOpacity={0.25}
                 curve={curveMonotoneX}
               />
-              <LinePath
+          <LinePath
                 data={dimmedData}
-                x={(d) => xScale(d.timestamp)}
-                y={(d) => yScaleOnline(d.online)}
-                stroke="#3F8277"
-                strokeWidth={2.5}
+            x={(d) => xScale(d.timestamp)}
+            y={(d) => yScaleOnline(d.online)}
+            stroke="#3F8277"
+            strokeWidth={2.5}
                 strokeOpacity={0.25}
-                curve={curveMonotoneX}
-              />
+            curve={curveMonotoneX}
+          />
             </>
           )}
 
@@ -601,21 +601,21 @@ function ChartContent({
               />
               {showCircle && (
                 <>
-                  <circle
-                    cx={xScale(tooltipData.timestamp)}
-                    cy={yScaleUptime(tooltipData.uptime)}
-                    r={5}
-                    fill="#F0A741"
-                    stroke="#000"
-                    strokeWidth={2}
-                  />
-                    cx={xScale(tooltipData.timestamp)}
-                    cy={yScaleOnline(tooltipData.online)}
-                    r={5}
-                    fill="#3F8277"
-                    stroke="#000"
-                    strokeWidth={2}
-                  />
+              <circle
+                cx={xScale(tooltipData.timestamp)}
+                cy={yScaleUptime(tooltipData.uptime)}
+                r={5}
+                fill="#F0A741"
+                stroke="#000"
+                strokeWidth={2}
+              />
+                cx={xScale(tooltipData.timestamp)}
+                cy={yScaleOnline(tooltipData.online)}
+                r={5}
+                fill="#3F8277"
+                stroke="#000"
+                strokeWidth={2}
+              />
                 </>
               )}
             </g>

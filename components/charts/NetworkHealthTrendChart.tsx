@@ -46,8 +46,8 @@ const formatDateAxis = (date: Date, chartData: Array<{ timestamp: number }>): st
   }
 };
 
-export default function NetworkHealthTrendChart({
-  historicalData,
+export default function NetworkHealthTrendChart({ 
+  historicalData, 
   height = 300,
   headerContent
 }: NetworkHealthTrendChartProps) {
@@ -150,7 +150,7 @@ export default function NetworkHealthTrendChart({
       const length = path.getTotalLength();
       if (length === 0) {
         // Path not ready, retry once more
-        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
           const retryPath = pathGroupRef.current?.querySelector('path');
           if (retryPath) {
             const retryLength = retryPath.getTotalLength();
@@ -217,8 +217,8 @@ export default function NetworkHealthTrendChart({
           {headerContent}
         </div>
       </div>
-      <div style={{ width: '100%', height, position: 'relative' }}>
-        <ParentSize>
+    <div style={{ width: '100%', height, position: 'relative' }}>
+      <ParentSize>
         {({ width: parentWidth = 800 }) => {
           const width = parentWidth;
           // Responsive margins - smaller on mobile for better chart size
@@ -236,8 +236,8 @@ export default function NetworkHealthTrendChart({
             range: [0, xMax],
             domain: chartData.length > 0
               ? [
-                  Math.min(...chartData.map(d => d.timestamp)),
-                  Math.max(...chartData.map(d => d.timestamp))
+              Math.min(...chartData.map(d => d.timestamp)),
+              Math.max(...chartData.map(d => d.timestamp))
                 ]
               : defaultTimeDomain,
           });
@@ -253,7 +253,7 @@ export default function NetworkHealthTrendChart({
             if (!coords) return;
 
             const x = coords.x - margin.left;
-
+            
             let closestIndex = 0;
             let minDistance = Infinity;
             chartData.forEach((d, i) => {
@@ -264,7 +264,7 @@ export default function NetworkHealthTrendChart({
                 closestIndex = i;
               }
             });
-
+            
             const d = chartData[closestIndex];
 
             if (d) {
@@ -348,15 +348,15 @@ export default function NetworkHealthTrendChart({
 
                   {/* Dimmed line (when hovering) - render AFTER highlighted line so it appears on top but dimmed */}
                   {hoveredIndex !== null && dimmedData.length > 0 && (
-                    <LinePath
+                  <LinePath
                       data={dimmedData}
-                      x={(d) => xScale(d.timestamp)}
-                      y={(d) => yScale(d.overall)}
-                      stroke="#F0A741"
-                      strokeWidth={3}
+                    x={(d) => xScale(d.timestamp)}
+                    y={(d) => yScale(d.overall)}
+                    stroke="#F0A741"
+                    strokeWidth={3}
                       strokeOpacity={0.25}
-                      curve={curveMonotoneX}
-                    />
+                    curve={curveMonotoneX}
+                  />
                   )}
 
                   {tooltipOpen && tooltipData && (
@@ -373,15 +373,15 @@ export default function NetworkHealthTrendChart({
                         pointerEvents="none"
                       />
                       {showCircle && (
-                        <Circle
-                          cx={xScale(tooltipData.timestamp)}
-                          cy={yScale(tooltipData.overall)}
-                          r={5}
-                          fill="#F0A741"
-                          stroke="#fff"
-                          strokeWidth={2}
-                          pointerEvents="none"
-                        />
+                      <Circle
+                        cx={xScale(tooltipData.timestamp)}
+                        cy={yScale(tooltipData.overall)}
+                        r={5}
+                        fill="#F0A741"
+                        stroke="#fff"
+                        strokeWidth={2}
+                        pointerEvents="none"
+                      />
                       )}
                     </>
                   )}

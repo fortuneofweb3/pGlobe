@@ -665,8 +665,8 @@ export default function AnalyticsPage() {
             <div className="lg:col-span-2 card flex flex-col animate-slide-in-right" style={{ animationDelay: '0.15s', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-foreground/40" />
-                  <h2 className="text-base font-semibold text-foreground">Network Health Trend</h2>
+                <TrendingUp className="w-4 h-4 text-foreground/40" />
+                <h2 className="text-base font-semibold text-foreground">Network Health Trend</h2>
                 </div>
                 <div className="flex items-center gap-1 bg-muted/30 rounded-lg p-1 border border-border/40">
                   {(['1h', '6h', '24h', '7d', '30d'] as const).map((period) => (

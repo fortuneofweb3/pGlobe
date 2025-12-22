@@ -103,6 +103,17 @@ const formatNumber = (value: number): string => {
   return value.toFixed(0);
 };
 
+const formatCredits = (value: number): string => {
+  const absValue = Math.abs(value);
+  if (absValue >= 1000000) {
+    return `${value < 0 ? '-' : ''}${Math.round(absValue / 1000000)}M`;
+  }
+  if (absValue >= 1000) {
+    return `${value < 0 ? '-' : ''}${Math.round(absValue / 1000)}k`;
+  }
+  return value.toFixed(0);
+};
+
 const formatDateAxis = (date: Date, chartData: Array<{ timestamp: number }>): string => {
   if (chartData.length === 0) return '';
   
@@ -279,7 +290,7 @@ function HistoricalLineChart({
       });
 
       if (!allPathsReady) {
-        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
           const retryPaths = pathGroupRef.current?.querySelectorAll('path');
           if (retryPaths) {
             let retryReady = true;
@@ -470,7 +481,7 @@ function HistoricalLineChart({
               if (!coords) return;
 
               const x = coords.x - margin.left;
-
+              
               let closestIndex = 0;
               let minDistance = Infinity;
               chartData.forEach((d, i) => {
@@ -481,7 +492,7 @@ function HistoricalLineChart({
                   closestIndex = i;
                 }
               });
-
+              
               const d = chartData[closestIndex];
 
               if (d) {
@@ -555,22 +566,22 @@ function HistoricalLineChart({
                             return val !== undefined && val !== null && !isNaN(val);
                           });
                           const validDimmedData = dimmedData.filter(d => {
-                            const val = d[line.key];
-                            return val !== undefined && val !== null && !isNaN(val);
-                          });
-                          return (
+                          const val = d[line.key];
+                          return val !== undefined && val !== null && !isNaN(val);
+                        });
+                        return (
                             <g key={line.key}>
                               {/* Highlighted line */}
                               {validHighlightedData.length > 0 && (
-                                <LinePath
+                          <LinePath
                                   data={validHighlightedData}
-                                  x={(d) => xScale(d.timestamp)}
-                                  y={(d) => yScale(d[line.key] ?? 0)}
-                                  stroke={line.color}
-                                  strokeWidth={3}
+                            x={(d) => xScale(d.timestamp)}
+                            y={(d) => yScale(d[line.key] ?? 0)}
+                            stroke={line.color}
+                            strokeWidth={3}
                                   strokeOpacity={1}
-                                  curve={curveMonotoneX}
-                                />
+                            curve={curveMonotoneX}
+                          />
                               )}
                               {/* Dimmed line (when hovering) */}
                               {hoveredIndex !== null && validDimmedData.length > 0 && (
@@ -585,7 +596,7 @@ function HistoricalLineChart({
                                 />
                               )}
                             </g>
-                          );
+                        );
                         })}
                       </g>
                     ) : (
@@ -602,15 +613,15 @@ function HistoricalLineChart({
                           <g ref={pathGroupRef} key={`line-${dataKey || 'loading'}`} className="line-initial-hidden">
                             {/* Highlighted line */}
                             {validHighlightedData.length > 0 && (
-                              <LinePath
+                          <LinePath
                                 data={validHighlightedData}
-                                x={(d) => xScale(d.timestamp)}
-                                y={(d) => yScale(d.value ?? 0)}
-                                stroke={strokeColor}
-                                strokeWidth={3}
+                            x={(d) => xScale(d.timestamp)}
+                            y={(d) => yScale(d.value ?? 0)}
+                            stroke={strokeColor}
+                            strokeWidth={3}
                                 strokeOpacity={1}
-                                curve={curveMonotoneX}
-                              />
+                            curve={curveMonotoneX}
+                          />
                             )}
                             {/* Dimmed line (when hovering) */}
                             {hoveredIndex !== null && validDimmedData.length > 0 && (
@@ -2220,20 +2231,20 @@ function NodeDetailContent() {
                       loadingHistory ? (
                         <span className="text-xs text-muted-foreground">Loading historical data...</span>
                       ) : filteredData.length > 0 ? (
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-full bg-[#3F8277]"></div>
-                            <span>Online</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-full bg-[#F0A741]"></div>
-                            <span>Syncing</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-full bg-gray-500"></div>
-                            <span>Offline</span>
-                          </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 rounded-full bg-[#3F8277]"></div>
+                          <span>Online</span>
                         </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 rounded-full bg-[#F0A741]"></div>
+                          <span>Syncing</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+                          <span>Offline</span>
+                        </div>
+                      </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">No data available</span>
                       )
@@ -2242,15 +2253,15 @@ function NodeDetailContent() {
                 </div>
 
                 {/* CPU & RAM over time - Always show, empty axes when no data */}
-                <div className="card">
-                  <HistoricalLineChart
-                    title="Resource Utilization"
-                    data={filteredData.map(d => ({
-                      timestamp: d.timestamp,
-                      cpu: d.cpuPercent,
-                      ram: d.ramPercent,
-                    }))}
-                    height={250}
+                  <div className="card">
+                    <HistoricalLineChart
+                      title="Resource Utilization"
+                      data={filteredData.map(d => ({
+                        timestamp: d.timestamp,
+                        cpu: d.cpuPercent,
+                        ram: d.ramPercent,
+                      }))}
+                      height={250}
                       yDomain={[0, 100]}
                       strokeColor="#F0A741"
                       yLabel="Usage (%)"
@@ -2277,32 +2288,32 @@ function NodeDetailContent() {
                         loadingHistory ? (
                           <span className="text-xs text-muted-foreground">Loading historical data...</span>
                         ) : filteredData.length > 0 ? (
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            {(() => {
-                              const cpuData = filteredData.filter(d => d.cpuPercent !== undefined && d.cpuPercent !== null && !isNaN(d.cpuPercent));
-                              if (cpuData.length === 0) return null;
-                              const cpuAvg = cpuData.reduce((sum, d) => sum + (d.cpuPercent || 0), 0) / cpuData.length;
-                              if (isNaN(cpuAvg)) return null;
-                              return (
-                                <div className="flex items-center gap-1">
-                                  <Cpu className="w-3.5 h-3.5" />
-                                  <span>CPU: <span className="text-foreground font-semibold">{cpuAvg.toFixed(1)}%</span></span>
-                                </div>
-                              );
-                            })()}
-                            {(() => {
-                              const ramData = filteredData.filter(d => d.ramPercent !== undefined && d.ramPercent !== null && !isNaN(d.ramPercent));
-                              if (ramData.length === 0) return null;
-                              const ramAvg = ramData.reduce((sum, d) => sum + (d.ramPercent || 0), 0) / ramData.length;
-                              if (isNaN(ramAvg)) return null;
-                              return (
-                                <div className="flex items-center gap-1">
-                                  <MemoryStick className="w-3.5 h-3.5" />
-                                  <span>RAM: <span className="text-foreground font-semibold">{ramAvg.toFixed(1)}%</span></span>
-                                </div>
-                              );
-                            })()}
-                          </div>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          {(() => {
+                            const cpuData = filteredData.filter(d => d.cpuPercent !== undefined && d.cpuPercent !== null && !isNaN(d.cpuPercent));
+                            if (cpuData.length === 0) return null;
+                            const cpuAvg = cpuData.reduce((sum, d) => sum + (d.cpuPercent || 0), 0) / cpuData.length;
+                            if (isNaN(cpuAvg)) return null;
+                            return (
+                              <div className="flex items-center gap-1">
+                                <Cpu className="w-3.5 h-3.5" />
+                                <span>CPU: <span className="text-foreground font-semibold">{cpuAvg.toFixed(1)}%</span></span>
+                              </div>
+                            );
+                          })()}
+                          {(() => {
+                            const ramData = filteredData.filter(d => d.ramPercent !== undefined && d.ramPercent !== null && !isNaN(d.ramPercent));
+                            if (ramData.length === 0) return null;
+                            const ramAvg = ramData.reduce((sum, d) => sum + (d.ramPercent || 0), 0) / ramData.length;
+                            if (isNaN(ramAvg)) return null;
+                            return (
+                              <div className="flex items-center gap-1">
+                                <MemoryStick className="w-3.5 h-3.5" />
+                                <span>RAM: <span className="text-foreground font-semibold">{ramAvg.toFixed(1)}%</span></span>
+                              </div>
+                            );
+                          })()}
+                        </div>
                         ) : (
                           <span className="text-xs text-muted-foreground">No data available</span>
                         )
@@ -2401,9 +2412,9 @@ function NodeDetailContent() {
                           loadingHistory ? (
                             <span className="text-xs text-muted-foreground">Loading historical data...</span>
                           ) : packetRateData.length > 0 ? (
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span>Total packet rate (Rx + Tx) calculated over 5-minute windows</span>
-                            </div>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span>Total packet rate (Rx + Tx) calculated over 5-minute windows</span>
+                          </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">No data available</span>
                           )
@@ -2466,10 +2477,39 @@ function NodeDetailContent() {
                     };
                   }).filter(d => !d._shouldFilter);
                   
-                  if (creditsData.length === 0 && node.credits !== undefined && node.credits !== null) {
+                  // Only add a current point if the gap is reasonable (5-30 minutes)
+                  // This prevents huge spikes from accumulating changes over long periods
+                  if (creditsData.length > 0) {
+                    const lastPoint = creditsData[creditsData.length - 1];
+                    const lastPointTimestamp = lastPoint.timestamp;
+                    const currentTimestamp = Date.now();
+                    const timeSinceLastPoint = currentTimestamp - lastPointTimestamp;
+                    const currentTotalCredits = node.credits ?? 0;
+                    
+                    // Only add a new point if it's been between 5 minutes and 30 minutes since the last point
+                    // This ensures we show reasonable 5-minute windows, not accumulated changes over hours
+                    if (timeSinceLastPoint >= FIVE_MINUTES_MS && timeSinceLastPoint <= 30 * 60 * 1000) {
+                      const lastPointTotal = lastPoint._credits ?? 0;
+                      const creditsEarnedSinceLastPoint = currentTotalCredits - lastPointTotal;
+                      
+                      creditsData.push({
+                        timestamp: currentTimestamp,
+                        value: creditsEarnedSinceLastPoint,
+                        _credits: currentTotalCredits,
+                        _previousCredits: lastPointTotal,
+                        _originalCredits: currentTotalCredits,
+                        _shouldFilter: false,
+                      });
+                    } else if (timeSinceLastPoint < 60000) {
+                      // Gap is too short (< 1 minute), just update the last point's total for tooltip accuracy
+                      // But don't change the value (delta) to avoid spikes
+                      lastPoint._credits = currentTotalCredits;
+                    }
+                  } else if (node.credits !== undefined && node.credits !== null) {
+                    // No data points yet, add initial point
                     creditsData.push({
                       timestamp: Date.now(),
-                      value: node.credits,
+                      value: 0, // No delta for initial point
                       _credits: node.credits,
                       _previousCredits: undefined,
                       _originalCredits: node.credits,
@@ -2496,13 +2536,16 @@ function NodeDetailContent() {
                         strokeColor="#F0A741"
                         yLabel="Credits"
                         yTickFormatter={(v) => {
-                          const val = v.toFixed(0);
-                          return v > 0 ? `+${val}` : val;
+                          const formatted = formatCredits(v);
+                          return v > 0 ? `+${formatted}` : formatted;
                         }}
                         tooltipFormatter={(d) => {
                           const value = d.value || 0;
                           const isPositive = value > 0;
                           const isNegative = value < 0;
+                          // If this is the most recent point, use current total from node for accuracy
+                          const isMostRecent = creditsData.length > 0 && d.timestamp === creditsData[creditsData.length - 1].timestamp;
+                          const displayTotal = isMostRecent ? (node.credits ?? 0) : (d._credits ?? 0);
                           return (
                             <div className="text-xs">
                               <div className="font-semibold text-foreground mb-1">
@@ -2512,13 +2555,11 @@ function NodeDetailContent() {
                                 <div className={isNegative ? 'text-red-400' : isPositive ? 'text-green-400' : ''}>
                                   {isNegative ? 'Credits Lost: ' : 'Credits Earned: '}
                                   <span className="font-semibold">
-                                    {isPositive ? '+' : ''}{value.toFixed(0)}
+                                    {isPositive ? '+' : ''}{formatCredits(value)}
                                   </span>
                                 </div>
-                                {d._credits !== undefined && d._credits !== null && (
-                                  <div className="text-foreground/60">Total Credits: {d._credits.toLocaleString()}</div>
-                                )}
-                                {d._previousCredits !== undefined && d._previousCredits !== null && (
+                                <div className="text-foreground/60">Total Credits: {displayTotal.toLocaleString()}</div>
+                                {d._previousCredits !== undefined && d._previousCredits !== null && !isMostRecent && (
                                   <div className="text-foreground/60 text-[10px]">Previous: {d._previousCredits.toLocaleString()}</div>
                                 )}
                               </div>
@@ -2529,9 +2570,9 @@ function NodeDetailContent() {
                           loadingHistory ? (
                             <span className="text-xs text-muted-foreground">Loading historical data...</span>
                           ) : creditsData.length > 0 ? (
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span>Credits change (earned/lost) calculated over 5-minute windows</span>
-                            </div>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span>Credits change (earned/lost) calculated over 5-minute windows</span>
+                          </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">No data available</span>
                           )

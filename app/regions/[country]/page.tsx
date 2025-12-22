@@ -9,7 +9,7 @@ import { getFlagForCountry } from '@/lib/utils/country-flags';
 import { formatStorageBytes } from '@/lib/utils/storage';
 import { formatPacketRate } from '@/lib/utils/packet-rates';
 import { calculateNetworkHealth } from '@/lib/utils/network-health';
-import { ArrowLeft, MapPin, Server, TrendingUp, Activity, HardDrive, Award, Clock, Zap, ChevronDown, ChevronUp, Search, BarChart3 } from 'lucide-react';
+import { ArrowLeft, MapPin, Server, TrendingUp, Activity, HardDrive, Award, Clock, Zap, ChevronDown, ChevronUp, Search, BarChart3, Info } from 'lucide-react';
 import AnimatedNumber from '@/components/AnimatedNumber';
 import PNodeTable from '@/components/PNodeTable';
 import { PNode } from '@/lib/types/pnode';
@@ -42,6 +42,17 @@ const formatNumber = (value: number): string => {
   }
   if (value >= 1000) {
     return `${(value / 1000).toFixed(1)}K`;
+  }
+  return value.toFixed(0);
+};
+
+const formatCredits = (value: number): string => {
+  const absValue = Math.abs(value);
+  if (absValue >= 1000000) {
+    return `${value < 0 ? '-' : ''}${Math.round(absValue / 1000000)}M`;
+  }
+  if (absValue >= 1000) {
+    return `${value < 0 ? '-' : ''}${Math.round(absValue / 1000)}k`;
   }
   return value.toFixed(0);
 };
@@ -226,7 +237,7 @@ function HistoricalLineChart({
 
       if (!allPathsReady) {
         // Retry if paths not ready
-        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
           const retryPaths = pathGroupRef.current?.querySelectorAll('path');
           if (retryPaths) {
             let retryReady = true;
@@ -417,7 +428,7 @@ function HistoricalLineChart({
               if (!coords) return;
 
               const x = coords.x - margin.left;
-
+              
               let closestIndex = 0;
               let minDistance = Infinity;
               chartData.forEach((d, i) => {
@@ -428,7 +439,7 @@ function HistoricalLineChart({
                   closestIndex = i;
                 }
               });
-
+              
               const d = chartData[closestIndex];
 
               if (d) {
@@ -488,20 +499,20 @@ function HistoricalLineChart({
                             return val !== undefined && val !== null && !isNaN(val);
                           });
                           const validDimmedData = dimmedData.filter(d => {
-                            const val = d[line.key];
-                            return val !== undefined && val !== null && !isNaN(val);
-                          });
-                          return (
+                          const val = d[line.key];
+                          return val !== undefined && val !== null && !isNaN(val);
+                        });
+                        return (
                             <g key={line.key}>
-                              <LinePath
+                          <LinePath
                                 data={validHighlightedData}
-                                x={(d) => xScale(d.timestamp)}
-                                y={(d) => yScale(d[line.key] ?? 0)}
-                                stroke={line.color}
-                                strokeWidth={3}
+                            x={(d) => xScale(d.timestamp)}
+                            y={(d) => yScale(d[line.key] ?? 0)}
+                            stroke={line.color}
+                            strokeWidth={3}
                                 strokeOpacity={1}
-                                curve={curveMonotoneX}
-                              />
+                            curve={curveMonotoneX}
+                          />
                               {hoveredIndex !== null && validDimmedData.length > 0 && (
                                 <LinePath
                                   data={validDimmedData}
@@ -514,7 +525,7 @@ function HistoricalLineChart({
                                 />
                               )}
                             </g>
-                          );
+                        );
                         })}
                       </g>
                     ) : (
@@ -530,15 +541,15 @@ function HistoricalLineChart({
                         return (
                           <g ref={pathGroupRef} key={`single-${dataKey || 'loading'}`} className="line-initial-hidden">
                             {validHighlightedData.length > 0 && (
-                              <LinePath
+                          <LinePath
                                 data={validHighlightedData}
-                                x={(d) => xScale(d.timestamp)}
-                                y={(d) => yScale(d.value ?? 0)}
-                                stroke={strokeColor}
-                                strokeWidth={3}
+                            x={(d) => xScale(d.timestamp)}
+                            y={(d) => yScale(d.value ?? 0)}
+                            stroke={strokeColor}
+                            strokeWidth={3}
                                 strokeOpacity={1}
-                                curve={curveMonotoneX}
-                              />
+                            curve={curveMonotoneX}
+                          />
                             )}
                             {hoveredIndex !== null && validDimmedData.length > 0 && (
                               <LinePath
@@ -768,13 +779,99 @@ function CountryDetailContent() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const fetchingHistoryRef = useRef(false);
   const fetchHistoryAbortControllerRef = useRef<AbortController | null>(null);
+  
+  // Stabilization refs to prevent flickering node counts
+  const stableNodeCountRef = useRef<number | null>(null);
+  const nodeCountHistoryRef = useRef<number[]>([]);
+  const lastUpdateTimeRef = useRef<number>(Date.now());
 
-  // Filter nodes by country
+  // Normalize country name for comparison (case-insensitive, trimmed)
+  const normalizedCountryName = useMemo(() => {
+    return countryName.trim().toLowerCase();
+  }, [countryName]);
+
+  // Filter nodes by country with robust matching
   const countryNodes = useMemo(() => {
-    return nodes.filter(node =>
-      node.locationData?.country === countryName
+    const filtered = nodes.filter(node => {
+      const nodeCountry = node.locationData?.country?.trim().toLowerCase();
+      
+      // Match by country name (case-insensitive)
+      return nodeCountry === normalizedCountryName;
+    });
+    
+    // Get country code from first node if available (for fallback matching)
+    const countryCode = filtered[0]?.locationData?.countryCode?.trim().toLowerCase();
+    
+    // If we have a country code, also include nodes that match by country code
+    // This helps when country names might vary slightly
+    if (countryCode) {
+      const additionalNodes = nodes.filter(node => {
+        // Skip if already included
+        const nodeCountry = node.locationData?.country?.trim().toLowerCase();
+        if (nodeCountry === normalizedCountryName) return false;
+        
+        // Match by country code
+        const nodeCountryCode = node.locationData?.countryCode?.trim().toLowerCase();
+        return nodeCountryCode === countryCode;
+      });
+      
+      return [...filtered, ...additionalNodes];
+    }
+    
+    return filtered;
+  }, [nodes, normalizedCountryName]);
+
+  // Stabilize node count to prevent flickering
+  const stabilizedNodeCount = useMemo(() => {
+    const currentCount = countryNodes.length;
+    const now = Date.now();
+    
+    // If this is the first time or we're loading, use current count
+    if (stableNodeCountRef.current === null || loading) {
+      stableNodeCountRef.current = currentCount;
+      nodeCountHistoryRef.current = [currentCount];
+      lastUpdateTimeRef.current = now;
+      return currentCount;
+    }
+    
+    // Track recent counts
+    nodeCountHistoryRef.current.push(currentCount);
+    // Keep only last 5 counts (to detect patterns)
+    if (nodeCountHistoryRef.current.length > 5) {
+      nodeCountHistoryRef.current.shift();
+    }
+    
+    // If count hasn't changed, keep using stable count
+    if (currentCount === stableNodeCountRef.current) {
+      lastUpdateTimeRef.current = now;
+      return currentCount;
+    }
+    
+    // If count changed, check if it's a persistent change
+    const timeSinceLastUpdate = now - lastUpdateTimeRef.current;
+    const recentCounts = nodeCountHistoryRef.current;
+    const mostCommonRecentCount = recentCounts.reduce((a, b, _, arr) => 
+      arr.filter(v => v === a).length >= arr.filter(v => v === b).length ? a : b
     );
-  }, [nodes, countryName]);
+    
+    // Only update if:
+    // 1. The change has persisted for at least 2 seconds, OR
+    // 2. The new count appears in majority of recent samples, OR
+    // 3. The count increased (nodes were added)
+    const changePersisted = timeSinceLastUpdate > 2000;
+    const majorityMatch = mostCommonRecentCount === currentCount && 
+                          recentCounts.filter(c => c === currentCount).length >= 3;
+    const countIncreased = currentCount > stableNodeCountRef.current;
+    
+    if (changePersisted || majorityMatch || countIncreased) {
+      stableNodeCountRef.current = currentCount;
+      lastUpdateTimeRef.current = now;
+      return currentCount;
+    }
+    
+    // Otherwise, keep previous stable count to prevent flickering
+    return stableNodeCountRef.current;
+  }, [countryNodes.length, loading]);
 
   // Fetch historical data for all nodes in this country with deduplication
   useEffect(() => {
@@ -935,7 +1032,7 @@ function CountryDetailContent() {
     }
 
     return {
-      totalNodes: countryNodes.length,
+      totalNodes: stabilizedNodeCount,
       onlineNodes,
       offlineNodes,
       syncingNodes,
@@ -954,7 +1051,7 @@ function CountryDetailContent() {
       nodesReportingCredits: nodesWithCredits.length,
       avgPacketRate,
     };
-  }, [countryNodes]);
+  }, [countryNodes, stabilizedNodeCount]);
 
   // Get country code from first node
   const countryCode = countryNodes[0]?.locationData?.countryCode;
@@ -1157,119 +1254,238 @@ function CountryDetailContent() {
       <main className="flex-1 overflow-hidden">
         <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
-            {/* Cover Image Section */}
+            {/* Header Section - Complete Redesign */}
             {countryCode && (() => {
               const flagUrl = `/api/flag-proxy?code=${countryCode.toLowerCase()}`;
               const onlinePercent = stats.totalNodes > 0 ? Math.round((stats.onlineNodes / stats.totalNodes) * 100) : 0;
+              const uniqueCities = new Set(countryNodes.map(n => n.locationData?.city).filter(Boolean));
+              const locationText = uniqueCities.size > 1
+                ? `${uniqueCities.size} cities across ${countryCode}`
+                : uniqueCities.size === 1
+                  ? `${Array.from(uniqueCities)[0]}, ${countryCode}`
+                  : countryCode;
+              
               return (
-                <div className="relative mb-8 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }}>
-                  {/* Back button */}
-                  <Link href="/regions" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6 transition-all duration-300 hover:translate-x-[-4px] group">
-                    <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
+                <div className="mb-8 space-y-6">
+                  {/* Back Button */}
+                  <Link 
+                    href="/regions" 
+                    className="inline-flex items-center gap-2 text-sm text-foreground/70 hover:text-foreground transition-colors group"
+                  >
+                    <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
                     <span>Back to Regions</span>
                   </Link>
 
-                  <div className="relative rounded-2xl overflow-hidden border border-border/40 shadow-2xl bg-card">
-                    {/* Flag background */}
+                  {/* Main Header Card */}
+                  <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card shadow-lg">
+                    {/* Flag Background - Fully Visible */}
                     <div className="absolute inset-0">
                       <img
                         src={flagUrl}
                         alt={countryName}
-                        className="w-full h-full object-cover opacity-10"
+                        className="w-full h-full object-cover"
                         crossOrigin="anonymous"
                         referrerPolicy="no-referrer"
                       />
+                      {/* Gradient overlay for text readability */}
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80" />
                     </div>
 
-                    {/* Content */}
-                    <div className="relative p-6 sm:p-8 lg:p-10">
-                      {/* Header Row */}
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 mb-8">
-                        <div className="animate-slide-in-left" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
-                          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-2">
+                    <div className="relative p-4 sm:p-6 lg:p-10">
+                      {/* Mobile Layout: Essential Stats */}
+                      <div className="sm:hidden space-y-4">
+                        {/* Title */}
+                        <div>
+                          <h1 className="text-2xl font-bold text-foreground mb-2 tracking-tight drop-shadow-lg">
                             {countryName}
                           </h1>
-                          <p className="text-foreground/60 text-sm sm:text-base flex items-center gap-2">
-                            <MapPin className="w-4 h-4" />
-                            {countryNodes[0]?.locationData?.city ? `${countryNodes[0].locationData.city}, ` : ''}{countryCode}
-                          </p>
+                          <div className="flex items-center gap-2 text-foreground/80 drop-shadow">
+                            <MapPin className="w-4 h-4 shrink-0" />
+                            <span className="text-sm">{locationText}</span>
+                          </div>
                         </div>
 
-                        {/* Quick Stats Badges */}
-                        <div className="flex flex-wrap gap-3 sm:gap-4 animate-fade-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
-                          <div className="px-4 py-2 rounded-lg bg-[#3F8277]/20 border border-[#3F8277]/30 backdrop-blur-sm">
-                            <div className="text-xs text-foreground/60 uppercase tracking-wide mb-1">Online</div>
-                            <div className="text-xl font-bold text-[#3F8277]">
+                        {/* Essential Stats Only - 2 columns */}
+                        <div className="grid grid-cols-2 gap-3">
+                          {/* Online Status */}
+                          <div className="bg-[#3F8277]/20 border border-[#3F8277]/40 rounded-lg p-3 backdrop-blur-sm">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <div className="w-2 h-2 rounded-full bg-[#3F8277] animate-pulse" />
+                              <span className="text-[10px] font-medium text-foreground/90 uppercase tracking-wide">Online</span>
+                            </div>
+                            <div className="text-xl font-bold text-[#3F8277] mb-0.5">
                               <AnimatedNumber value={onlinePercent} suffix="%" />
                             </div>
+                            <div className="text-[10px] text-foreground/70">
+                              {stats.onlineNodes} of {stats.totalNodes}
+                            </div>
                           </div>
-                          <div className="px-4 py-2 rounded-lg bg-[#F0A741]/20 border border-[#F0A741]/30 backdrop-blur-sm">
-                            <div className="text-xs text-foreground/60 uppercase tracking-wide mb-1">Nodes</div>
-                            <div className="text-xl font-bold text-[#F0A741]">
+
+                          {/* Total Nodes */}
+                          <div className="bg-[#F0A741]/20 border border-[#F0A741]/40 rounded-lg p-3 backdrop-blur-sm">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <Server className="w-3.5 h-3.5 text-[#F0A741]" />
+                              <span className="text-[10px] font-medium text-foreground/90 uppercase tracking-wide">Nodes</span>
+                            </div>
+                            <div className="text-xl font-bold text-[#F0A741] mb-0.5">
                               <AnimatedNumber value={stats.totalNodes} />
+                            </div>
+                            <div className="text-[10px] text-foreground/70">
+                              {stats.offlineNodes > 0 ? `${stats.offlineNodes} offline` : 'All online'}
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Stats Grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 animate-slide-in-bottom" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
-                        <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#3F8277]/50 transition-all duration-300">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Server className="w-4 h-4 text-[#3F8277]" />
-                            <span className="text-xs font-medium text-foreground/60 uppercase">Total</span>
-                          </div>
-                          <div className="text-2xl font-bold text-foreground">
-                            <AnimatedNumber value={stats.totalNodes} />
-                          </div>
-                          <div className="text-xs text-foreground/50 mt-1">
-                            {stats.onlineNodes} online
+                      {/* Desktop Layout: Full Stats */}
+                      <div className="hidden sm:block">
+                        {/* Title Section */}
+                        <div className="mb-8">
+                          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-3 tracking-tight drop-shadow-lg">
+                            {countryName}
+                          </h1>
+                          <div className="flex items-center gap-2 text-foreground/80 drop-shadow">
+                            <MapPin className="w-4 h-4 shrink-0" />
+                            <span className="text-sm sm:text-base">{locationText}</span>
                           </div>
                         </div>
 
-                        <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#F0A741]/50 transition-all duration-300">
-                          <div className="flex items-center gap-2 mb-2">
-                            <HardDrive className="w-4 h-4 text-[#F0A741]" />
-                            <span className="text-xs font-medium text-foreground/60 uppercase">Storage</span>
-                          </div>
-                          <div className="text-xl font-bold text-foreground">
-                            {formatStorageBytes(stats.totalStorage)}
-                          </div>
-                          {stats.usedStorage > 0 && (
-                            <div className="text-xs text-foreground/50 mt-1">
-                              {((stats.usedStorage / stats.totalStorage) * 100).toFixed(1)}% used
+                        {/* Key Metrics - Primary Stats */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                          {/* Online Status */}
+                          <div className="bg-gradient-to-br from-[#3F8277]/20 to-[#3F8277]/10 border border-[#3F8277]/40 rounded-lg p-4 backdrop-blur-sm">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-2 h-2 rounded-full bg-[#3F8277] animate-pulse" />
+                              <span className="text-xs font-medium text-foreground/90 uppercase tracking-wide">Online</span>
                             </div>
-                          )}
+                            <div className="text-2xl sm:text-3xl font-bold text-[#3F8277] mb-1 drop-shadow">
+                              <AnimatedNumber value={onlinePercent} suffix="%" />
+                            </div>
+                            <div className="text-xs text-foreground/70">
+                              {stats.onlineNodes} of {stats.totalNodes} nodes
+                            </div>
+                          </div>
+
+                          {/* Total Nodes */}
+                          <div className="bg-gradient-to-br from-[#F0A741]/20 to-[#F0A741]/10 border border-[#F0A741]/40 rounded-lg p-4 backdrop-blur-sm">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Server className="w-4 h-4 text-[#F0A741]" />
+                              <span className="text-xs font-medium text-foreground/90 uppercase tracking-wide">Nodes</span>
+                            </div>
+                            <div className="text-2xl sm:text-3xl font-bold text-[#F0A741] mb-1 drop-shadow">
+                              <AnimatedNumber value={stats.totalNodes} />
+                            </div>
+                            <div className="text-xs text-foreground/70">
+                              {stats.offlineNodes > 0 && `${stats.offlineNodes} offline`}
+                              {stats.offlineNodes === 0 && stats.syncingNodes > 0 && `${stats.syncingNodes} syncing`}
+                              {stats.offlineNodes === 0 && stats.syncingNodes === 0 && 'All operational'}
+                            </div>
+                          </div>
+
+                          {/* Storage */}
+                          <div className="bg-background/40 border border-border/50 rounded-lg p-4 backdrop-blur-sm hover:border-[#F0A741]/50 transition-colors">
+                            <div className="flex items-center gap-2 mb-2">
+                              <HardDrive className="w-4 h-4 text-[#F0A741]" />
+                              <span className="text-xs font-medium text-foreground/90 uppercase tracking-wide">Storage</span>
+                            </div>
+                            <div className="text-xl sm:text-2xl font-bold text-foreground mb-1 drop-shadow">
+                              {formatStorageBytes(stats.totalStorage)}
+                            </div>
+                            <div className="text-xs text-foreground/70">
+                              {stats.usedStorage > 0 && stats.totalStorage > 0
+                                ? `${((stats.usedStorage / stats.totalStorage) * 100).toFixed(1)}% used`
+                                : 'Available'}
+                            </div>
+                          </div>
+
+                          {/* Credits */}
+                          <div className="bg-background/40 border border-border/50 rounded-lg p-4 backdrop-blur-sm hover:border-[#3F8277]/50 transition-colors">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Award className="w-4 h-4 text-[#3F8277]" />
+                              <span className="text-xs font-medium text-foreground/90 uppercase tracking-wide">Credits</span>
+                            </div>
+                            <div className="text-xl sm:text-2xl font-bold text-foreground mb-1 drop-shadow">
+                              {stats.totalCredits > 0 ? (
+                                <AnimatedNumber value={stats.totalCredits} />
+                              ) : (
+                                <span className="text-foreground/60">N/A</span>
+                              )}
+                            </div>
+                            <div className="text-xs text-foreground/70">
+                              {stats.nodesReportingCredits > 0 
+                                ? `${stats.nodesReportingCredits} nodes reporting`
+                                : 'No data'}
+                            </div>
+                          </div>
                         </div>
 
-                        <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#9CA3AF]/50 transition-all duration-300">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Activity className="w-4 h-4 text-[#9CA3AF]" />
-                            <span className="text-xs font-medium text-foreground/60 uppercase">CPU</span>
+                        {/* Secondary Metrics */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          {/* CPU */}
+                          <div className="bg-background/40 border border-border/40 rounded-lg p-3 hover:border-border/60 transition-colors backdrop-blur-sm">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <Activity className="w-3.5 h-3.5 text-foreground/70" />
+                              <span className="text-[10px] sm:text-xs font-medium text-foreground/80 uppercase">CPU</span>
+                            </div>
+                            <div className="text-lg sm:text-xl font-semibold text-foreground drop-shadow">
+                              {stats.avgCPU > 0 ? (
+                                <AnimatedNumber value={stats.avgCPU} decimals={1} suffix="%" />
+                              ) : (
+                                <span className="text-foreground/60 text-sm">N/A</span>
+                              )}
+                            </div>
                           </div>
-                          <div className="text-xl font-bold text-foreground">
-                            {stats.avgCPU > 0 ? (
-                              <AnimatedNumber value={stats.avgCPU} decimals={1} suffix="%" />
-                            ) : (
-                              'N/A'
-                            )}
-                          </div>
-                          <div className="text-xs text-foreground/50 mt-1">Average</div>
-                        </div>
 
-                        <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#3F8277]/50 transition-all duration-300">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Zap className="w-4 h-4 text-[#3F8277]" />
-                            <span className="text-xs font-medium text-foreground/60 uppercase">RAM</span>
+                          {/* RAM */}
+                          <div className="bg-background/40 border border-border/40 rounded-lg p-3 hover:border-border/60 transition-colors backdrop-blur-sm">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <Zap className="w-3.5 h-3.5 text-foreground/70" />
+                              <span className="text-[10px] sm:text-xs font-medium text-foreground/80 uppercase">RAM</span>
+                            </div>
+                            <div className="text-lg sm:text-xl font-semibold text-foreground drop-shadow">
+                              {stats.avgRAMUsage > 0 ? (
+                                <AnimatedNumber value={stats.avgRAMUsage} decimals={1} suffix="%" />
+                              ) : (
+                                <span className="text-foreground/60 text-sm">N/A</span>
+                              )}
+                            </div>
                           </div>
-                          <div className="text-xl font-bold text-foreground">
-                            {stats.avgRAMUsage > 0 ? (
-                              <AnimatedNumber value={stats.avgRAMUsage} decimals={1} suffix="%" />
-                            ) : (
-                              'N/A'
-                            )}
+
+                          {/* Latency */}
+                          <div className="bg-background/40 border border-border/40 rounded-lg p-3 hover:border-border/60 transition-colors backdrop-blur-sm">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <Clock className="w-3.5 h-3.5 text-foreground/70" />
+                              <span className="text-[10px] sm:text-xs font-medium text-foreground/80 uppercase">Latency</span>
+                            </div>
+                            <div className="text-lg sm:text-xl font-semibold text-foreground drop-shadow">
+                              {stats.avgLatency > 0 ? (
+                                <>
+                                  <AnimatedNumber value={stats.avgLatency} />
+                                  <span className="text-xs text-foreground/70 ml-1">ms</span>
+                                </>
+                              ) : (
+                                <span className="text-foreground/60 text-sm">N/A</span>
+                              )}
+                            </div>
                           </div>
-                          <div className="text-xs text-foreground/50 mt-1">Average</div>
+
+                          {/* Packet Rate */}
+                          <div className="bg-background/40 border border-border/40 rounded-lg p-3 hover:border-border/60 transition-colors backdrop-blur-sm">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <TrendingUp className="w-3.5 h-3.5 text-foreground/70" />
+                              <span className="text-[10px] sm:text-xs font-medium text-foreground/80 uppercase">Activity</span>
+                            </div>
+                            <div className="text-lg sm:text-xl font-semibold text-foreground drop-shadow">
+                              {stats.avgPacketRate > 0 ? (
+                                <>
+                                  <AnimatedNumber value={stats.avgPacketRate} decimals={1} />
+                                  <span className="text-xs text-foreground/70 ml-1">p/s</span>
+                                </>
+                              ) : (
+                                <span className="text-foreground/60 text-sm">N/A</span>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1280,17 +1496,57 @@ function CountryDetailContent() {
 
             {/* Header (fallback if no country code) */}
             {!countryCode && (
-              <div className="mb-4 sm:mb-6">
-                <Link href="/regions" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-4">
-                  <ArrowLeft className="w-4 h-4" />
-                  Back to Regions
+              <div className="mb-8 space-y-6">
+                <Link 
+                  href="/regions" 
+                  className="inline-flex items-center gap-2 text-sm text-foreground/70 hover:text-foreground transition-colors group"
+                >
+                  <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+                  <span>Back to Regions</span>
                 </Link>
-                <h1 className="text-2xl sm:text-3xl font-bold mb-2">
-                  {countryName}
-                </h1>
-                <p className="text-foreground/60 text-sm sm:text-base">
-                  {stats.totalNodes} node{stats.totalNodes !== 1 ? 's' : ''} in this country
-                </p>
+
+                <div className="relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-card via-card to-card/95 shadow-lg p-6 sm:p-8 lg:p-10">
+                  <div className="mb-8">
+                    <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-3 tracking-tight">
+                      {countryName}
+                    </h1>
+                    <p className="text-foreground/60 text-sm sm:text-base">
+                      {stats.totalNodes} node{stats.totalNodes !== 1 ? 's' : ''} in this region
+                    </p>
+                  </div>
+
+                  {/* Key Metrics */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="bg-gradient-to-br from-[#3F8277]/10 to-[#3F8277]/5 border border-[#3F8277]/20 rounded-lg p-4">
+                      <div className="text-xs font-medium text-foreground/70 uppercase tracking-wide mb-2">Online</div>
+                      <div className="text-2xl sm:text-3xl font-bold text-[#3F8277]">
+                        {stats.onlineNodes}
+                      </div>
+                    </div>
+                    <div className="bg-gradient-to-br from-[#F0A741]/10 to-[#F0A741]/5 border border-[#F0A741]/20 rounded-lg p-4">
+                      <div className="text-xs font-medium text-foreground/70 uppercase tracking-wide mb-2">Total Nodes</div>
+                      <div className="text-2xl sm:text-3xl font-bold text-[#F0A741]">
+                        <AnimatedNumber value={stats.totalNodes} />
+                      </div>
+                    </div>
+                    <div className="bg-background/30 border border-border/30 rounded-lg p-4">
+                      <div className="text-xs font-medium text-foreground/60 uppercase tracking-wide mb-2">Storage</div>
+                      <div className="text-xl sm:text-2xl font-semibold text-foreground">
+                        {formatStorageBytes(stats.totalStorage)}
+                      </div>
+                    </div>
+                    <div className="bg-background/30 border border-border/30 rounded-lg p-4">
+                      <div className="text-xs font-medium text-foreground/60 uppercase tracking-wide mb-2">Credits</div>
+                      <div className="text-xl sm:text-2xl font-semibold text-foreground">
+                        {stats.totalCredits > 0 ? (
+                          <AnimatedNumber value={stats.totalCredits} />
+                        ) : (
+                          <span className="text-foreground/40">N/A</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1414,27 +1670,46 @@ function CountryDetailContent() {
                 };
               });
 
-              // Add current live data point if it's newer than last historical point
+              // Only add a current point if the last historical point is old enough (> 5 minutes)
+              // This prevents huge spikes from accumulating changes over long periods
               const lastHistoricalTimestamp = sorted.length > 0 ? sorted[sorted.length - 1].timestamp : 0;
               const currentTimestamp = Date.now();
-              if (currentTimestamp - lastHistoricalTimestamp > 60000) { // More than 1 minute old
-                // Calculate credits earned since last historical point
-                const lastHistoricalCredits = sorted.length > 0 ? sorted[sorted.length - 1].totalCredits || 0 : 0;
-                const currentTotalCredits = stats.totalCredits;
-                const creditsEarnedSinceLast = currentTotalCredits - lastHistoricalCredits;
+              const currentTotalCredits = stats.totalCredits;
+              const timeSinceLastHistorical = currentTimestamp - lastHistoricalTimestamp;
+              
+              // Only add/update a current point if the gap is reasonable
+              // This prevents huge spikes from accumulating changes over long periods
+              if (creditsData.length > 0) {
+                const lastPoint = creditsData[creditsData.length - 1];
+                const lastPointTimestamp = lastPoint.timestamp;
+                const timeSinceLastPoint = currentTimestamp - lastPointTimestamp;
+                
+                // Only add a new point if:
+                // 1. It's been at least 5 minutes since the last point (meaningful window)
+                // 2. It's been less than 30 minutes since the last point (prevent huge gaps)
+                // This ensures we show reasonable 5-minute windows, not accumulated changes over hours
+                if (timeSinceLastPoint >= FIVE_MINUTES_MS && timeSinceLastPoint <= 30 * 60 * 1000) {
+                  const lastPointTotal = lastPoint._totalCredits ?? (sorted.length > 0 ? sorted[sorted.length - 1].totalCredits || 0 : 0);
+                  const creditsEarnedSinceLastPoint = currentTotalCredits - lastPointTotal;
 
-                console.log('[RegionPage] Adding current credit point:', {
-                  lastHistorical: lastHistoricalCredits,
-                  current: currentTotalCredits,
-                  earned: creditsEarnedSinceLast,
-                  timeDiff: (currentTimestamp - lastHistoricalTimestamp) / 1000 / 60 + ' mins'
-                });
+                  console.log('[RegionPage] Adding current credit point:', {
+                    lastPointTotal,
+                    current: currentTotalCredits,
+                    earned: creditsEarnedSinceLastPoint,
+                    timeDiff: (timeSinceLastPoint / 1000 / 60).toFixed(1) + ' mins'
+                  });
 
-                creditsData.push({
-                  timestamp: currentTimestamp,
-                  value: creditsEarnedSinceLast,
-                  _totalCredits: currentTotalCredits,
-                });
+                  creditsData.push({
+                    timestamp: currentTimestamp,
+                    value: creditsEarnedSinceLastPoint,
+                    _totalCredits: currentTotalCredits,
+                  });
+                } else {
+                  // Gap is too short (< 5 min) or too long (> 30 min)
+                  // Just update the last point's total for tooltip accuracy
+                  // But don't change the value (delta) to avoid spikes
+                  lastPoint._totalCredits = currentTotalCredits;
+                }
               }
 
               // Log credit data for debugging large swings
@@ -1498,8 +1773,8 @@ function CountryDetailContent() {
                 if (d.totalNodes > 0 && d.onlineCount !== undefined) {
                   const availability = (d.onlineCount / d.totalNodes) * 100;
                   // Use availability as a simplified health score (better than nothing)
-                  return {
-                    timestamp: d.timestamp,
+                return {
+                  timestamp: d.timestamp,
                     value: Math.round(availability * 0.40), // At least show availability component
                   };
                 }
@@ -1566,13 +1841,16 @@ function CountryDetailContent() {
                         strokeColor="#F0A741"
                         yLabel="Credits"
                         yTickFormatter={(v) => {
-                          const val = v.toFixed(0);
-                          return v > 0 ? `+${val}` : val;
+                          const formatted = formatCredits(v);
+                          return v > 0 ? `+${formatted}` : formatted;
                         }}
                         tooltipFormatter={(d) => {
                           const value = d.value || 0;
                           const isPositive = value > 0;
                           const isNegative = value < 0;
+                          // If this is the most recent point, use current total from stats for accuracy
+                          const isMostRecent = creditsData.length > 0 && d.timestamp === creditsData[creditsData.length - 1].timestamp;
+                          const displayTotal = isMostRecent ? stats.totalCredits : (d._totalCredits ?? 0);
                           return (
                             <div className="space-y-1">
                               <div className="text-xs text-foreground/60">
@@ -1580,20 +1858,28 @@ function CountryDetailContent() {
                               </div>
                               <div className={`font-semibold ${isNegative ? 'text-red-400' : isPositive ? 'text-green-400' : 'text-foreground'}`}>
                                 {isNegative ? 'Lost: ' : 'Earned: '}
-                                {isPositive ? '+' : ''}{value.toFixed(0)} credits
+                                {isPositive ? '+' : ''}{formatCredits(value)} credits
                               </div>
-                              {d._totalCredits !== undefined && (
-                                <div className="text-xs text-foreground/60">
-                                  Total: {d._totalCredits.toLocaleString()}
-                                </div>
-                              )}
+                              <div className="text-xs text-foreground/60">
+                                Total: {displayTotal.toLocaleString()}
+                              </div>
                             </div>
                           );
                         }}
                         headerContent={
-                          <span className="text-xs text-muted-foreground">
-                            Credits change over 5-min windows
-                          </span>
+                          <div className="flex items-center gap-1.5 group relative">
+                            <span className="text-xs text-muted-foreground">
+                              Credits change over 5-min windows
+                            </span>
+                            <div className="relative">
+                              <Info className="w-3.5 h-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help transition-colors" />
+                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-zinc-900 border border-border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                                <p className="text-xs text-foreground/80 leading-relaxed">
+                                  Credit changes may fluctuate when nodes go online/offline. Nodes earn credits for responding to heartbeats and lose credits for missing data requests.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
                         }
                       />
                     </div>
@@ -1601,63 +1887,63 @@ function CountryDetailContent() {
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* CPU Usage Chart - Always show, empty axes when no data */}
-                    <div className="card">
-                      <HistoricalLineChart
-                        title="Average CPU Usage"
-                        data={cpuData}
-                        height={250}
-                        yDomain={[0, 100]}
-                        strokeColor="#F0A741"
-                        yLabel="CPU %"
-                        yTickFormatter={(v) => `${v.toFixed(0)}%`}
-                        tooltipFormatter={(d) => (
-                          <div className="space-y-1">
-                            <div className="text-xs text-foreground/60">
-                              {timeFormat('%b %d, %H:%M')(new Date(d.timestamp))}
+                      <div className="card">
+                        <HistoricalLineChart
+                          title="Average CPU Usage"
+                          data={cpuData}
+                          height={250}
+                          yDomain={[0, 100]}
+                          strokeColor="#F0A741"
+                          yLabel="CPU %"
+                          yTickFormatter={(v) => `${v.toFixed(0)}%`}
+                          tooltipFormatter={(d) => (
+                            <div className="space-y-1">
+                              <div className="text-xs text-foreground/60">
+                                {timeFormat('%b %d, %H:%M')(new Date(d.timestamp))}
+                              </div>
+                              <div className="font-semibold text-foreground">
+                                {d.value.toFixed(1)}% CPU
+                              </div>
                             </div>
-                            <div className="font-semibold text-foreground">
-                              {d.value.toFixed(1)}% CPU
-                            </div>
-                          </div>
-                        )}
-                        headerContent={
-                          <span className="text-xs text-muted-foreground">
+                          )}
+                          headerContent={
+                            <span className="text-xs text-muted-foreground">
                             {cpuData.length === 0 && loadingHistory ? 'Loading data...' : cpuData.length > 0 ? 'Avg CPU across reporting nodes' : 'No data available'}
-                          </span>
-                        }
-                      />
-                    </div>
+                            </span>
+                          }
+                        />
+                      </div>
 
                     {/* RAM Usage Chart - Always show, empty axes when no data */}
-                    <div className="card">
-                      <HistoricalLineChart
-                        title="Average RAM Usage"
-                        data={ramData}
-                        height={250}
-                        yDomain={[0, 100]}
-                        strokeColor="#9CA3AF"
-                        yLabel="RAM %"
-                        yTickFormatter={(v) => `${v.toFixed(0)}%`}
-                        tooltipFormatter={(d) => (
-                          <div className="space-y-1">
-                            <div className="text-xs text-foreground/60">
-                              {timeFormat('%b %d, %H:%M')(new Date(d.timestamp))}
+                      <div className="card">
+                        <HistoricalLineChart
+                          title="Average RAM Usage"
+                          data={ramData}
+                          height={250}
+                          yDomain={[0, 100]}
+                          strokeColor="#9CA3AF"
+                          yLabel="RAM %"
+                          yTickFormatter={(v) => `${v.toFixed(0)}%`}
+                          tooltipFormatter={(d) => (
+                            <div className="space-y-1">
+                              <div className="text-xs text-foreground/60">
+                                {timeFormat('%b %d, %H:%M')(new Date(d.timestamp))}
+                              </div>
+                              <div className="font-semibold text-foreground">
+                                {d.value.toFixed(1)}% RAM
+                              </div>
                             </div>
-                            <div className="font-semibold text-foreground">
-                              {d.value.toFixed(1)}% RAM
-                            </div>
-                          </div>
-                        )}
-                        headerContent={
-                          <span className="text-xs text-muted-foreground">
+                          )}
+                          headerContent={
+                            <span className="text-xs text-muted-foreground">
                             {ramData.length === 0 && loadingHistory ? 'Loading data...' : ramData.length > 0 ? 'Avg RAM across reporting nodes' : 'No data available'}
-                          </span>
-                        }
-                      />
-                    </div>
+                            </span>
+                          }
+                        />
+                      </div>
 
                     {/* Network Health Chart - Always show, empty axes when no data */}
-                    <div className="card lg:col-span-2">
+                      <div className="card lg:col-span-2">
                       <HistoricalLineChart
                         title="Network Health Trend"
                         data={healthData}
@@ -1674,8 +1960,8 @@ function CountryDetailContent() {
                             <div className="font-semibold text-foreground">
                               {d.value.toFixed(1)}% Health
                             </div>
-                          </div>
-                        )}
+                      </div>
+                    )}
                         headerContent={
                           <span className="text-xs text-muted-foreground">
                             {loadingHistory ? 'Loading data...' : healthData.length > 0 ? 'Overall health score for this region' : 'No data available'}
