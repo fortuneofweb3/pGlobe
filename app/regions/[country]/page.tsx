@@ -648,12 +648,8 @@ function CountryDetailContent() {
       }
     };
 
-    if (countryNodes.length > 0) {
-      fetchHistoricalData();
-    } else {
-      setLoadingHistory(false);
-      fetchingHistoryRef.current = false;
-    }
+    // Always fetch history when page loads, even if no nodes yet (show empty charts)
+    fetchHistoricalData();
 
     // Cleanup function - abort pending request on unmount
     return () => {

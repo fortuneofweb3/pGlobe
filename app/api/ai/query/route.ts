@@ -6,6 +6,8 @@
  * - "nodes": Filter nodes by various criteria
  * - "node": Get a single node by pubkey/address
  * - "history": Get historical data for a node or network
+ * - "country": Get aggregated country/region data (stats, node counts, etc.)
+ * - "country-history": Get historical data for a country/region
  */
 
 import { NextResponse } from 'next/server';
@@ -15,7 +17,7 @@ const API_SECRET = process.env.API_SECRET;
 
 export async function POST(request: Request) {
   try {
-    const { queryType, filters, nodeId, pubkey, address, startTime, endTime } = await request.json();
+    const { queryType, filters, nodeId, pubkey, address, startTime, endTime, country, countryCode } = await request.json();
 
     if (!RENDER_API_URL) {
       return NextResponse.json(
@@ -158,6 +160,182 @@ export async function POST(request: Request) {
       } catch (error: any) {
         return NextResponse.json(
           { error: 'Failed to fetch history', message: error?.message, history: [] },
+          { status: 500 }
+        );
+      }
+    }
+
+    if (queryType === 'country') {
+      // Get aggregated country/region data
+      const targetCountry = country || filters?.country;
+      const targetCountryCode = countryCode || filters?.countryCode;
+      
+      if (!targetCountry) {
+        return NextResponse.json(
+          { error: 'country parameter required for country query', data: null },
+          { status: 400 }
+        );
+      }
+
+      try {
+        // Fetch all nodes
+        const nodesResponse = await fetch(`${RENDER_API_URL}/api/pnodes`, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
+          },
+          cache: 'no-store',
+          signal: AbortSignal.timeout(5000),
+        });
+
+        if (!nodesResponse.ok) {
+          return NextResponse.json(
+            { error: 'Failed to fetch nodes', data: null },
+            { status: 500 }
+          );
+        }
+
+        const nodesData = await nodesResponse.json();
+        const allNodes = nodesData.nodes || [];
+        
+        // Filter nodes by country
+        const countryNodes = allNodes.filter((n: any) => {
+          const nodeCountry = (n.locationData?.country || '').toLowerCase();
+          const nodeCountryCode = (n.locationData?.countryCode || '').toUpperCase();
+          const target = targetCountry.toLowerCase();
+          const targetCode = targetCountryCode?.toUpperCase();
+          
+          return nodeCountry === target || 
+                 (targetCode && nodeCountryCode === targetCode) ||
+                 nodeCountryCode === target.toUpperCase();
+        });
+
+        // Calculate aggregated stats
+        const totalNodes = countryNodes.length;
+        const onlineNodes = countryNodes.filter((n: any) => n.status === 'online').length;
+        const offlineNodes = countryNodes.filter((n: any) => n.status === 'offline' || !n.status).length;
+        const syncingNodes = countryNodes.filter((n: any) => n.status === 'syncing').length;
+        
+        const totalStorage = countryNodes.reduce((sum: number, n: any) => sum + (n.storageCapacity || 0), 0);
+        const usedStorage = countryNodes.reduce((sum: number, n: any) => sum + (n.storageUsed || 0), 0);
+        
+        const totalCredits = countryNodes.reduce((sum: number, n: any) => sum + (n.credits || 0), 0);
+        
+        const cpuValues = countryNodes
+          .map((n: any) => n.cpuPercent)
+          .filter((val: any): val is number => val !== undefined && val !== null && val >= 0);
+        const avgCPU = cpuValues.length > 0
+          ? cpuValues.reduce((sum: number, val: number) => sum + val, 0) / cpuValues.length
+          : 0;
+
+        const ramValues = countryNodes
+          .map((n: any) => {
+            if (!n.ramTotal || n.ramTotal === 0) return null;
+            return ((n.ramUsed || 0) / n.ramTotal) * 100;
+          })
+          .filter((val: any): val is number => val !== null && val !== undefined);
+        const avgRAM = ramValues.length > 0
+          ? ramValues.reduce((sum: number, val: number) => sum + val, 0) / ramValues.length
+          : 0;
+
+        const totalPacketsReceived = countryNodes.reduce((sum: number, n: any) => sum + (n.packetsReceived || 0), 0);
+        const totalPacketsSent = countryNodes.reduce((sum: number, n: any) => sum + (n.packetsSent || 0), 0);
+        const totalActiveStreams = countryNodes.reduce((sum: number, n: any) => sum + (n.activeStreams || 0), 0);
+
+        // Version distribution
+        const versionDistribution: Record<string, number> = {};
+        countryNodes.forEach((n: any) => {
+          const version = n.version || 'unknown';
+          versionDistribution[version] = (versionDistribution[version] || 0) + 1;
+        });
+
+        // City distribution
+        const cities = new Set<string>();
+        countryNodes.forEach((n: any) => {
+          if (n.locationData?.city) {
+            cities.add(n.locationData.city);
+          }
+        });
+
+        return NextResponse.json({
+          country: targetCountry,
+          countryCode: targetCountryCode || countryNodes[0]?.locationData?.countryCode || null,
+          stats: {
+            totalNodes,
+            onlineNodes,
+            offlineNodes,
+            syncingNodes,
+            totalStorage,
+            usedStorage,
+            storageUsagePercent: totalStorage > 0 ? (usedStorage / totalStorage) * 100 : 0,
+            totalCredits,
+            avgCPU: Math.round(avgCPU * 10) / 10,
+            avgRAM: Math.round(avgRAM * 10) / 10,
+            totalPacketsReceived,
+            totalPacketsSent,
+            totalActiveStreams,
+            versionDistribution,
+            cityCount: cities.size,
+            cities: Array.from(cities).slice(0, 10), // Top 10 cities
+          },
+        });
+      } catch (error: any) {
+        return NextResponse.json(
+          { error: 'Failed to fetch country data', message: error?.message, data: null },
+          { status: 500 }
+        );
+      }
+    }
+
+    if (queryType === 'country-history') {
+      // Get historical data for a country/region
+      const targetCountry = country || filters?.country;
+      const targetCountryCode = countryCode || filters?.countryCode;
+      
+      if (!targetCountry) {
+        return NextResponse.json(
+          { error: 'country parameter required for country-history query', history: [] },
+          { status: 400 }
+        );
+      }
+
+      // Calculate time range
+      const endTimeValue = endTime || Date.now();
+      const startTimeValue = startTime || (endTimeValue - (7 * 24 * 60 * 60 * 1000)); // Default 7 days
+
+      try {
+        const baseUrl = request.url.split('/api/ai/query')[0];
+        const historyUrl = new URL('/api/history/region', baseUrl);
+        historyUrl.searchParams.set('country', targetCountry);
+        if (targetCountryCode) {
+          historyUrl.searchParams.set('countryCode', targetCountryCode);
+        }
+        historyUrl.searchParams.set('startTime', startTimeValue.toString());
+        historyUrl.searchParams.set('endTime', endTimeValue.toString());
+
+        const historyResponse = await fetch(historyUrl.toString(), {
+          signal: AbortSignal.timeout(15000),
+        });
+
+        if (historyResponse.ok) {
+          const historyData = await historyResponse.json();
+          return NextResponse.json({
+            country: targetCountry,
+            countryCode: targetCountryCode || null,
+            history: historyData.data || [],
+            count: historyData.count || 0,
+            startTime: startTimeValue,
+            endTime: endTimeValue,
+          });
+        } else {
+          return NextResponse.json(
+            { error: 'Failed to fetch country history', history: [] },
+            { status: 500 }
+          );
+        }
+      } catch (error: any) {
+        return NextResponse.json(
+          { error: 'Failed to fetch country history', message: error?.message, history: [] },
           { status: 500 }
         );
       }

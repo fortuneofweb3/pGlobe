@@ -199,6 +199,56 @@ export const tools = [
         }
       }
     }
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'get_country_data',
+      description: 'Get aggregated statistics for a specific country/region including total nodes, online count, average CPU/RAM, total storage, credits, version distribution, cities, etc. Use this to get comprehensive country-level metrics.',
+      parameters: {
+        type: 'object',
+        properties: {
+          country: { 
+            type: 'string', 
+            description: 'Country name (e.g., "Nigeria", "United States") or country code (e.g., "NG", "US")' 
+          },
+          countryCode: { 
+            type: 'string', 
+            description: 'Optional: ISO 2-letter country code (e.g., "NG", "US") - helps with matching if provided' 
+          }
+        },
+        required: ['country']
+      }
+    }
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'get_country_history',
+      description: 'Get historical aggregated data for a country/region over time. Returns data points with online count, total nodes, packet rates, credits, average CPU/RAM, etc. Use this to analyze country performance trends over time.',
+      parameters: {
+        type: 'object',
+        properties: {
+          country: { 
+            type: 'string', 
+            description: 'Country name (e.g., "Nigeria", "United States") or country code (e.g., "NG", "US")' 
+          },
+          countryCode: { 
+            type: 'string', 
+            description: 'Optional: ISO 2-letter country code (e.g., "NG", "US") - helps with matching if provided' 
+          },
+          hours: { 
+            type: 'number', 
+            description: 'Number of hours to look back (default: 168 = 7 days)' 
+          },
+          days: { 
+            type: 'number', 
+            description: 'Number of days to look back (alternative to hours, default: 7)' 
+          }
+        },
+        required: ['country']
+      }
+    }
   }
 ];
 
@@ -231,6 +281,8 @@ export async function executeFunction(
     'get_node_history': 'Fetching historical data...',
     'compare_nodes': 'Comparing nodes...',
     'compare_countries': 'Comparing countries...',
+    'get_country_data': 'Fetching country statistics...',
+    'get_country_history': 'Fetching country historical data...',
   };
   
   const statusMessage = functionStatusMap[name] || `Executing ${name}...`;
@@ -736,6 +788,54 @@ export async function executeFunction(
       }
       
       default:
+      case 'get_country_data': {
+        const response = await fetch(`${baseUrl}/api/ai/query`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            queryType: 'country',
+            country: args.country,
+            countryCode: args.countryCode,
+          }),
+        });
+        const data = await response.json();
+        if (data.error) {
+          return { error: data.error };
+        }
+        return data;
+      }
+
+      case 'get_country_history': {
+        // Calculate time range
+        const endTime = Date.now();
+        let startTime = endTime;
+        if (args.days) {
+          startTime = endTime - (args.days * 24 * 60 * 60 * 1000);
+        } else if (args.hours) {
+          startTime = endTime - (args.hours * 60 * 60 * 1000);
+        } else {
+          // Default to 7 days
+          startTime = endTime - (7 * 24 * 60 * 60 * 1000);
+        }
+
+        const response = await fetch(`${baseUrl}/api/ai/query`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            queryType: 'country-history',
+            country: args.country,
+            countryCode: args.countryCode,
+            startTime,
+            endTime,
+          }),
+        });
+        const data = await response.json();
+        if (data.error) {
+          return { error: data.error };
+        }
+        return data;
+      }
+
         return { error: `Unknown function: ${name}` };
     }
   } catch (error: any) {
