@@ -8,7 +8,9 @@ import { useNodes } from '@/lib/context/NodesContext';
 import { getFlagForCountry } from '@/lib/utils/country-flags';
 import { formatStorageBytes } from '@/lib/utils/storage';
 import { formatPacketRate } from '@/lib/utils/packet-rates';
+import { calculateNetworkHealth } from '@/lib/utils/network-health';
 import { ArrowLeft, MapPin, Server, TrendingUp, Activity, HardDrive, Award, Clock, Zap, ChevronDown, ChevronUp, Search, BarChart3 } from 'lucide-react';
+import AnimatedNumber from '@/components/AnimatedNumber';
 import PNodeTable from '@/components/PNodeTable';
 import { PNode } from '@/lib/types/pnode';
 import { TableSkeleton, CardSkeleton, ChartSkeleton } from '@/components/Skeletons';
@@ -88,6 +90,7 @@ function HistoricalLineChart({
   const margin = { top: 30, right: 30, left: 60, bottom: 70 };
   const svgRef = useRef<SVGSVGElement>(null);
   const hasAnimatedRef = useRef(false);
+  const previousDataLengthRef = useRef(0);
 
   const chartData = useMemo(() => {
     if (data.length === 0) return [];
@@ -161,10 +164,24 @@ function HistoricalLineChart({
 
   // Animate paths on mount and when data changes
   useEffect(() => {
-    if (!svgRef.current || chartData.length === 0) return;
+    if (!svgRef.current) return;
+    
+    // If data is empty, don't animate
+    if (chartData.length === 0) {
+      hasAnimatedRef.current = false;
+      previousDataLengthRef.current = 0;
+      return;
+    }
 
-    // Reset animation flag when data changes
-    hasAnimatedRef.current = false;
+    // Reset animation flag when data changes from empty to populated or when data length changes
+    const dataLengthChanged = previousDataLengthRef.current !== chartData.length;
+    const wasEmpty = previousDataLengthRef.current === 0;
+    
+    if (wasEmpty || dataLengthChanged) {
+      hasAnimatedRef.current = false;
+    }
+    
+    previousDataLengthRef.current = chartData.length;
 
     let cleanupTimer: NodeJS.Timeout | null = null;
 
@@ -573,159 +590,51 @@ function CountryDetailContent() {
         const endTime = Date.now();
         const startTime = endTime - (7 * 24 * 60 * 60 * 1000); // Always fetch 7 days
 
-        // Fetch history for each node in the country
-        const nodeIds = countryNodes.map(n => n.pubkey || n.publicKey || n.id).filter(Boolean);
+        // Get country code if available from first node
+        const countryCode = countryNodes[0]?.locationData?.countryCode;
 
-        if (nodeIds.length === 0) {
-          setHistoricalData([]);
-          setLoadingHistory(false);
-          fetchingHistoryRef.current = false;
-          return;
-        }
+        console.log(`[RegionPage] Fetching aggregated region history for ${countryName}${countryCode ? ` (${countryCode})` : ''}`);
 
-        console.log(`[RegionPage] Fetching history for ${nodeIds.length} nodes in ${countryName}`);
+        // Use new region history endpoint that aggregates server-side from snapshots
+        const url = `/api/history/region?country=${encodeURIComponent(countryName)}${countryCode ? `&countryCode=${encodeURIComponent(countryCode)}` : ''}&startTime=${startTime}&endTime=${endTime}`;
+        console.log('[RegionPage] Calling region history API:', url);
+        
+        const response = await fetch(url, {
+          signal: abortController.signal,
+          cache: 'no-store', // Don't cache to ensure fresh data
+        });
 
-        // Use bulk API for faster loading with abort signal
-        let allHistories: any[] = [];
-        try {
-          const url = `/api/history/bulk?nodeIds=${nodeIds.map(id => encodeURIComponent(id)).join(',')}&startTime=${startTime}&endTime=${endTime}`;
-          const response = await fetch(url, {
-            signal: abortController.signal,
-            cache: 'no-store', // Don't cache to ensure fresh data
+        console.log('[RegionPage] Region history API response status:', response.status, response.statusText);
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('[RegionPage] Region history API response:', {
+            success: result.success,
+            count: result.count || 0,
+            dataLength: result.data?.length || 0,
           });
 
-          if (response.ok) {
-            const data = await response.json();
-            // Bulk API returns object with nodeId as keys
-            allHistories = nodeIds.map(nodeId => data.data?.[nodeId] || []);
-            console.log(`[RegionPage] Fetched ${allHistories.length} histories via bulk API, total points: ${allHistories.reduce((sum, h) => sum + h.length, 0)}`);
+          if (result.success && Array.isArray(result.data)) {
+            console.log(`[RegionPage] ✅ Received ${result.data.length} aggregated data points for ${countryName}`);
+            if (result.data.length > 0) {
+              const firstPoint = new Date(result.data[0].timestamp);
+              const lastPoint = new Date(result.data[result.data.length - 1].timestamp);
+              console.log(`[RegionPage] Data range: ${firstPoint.toISOString()} to ${lastPoint.toISOString()}`);
+            }
+            setHistoricalData(result.data);
           } else {
-            // Fallback to individual requests if bulk API fails
-            console.warn('[RegionPage] Bulk API failed, falling back to individual requests');
-            const historyPromises = nodeIds.map(async (nodeId) => {
-              try {
-                const url = `/api/history?nodeId=${encodeURIComponent(nodeId)}&startTime=${startTime}&endTime=${endTime}`;
-                const response = await fetch(url);
-                if (response.ok) {
-                  const data = await response.json();
-                  return data.data || [];
-                }
-              } catch (err) {
-                console.warn(`[RegionPage] Failed to fetch history for node ${nodeId}:`, err);
-                return [];
-              }
-              return [];
-            });
-            allHistories = await Promise.all(historyPromises);
-            console.log(`[RegionPage] Fetched ${allHistories.length} histories individually, total points: ${allHistories.reduce((sum, h) => sum + h.length, 0)}`);
+            console.warn('[RegionPage] Region history API returned invalid format:', result);
+            setHistoricalData([]);
           }
-        } catch (err) {
-          console.error('[RegionPage] Failed to fetch histories:', err);
-          allHistories = [];
+        } else {
+          const errorText = await response.text().catch(() => 'Failed to read error response');
+          console.error('[RegionPage] Region history API failed:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorText,
+          });
+          setHistoricalData([]);
         }
-
-        // Aggregate data by timestamp with proper credit tracking
-        // Key insight: Credits should use last-known-value, not just sum of reporting nodes
-
-        // First, collect all unique timestamps
-        const allTimestamps = new Set<number>();
-        allHistories.forEach((history) => {
-          history.forEach((point: any) => {
-            allTimestamps.add(point.timestamp);
-          });
-        });
-
-        const sortedTimestamps = Array.from(allTimestamps).sort((a, b) => a - b);
-
-        // Track last known credits for each node
-        const lastKnownCredits: Record<string, number> = {};
-
-        // Build index of node data by timestamp
-        const nodeDataByTimestamp: Record<number, Record<string, any>> = {};
-        allHistories.forEach((history, nodeIndex) => {
-          const nodeId = `node_${nodeIndex}`;
-          history.forEach((point: any) => {
-            if (!nodeDataByTimestamp[point.timestamp]) {
-              nodeDataByTimestamp[point.timestamp] = {};
-            }
-            nodeDataByTimestamp[point.timestamp][nodeId] = point;
-          });
-        });
-
-        // Aggregate data by timestamp
-        const aggregatedData: Record<number, {
-          timestamp: number;
-          onlineCount: number;
-          totalNodes: number;
-          totalPacketsReceived: number;
-          totalPacketsSent: number;
-          totalCredits: number;
-          avgCPU: number;
-          avgRAM: number;
-          cpuCount: number;
-          ramCount: number;
-        }> = {};
-
-        sortedTimestamps.forEach(ts => {
-          const nodesAtTimestamp = nodeDataByTimestamp[ts] || {};
-
-          // Update last known credits for nodes reporting at this timestamp
-          Object.entries(nodesAtTimestamp).forEach(([nodeId, point]: [string, any]) => {
-            if (point.credits !== undefined && point.credits !== null) {
-              lastKnownCredits[nodeId] = point.credits;
-            }
-          });
-
-          // Sum all last known credits (carry forward from previous timestamps)
-          const totalCredits = Object.values(lastKnownCredits).reduce((sum, credits) => sum + credits, 0);
-
-          aggregatedData[ts] = {
-            timestamp: ts,
-            onlineCount: 0,
-            totalNodes: Object.keys(nodesAtTimestamp).length,
-            totalPacketsReceived: 0,
-            totalPacketsSent: 0,
-            totalCredits: totalCredits,
-            avgCPU: 0,
-            avgRAM: 0,
-            cpuCount: 0,
-            ramCount: 0,
-          };
-
-          const agg = aggregatedData[ts];
-
-          // Aggregate other metrics from nodes reporting at this timestamp
-          Object.values(nodesAtTimestamp).forEach((point: any) => {
-            if (point.status === 'online') agg.onlineCount++;
-            if (point.packetsReceived) agg.totalPacketsReceived += point.packetsReceived;
-            if (point.packetsSent) agg.totalPacketsSent += point.packetsSent;
-            if (point.cpuPercent !== undefined && point.cpuPercent !== null) {
-              agg.avgCPU += point.cpuPercent;
-              agg.cpuCount++;
-            }
-            if (point.ramPercent !== undefined && point.ramPercent !== null) {
-              agg.avgRAM += point.ramPercent;
-              agg.ramCount++;
-            }
-          });
-        });
-
-        // Convert to array and calculate averages
-        const aggregatedArray = Object.values(aggregatedData)
-          .map(agg => ({
-            timestamp: agg.timestamp,
-            onlineCount: agg.onlineCount,
-            totalNodes: agg.totalNodes,
-            totalPacketsReceived: agg.totalPacketsReceived,
-            totalPacketsSent: agg.totalPacketsSent,
-            totalCredits: agg.totalCredits,
-            avgCPU: agg.cpuCount > 0 ? agg.avgCPU / agg.cpuCount : 0,
-            avgRAM: agg.ramCount > 0 ? agg.avgRAM / agg.ramCount : 0,
-          }))
-          .sort((a, b) => a.timestamp - b.timestamp);
-
-        setHistoricalData(aggregatedArray);
-        console.log(`[RegionPage] Aggregated ${aggregatedArray.length} data points`);
       } catch (err: any) {
         // Don't log error if request was aborted (intentional cancellation)
         if (err?.name !== 'AbortError') {
@@ -1124,9 +1033,17 @@ function CountryDetailContent() {
                   <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Online</span>
                   <TrendingUp className="w-4 h-4 text-foreground/40" />
                 </div>
-                <div className="text-2xl font-bold text-[#3F8277]">{stats.onlineNodes}</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {stats.totalNodes > 0 ? `${((stats.onlineNodes / stats.totalNodes) * 100).toFixed(0)}% of region` : '0%'}
+                <div className="text-2xl font-bold text-[#3F8277]">
+                  <AnimatedNumber value={stats.onlineNodes} />
+                </div>
+                <div className="text-xs text-muted-foreground mt-1 flex items-baseline">
+                  {stats.totalNodes > 0 ? (
+                    <>
+                      <AnimatedNumber value={Math.round((stats.onlineNodes / stats.totalNodes) * 100)} suffix="%" /> <span className="ml-1">of region</span>
+                    </>
+                  ) : (
+                    '0% of region'
+                  )}
                 </div>
               </div>
 
@@ -1149,8 +1066,14 @@ function CountryDetailContent() {
                   <Activity className="w-4 h-4 text-foreground/40" />
                 </div>
                 <div className="text-2xl font-bold text-foreground">{formatStorageBytes(stats.totalRAM)}</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {stats.avgRAMUsage > 0 ? `${stats.avgRAMUsage.toFixed(1)}% avg usage` : 'N/A'}
+                <div className="text-xs text-muted-foreground mt-1 flex items-baseline">
+                  {stats.avgRAMUsage > 0 ? (
+                    <>
+                      <AnimatedNumber value={stats.avgRAMUsage} decimals={1} suffix="%" /> <span className="ml-1">avg usage</span>
+                    </>
+                  ) : (
+                    'N/A'
+                  )}
                 </div>
               </div>
 
@@ -1160,10 +1083,14 @@ function CountryDetailContent() {
                   <Activity className="w-4 h-4 text-foreground/40" />
                 </div>
                 <div className="text-2xl font-bold text-foreground">
-                  {stats.avgCPU > 0 ? `${stats.avgCPU.toFixed(1)}%` : 'N/A'}
+                  {stats.avgCPU > 0 ? (
+                    <AnimatedNumber value={stats.avgCPU} decimals={1} suffix="%" />
+                  ) : (
+                    'N/A'
+                  )}
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {countryNodes.filter(n => n.cpuPercent !== undefined).length} nodes reporting
+                <div className="text-xs text-muted-foreground mt-1 flex items-baseline">
+                  <AnimatedNumber value={countryNodes.filter(n => n.cpuPercent !== undefined).length} /> <span className="ml-1">nodes reporting</span>
                 </div>
               </div>
 
@@ -1175,8 +1102,8 @@ function CountryDetailContent() {
                 <div className="text-xl font-bold text-[#3F8277]">
                   {stats.avgUptimeSeconds > 0 ? formatUptimeDuration(stats.avgUptimeSeconds) : 'N/A'}
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {countryNodes.filter(n => n.uptime && n.uptime > 0).length} nodes reporting
+                <div className="text-xs text-muted-foreground mt-1 flex items-baseline">
+                  <AnimatedNumber value={countryNodes.filter(n => n.uptime && n.uptime > 0).length} /> <span className="ml-1">nodes reporting</span>
                 </div>
               </div>
 
@@ -1185,9 +1112,11 @@ function CountryDetailContent() {
                   <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Credits</span>
                   <Award className="w-4 h-4 text-foreground/40" />
                 </div>
-                <div className="text-xl font-bold text-[#F0A741]">{stats.totalCredits.toLocaleString()}</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {stats.nodesReportingCredits} nodes reporting
+                <div className="text-xl font-bold text-[#F0A741]">
+                  <AnimatedNumber value={stats.totalCredits} />
+                </div>
+                <div className="text-xs text-muted-foreground mt-1 flex items-baseline">
+                  <AnimatedNumber value={stats.nodesReportingCredits} /> <span className="ml-1">nodes reporting</span>
                 </div>
               </div>
 
@@ -1196,9 +1125,11 @@ function CountryDetailContent() {
                   <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Active Streams</span>
                   <Zap className="w-4 h-4 text-foreground/40" />
                 </div>
-                <div className="text-xl font-bold text-foreground">{stats.totalActiveStreams}</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {countryNodes.filter(n => n.activeStreams && n.activeStreams > 0).length} nodes active
+                <div className="text-xl font-bold text-foreground">
+                  <AnimatedNumber value={stats.totalActiveStreams} />
+                </div>
+                <div className="text-xs text-muted-foreground mt-1 flex items-baseline">
+                  <AnimatedNumber value={countryNodes.filter(n => n.activeStreams && n.activeStreams > 0).length} /> <span className="ml-1">nodes active</span>
                 </div>
               </div>
             </div>
@@ -1228,42 +1159,78 @@ function CountryDetailContent() {
                 </div>
               </div>
 
-              {/* Loading State - Show empty charts with axes */}
+              {/* Loading State - Show all 4 charts with empty axes */}
               {loadingHistory && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <div className="card">
-                    <HistoricalLineChart
-                      title="Network Activity (Packet Rate)"
-                      data={[]}
-                      height={250}
-                      yDomain={[0, 100]}
-                      strokeColor="#3F8277"
-                      yLabel="Packets/s"
-                      tooltipFormatter={() => <div />}
-                      headerContent={
-                        <span className="text-xs text-muted-foreground">
-                          Loading data...
-                        </span>
-                      }
-                    />
+                <>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                    <div className="card">
+                      <HistoricalLineChart
+                        title="Network Activity (Packet Rate)"
+                        data={[]}
+                        height={250}
+                        yDomain={[0, 100]}
+                        strokeColor="#3F8277"
+                        yLabel="Packets/s"
+                        tooltipFormatter={() => <div />}
+                        headerContent={
+                          <span className="text-xs text-muted-foreground">
+                            Loading data...
+                          </span>
+                        }
+                      />
+                    </div>
+                    <div className="card">
+                      <HistoricalLineChart
+                        title="Credits Earned History"
+                        data={[]}
+                        height={250}
+                        yDomain={[-10, 10]}
+                        strokeColor="#F0A741"
+                        yLabel="Credits"
+                        tooltipFormatter={() => <div />}
+                        headerContent={
+                          <span className="text-xs text-muted-foreground">
+                            Loading data...
+                          </span>
+                        }
+                      />
+                    </div>
                   </div>
-                  <div className="card">
-                    <HistoricalLineChart
-                      title="Credits Earned History"
-                      data={[]}
-                      height={250}
-                      yDomain={[-10, 10]}
-                      strokeColor="#F0A741"
-                      yLabel="Credits"
-                      tooltipFormatter={() => <div />}
-                      headerContent={
-                        <span className="text-xs text-muted-foreground">
-                          Loading data...
-                        </span>
-                      }
-                    />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="card">
+                      <HistoricalLineChart
+                        title="Average CPU Usage"
+                        data={[]}
+                        height={250}
+                        yDomain={[0, 100]}
+                        strokeColor="#F0A741"
+                        yLabel="CPU %"
+                        tooltipFormatter={() => <div />}
+                        headerContent={
+                          <span className="text-xs text-muted-foreground">
+                            Loading data...
+                          </span>
+                        }
+                      />
+                    </div>
+                    <div className="card">
+                      <HistoricalLineChart
+                        title="Average RAM Usage"
+                        data={[]}
+                        height={250}
+                        yDomain={[0, 100]}
+                        strokeColor="#9CA3AF"
+                        yLabel="RAM %"
+                        tooltipFormatter={() => <div />}
+                        headerContent={
+                          <span className="text-xs text-muted-foreground">
+                            Loading data...
+                          </span>
+                        }
+                      />
+                    </div>
                   </div>
-                </div>
+                </>
               )}
 
               {/* No Data State */}
@@ -1329,6 +1296,13 @@ function CountryDetailContent() {
               });
 
               console.log('[RegionPage] Packet rate data points:', packetRateData.length, 'Sample:', packetRateData.slice(0, 3));
+
+              // Calculate baseline packet rate for activity health normalization
+              const allPacketRates = packetRateData.map(p => p.value).filter(v => v > 0);
+              const avgPacketRate = allPacketRates.length > 0 
+                ? allPacketRates.reduce((sum, v) => sum + v, 0) / allPacketRates.length 
+                : 0;
+              const maxPacketRateForHealth = Math.max(avgPacketRate * 2, 100); // Use 2x average as max for normalization
 
               // Calculate credits earned over time
               const creditsData = sorted.map((current, index) => {
@@ -1416,30 +1390,38 @@ function CountryDetailContent() {
               const maxRAM = Math.max(...ramData.map(d => d.value), 10);
 
               // Calculate network health score (composite metric)
-              const healthData = filteredData.map(d => {
+              // Use the same formula weights as the standard calculateNetworkHealth function
+              // - 40% Availability (online nodes)
+              // - 35% Resource/Version Health (CPU/RAM efficiency as proxy for version health)
+              // - 25% Activity Health (packet rate normalized to 0-100)
+              const healthData = filteredData.map((d, idx) => {
                 const onlineRate = d.totalNodes > 0 ? (d.onlineCount / d.totalNodes) * 100 : 0;
 
-                // Health score = weighted average of multiple factors
-                // - 60% availability (online vs total)
-                // - 20% resource efficiency (inverse of avg CPU/RAM usage)
-                // - 20% network activity (packet rate relative to baseline)
+                // Resource health (CPU/RAM efficiency) - proxy for version health
                 const cpuHealth = d.avgCPU !== undefined ? Math.max(0, 100 - d.avgCPU) : 100;
                 const ramHealth = d.avgRAM !== undefined ? Math.max(0, 100 - d.avgRAM) : 100;
                 const resourceHealth = (cpuHealth + ramHealth) / 2;
 
-                // Activity health - nodes with higher packet rates are healthier
-                const activityHealth = onlineRate; // For now, use availability as proxy
+                // Activity health - normalize packet rate (0-100 scale)
+                // Higher packet rates indicate more active/healthy network
+                const currentPacketRate = packetRateData[idx]?.value || 0;
+                const activityHealth = maxPacketRateForHealth > 0 
+                  ? Math.min(100, (currentPacketRate / maxPacketRateForHealth) * 100)
+                  : onlineRate; // Fallback to availability if no packet data
 
+                // Use standard network health formula weights (aligned with calculateNetworkHealth)
                 const healthScore = (
-                  onlineRate * 0.6 +
-                  resourceHealth * 0.2 +
-                  activityHealth * 0.2
+                  onlineRate * 0.40 +           // 40% Availability
+                  resourceHealth * 0.35 +       // 35% Resource/Version Health
+                  activityHealth * 0.25          // 25% Activity/Distribution
                 );
 
                 return {
                   timestamp: d.timestamp,
                   networkHealthScore: Math.min(100, Math.max(0, healthScore)),
                   networkHealthAvailability: onlineRate,
+                  networkHealthVersion: resourceHealth, // Resource health as proxy for version health
+                  networkHealthDistribution: activityHealth, // Activity health as proxy for distribution
                 };
               });
 

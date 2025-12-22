@@ -498,9 +498,16 @@ export async function syncNodes(): Promise<{ success: boolean; count: number; er
     // Step 9: Store historical snapshot
     try {
       const { storeHistoricalSnapshot } = await import('./mongodb-history');
+      console.log(`[Sync] Storing historical snapshot for ${dedupedNodes.length} nodes...`);
       await storeHistoricalSnapshot(dedupedNodes);
-    } catch (e) {
-      console.warn('[Sync] Failed to store historical snapshot');
+      console.log('[Sync] ✅ Historical snapshot stored successfully');
+    } catch (e: any) {
+      console.error('[Sync] ❌ Failed to store historical snapshot:', {
+        error: e?.message,
+        stack: e?.stack,
+        name: e?.name,
+      });
+      // Don't fail the entire sync if snapshot fails, but log it clearly
     }
     
     const duration = Date.now() - startTime;

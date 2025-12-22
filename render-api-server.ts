@@ -705,6 +705,59 @@ app.get('/api/history', authenticate, async (req, res) => {
 });
 
 /**
+ * GET /api/history/region
+ * Returns aggregated historical data for a region (country)
+ * Query params:
+ *   - country: country name (required)
+ *   - countryCode: optional country code (ISO 2-letter)
+ *   - startTime: optional start timestamp (ms)
+ *   - endTime: optional end timestamp (ms)
+ * Returns: { data: [...aggregated data points], count: number }
+ */
+app.get('/api/history/region', authenticate, async (req, res) => {
+  try {
+    const country = req.query.country as string | undefined;
+    if (!country) {
+      return res.status(400).json({
+        error: 'country parameter is required',
+        data: [],
+        count: 0,
+      });
+    }
+
+    const countryCode = req.query.countryCode as string | undefined;
+    const startTime = req.query.startTime ? parseInt(req.query.startTime as string) : undefined;
+    const endTime = req.query.endTime ? parseInt(req.query.endTime as string) : undefined;
+
+    console.log('[RenderAPI] Fetching region history:', {
+      country,
+      countryCode,
+      startTime: startTime ? new Date(startTime).toISOString() : undefined,
+      endTime: endTime ? new Date(endTime).toISOString() : undefined,
+    });
+
+    const { getRegionHistory } = await import('./lib/server/mongodb-history');
+    const regionData = await getRegionHistory(country, countryCode, startTime, endTime);
+
+    console.log(`[RenderAPI] ✅ Region history: ${regionData.length} data points for ${country}`);
+
+    res.json({
+      success: true,
+      data: regionData,
+      count: regionData.length,
+    });
+  } catch (error: any) {
+    console.error('[RenderAPI] ❌ Failed to fetch region history:', error);
+    res.status(500).json({
+      error: 'Failed to fetch region history',
+      message: error?.message || 'Unknown error',
+      data: [],
+      count: 0,
+    });
+  }
+});
+
+/**
  * GET /api/history/bulk
  * Returns historical snapshots for multiple nodes in one request
  * Query params:

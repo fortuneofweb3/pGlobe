@@ -38,6 +38,12 @@ export async function GET(request: Request) {
 
     const url = `${RENDER_API_URL}/api/history/bulk${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
     console.log('[VercelProxy] Proxying bulk history request to API server:', url);
+    console.log('[VercelProxy] Request params:', {
+      nodeIds: searchParams.get('nodeIds')?.substring(0, 50) + '...',
+      nodeCount: searchParams.get('nodeIds')?.split(',').length || 0,
+      startTime: searchParams.get('startTime'),
+      endTime: searchParams.get('endTime'),
+    });
 
     // Create AbortController for timeout
     // Increased timeout to 60 seconds for bulk requests
@@ -88,17 +94,28 @@ export async function GET(request: Request) {
     }
 
     if (!response.ok) {
-      console.error('[VercelProxy] ❌ API server returned error:', response.status, data);
+      console.error('[VercelProxy] ❌ API server returned error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: data.error || data.message,
+        data: data
+      });
       return NextResponse.json(
         {
           ...data,
-          error: data.error || 'Failed to fetch bulk historical data',
+          error: data.error || data.message || 'Failed to fetch bulk historical data',
         },
         { status: response.status }
       );
     }
 
-    console.log(`[VercelProxy] ✅ Returning bulk historical data from API server`);
+    console.log(`[VercelProxy] ✅ Returning bulk historical data from API server:`, {
+      hasData: !!data.data,
+      dataType: typeof data.data,
+      dataKeys: data.data ? Object.keys(data.data) : [],
+      nodeCount: data.nodeCount || 0,
+      totalPoints: data.count || 0,
+    });
 
     return NextResponse.json(data, {
       headers: {

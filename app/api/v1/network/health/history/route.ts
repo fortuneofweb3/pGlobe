@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server';
 import { getHistoricalSnapshots } from '@/lib/server/mongodb-history';
 
+// Note: This endpoint doesn't require authentication to allow public access
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -60,18 +61,57 @@ export async function GET(request: Request) {
     }
 
     // Extract network health data points
-    const healthData = snapshots.map(snapshot => ({
-      timestamp: snapshot.timestamp,
-      interval: snapshot.interval,
-      overall: snapshot.networkHealthScore || 0,
-      availability: snapshot.networkHealthAvailability || 0,
-      versionHealth: snapshot.networkHealthVersion || 0,
-      distribution: snapshot.networkHealthDistribution || 0,
-      totalNodes: snapshot.totalNodes,
-      onlineNodes: snapshot.onlineNodes,
-      offlineNodes: snapshot.offlineNodes,
-      syncingNodes: snapshot.syncingNodes,
-    }));
+    // If health fields are missing, calculate them from snapshot data
+    const healthData = snapshots.map(snapshot => {
+      // Calculate availability if missing
+      const availability = snapshot.networkHealthAvailability !== undefined && snapshot.networkHealthAvailability !== null
+        ? snapshot.networkHealthAvailability
+        : snapshot.totalNodes > 0 
+          ? (snapshot.onlineNodes / snapshot.totalNodes) * 100 
+          : 0;
+      
+      // Calculate version health if missing (use version distribution)
+      const versionHealth = snapshot.networkHealthVersion !== undefined && snapshot.networkHealthVersion !== null
+        ? snapshot.networkHealthVersion
+        : snapshot.versionDistribution && Object.keys(snapshot.versionDistribution).length > 0
+          ? (() => {
+              // Find most common version
+              const versions = Object.entries(snapshot.versionDistribution);
+              const mostCommon = versions.reduce((max, [v, count]) => 
+                count > max[1] ? [v, count] : max, versions[0] || ['', 0]
+              );
+              return mostCommon[1] > 0 ? (mostCommon[1] / snapshot.totalNodes) * 100 : 0;
+            })()
+          : 0;
+      
+      // Calculate distribution if missing
+      const distribution = snapshot.networkHealthDistribution !== undefined && snapshot.networkHealthDistribution !== null
+        ? snapshot.networkHealthDistribution
+        : (() => {
+            // Normalize: 10+ countries = 100%, 1 country = 10%
+            const countryDiversity = Math.min(100, (snapshot.countries / 10) * 100);
+            const cityDiversity = Math.min(100, (snapshot.cities / 20) * 100);
+            return (countryDiversity * 0.6 + cityDiversity * 0.4);
+          })();
+      
+      // Calculate overall if missing
+      const overall = snapshot.networkHealthScore !== undefined && snapshot.networkHealthScore !== null
+        ? snapshot.networkHealthScore
+        : (availability * 0.40 + versionHealth * 0.35 + distribution * 0.25);
+      
+      return {
+        timestamp: snapshot.timestamp,
+        interval: snapshot.interval,
+        overall: Math.round(overall * 10) / 10,
+        availability: Math.round(availability * 10) / 10,
+        versionHealth: Math.round(versionHealth * 10) / 10,
+        distribution: Math.round(distribution * 10) / 10,
+        totalNodes: snapshot.totalNodes,
+        onlineNodes: snapshot.onlineNodes,
+        offlineNodes: snapshot.offlineNodes,
+        syncingNodes: snapshot.syncingNodes,
+      };
+    });
 
     // Calculate summary stats
     const healthScores = healthData.map(d => d.overall);

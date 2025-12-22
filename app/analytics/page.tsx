@@ -42,9 +42,23 @@ export default function AnalyticsPage() {
     const fetchHistoricalData = async () => {
       try {
         // Use the new public API endpoint for network health history
-        const response = await fetch(`/api/v1/network/health/history?period=7d`);
+        console.log('[Analytics] Fetching health history from /api/v1/network/health/history?period=7d');
+        const response = await fetch(`/api/v1/network/health/history?period=7d`, {
+          cache: 'no-store', // Don't cache to ensure fresh data
+        });
+        
+        console.log('[Analytics] Health history API response status:', response.status);
+        
         if (response.ok) {
           const result = await response.json();
+          console.log('[Analytics] Health history API response:', {
+            success: result.success,
+            hasData: !!result.data,
+            hasHealth: !!result.data?.health,
+            healthLength: result.data?.health?.length || 0,
+            fullResponse: result
+          });
+          
           // Transform health data to HistoricalDataPoint format
           if (result.success && result.data && Array.isArray(result.data.health)) {
             const transformed = result.data.health.map((snapshot: any) => ({
@@ -57,14 +71,37 @@ export default function AnalyticsPage() {
               networkHealthVersion: snapshot.versionHealth,
               networkHealthDistribution: snapshot.distribution,
             }));
+            console.log('[Analytics] Transformed health data:', transformed.length, 'points');
+            if (transformed.length > 0) {
+              console.log('[Analytics] Sample transformed data:', transformed.slice(0, 3));
+            }
             setHistoricalData(transformed);
           } else {
+            console.warn('[Analytics] Health history API returned invalid format:', {
+              success: result.success,
+              hasData: !!result.data,
+              hasHealth: !!result.data?.health,
+              dataType: typeof result.data,
+              dataKeys: result.data ? Object.keys(result.data) : [],
+              fullResult: result
+            });
             setHistoricalData([]);
           }
         } else {
+          const errorText = await response.text().catch(() => 'Failed to read error response');
+          console.error('[Analytics] Health history API failed:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorText
+          });
           setHistoricalData([]);
         }
-      } catch (err) {
+      } catch (err: any) {
+        console.error('[Analytics] Failed to fetch historical data:', {
+          error: err?.message,
+          stack: err?.stack,
+          name: err?.name
+        });
         // Failed to fetch historical data
         setHistoricalData([]);
       }

@@ -75,6 +75,7 @@ export interface HistoricalSnapshot {
     isRegistered?: boolean; // changes occasionally
     isPublic?: boolean; // pRPC publicly accessible - changes occasionally
     location?: string; // usually static
+    nodeLocation?: { lat?: number; lon?: number; country?: string; city?: string; countryCode?: string }; // geographic location
   }>;
 }
 
@@ -108,6 +109,10 @@ export async function createHistoryIndexes(): Promise<void> {
     // Compound index for node-specific queries
     await collection.createIndex({ 'nodeSnapshots.pubkey': 1, timestamp: -1 });
     
+    // Index for region queries (by country in nodeLocation)
+    await collection.createIndex({ 'nodeSnapshots.nodeLocation.country': 1, timestamp: -1 });
+    await collection.createIndex({ 'nodeSnapshots.nodeLocation.countryCode': 1, timestamp: -1 });
+    
     // TTL index: automatically delete snapshots older than 90 days
     // Note: TTL indexes require the field to be a Date, but we're using number (timestamp)
     // So we'll handle cleanup manually or convert timestamp to Date if needed
@@ -128,6 +133,13 @@ export async function createHistoryIndexes(): Promise<void> {
 export async function storeHistoricalSnapshot(
   nodes: PNode[]
 ): Promise<void> {
+  if (!nodes || nodes.length === 0) {
+    console.warn('[MongoDB History] ⚠️ No nodes provided for snapshot');
+    return;
+  }
+  
+  console.log(`[MongoDB History] 📸 Creating snapshot for ${nodes.length} nodes...`);
+  
   try {
     const collection = await getHistoryCollection();
     const now = Date.now();
@@ -172,6 +184,7 @@ export async function storeHistoricalSnapshot(
         { interval },
         { $set: updateData }
       );
+      console.log(`[MongoDB History] ✅ Updated snapshot for interval ${interval} with ${updateData.nodeSnapshots.length} node snapshots`);
       return;
     }
     
@@ -202,10 +215,18 @@ export async function storeHistoricalSnapshot(
     };
     
     await collection.insertOne(snapshot);
-    console.log(`[MongoDB History] ✅ Stored snapshot for ${interval} (${nodes.length} nodes, ${snapshot.nodeSnapshots.length} node snapshots)`);
+    console.log(`[MongoDB History] ✅ Stored snapshot for interval ${interval} (${nodes.length} nodes, ${snapshot.nodeSnapshots.length} node snapshots)`);
   } catch (error: any) {
-    console.error('[MongoDB History] ❌ Failed to store snapshot:', error?.message || error);
-    // Don't throw - historical data is nice to have but not critical
+    console.error('[MongoDB History] ❌ Failed to store snapshot:', {
+      error: error?.message,
+      stack: error?.stack,
+      name: error?.name,
+      code: error?.code,
+      errno: error?.errno,
+    });
+    // Re-throw so sync-nodes can log it properly, but don't fail the entire sync
+    // The sync will continue even if snapshot fails
+    throw error;
   }
 }
 
@@ -236,6 +257,177 @@ export async function getHistoricalSnapshots(
     return snapshots;
   } catch (error: any) {
     console.error('[MongoDB History] ❌ Failed to get snapshots:', error?.message || error);
+    return [];
+  }
+}
+
+/**
+ * Get aggregated historical data for a region (country)
+ * Filters snapshots to only include nodes from the specified country and aggregates their metrics
+ */
+export async function getRegionHistory(
+  country: string,
+  countryCode?: string,
+  startTime?: number,
+  endTime?: number
+): Promise<Array<{
+  timestamp: number;
+  onlineCount: number;
+  totalNodes: number;
+  totalPacketsReceived: number;
+  totalPacketsSent: number;
+  totalCredits: number;
+  avgCPU: number;
+  avgRAM: number;
+}>> {
+  try {
+    const collection = await getHistoryCollection();
+    
+    // Build time range query
+    const timeQuery: any = {};
+    if (startTime || endTime) {
+      timeQuery.timestamp = {};
+      if (startTime) timeQuery.timestamp.$gte = startTime;
+      if (endTime) timeQuery.timestamp.$lte = endTime;
+    }
+    
+    console.log('[MongoDB History] Querying region history:', {
+      country,
+      countryCode,
+      startTime: startTime ? new Date(startTime).toISOString() : undefined,
+      endTime: endTime ? new Date(endTime).toISOString() : undefined,
+    });
+    
+    // Use aggregation pipeline to filter by country and aggregate
+    const pipeline: any[] = [
+      // Match snapshots within time range
+      {
+        $match: {
+          ...timeQuery,
+        }
+      },
+      // Unwind nodeSnapshots to work with individual nodes
+      { $unwind: '$nodeSnapshots' },
+      // Filter nodes by country (try both country name and countryCode)
+      {
+        $match: {
+          $or: [
+            { 'nodeSnapshots.nodeLocation.country': country },
+            { 'nodeSnapshots.nodeLocation.countryCode': countryCode || country },
+          ]
+        }
+      },
+      // Group by timestamp and aggregate metrics
+      {
+        $group: {
+          _id: '$timestamp',
+          timestamp: { $first: '$timestamp' },
+          nodes: { $push: '$nodeSnapshots' },
+        }
+      },
+      // Calculate aggregated metrics
+      {
+        $project: {
+          timestamp: 1,
+          onlineCount: {
+            $size: {
+              $filter: {
+                input: '$nodes',
+                as: 'node',
+                cond: { $eq: ['$$node.status', 'online'] }
+              }
+            }
+          },
+          totalNodes: { $size: '$nodes' },
+          totalPacketsReceived: {
+            $sum: {
+              $map: {
+                input: '$nodes',
+                as: 'node',
+                in: { $ifNull: ['$$node.packetsReceived', 0] }
+              }
+            }
+          },
+          totalPacketsSent: {
+            $sum: {
+              $map: {
+                input: '$nodes',
+                as: 'node',
+                in: { $ifNull: ['$$node.packetsSent', 0] }
+              }
+            }
+          },
+          // Credits: sum all credits (they're cumulative per node, so total is sum of all nodes)
+          totalCredits: {
+            $sum: {
+              $map: {
+                input: '$nodes',
+                as: 'node',
+                in: { $ifNull: ['$$node.credits', 0] }
+              }
+            }
+          },
+          avgCPU: {
+            $avg: {
+              $map: {
+                input: {
+                  $filter: {
+                    input: '$nodes',
+                    as: 'node',
+                    cond: { $ne: ['$$node.cpuPercent', null] }
+                  }
+                },
+                as: 'node',
+                in: '$$node.cpuPercent'
+              }
+            }
+          },
+          avgRAM: {
+            $avg: {
+              $map: {
+                input: {
+                  $filter: {
+                    input: '$nodes',
+                    as: 'node',
+                    cond: { $ne: ['$$node.ramPercent', null] }
+                  }
+                },
+                as: 'node',
+                in: '$$node.ramPercent'
+              }
+            }
+          },
+        }
+      },
+      // Sort by timestamp
+      { $sort: { timestamp: 1 } },
+      // Limit to prevent huge results
+      { $limit: 1000 }
+    ];
+    
+    const results = await collection.aggregate(pipeline, { maxTimeMS: 40000 }).toArray();
+    
+    // Map to expected format
+    const aggregatedData = results.map((result: any) => ({
+      timestamp: result.timestamp,
+      onlineCount: result.onlineCount || 0,
+      totalNodes: result.totalNodes || 0,
+      totalPacketsReceived: result.totalPacketsReceived || 0,
+      totalPacketsSent: result.totalPacketsSent || 0,
+      totalCredits: result.totalCredits || 0,
+      avgCPU: result.avgCPU ? Math.round(result.avgCPU * 10) / 10 : 0,
+      avgRAM: result.avgRAM ? Math.round(result.avgRAM * 10) / 10 : 0,
+    }));
+    
+    console.log(`[MongoDB History] ✅ Region history: ${aggregatedData.length} data points for ${country}`);
+    
+    return aggregatedData;
+  } catch (error: any) {
+    console.error('[MongoDB History] ❌ Failed to get region history:', {
+      error: error?.message,
+      stack: error?.stack,
+      country,
+    });
     return [];
   }
 }
@@ -360,99 +552,27 @@ export async function getNodeHistory(
     }
     
     // Map results to expected format
-    let nodeHistory = results.map((doc: any) => ({
-      timestamp: doc.timestamp,
-      pubkey: doc.pubkey || doc.nodeSnapshots?.pubkey,
-      status: doc.status || doc.nodeSnapshots?.status,
-      cpuPercent: doc.cpuPercent,
-      ramPercent: doc.ramPercent,
-      packetsReceived: doc.packetsReceived,
-      packetsSent: doc.packetsSent,
-      activeStreams: doc.activeStreams,
-      uptime: doc.uptime,
-      uptimePercent: doc.uptimePercent,
-      storageCapacity: doc.storageCapacity,
-      credits: doc.credits,
-      version: doc.version,
-      isRegistered: doc.isRegistered,
-      isPublic: doc.isPublic,
-      location: doc.location,
+    let nodeHistory = results.map((result: any) => ({
+      timestamp: result.timestamp,
+      pubkey: result.pubkey,
+      status: result.status,
+      cpuPercent: result.cpuPercent,
+      ramPercent: result.ramPercent,
+      packetsReceived: result.packetsReceived,
+      packetsSent: result.packetsSent,
+      activeStreams: result.activeStreams,
+      uptime: result.uptime,
+      uptimePercent: result.uptimePercent,
+      storageCapacity: result.storageCapacity,
+      credits: result.credits,
+      version: result.version,
+      isRegistered: result.isRegistered,
+      isPublic: result.isPublic,
+      location: result.location,
+      nodeLocation: result.nodeLocation,
     }));
     
-    // If no results with exact match, try case-insensitive (but this should be rare)
-    if (nodeHistory.length === 0) {
-      console.log('[MongoDB History] No exact match, trying case-insensitive search...');
-      const caseInsensitivePipeline: any[] = [
-        ...(Object.keys(timeQuery).length > 0 ? [{ $match: timeQuery }] : []),
-        { $unwind: '$nodeSnapshots' },
-        {
-          $match: {
-            $expr: {
-              $eq: [
-                { $toLower: '$nodeSnapshots.pubkey' },
-                pubkey.toLowerCase()
-              ]
-            }
-          }
-        },
-        {
-          $project: {
-            timestamp: 1,
-            pubkey: '$nodeSnapshots.pubkey',
-            status: '$nodeSnapshots.status',
-            cpuPercent: '$nodeSnapshots.cpuPercent',
-            ramPercent: '$nodeSnapshots.ramPercent',
-            packetsReceived: '$nodeSnapshots.packetsReceived',
-            packetsSent: '$nodeSnapshots.packetsSent',
-            activeStreams: '$nodeSnapshots.activeStreams',
-            uptime: '$nodeSnapshots.uptime',
-            uptimePercent: '$nodeSnapshots.uptimePercent',
-            storageCapacity: '$nodeSnapshots.storageCapacity',
-            credits: '$nodeSnapshots.credits',
-            version: '$nodeSnapshots.version',
-            isRegistered: '$nodeSnapshots.isRegistered',
-            isPublic: '$nodeSnapshots.isPublic',
-            location: '$nodeSnapshots.location',
-          }
-        },
-        { $sort: { timestamp: 1 } },
-        { $limit: 1000 }
-      ];
-      
-      try {
-        const caseInsensitiveResults = await collection.aggregate(caseInsensitivePipeline, { maxTimeMS: 40000 }).toArray();
-        nodeHistory = caseInsensitiveResults.map((doc: any) => ({
-          timestamp: doc.timestamp,
-          pubkey: doc.pubkey,
-          status: doc.status,
-          // latency: removed - client-side measurement
-          // latencyByRegion: removed - client-side measurement
-          cpuPercent: doc.cpuPercent,
-          ramPercent: doc.ramPercent,
-          packetsReceived: doc.packetsReceived,
-          packetsSent: doc.packetsSent,
-          activeStreams: doc.activeStreams,
-          uptime: doc.uptime,
-          uptimePercent: doc.uptimePercent,
-          storageCapacity: doc.storageCapacity,
-          credits: doc.credits,
-          version: doc.version,
-          isRegistered: doc.isRegistered,
-          isPublic: doc.isPublic,
-          location: doc.location,
-          nodeLocation: doc.nodeLocation,
-          serverRegionId: doc.serverRegionId,
-          serverLocation: doc.serverLocation,
-        }));
-      } catch (caseError: any) {
-        console.warn('[MongoDB History] Case-insensitive search failed:', caseError?.message);
-      }
-    }
-    
-    console.log('[MongoDB History] Extracted node history:', {
-      pubkey,
-      dataPoints: nodeHistory.length,
-    });
+    console.log(`[MongoDB History] ✅ Node history: ${nodeHistory.length} data points for ${pubkey.substring(0, 8)}...`);
     
     return nodeHistory;
   } catch (error: any) {
@@ -461,103 +581,12 @@ export async function getNodeHistory(
   }
 }
 
-/**
- * Get aggregated daily statistics
- */
-export async function getDailyStats(
-  days: number = 30
-): Promise<Array<{
-  date: string;
-  avgNodes: number;
-  avgOnline: number;
-  avgUptime: number;
-  avgUptimePercent: number;
-}>> {
-  try {
-    const collection = await getHistoryCollection();
-    const startTime = Date.now() - days * 24 * 60 * 60 * 1000;
-    
-    const snapshots = await collection
-      .find({ timestamp: { $gte: startTime } })
-      .sort({ timestamp: 1 })
-      .toArray();
-    
-    // Group by date and calculate averages
-    const dailyMap = new Map<string, {
-      count: number;
-      totalNodes: number;
-      totalOnline: number;
-      totalUptime: number;
-      totalUptimePercent: number;
-    }>();
-    
-    for (const snapshot of snapshots) {
-      const existing = dailyMap.get(snapshot.date) || {
-        count: 0,
-        totalNodes: 0,
-        totalOnline: 0,
-        totalUptime: 0,
-        totalUptimePercent: 0,
-      };
-      
-      existing.count++;
-      existing.totalNodes += snapshot.totalNodes;
-      existing.totalOnline += snapshot.onlineNodes;
-      existing.totalUptime += snapshot.avgUptime;
-      existing.totalUptimePercent += snapshot.avgUptimePercent;
-      
-      dailyMap.set(snapshot.date, existing);
-    }
-    
-    // Convert to array with averages
-    return Array.from(dailyMap.entries()).map(([date, data]) => ({
-      date,
-      avgNodes: data.totalNodes / data.count,
-      avgOnline: data.totalOnline / data.count,
-      avgUptime: data.totalUptime / data.count,
-      avgUptimePercent: data.totalUptimePercent / data.count,
-    })).sort((a, b) => a.date.localeCompare(b.date));
-  } catch (error: any) {
-    console.error('[MongoDB History] ❌ Failed to get daily stats:', error?.message || error);
-    return [];
-  }
-}
-
-// Helper functions for calculations
-
-function calculateAvgUptime(nodes: PNode[]): number {
-  const nodesWithUptime = nodes.filter(n => n.uptime !== undefined && n.uptime !== null && n.uptime > 0);
-  if (nodesWithUptime.length === 0) return 0;
-  return nodesWithUptime.reduce((sum, n) => sum + (n.uptime || 0), 0) / nodesWithUptime.length;
-}
-
-function calculateAvgUptimePercent(nodes: PNode[]): number {
-  const nodesWithUptime = nodes.filter(n => {
-    if (n.uptimePercent !== undefined) return true;
-    if (n.uptime && n.uptime > 0) return true;
-    return false;
-  });
-  
-  if (nodesWithUptime.length === 0) return 0;
-  
-  const total = nodesWithUptime.reduce((sum, n) => {
-    if (n.uptimePercent !== undefined) return sum + n.uptimePercent;
-    if (n.uptime && n.uptime > 0) {
-      // Calculate from uptime seconds (assuming 30 days = 100%)
-      const uptimePercent = Math.min(99.9, (n.uptime / (30 * 24 * 3600)) * 100);
-      return sum + uptimePercent;
-    }
-    return sum;
-  }, 0);
-  
-  return total / nodesWithUptime.length;
-}
-
+// Helper functions for calculating averages
 
 function calculateAvgCpuPercent(nodes: PNode[]): number {
-  const nodesWithCpu = nodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null && n.cpuPercent >= 0);
-  if (nodesWithCpu.length === 0) return 0;
-  return nodesWithCpu.reduce((sum, n) => sum + (n.cpuPercent || 0), 0) / nodesWithCpu.length;
+  const nodesWithCPU = nodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null && n.cpuPercent >= 0);
+  if (nodesWithCPU.length === 0) return 0;
+  return nodesWithCPU.reduce((sum, n) => sum + (n.cpuPercent || 0), 0) / nodesWithCPU.length;
 }
 
 function calculateAvgRamPercent(nodes: PNode[]): number {
@@ -574,6 +603,18 @@ function calculateAvgRamPercent(nodes: PNode[]): number {
   }, 0);
   
   return total / nodesWithRam.length;
+}
+
+function calculateAvgUptime(nodes: PNode[]): number {
+  const nodesWithUptime = nodes.filter(n => n.uptime !== undefined && n.uptime !== null && n.uptime > 0);
+  if (nodesWithUptime.length === 0) return 0;
+  return nodesWithUptime.reduce((sum, n) => sum + (n.uptime || 0), 0) / nodesWithUptime.length;
+}
+
+function calculateAvgUptimePercent(nodes: PNode[]): number {
+  const nodesWithUptimePercent = nodes.filter(n => n.uptimePercent !== undefined && n.uptimePercent !== null);
+  if (nodesWithUptimePercent.length === 0) return 0;
+  return nodesWithUptimePercent.reduce((sum, n) => sum + (n.uptimePercent || 0), 0) / nodesWithUptimePercent.length;
 }
 
 function calculateAvgPacketsReceived(nodes: PNode[]): number {
@@ -633,40 +674,31 @@ function createNodeSnapshots(nodes: PNode[]): HistoricalSnapshot['nodeSnapshots'
       pubkey,
       // Variable status metrics (change frequently) - these are the key metrics we track
       status,
-      cpuPercent: node.cpuPercent !== undefined && node.cpuPercent !== null ? node.cpuPercent : undefined,
+      cpuPercent: node.cpuPercent,
       ramPercent,
-      packetsReceived: node.packetsReceived !== undefined && node.packetsReceived !== null ? node.packetsReceived : undefined,
-      packetsSent: node.packetsSent !== undefined && node.packetsSent !== null ? node.packetsSent : undefined,
-      activeStreams: node.activeStreams !== undefined && node.activeStreams !== null ? node.activeStreams : undefined,
-      // Cumulative metrics (track behavior over time)
-      uptime: node.uptime !== undefined && node.uptime !== null ? node.uptime : undefined,
-      uptimePercent: node.uptimePercent !== undefined && node.uptimePercent !== null ? node.uptimePercent : undefined,
-      storageCapacity: node.storageCapacity !== undefined && node.storageCapacity !== null ? node.storageCapacity : undefined,
-      storageUsed: node.storageUsed !== undefined && node.storageUsed !== null ? node.storageUsed : undefined,
-      credits: node.credits !== undefined && node.credits !== null ? node.credits : undefined,
+      packetsReceived: node.packetsReceived,
+      packetsSent: node.packetsSent,
+      activeStreams: node.activeStreams,
+      // Cumulative metrics (track to see behavior over time)
+      uptime: node.uptime,
+      uptimePercent: node.uptimePercent,
+      storageCapacity: node.storageCapacity,
+      storageUsed: node.storageUsed,
+      credits: node.credits,
       // Static-ish metadata (for context)
-      version: node.version || undefined,
-      isRegistered: node.isRegistered !== undefined ? node.isRegistered : undefined,
-      isPublic: node.isPublic !== undefined ? node.isPublic : undefined,
-      location: node.location || (node.locationData?.city && node.locationData?.country
-        ? `${node.locationData.city}, ${node.locationData.country}`
-        : undefined),
+      version: node.version,
+      isRegistered: node.isRegistered,
+      isPublic: node.isPublic,
+      location: node.location,
+      nodeLocation: node.locationData ? {
+        lat: node.locationData.lat,
+        lon: node.locationData.lon,
+        country: node.locationData.country,
+        city: node.locationData.city,
+        countryCode: node.locationData.countryCode,
+      } : undefined,
     };
-  }).filter(snapshot => snapshot.pubkey); // Only include nodes with a valid pubkey
-  
-  // Debug: Log sample snapshot to verify data structure
-  if (snapshots.length > 0) {
-    const sampleSnapshot = snapshots[0];
-    console.log(`[MongoDB History] Sample snapshot data:`, {
-      pubkey: sampleSnapshot.pubkey?.substring(0, 8),
-      status: sampleSnapshot.status,
-      cpuPercent: sampleSnapshot.cpuPercent,
-      ramPercent: sampleSnapshot.ramPercent,
-      hasUptime: sampleSnapshot.uptime !== undefined,
-      hasStorage: sampleSnapshot.storageCapacity !== undefined,
-    });
-  }
+  });
   
   return snapshots;
 }
-

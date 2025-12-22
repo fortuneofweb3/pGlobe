@@ -1165,13 +1165,30 @@ function NodeDetailContent() {
                   background: transparent !important;
                   border: none !important;
                 }
+                /* Brighten map division lines and borders */
+                .leaflet-container img.leaflet-tile {
+                  filter: brightness(1.5) contrast(1.2);
+                }
+                .leaflet-tile-container img {
+                  filter: brightness(1.5) contrast(1.2);
+                }
+                /* Brighten map tiles specifically */
+                .leaflet-container .leaflet-tile-pane img {
+                  filter: brightness(1.5) contrast(1.2);
+                }
               `}</style>
               {isClient && node.locationData?.lat && node.locationData?.lon ? (
                 <MapContainer
                   key={`map-${node.id}-${node.locationData.lat}-${node.locationData.lon}`}
                   center={[node.locationData.lat, node.locationData.lon]}
                   zoom={node.locationData.city ? 10 : 5}
-                  scrollWheelZoom={true}
+                  scrollWheelZoom={false}
+                  dragging={false}
+                  touchZoom={false}
+                  doubleClickZoom={false}
+                  boxZoom={false}
+                  keyboard={false}
+                  zoomControl={false}
                   style={{ height: '100%', width: '100%' }}
                   className="z-0"
                   attributionControl={false}
@@ -1233,22 +1250,23 @@ function NodeDetailContent() {
                           <Marker
                             position={[node.locationData.lat, node.locationData.lon]}
                             icon={pinIcon}
+                            interactive={false}
                           >
-                            <Popup>
+                            <Tooltip permanent={false} direction="top" offset={[0, -40]}>
                               <div className="text-sm">
-                                <div className="font-semibold mb-2 text-[#F0A741]">📍 Current Node</div>
-                                <div className="font-semibold mb-2">{node.locationData.city || 'Unknown'}, {node.locationData.country || 'Unknown'}</div>
+                                <div className="font-semibold mb-1 text-[#F0A741]">📍 Current Node</div>
+                                <div className="font-semibold">{node.locationData.city || 'Unknown'}, {node.locationData.country || 'Unknown'}</div>
                                 <div className="text-xs text-gray-400 mt-1">
                                   {node.locationData.lat.toFixed(4)}, {node.locationData.lon.toFixed(4)}
                                 </div>
-                                <div className="mt-2 text-xs">
+                                <div className="mt-1 text-xs">
                                   <strong>Status:</strong> <span className="capitalize">{node.status || 'offline'}</span>
                                 </div>
                                 {node.address && (
                                   <div className="mt-1 text-xs font-mono">{node.address}</div>
                                 )}
                               </div>
-                            </Popup>
+                            </Tooltip>
                           </Marker>
                         ) : (
                           <CircleMarker
@@ -1260,22 +1278,23 @@ function NodeDetailContent() {
                               color: '#fff',
                               weight: 2,
                             }}
+                            interactive={false}
                           >
-                            <Popup>
+                            <Tooltip permanent={false} direction="top" offset={[0, -10]}>
                               <div className="text-sm">
-                                <div className="font-semibold mb-2 text-[#F0A741]">📍 Current Node</div>
-                                <div className="font-semibold mb-2">{node.locationData.city || 'Unknown'}, {node.locationData.country || 'Unknown'}</div>
+                                <div className="font-semibold mb-1 text-[#F0A741]">📍 Current Node</div>
+                                <div className="font-semibold">{node.locationData.city || 'Unknown'}, {node.locationData.country || 'Unknown'}</div>
                                 <div className="text-xs text-gray-400 mt-1">
                                   {node.locationData.lat.toFixed(4)}, {node.locationData.lon.toFixed(4)}
                                 </div>
-                                <div className="mt-2 text-xs">
+                                <div className="mt-1 text-xs">
                                   <strong>Status:</strong> <span className="capitalize">{node.status || 'offline'}</span>
                                 </div>
                                 {node.address && (
                                   <div className="mt-1 text-xs font-mono">{node.address}</div>
                                 )}
                               </div>
-                            </Popup>
+                            </Tooltip>
                           </CircleMarker>
                         )}
                         
@@ -1297,29 +1316,24 @@ function NodeDetailContent() {
                                 color: '#fff',
                                 weight: 1.5,
                               }}
+                              interactive={false}
                             >
-                              <Popup>
+                              <Tooltip permanent={false} direction="top" offset={[0, -10]}>
                                 <div className="text-sm">
-                                  <div className="font-semibold mb-2">
+                                  <div className="font-semibold mb-1">
                                     {nearbyNode.locationData.city || 'Unknown'}, {nearbyNode.locationData.country || 'Unknown'}
                                   </div>
                                   <div className="text-xs text-gray-400 mt-1">
                                     {nearbyNode.locationData.lat.toFixed(4)}, {nearbyNode.locationData.lon.toFixed(4)}
                                   </div>
-                                  <div className="mt-2 text-xs">
+                                  <div className="mt-1 text-xs">
                                     <strong>Status:</strong> <span className="capitalize">{status}</span>
                                   </div>
                                   {nearbyNode.address && (
                                     <div className="mt-1 text-xs font-mono">{nearbyNode.address}</div>
                                   )}
-                                  <Link
-                                    href={`/nodes/${encodeURIComponent(nearbyNode.id || nearbyNode.pubkey || nearbyNode.address?.split(':')[0] || '')}`}
-                                    className="mt-2 inline-block text-xs text-[#F0A741] hover:text-[#F0A741]/80 transition-colors"
-                                  >
-                                    View Details →
-                                  </Link>
                                 </div>
-                              </Popup>
+                              </Tooltip>
                             </CircleMarker>
                           );
                         })}
