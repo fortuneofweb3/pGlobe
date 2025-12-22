@@ -101,7 +101,6 @@ export default function NetworkHealthChart({ nodes }: NetworkHealthChartProps) {
     );
   }
 
-  const margin = { top: 5, right: 30, left: 80, bottom: 5 };
   const svgRef = useRef<SVGSVGElement>(null);
   const hasAnimatedRef = useRef(false);
 
@@ -144,6 +143,14 @@ export default function NetworkHealthChart({ nodes }: NetworkHealthChartProps) {
           {({ width: parentWidth = 800, height: parentHeight = 150 }) => {
             const width = parentWidth;
             const chartHeight = Math.max(150, parentHeight);
+            // Responsive margins - smaller on mobile for better chart size
+            const isMobile = width < 640;
+            const margin = { 
+              top: 5, 
+              right: isMobile ? 10 : 30, 
+              left: isMobile ? 50 : 80, 
+              bottom: 5 
+            };
             const innerWidth = width - margin.left - margin.right;
             const innerHeight = chartHeight - margin.top - margin.bottom;
 

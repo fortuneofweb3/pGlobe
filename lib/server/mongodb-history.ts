@@ -343,6 +343,13 @@ export async function getRegionHistory(
   totalCredits: number;
   avgCPU: number;
   avgRAM: number;
+  // Network health metrics (calculated from node snapshots)
+  networkHealthScore?: number;
+  networkHealthAvailability?: number;
+  networkHealthVersion?: number;
+  networkHealthDistribution?: number;
+  versionDistribution?: Record<string, number>;
+  cities?: number;
 }>> {
   try {
     const collection = await getHistoryCollection();
@@ -470,6 +477,8 @@ export async function getRegionHistory(
               }
             }
           },
+          // Store nodes array for later processing (we'll calculate version distribution in JavaScript)
+          nodes: 1,
         }
       },
       // Sort by timestamp
@@ -488,18 +497,84 @@ export async function getRegionHistory(
       console.log(`[MongoDB History] Sample snapshot: ${firstResult.totalNodes} nodes, ${firstResult.onlineCount} online`);
     }
     
-    // Map to expected format
+    // Map to expected format and calculate health from node snapshots
     // IMPORTANT: These timestamps are from HISTORICAL snapshots, not newly created
-    const aggregatedData = results.map((result: any) => ({
-      timestamp: result.timestamp, // This is the original snapshot timestamp
-      onlineCount: result.onlineCount || 0,
-      totalNodes: result.totalNodes || 0,
-      totalPacketsReceived: result.totalPacketsReceived || 0,
-      totalPacketsSent: result.totalPacketsSent || 0,
-      totalCredits: result.totalCredits || 0,
-      avgCPU: result.avgCPU ? Math.round(result.avgCPU * 10) / 10 : 0,
-      avgRAM: result.avgRAM ? Math.round(result.avgRAM * 10) / 10 : 0,
-    }));
+    const { getLatestVersion } = require('../utils/network-health');
+    
+    const aggregatedData = results.map((result: any) => {
+      const nodes = result.nodes || [];
+      
+      // Calculate version distribution from nodes
+      const versionDistribution: Record<string, number> = {};
+      const cities = new Set<string>();
+      
+      nodes.forEach((node: any) => {
+        const version = node.version || 'unknown';
+        versionDistribution[version] = (versionDistribution[version] || 0) + 1;
+        
+        if (node.nodeLocation?.city) {
+          cities.add(node.nodeLocation.city);
+        }
+      });
+      
+      // Calculate health from aggregated fields (same logic as network health endpoint)
+      const availability = result.totalNodes > 0 
+        ? (result.onlineCount / result.totalNodes) * 100 
+        : 0;
+      
+      // Version health - calculate from version distribution
+      let versionHealth = 0;
+      if (Object.keys(versionDistribution).length > 0) {
+        const versions = Object.keys(versionDistribution);
+        const latestVersion = getLatestVersion(versions);
+        if (latestVersion) {
+          const latestVersionCount = versionDistribution[latestVersion] || 0;
+          versionHealth = (latestVersionCount / result.totalNodes) * 100;
+        }
+      }
+      
+      // Distribution - for a single region, we use city diversity
+      // Normalize: 20+ cities = 100%, 1 city = 5%
+      const cityDiversity = Math.min(100, (cities.size / 20) * 100);
+      const distribution = cityDiversity; // For regions, city diversity is the main factor
+      
+      // Overall health score (same formula as network health)
+      const overall = Math.round(
+        availability * 0.40 +
+        versionHealth * 0.35 +
+        distribution * 0.25
+      );
+
+      console.log(`[MongoDB History] Region health calculation for ${country}:`, {
+        timestamp: result.timestamp,
+        totalNodes: result.totalNodes,
+        onlineCount: result.onlineCount,
+        availability,
+        versionHealth,
+        distribution,
+        overall,
+        versionDistributionKeys: Object.keys(versionDistribution),
+        citiesCount: cities.size,
+      });
+
+      return {
+        timestamp: result.timestamp, // This is the original snapshot timestamp
+        onlineCount: result.onlineCount || 0,
+        totalNodes: result.totalNodes || 0,
+        totalPacketsReceived: result.totalPacketsReceived || 0,
+        totalPacketsSent: result.totalPacketsSent || 0,
+        totalCredits: result.totalCredits || 0,
+        avgCPU: result.avgCPU ? Math.round(result.avgCPU * 10) / 10 : 0,
+        avgRAM: result.avgRAM ? Math.round(result.avgRAM * 10) / 10 : 0,
+        // Health metrics (calculated from node snapshots, same as network health)
+        networkHealthScore: overall,
+        networkHealthAvailability: Math.round(availability),
+        networkHealthVersion: Math.round(versionHealth),
+        networkHealthDistribution: Math.round(distribution),
+        versionDistribution: versionDistribution,
+        cities: cities.size,
+      };
+    });
     
     console.log(`[MongoDB History] ✅ Region history: ${aggregatedData.length} aggregated data points for ${country} (from historical snapshots)`);
     

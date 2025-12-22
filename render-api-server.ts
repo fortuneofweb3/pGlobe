@@ -1001,9 +1001,98 @@ app.get('/api/history/region', authenticate, async (req, res) => {
     });
 
     const { getRegionHistory } = await import('./lib/server/mongodb-history');
-    const regionData = await getRegionHistory(country, countryCode, startTime, endTime);
+    const rawRegionData = await getRegionHistory(country, countryCode, startTime, endTime);
 
-    console.log(`[RenderAPI] ✅ Region history: ${regionData.length} data points for ${country}`);
+    console.log(`[RenderAPI] ✅ Region history: ${rawRegionData.length} raw data points for ${country}`);
+
+    // Space out points by time intervals for better chart readability
+    // Determine interval based on time range (default to 6 hours if not provided)
+    let intervalMs: number;
+    if (startTime && endTime) {
+      const timeRange = endTime - startTime;
+      if (timeRange <= 1 * 60 * 60 * 1000) {
+        intervalMs = 5 * 60 * 1000; // 5 minutes for <= 1 hour
+      } else if (timeRange <= 6 * 60 * 60 * 1000) {
+        intervalMs = 30 * 60 * 1000; // 30 minutes for <= 6 hours
+      } else if (timeRange <= 24 * 60 * 60 * 1000) {
+        intervalMs = 1 * 60 * 60 * 1000; // 1 hour for <= 24 hours
+      } else if (timeRange <= 7 * 24 * 60 * 60 * 1000) {
+        intervalMs = 6 * 60 * 60 * 1000; // 6 hours for <= 7 days
+      } else {
+        intervalMs = 24 * 60 * 60 * 1000; // 1 day for > 7 days
+      }
+    } else {
+      intervalMs = 6 * 60 * 60 * 1000; // Default: 6 hours
+    }
+
+    // Group points by time intervals and average them
+    let regionData = rawRegionData;
+    if (rawRegionData.length > 0) {
+      const grouped = new Map<number, typeof rawRegionData>();
+      
+      rawRegionData.forEach(point => {
+        // Round timestamp down to the nearest interval
+        const intervalStart = Math.floor(point.timestamp / intervalMs) * intervalMs;
+        
+        if (!grouped.has(intervalStart)) {
+          grouped.set(intervalStart, []);
+        }
+        grouped.get(intervalStart)!.push(point);
+      });
+
+      // Average points within each interval
+      regionData = Array.from(grouped.entries())
+        .sort(([a], [b]) => a - b)
+        .map(([intervalStart, points]) => {
+          // Average all metrics for points in this interval
+          const avg = points.reduce((acc, point) => ({
+            timestamp: intervalStart,
+            onlineCount: acc.onlineCount + point.onlineCount,
+            totalNodes: acc.totalNodes + point.totalNodes,
+            totalPacketsReceived: acc.totalPacketsReceived + point.totalPacketsReceived,
+            totalPacketsSent: acc.totalPacketsSent + point.totalPacketsSent,
+            totalCredits: acc.totalCredits + point.totalCredits,
+            avgCPU: acc.avgCPU + point.avgCPU,
+            avgRAM: acc.avgRAM + point.avgRAM,
+            networkHealthScore: acc.networkHealthScore + (point.networkHealthScore || 0),
+            networkHealthAvailability: acc.networkHealthAvailability + (point.networkHealthAvailability || 0),
+            networkHealthVersion: acc.networkHealthVersion + (point.networkHealthVersion || 0),
+            networkHealthDistribution: acc.networkHealthDistribution + (point.networkHealthDistribution || 0),
+            count: acc.count + 1,
+          }), {
+            timestamp: intervalStart,
+            onlineCount: 0,
+            totalNodes: 0,
+            totalPacketsReceived: 0,
+            totalPacketsSent: 0,
+            totalCredits: 0,
+            avgCPU: 0,
+            avgRAM: 0,
+            networkHealthScore: 0,
+            networkHealthAvailability: 0,
+            networkHealthVersion: 0,
+            networkHealthDistribution: 0,
+            count: 0,
+          });
+
+          return {
+            timestamp: avg.timestamp,
+            onlineCount: Math.round(avg.onlineCount / avg.count),
+            totalNodes: Math.round(avg.totalNodes / avg.count),
+            totalPacketsReceived: Math.round(avg.totalPacketsReceived / avg.count),
+            totalPacketsSent: Math.round(avg.totalPacketsSent / avg.count),
+            totalCredits: Math.round((avg.totalCredits / avg.count) * 10) / 10,
+            avgCPU: Math.round((avg.avgCPU / avg.count) * 10) / 10,
+            avgRAM: Math.round((avg.avgRAM / avg.count) * 10) / 10,
+            networkHealthScore: Math.round(avg.networkHealthScore / avg.count),
+            networkHealthAvailability: Math.round(avg.networkHealthAvailability / avg.count),
+            networkHealthVersion: Math.round(avg.networkHealthVersion / avg.count),
+            networkHealthDistribution: Math.round(avg.networkHealthDistribution / avg.count),
+          };
+        });
+
+      console.log(`[RenderAPI] Spaced ${rawRegionData.length} points into ${regionData.length} time intervals (${intervalMs / 1000 / 60} min intervals)`);
+    }
 
     res.json({
       success: true,

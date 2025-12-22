@@ -141,23 +141,23 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
     return Math.round(latencies.reduce((sum, lat) => sum + lat, 0) / latencies.length);
   }, [nodeLatencies]);
 
-  if (data.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-[250px] text-muted-foreground text-sm">
-        No latency data available
-      </div>
-    );
-  }
-
-  const margin = { top: 20, right: 20, left: 40, bottom: 40 };
+  // Always define buckets for consistent axis display
+  const allBuckets = ['<50ms', '50-100ms', '100-200ms', '200-500ms', '>500ms'];
+  const hasData = data.length > 0;
 
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-3">
         <div className="text-sm text-muted-foreground">
-          Avg: <span className="text-foreground font-semibold">
-            <AnimatedNumber value={avgLatency} decimals={0} suffix="ms" />
-          </span>
+          {hasData ? (
+            <>
+              Avg: <span className="text-foreground font-semibold">
+                <AnimatedNumber value={avgLatency} decimals={0} suffix="ms" />
+              </span>
+            </>
+          ) : (
+            <span className="text-foreground/40">Loading latency data...</span>
+          )}
         </div>
       </div>
       <div className="flex-1" style={{ width: '100%', minHeight: 180, position: 'relative' }}>
@@ -165,6 +165,14 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
           {({ width: parentWidth = 800, height: parentHeight = 180 }) => {
             const width = parentWidth;
             const chartHeight = Math.max(180, parentHeight);
+            // Responsive margins - smaller on mobile for better chart size
+            const isMobile = width < 640;
+            const margin = { 
+              top: 20, 
+              right: isMobile ? 10 : 20, 
+              left: isMobile ? 30 : 40, 
+              bottom: 40 
+            };
             const innerWidth = width - margin.left - margin.right;
             const innerHeight = chartHeight - margin.top - margin.bottom;
             const svgRef = useRef<SVGSVGElement>(null);
@@ -172,14 +180,14 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
 
             const xScale = scaleBand<string>({
               range: [0, innerWidth],
-              domain: data.map(d => d.range),
+              domain: hasData ? data.map(d => d.range) : allBuckets,
               padding: 0.2,
             });
 
-            const maxCount = Math.max(...data.map(d => d.count), 1); // Ensure at least 1 for domain
+            const maxCount = hasData ? Math.max(...data.map(d => d.count), 1) : 10;
             const yScale = scaleLinear<number>({
               range: [innerHeight, 0],
-              domain: [0, maxCount * 1.1 || 10], // Ensure domain is valid
+              domain: [0, maxCount * 1.1 || 10],
               nice: true,
             });
 
@@ -230,14 +238,14 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
                         stroke="rgba(156, 163, 175, 0.2)"
                         pointerEvents="none"
                       />
-                      {/* Bars */}
-                    {data.map((d, index) => {
+                      {/* Bars - render empty bars if no data for consistent axis */}
+                    {(hasData ? data : allBuckets.map(range => ({ range, count: 0, percentage: 0 }))).map((d, index) => {
                         const barWidth = Math.max(xScale.bandwidth(), 1);
                         const barValue = d.count;
-                        const barTop = yScale(barValue); // Top of bar (yScale maps value to y-coordinate)
-                        const barHeight = Math.max(innerHeight - barTop, 0); // Height from top to bottom
+                        const barTop = yScale(barValue);
+                        const barHeight = Math.max(innerHeight - barTop, 0);
                       const x = xScale(d.range) || 0;
-                        const y = barTop; // Y position is the top of the bar
+                        const y = barTop;
 
                       return (
                         <Bar
@@ -246,20 +254,21 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
                           y={y}
                           width={barWidth}
                           height={barHeight}
-                          fill={COLORS[index % COLORS.length]}
+                          fill={hasData ? COLORS[index % COLORS.length] : 'transparent'}
                           rx={4}
-                            style={{ pointerEvents: 'all' }}
-                          onMouseMove={(event) => {
+                          style={{ pointerEvents: hasData ? 'all' : 'none' }}
+                          opacity={hasData ? 1 : 0}
+                          onMouseMove={hasData ? (event) => {
                               const coords = localPoint(event);
                             if (coords) {
                               showTooltip({
                                 tooltipLeft: coords.x,
                                 tooltipTop: coords.y,
-                                tooltipData: d,
+                                tooltipData: d as TooltipData,
                               });
                             }
-                          }}
-                          onMouseLeave={() => hideTooltip()}
+                          } : undefined}
+                          onMouseLeave={hasData ? () => hideTooltip() : undefined}
                         />
                       );
                     })}
@@ -268,12 +277,13 @@ export default function LatencyDistribution({ nodes }: LatencyDistributionProps)
                       top={margin.top + innerHeight}
                     left={margin.left}
                     scale={xScale}
-                      numTicks={data.length}
+                      numTicks={allBuckets.length}
                       tickFormat={(d) => d.replace('ms', '')}
                     tickLabelProps={() => ({
-                      fill: '#9CA3AF',
+                      fill: hasData ? '#9CA3AF' : '#6B7280',
                       fontSize: 12,
                       textAnchor: 'middle',
+                      opacity: hasData ? 1 : 0.5,
                     })}
                   />
                   <AxisLeft

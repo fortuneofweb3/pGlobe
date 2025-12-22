@@ -143,9 +143,14 @@ function HistoricalLineChart({
   yTicks?: number[];
 }) {
   const { tooltipData, tooltipLeft, tooltipTop, tooltipOpen, showTooltip, hideTooltip } = useTooltip<any>();
-  const margin = { top: 30, right: 30, left: 60, bottom: 70 };
   const svgRef = useRef<SVGSVGElement>(null);
-  const hasAnimatedRef = useRef(false);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  // Animation refs and state
+  const pathGroupRef = useRef<SVGGElement | null>(null);
+  const [showCircle, setShowCircle] = useState(false);
+  const lastAnimatedKeyRef = useRef<string>('');
+  const lastDataKeyRef = useRef<string>('');
 
   const chartData = useMemo(() => {
     if (data.length === 0) return [];
@@ -217,60 +222,137 @@ function HistoricalLineChart({
     return interpolated.sort((a, b) => a.timestamp - b.timestamp);
   }, [data, multiLine]);
 
-  // Animate paths on mount and when data changes
+  // Create data key for animation tracking
+  const dataKey = useMemo(() => {
+    if (chartData.length === 0) return null;
+    const first = chartData[0]?.timestamp || 0;
+    const last = chartData[chartData.length - 1]?.timestamp || 0;
+    const strokeKey = multiLine ? multiLine.map(l => l.key).join('-') : 'single';
+    return `${title}-${strokeKey}-${chartData.length}-${first}-${last}`;
+  }, [chartData, title, multiLine]);
+
+  // Animate when data key changes
   useEffect(() => {
-    if (!svgRef.current || chartData.length === 0) return;
+    if (!dataKey) {
+      return;
+    }
 
-    // Reset animation flag when data changes
-    hasAnimatedRef.current = false;
+    // If same data key, show immediately
+    if (dataKey === lastAnimatedKeyRef.current) {
+      setShowCircle(true);
+      const group = pathGroupRef.current;
+      const paths = group?.querySelectorAll('path');
+      if (group && paths) {
+        group.classList.remove('line-initial-hidden');
+        paths.forEach(path => {
+          path.style.strokeDasharray = 'none';
+          path.style.strokeDashoffset = '0';
+          path.style.visibility = 'visible';
+          path.style.willChange = 'auto';
+        });
+      }
+      return;
+    }
 
-    let cleanupTimer: NodeJS.Timeout | null = null;
+    // New data - animate
+    lastAnimatedKeyRef.current = dataKey;
+    lastDataKeyRef.current = dataKey;
+    setShowCircle(false);
 
-    // Wait for paths to render, then animate
-    const timer = setTimeout(() => {
-      if (!svgRef.current || hasAnimatedRef.current) return;
+    // Use requestAnimationFrame for better performance
+    const setupAnimation = () => {
+      const group = pathGroupRef.current;
+      const paths = group?.querySelectorAll('path');
+      if (!group || !paths || paths.length === 0) {
+        // Retry if not ready
+        requestAnimationFrame(setupAnimation);
+        return;
+      }
 
-      // Find all path elements in the SVG
-      const paths = svgRef.current.querySelectorAll('path[stroke]:not([fill])');
-
-      paths.forEach((pathEl: Element) => {
-        const svgPath = pathEl as SVGPathElement;
+      let allPathsReady = true;
+      paths.forEach(path => {
         try {
-          const pathLength = svgPath.getTotalLength();
-          if (pathLength > 0) {
-            // Set initial state
-            svgPath.style.strokeDasharray = `${pathLength}`;
-            svgPath.style.strokeDashoffset = `${pathLength}`;
-
-            // Trigger animation on next frame
-            requestAnimationFrame(() => {
-              svgPath.style.transition = 'stroke-dashoffset 1.2s ease-out';
-              svgPath.style.strokeDashoffset = '0';
-            });
-          }
+          path.getTotalLength();
         } catch (e) {
-          // getTotalLength might fail on some elements, skip them
+          allPathsReady = false;
         }
       });
 
-      hasAnimatedRef.current = true;
-
-      // Clean up after animation completes
-      cleanupTimer = setTimeout(() => {
-        paths.forEach((pathEl: Element) => {
-          const svgPath = pathEl as SVGPathElement;
-          svgPath.style.strokeDasharray = 'none';
-          svgPath.style.strokeDashoffset = '0';
-          svgPath.style.transition = '';
+      if (!allPathsReady) {
+        requestAnimationFrame(() => {
+          const retryPaths = pathGroupRef.current?.querySelectorAll('path');
+          if (retryPaths) {
+            let retryReady = true;
+            retryPaths.forEach(path => {
+              try {
+                const length = path.getTotalLength();
+                if (length === 0) retryReady = false;
+              } catch (e) {
+                retryReady = false;
+              }
+            });
+            if (retryReady) {
+              // Start animation for each path individually
+              retryPaths.forEach(path => {
+                const svgPath = path as SVGPathElement;
+                const length = svgPath.getTotalLength();
+                if (length > 0 && pathGroupRef.current) {
+                  startAnimation(pathGroupRef.current, svgPath, length);
+                }
+              });
+            } else {
+              // Still not ready, show without animation
+              setShowCircle(true);
+              retryPaths.forEach(path => {
+                path.style.visibility = 'visible';
+              });
+            }
+          }
         });
-      }, 1500);
-    }, 100);
+        return;
+      }
 
-    return () => {
-      clearTimeout(timer);
-      if (cleanupTimer) clearTimeout(cleanupTimer);
+      // Start animation for each path individually
+      paths.forEach(path => {
+        const svgPath = path as SVGPathElement;
+        const length = svgPath.getTotalLength();
+        if (length > 0 && pathGroupRef.current) {
+          startAnimation(pathGroupRef.current, svgPath, length);
+        }
+      });
     };
-  }, [chartData, data]);
+
+    requestAnimationFrame(setupAnimation);
+
+    function startAnimation(group: SVGGElement, path: SVGPathElement, length: number) {
+      group.classList.remove('line-initial-hidden');
+
+      // Set initial state
+      path.style.strokeDasharray = `${length}`;
+      path.style.strokeDashoffset = `${length}`;
+      path.style.visibility = 'visible';
+      path.style.willChange = 'stroke-dashoffset';
+      path.style.transition = 'none';
+
+      // Start animation with optimized timing (0.6s for snappier feel)
+      const animationDuration = 600; // 0.6 seconds
+
+      // Use requestAnimationFrame to ensure initial state is painted before animation
+      requestAnimationFrame(() => {
+        path.style.transition = `stroke-dashoffset ${animationDuration}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+        path.style.strokeDashoffset = '0';
+
+        // Show circle exactly when animation completes
+        setTimeout(() => {
+          setShowCircle(true);
+          path.style.strokeDasharray = 'none';
+          path.style.strokeDashoffset = '0';
+          path.style.transition = '';
+          path.style.willChange = 'auto';
+        }, animationDuration);
+      });
+    }
+  }, [dataKey]);
   
   const smartYFormatter = useMemo(() => {
     if (yTickFormatter) {
@@ -357,6 +439,14 @@ function HistoricalLineChart({
         <ParentSize>
           {({ width: parentWidth = 800 }) => {
             const width = parentWidth;
+            // Responsive margins - smaller on mobile for better chart size
+            const isMobile = width < 640;
+            const margin = { 
+              top: 30, 
+              right: isMobile ? 10 : 30, 
+              left: isMobile ? 40 : 60, 
+              bottom: isMobile ? 50 : 70 
+            };
             const xMax = width - margin.left - margin.right;
             const yMax = height - margin.top - margin.bottom;
 
@@ -380,7 +470,7 @@ function HistoricalLineChart({
               if (!coords) return;
 
               const x = coords.x - margin.left;
-              
+
               let closestIndex = 0;
               let minDistance = Infinity;
               chartData.forEach((d, i) => {
@@ -391,18 +481,38 @@ function HistoricalLineChart({
                   closestIndex = i;
                 }
               });
-              
+
               const d = chartData[closestIndex];
 
               if (d) {
-                const xPos = xScale(d.timestamp) + margin.left;
+                setHoveredIndex(closestIndex);
                 showTooltip({
                   tooltipData: d,
-                  tooltipLeft: xPos,
+                  tooltipLeft: coords.x,
                   tooltipTop: coords.y,
                 });
               }
             };
+
+            const handleMouseLeave = () => {
+              setHoveredIndex(null);
+              hideTooltip();
+            };
+
+            // Split data for hover effect
+            const highlightedData = useMemo(() => {
+              if (hoveredIndex === null || chartData.length === 0) {
+                return chartData;
+              }
+              return chartData.slice(0, hoveredIndex + 1);
+            }, [chartData, hoveredIndex]);
+
+            const dimmedData = useMemo(() => {
+              if (hoveredIndex === null || chartData.length === 0) {
+                return [];
+              }
+              return chartData.slice(hoveredIndex);
+            }, [chartData, hoveredIndex]);
 
             return (
               <>
@@ -411,8 +521,16 @@ function HistoricalLineChart({
                   width={width}
                   height={height}
                   onMouseMove={handleMouseMove}
-                  onMouseLeave={hideTooltip}
+                  onMouseLeave={handleMouseLeave}
                 >
+                  <defs>
+                    {/* Animation styles */}
+                    <style>{`
+                      .line-initial-hidden path {
+                        visibility: hidden;
+                      }
+                    `}</style>
+                  </defs>
                   <Group transform={`translate(${margin.left},${margin.top})`}>
                     <GridRows
                       scale={yScale}
@@ -430,43 +548,88 @@ function HistoricalLineChart({
                     />
 
                     {multiLine ? (
-                      multiLine.map((line) => {
-                        const validData = chartData.filter(d => {
-                          const val = d[line.key];
-                          return val !== undefined && val !== null && !isNaN(val);
-                        });
-                        return (
-                          <LinePath
-                            key={line.key}
-                            data={validData}
-                            x={(d) => xScale(d.timestamp)}
-                            y={(d) => yScale(d[line.key] ?? 0)}
-                            stroke={line.color}
-                            strokeWidth={3}
-                            curve={curveMonotoneX}
-                          />
-                        );
-                      })
+                      <g ref={pathGroupRef} key={`multi-${dataKey || 'loading'}`} className="line-initial-hidden">
+                        {multiLine.map((line) => {
+                          const validHighlightedData = highlightedData.filter(d => {
+                            const val = d[line.key];
+                            return val !== undefined && val !== null && !isNaN(val);
+                          });
+                          const validDimmedData = dimmedData.filter(d => {
+                            const val = d[line.key];
+                            return val !== undefined && val !== null && !isNaN(val);
+                          });
+                          return (
+                            <g key={line.key}>
+                              {/* Highlighted line */}
+                              {validHighlightedData.length > 0 && (
+                                <LinePath
+                                  data={validHighlightedData}
+                                  x={(d) => xScale(d.timestamp)}
+                                  y={(d) => yScale(d[line.key] ?? 0)}
+                                  stroke={line.color}
+                                  strokeWidth={3}
+                                  strokeOpacity={1}
+                                  curve={curveMonotoneX}
+                                />
+                              )}
+                              {/* Dimmed line (when hovering) */}
+                              {hoveredIndex !== null && validDimmedData.length > 0 && (
+                                <LinePath
+                                  data={validDimmedData}
+                                  x={(d) => xScale(d.timestamp)}
+                                  y={(d) => yScale(d[line.key] ?? 0)}
+                                  stroke={line.color}
+                                  strokeWidth={3}
+                                  strokeOpacity={0.25}
+                                  curve={curveMonotoneX}
+                                />
+                              )}
+                            </g>
+                          );
+                        })}
+                      </g>
                     ) : (
                       (() => {
-                        const validData = chartData.filter(d => {
+                        const validHighlightedData = highlightedData.filter(d => {
+                          const val = d.value;
+                          return val !== undefined && val !== null && !isNaN(val);
+                        });
+                        const validDimmedData = dimmedData.filter(d => {
                           const val = d.value;
                           return val !== undefined && val !== null && !isNaN(val);
                         });
                         return (
-                          <LinePath
-                            data={validData}
-                            x={(d) => xScale(d.timestamp)}
-                            y={(d) => yScale(d.value ?? 0)}
-                            stroke={strokeColor}
-                            strokeWidth={3}
-                            curve={curveMonotoneX}
-                          />
+                          <g ref={pathGroupRef} key={`line-${dataKey || 'loading'}`} className="line-initial-hidden">
+                            {/* Highlighted line */}
+                            {validHighlightedData.length > 0 && (
+                              <LinePath
+                                data={validHighlightedData}
+                                x={(d) => xScale(d.timestamp)}
+                                y={(d) => yScale(d.value ?? 0)}
+                                stroke={strokeColor}
+                                strokeWidth={3}
+                                strokeOpacity={1}
+                                curve={curveMonotoneX}
+                              />
+                            )}
+                            {/* Dimmed line (when hovering) */}
+                            {hoveredIndex !== null && validDimmedData.length > 0 && (
+                              <LinePath
+                                data={validDimmedData}
+                                x={(d) => xScale(d.timestamp)}
+                                y={(d) => yScale(d.value ?? 0)}
+                                stroke={strokeColor}
+                                strokeWidth={3}
+                                strokeOpacity={0.25}
+                                curve={curveMonotoneX}
+                              />
+                            )}
+                          </g>
                         );
                       })()
                     )}
 
-                    {tooltipOpen && tooltipData && (
+                    {tooltipOpen && tooltipData && showCircle && (
                       <>
                         <line
                           x1={xScale(tooltipData.timestamp)}
@@ -506,6 +669,46 @@ function HistoricalLineChart({
                             strokeWidth={2}
                             pointerEvents="none"
                           />
+                        )}
+                      </>
+                    )}
+                    {/* Show circle at end of line when not hovering and animation is complete */}
+                    {!tooltipOpen && showCircle && chartData.length > 0 && (
+                      <>
+                        {multiLine ? (
+                          multiLine.map((line) => {
+                            const lastPoint = chartData[chartData.length - 1];
+                            const value = lastPoint[line.key];
+                            if (value === undefined || value === null || isNaN(value)) return null;
+                            return (
+                              <Circle
+                                key={line.key}
+                                cx={xScale(lastPoint.timestamp)}
+                                cy={yScale(value)}
+                                r={4}
+                                fill={line.color}
+                                stroke="#fff"
+                                strokeWidth={2}
+                                pointerEvents="none"
+                              />
+                            );
+                          })
+                        ) : (
+                          (() => {
+                            const lastPoint = chartData[chartData.length - 1];
+                            if (lastPoint.value === undefined || lastPoint.value === null || isNaN(lastPoint.value)) return null;
+                            return (
+                              <Circle
+                                cx={xScale(lastPoint.timestamp)}
+                                cy={yScale(lastPoint.value)}
+                                r={4}
+                                fill={strokeColor}
+                                stroke="#fff"
+                                strokeWidth={2}
+                                pointerEvents="none"
+                              />
+                            );
+                          })()
                         )}
                       </>
                     )}
@@ -1940,8 +2143,8 @@ function NodeDetailContent() {
           </>
         )}
 
-        {/* Historical Data Section - Only for public nodes */}
-        {node.isPublic !== false && historicalData.length > 0 && (() => {
+        {/* Historical Data Section - Only for public nodes - Always show UI even when loading */}
+        {node.isPublic !== false && (() => {
           const now = Date.now();
           const timeRangeMs = {
             '30m': 30 * 60 * 1000,
@@ -1950,7 +2153,9 @@ function NodeDetailContent() {
             '1w': 7 * 24 * 60 * 60 * 1000,
           };
           const cutoffTime = now - timeRangeMs[timeRange];
-          const filteredData = historicalData.filter(d => d.timestamp >= cutoffTime);
+          const filteredData = historicalData.length > 0 
+            ? historicalData.filter(d => d.timestamp >= cutoffTime)
+            : [];
 
           return (
             <div className="mb-6 space-y-4">
@@ -2012,35 +2217,40 @@ function NodeDetailContent() {
                       );
                     }}
                     headerContent={
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 rounded-full bg-[#3F8277]"></div>
-                          <span>Online</span>
+                      loadingHistory ? (
+                        <span className="text-xs text-muted-foreground">Loading historical data...</span>
+                      ) : filteredData.length > 0 ? (
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-[#3F8277]"></div>
+                            <span>Online</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-[#F0A741]"></div>
+                            <span>Syncing</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+                            <span>Offline</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 rounded-full bg-[#F0A741]"></div>
-                          <span>Syncing</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 rounded-full bg-gray-500"></div>
-                          <span>Offline</span>
-                        </div>
-                      </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">No data available</span>
+                      )
                     }
                   />
                 </div>
 
-                {/* CPU & RAM over time */}
-                {(filteredData.some(d => d.cpuPercent !== undefined) || filteredData.some(d => d.ramPercent !== undefined)) && (
-                  <div className="card">
-                    <HistoricalLineChart
-                      title="Resource Utilization"
-                      data={filteredData.map(d => ({
-                        timestamp: d.timestamp,
-                        cpu: d.cpuPercent,
-                        ram: d.ramPercent,
-                      }))}
-                      height={250}
+                {/* CPU & RAM over time - Always show, empty axes when no data */}
+                <div className="card">
+                  <HistoricalLineChart
+                    title="Resource Utilization"
+                    data={filteredData.map(d => ({
+                      timestamp: d.timestamp,
+                      cpu: d.cpuPercent,
+                      ram: d.ramPercent,
+                    }))}
+                    height={250}
                       yDomain={[0, 100]}
                       strokeColor="#F0A741"
                       yLabel="Usage (%)"
@@ -2064,32 +2274,38 @@ function NodeDetailContent() {
                         </div>
                       )}
                       headerContent={
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          {(() => {
-                            const cpuData = filteredData.filter(d => d.cpuPercent !== undefined && d.cpuPercent !== null && !isNaN(d.cpuPercent));
-                            if (cpuData.length === 0) return null;
-                            const cpuAvg = cpuData.reduce((sum, d) => sum + (d.cpuPercent || 0), 0) / cpuData.length;
-                            if (isNaN(cpuAvg)) return null;
-                            return (
-                              <div className="flex items-center gap-1">
-                                <Cpu className="w-3.5 h-3.5" />
-                                <span>CPU: <span className="text-foreground font-semibold">{cpuAvg.toFixed(1)}%</span></span>
-                              </div>
-                            );
-                          })()}
-                          {(() => {
-                            const ramData = filteredData.filter(d => d.ramPercent !== undefined && d.ramPercent !== null && !isNaN(d.ramPercent));
-                            if (ramData.length === 0) return null;
-                            const ramAvg = ramData.reduce((sum, d) => sum + (d.ramPercent || 0), 0) / ramData.length;
-                            if (isNaN(ramAvg)) return null;
-                            return (
-                              <div className="flex items-center gap-1">
-                                <MemoryStick className="w-3.5 h-3.5" />
-                                <span>RAM: <span className="text-foreground font-semibold">{ramAvg.toFixed(1)}%</span></span>
-                              </div>
-                            );
-                          })()}
-                        </div>
+                        loadingHistory ? (
+                          <span className="text-xs text-muted-foreground">Loading historical data...</span>
+                        ) : filteredData.length > 0 ? (
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            {(() => {
+                              const cpuData = filteredData.filter(d => d.cpuPercent !== undefined && d.cpuPercent !== null && !isNaN(d.cpuPercent));
+                              if (cpuData.length === 0) return null;
+                              const cpuAvg = cpuData.reduce((sum, d) => sum + (d.cpuPercent || 0), 0) / cpuData.length;
+                              if (isNaN(cpuAvg)) return null;
+                              return (
+                                <div className="flex items-center gap-1">
+                                  <Cpu className="w-3.5 h-3.5" />
+                                  <span>CPU: <span className="text-foreground font-semibold">{cpuAvg.toFixed(1)}%</span></span>
+                                </div>
+                              );
+                            })()}
+                            {(() => {
+                              const ramData = filteredData.filter(d => d.ramPercent !== undefined && d.ramPercent !== null && !isNaN(d.ramPercent));
+                              if (ramData.length === 0) return null;
+                              const ramAvg = ramData.reduce((sum, d) => sum + (d.ramPercent || 0), 0) / ramData.length;
+                              if (isNaN(ramAvg)) return null;
+                              return (
+                                <div className="flex items-center gap-1">
+                                  <MemoryStick className="w-3.5 h-3.5" />
+                                  <span>RAM: <span className="text-foreground font-semibold">{ramAvg.toFixed(1)}%</span></span>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No data available</span>
+                        )
                       }
                     />
                   </div>
@@ -2098,8 +2314,8 @@ function NodeDetailContent() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Packets over time */}
-                {(filteredData.some(d => d.packetsReceived !== undefined) || filteredData.some(d => d.packetsSent !== undefined)) && (() => {
+                {/* Packets over time - Always show, empty axes when no data */}
+                {(() => {
                   const sorted = [...filteredData].sort((a, b) => a.timestamp - b.timestamp);
                   const FIVE_MINUTES_MS = 5 * 60 * 1000;
                   
@@ -2182,17 +2398,23 @@ function NodeDetailContent() {
                           </div>
                         )}
                         headerContent={
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>Total packet rate (Rx + Tx) calculated over 5-minute windows</span>
-                          </div>
+                          loadingHistory ? (
+                            <span className="text-xs text-muted-foreground">Loading historical data...</span>
+                          ) : packetRateData.length > 0 ? (
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                              <span>Total packet rate (Rx + Tx) calculated over 5-minute windows</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No data available</span>
+                          )
                         }
                       />
                     </div>
                   );
                 })()}
 
-                {/* Credits over time */}
-                {(filteredData.some(d => d.credits !== undefined) || (node.credits !== undefined && node.credits !== null)) && (() => {
+                {/* Credits over time - Always show, empty axes when no data */}
+                {(() => {
                   const sorted = [...filteredData].sort((a, b) => a.timestamp - b.timestamp);
                   const FIVE_MINUTES_MS = 5 * 60 * 1000;
                   
@@ -2304,9 +2526,15 @@ function NodeDetailContent() {
                           );
                         }}
                         headerContent={
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>Credits change (earned/lost) calculated over 5-minute windows</span>
-                          </div>
+                          loadingHistory ? (
+                            <span className="text-xs text-muted-foreground">Loading historical data...</span>
+                          ) : creditsData.length > 0 ? (
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                              <span>Credits change (earned/lost) calculated over 5-minute windows</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No data available</span>
+                          )
                         }
                       />
                     </div>
@@ -2316,59 +2544,6 @@ function NodeDetailContent() {
             </div>
           );
         })()}
-
-        {loadingHistory && (
-          <div className="card mb-6">
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <HistoricalLineChart
-                  title="Node Status"
-                  data={[]}
-                  height={250}
-                  yDomain={[0, 3]}
-                  strokeColor="#3F8277"
-                  yLabel="Status"
-                  tooltipFormatter={() => <div />}
-                  headerContent={
-                    <span className="text-xs text-muted-foreground">
-                      Loading historical data...
-                    </span>
-                  }
-                />
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                <HistoricalLineChart
-                  title="Resource Utilization"
-                  data={[]}
-                  height={250}
-                  yDomain={[0, 100]}
-                  strokeColor="#F0A741"
-                  yLabel="%"
-                  tooltipFormatter={() => <div />}
-                  headerContent={
-                    <span className="text-xs text-muted-foreground">
-                      Loading historical data...
-                    </span>
-                  }
-                />
-                <HistoricalLineChart
-                  title="Network Activity"
-                  data={[]}
-                  height={250}
-                  yDomain={[0, 100]}
-                  strokeColor="#3F8277"
-                  yLabel="Packets/s"
-                  tooltipFormatter={() => <div />}
-                  headerContent={
-                    <span className="text-xs text-muted-foreground">
-                      Loading historical data...
-                    </span>
-                  }
-                />
-              </div>
-            </div>
-          </div>
-        )}
 
         {!loadingHistory && historicalData.length === 0 && node.isPublic !== false && (
           <div className="card mb-6">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, Suspense, useEffect, useRef } from 'react';
+import { useMemo, useState, Suspense, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
@@ -15,7 +15,6 @@ import PNodeTable from '@/components/PNodeTable';
 import { PNode } from '@/lib/types/pnode';
 import { TableSkeleton, CardSkeleton, ChartSkeleton } from '@/components/Skeletons';
 import ResourceUtilization from '@/components/analytics/ResourceUtilization';
-import NetworkHealthTrendChart from '@/components/charts/NetworkHealthTrendChart';
 import { scaleTime, scaleLinear } from '@visx/scale';
 import { LinePath } from '@visx/shape';
 import { Group } from '@visx/group';
@@ -87,10 +86,14 @@ function HistoricalLineChart({
   yTicks?: number[];
 }) {
   const { tooltipData, tooltipLeft, tooltipTop, tooltipOpen, showTooltip, hideTooltip } = useTooltip<any>();
-  const margin = { top: 30, right: 30, left: 60, bottom: 70 };
   const svgRef = useRef<SVGSVGElement>(null);
-  const hasAnimatedRef = useRef(false);
-  const previousDataLengthRef = useRef(0);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  // Animation refs and state
+  const pathGroupRef = useRef<SVGGElement | null>(null);
+  const [showCircle, setShowCircle] = useState(false);
+  const lastAnimatedKeyRef = useRef<string>('');
+  const lastDataKeyRef = useRef<string>('');
 
   const chartData = useMemo(() => {
     if (data.length === 0) return [];
@@ -162,74 +165,141 @@ function HistoricalLineChart({
     return interpolated.sort((a, b) => a.timestamp - b.timestamp);
   }, [data, multiLine]);
 
-  // Animate paths on mount and when data changes
+  // Create data key for animation tracking
+  const dataKey = useMemo(() => {
+    if (chartData.length === 0) return null;
+    const first = chartData[0]?.timestamp || 0;
+    const last = chartData[chartData.length - 1]?.timestamp || 0;
+    const strokeKey = multiLine ? multiLine.map(l => l.key).join('-') : 'single';
+    return `${title}-${strokeKey}-${chartData.length}-${first}-${last}`;
+  }, [chartData, title, multiLine]);
+
+  // Animate when data key changes
   useEffect(() => {
-    if (!svgRef.current) return;
-    
-    // If data is empty, don't animate
-    if (chartData.length === 0) {
-      hasAnimatedRef.current = false;
-      previousDataLengthRef.current = 0;
+    if (!dataKey) {
       return;
     }
 
-    // Reset animation flag when data changes from empty to populated or when data length changes
-    const dataLengthChanged = previousDataLengthRef.current !== chartData.length;
-    const wasEmpty = previousDataLengthRef.current === 0;
-    
-    if (wasEmpty || dataLengthChanged) {
-      hasAnimatedRef.current = false;
+    // If same data key, show immediately
+    if (dataKey === lastAnimatedKeyRef.current) {
+      setShowCircle(true);
+      const group = pathGroupRef.current;
+      const paths = group?.querySelectorAll('path');
+      if (group && paths) {
+        group.classList.remove('line-initial-hidden');
+        paths.forEach(path => {
+          path.style.strokeDasharray = 'none';
+          path.style.strokeDashoffset = '0';
+          path.style.visibility = 'visible';
+          path.style.willChange = 'auto';
+        });
+      }
+      return;
     }
-    
-    previousDataLengthRef.current = chartData.length;
 
-    let cleanupTimer: NodeJS.Timeout | null = null;
+    // New data - animate
+    lastAnimatedKeyRef.current = dataKey;
+    lastDataKeyRef.current = dataKey;
+    setShowCircle(false);
 
-    // Wait for paths to render, then animate
-    const timer = setTimeout(() => {
-      if (!svgRef.current || hasAnimatedRef.current) return;
+    // Use requestAnimationFrame for better performance
+    const setupAnimation = () => {
+      const group = pathGroupRef.current;
+      const paths = group?.querySelectorAll('path');
+      if (!group || !paths || paths.length === 0) {
+        // Retry if not ready
+        requestAnimationFrame(setupAnimation);
+        return;
+      }
 
-      // Find all path elements in the SVG
-      const paths = svgRef.current.querySelectorAll('path[stroke]:not([fill])');
-
-      paths.forEach((pathEl: Element) => {
-        const svgPath = pathEl as SVGPathElement;
+      let allPathsReady = true;
+      paths.forEach(path => {
         try {
-          const pathLength = svgPath.getTotalLength();
-          if (pathLength > 0) {
-            // Set initial state
-            svgPath.style.strokeDasharray = `${pathLength}`;
-            svgPath.style.strokeDashoffset = `${pathLength}`;
-
-            // Trigger animation on next frame
-            requestAnimationFrame(() => {
-              svgPath.style.transition = 'stroke-dashoffset 1.2s ease-out';
-              svgPath.style.strokeDashoffset = '0';
-            });
+          const length = path.getTotalLength();
+          if (length === 0) {
+            allPathsReady = false;
           }
         } catch (e) {
-          // getTotalLength might fail on some elements, skip them
+          allPathsReady = false;
         }
       });
 
-      hasAnimatedRef.current = true;
-
-      // Clean up after animation completes
-      cleanupTimer = setTimeout(() => {
-        paths.forEach((pathEl: Element) => {
-          const svgPath = pathEl as SVGPathElement;
-          svgPath.style.strokeDasharray = 'none';
-          svgPath.style.strokeDashoffset = '0';
-          svgPath.style.transition = '';
+      if (!allPathsReady) {
+        // Retry if paths not ready
+        requestAnimationFrame(() => {
+          const retryPaths = pathGroupRef.current?.querySelectorAll('path');
+          if (retryPaths) {
+            let retryReady = true;
+            retryPaths.forEach(path => {
+              try {
+                const length = path.getTotalLength();
+                if (length === 0) retryReady = false;
+              } catch (e) {
+                retryReady = false;
+              }
+            });
+            if (retryReady) {
+              // Start animation for each path individually
+              retryPaths.forEach(path => {
+                const svgPath = path as SVGPathElement;
+                const length = svgPath.getTotalLength();
+                if (length > 0 && pathGroupRef.current) {
+                  startAnimation(pathGroupRef.current, svgPath, length);
+                }
+              });
+            } else {
+              // Still not ready, show without animation
+              setShowCircle(true);
+              retryPaths.forEach(path => {
+                path.style.visibility = 'visible';
+              });
+            }
+          }
         });
-      }, 1500);
-    }, 100);
+        return;
+      }
 
-    return () => {
-      clearTimeout(timer);
-      if (cleanupTimer) clearTimeout(cleanupTimer);
+      // Start animation for each path individually
+      paths.forEach(path => {
+        const svgPath = path as SVGPathElement;
+        const length = svgPath.getTotalLength();
+        if (length > 0 && pathGroupRef.current) {
+          startAnimation(pathGroupRef.current, svgPath, length);
+        }
+      });
     };
-  }, [chartData, data]);
+
+    requestAnimationFrame(setupAnimation);
+
+    function startAnimation(group: SVGGElement, path: SVGPathElement, length: number) {
+      group.classList.remove('line-initial-hidden');
+
+      // Set initial state
+      path.style.strokeDasharray = `${length}`;
+      path.style.strokeDashoffset = `${length}`;
+      path.style.visibility = 'visible';
+      path.style.willChange = 'stroke-dashoffset';
+      path.style.transition = 'none';
+
+      // Start animation with optimized timing (0.6s for snappier feel)
+      const animationDuration = 600; // 0.6 seconds
+
+      // Use requestAnimationFrame to ensure initial state is painted before animation
+      requestAnimationFrame(() => {
+        path.style.transition = `stroke-dashoffset ${animationDuration}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+        path.style.strokeDashoffset = '0';
+
+        // Show circle exactly when animation completes
+        setTimeout(() => {
+          setShowCircle(true);
+          path.style.strokeDasharray = 'none';
+          path.style.strokeDashoffset = '0';
+          path.style.transition = '';
+          path.style.willChange = 'auto';
+        }, animationDuration);
+      });
+    }
+  }, [dataKey]);
   
   const smartYFormatter = useMemo(() => {
     if (yTickFormatter) {
@@ -316,6 +386,14 @@ function HistoricalLineChart({
         <ParentSize>
           {({ width: parentWidth = 800 }) => {
             const width = parentWidth;
+            // Responsive margins - smaller on mobile for better chart size
+            const isMobile = width < 640;
+            const margin = { 
+              top: 30, 
+              right: isMobile ? 10 : 30, 
+              left: isMobile ? 40 : 60, 
+              bottom: isMobile ? 50 : 70 
+            };
             const xMax = width - margin.left - margin.right;
             const yMax = height - margin.top - margin.bottom;
 
@@ -339,7 +417,7 @@ function HistoricalLineChart({
               if (!coords) return;
 
               const x = coords.x - margin.left;
-              
+
               let closestIndex = 0;
               let minDistance = Infinity;
               chartData.forEach((d, i) => {
@@ -350,18 +428,32 @@ function HistoricalLineChart({
                   closestIndex = i;
                 }
               });
-              
+
               const d = chartData[closestIndex];
 
               if (d) {
-                const xPos = xScale(d.timestamp) + margin.left;
+                setHoveredIndex(closestIndex);
                 showTooltip({
                   tooltipData: d,
-                  tooltipLeft: xPos,
+                  tooltipLeft: coords.x,
                   tooltipTop: coords.y,
                 });
               }
             };
+
+            const handleMouseLeave = () => {
+              setHoveredIndex(null);
+              hideTooltip();
+            };
+
+            // Split data for hover effect
+            const highlightedData = hoveredIndex === null || chartData.length === 0
+              ? chartData
+              : chartData.slice(0, hoveredIndex + 1);
+
+            const dimmedData = hoveredIndex === null || chartData.length === 0
+              ? []
+              : chartData.slice(hoveredIndex);
 
             return (
               <>
@@ -370,7 +462,7 @@ function HistoricalLineChart({
                   width={width}
                   height={height}
                   onMouseMove={handleMouseMove}
-                  onMouseLeave={hideTooltip}
+                  onMouseLeave={handleMouseLeave}
                 >
                   <Group transform={`translate(${margin.left},${margin.top})`}>
                     <GridRows
@@ -389,43 +481,82 @@ function HistoricalLineChart({
                     />
 
                     {multiLine ? (
-                      multiLine.map((line) => {
-                        const validData = chartData.filter(d => {
-                          const val = d[line.key];
-                          return val !== undefined && val !== null && !isNaN(val);
-                        });
-                        return (
-                          <LinePath
-                            key={line.key}
-                            data={validData}
-                            x={(d) => xScale(d.timestamp)}
-                            y={(d) => yScale(d[line.key] ?? 0)}
-                            stroke={line.color}
-                            strokeWidth={3}
-                            curve={curveMonotoneX}
-                          />
-                        );
-                      })
+                      <g ref={pathGroupRef} key={`multi-${dataKey || 'loading'}`} className="line-initial-hidden">
+                        {multiLine.map((line) => {
+                          const validHighlightedData = highlightedData.filter(d => {
+                            const val = d[line.key];
+                            return val !== undefined && val !== null && !isNaN(val);
+                          });
+                          const validDimmedData = dimmedData.filter(d => {
+                            const val = d[line.key];
+                            return val !== undefined && val !== null && !isNaN(val);
+                          });
+                          return (
+                            <g key={line.key}>
+                              <LinePath
+                                data={validHighlightedData}
+                                x={(d) => xScale(d.timestamp)}
+                                y={(d) => yScale(d[line.key] ?? 0)}
+                                stroke={line.color}
+                                strokeWidth={3}
+                                strokeOpacity={1}
+                                curve={curveMonotoneX}
+                              />
+                              {hoveredIndex !== null && validDimmedData.length > 0 && (
+                                <LinePath
+                                  data={validDimmedData}
+                                  x={(d) => xScale(d.timestamp)}
+                                  y={(d) => yScale(d[line.key] ?? 0)}
+                                  stroke={line.color}
+                                  strokeWidth={3}
+                                  strokeOpacity={0.25}
+                                  curve={curveMonotoneX}
+                                />
+                              )}
+                            </g>
+                          );
+                        })}
+                      </g>
                     ) : (
                       (() => {
-                        const validData = chartData.filter(d => {
+                        const validHighlightedData = highlightedData.filter(d => {
+                          const val = d.value;
+                          return val !== undefined && val !== null && !isNaN(val);
+                        });
+                        const validDimmedData = dimmedData.filter(d => {
                           const val = d.value;
                           return val !== undefined && val !== null && !isNaN(val);
                         });
                         return (
-                          <LinePath
-                            data={validData}
-                            x={(d) => xScale(d.timestamp)}
-                            y={(d) => yScale(d.value ?? 0)}
-                            stroke={strokeColor}
-                            strokeWidth={3}
-                            curve={curveMonotoneX}
-                          />
+                          <g ref={pathGroupRef} key={`single-${dataKey || 'loading'}`} className="line-initial-hidden">
+                            {validHighlightedData.length > 0 && (
+                              <LinePath
+                                data={validHighlightedData}
+                                x={(d) => xScale(d.timestamp)}
+                                y={(d) => yScale(d.value ?? 0)}
+                                stroke={strokeColor}
+                                strokeWidth={3}
+                                strokeOpacity={1}
+                                curve={curveMonotoneX}
+                              />
+                            )}
+                            {hoveredIndex !== null && validDimmedData.length > 0 && (
+                              <LinePath
+                                data={validDimmedData}
+                                x={(d) => xScale(d.timestamp)}
+                                y={(d) => yScale(d.value ?? 0)}
+                                stroke={strokeColor}
+                                strokeWidth={3}
+                                strokeOpacity={0.25}
+                                curve={curveMonotoneX}
+                              />
+                            )}
+                          </g>
                         );
                       })()
                     )}
 
-                    {tooltipOpen && tooltipData && (
+                    {tooltipOpen && tooltipData && showCircle && (
                       <>
                         <line
                           x1={xScale(tooltipData.timestamp)}
@@ -465,6 +596,86 @@ function HistoricalLineChart({
                             strokeWidth={2}
                             pointerEvents="none"
                           />
+                        )}
+                      </>
+                    )}
+                    {/* Show circle at end of line when not hovering and animation is complete */}
+                    {!tooltipOpen && showCircle && chartData.length > 0 && (
+                      <>
+                        {multiLine ? (
+                          multiLine.map((line) => {
+                            const lastPoint = chartData[chartData.length - 1];
+                            const value = lastPoint[line.key];
+                            if (value === undefined || value === null || isNaN(value)) return null;
+                            return (
+                              <Circle
+                                key={line.key}
+                                cx={xScale(lastPoint.timestamp)}
+                                cy={yScale(value)}
+                                r={4}
+                                fill={line.color}
+                                stroke="#fff"
+                                strokeWidth={2}
+                                pointerEvents="none"
+                              />
+                            );
+                          })
+                        ) : (
+                          (() => {
+                            const lastPoint = chartData[chartData.length - 1];
+                            if (lastPoint.value === undefined || lastPoint.value === null || isNaN(lastPoint.value)) return null;
+                            return (
+                              <Circle
+                                cx={xScale(lastPoint.timestamp)}
+                                cy={yScale(lastPoint.value)}
+                                r={4}
+                                fill={strokeColor}
+                                stroke="#fff"
+                                strokeWidth={2}
+                                pointerEvents="none"
+                              />
+                            );
+                          })()
+                        )}
+                      </>
+                    )}
+                    {/* Show circle at end of line when not hovering and animation is complete */}
+                    {!tooltipOpen && showCircle && chartData.length > 0 && (
+                      <>
+                        {multiLine ? (
+                          multiLine.map((line) => {
+                            const lastPoint = chartData[chartData.length - 1];
+                            const value = lastPoint[line.key];
+                            if (value === undefined || value === null || isNaN(value)) return null;
+                            return (
+                              <Circle
+                                key={line.key}
+                                cx={xScale(lastPoint.timestamp)}
+                                cy={yScale(value)}
+                                r={4}
+                                fill={line.color}
+                                stroke="#fff"
+                                strokeWidth={2}
+                                pointerEvents="none"
+                              />
+                            );
+                          })
+                        ) : (
+                          (() => {
+                            const lastPoint = chartData[chartData.length - 1];
+                            if (lastPoint.value === undefined || lastPoint.value === null || isNaN(lastPoint.value)) return null;
+                            return (
+                              <Circle
+                                cx={xScale(lastPoint.timestamp)}
+                                cy={yScale(lastPoint.value)}
+                                r={4}
+                                fill={strokeColor}
+                                stroke="#fff"
+                                strokeWidth={2}
+                                pointerEvents="none"
+                              />
+                            );
+                          })()
                         )}
                       </>
                     )}
@@ -1002,7 +1213,7 @@ function CountryDetailContent() {
                       </div>
 
                       {/* Stats Grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 animate-slide-in-bottom" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 animate-slide-in-bottom" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
                         <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#3F8277]/50 transition-all duration-300">
                           <div className="flex items-center gap-2 mb-2">
                             <Server className="w-4 h-4 text-[#3F8277]" />
@@ -1060,112 +1271,6 @@ function CountryDetailContent() {
                           </div>
                           <div className="text-xs text-foreground/50 mt-1">Average</div>
                         </div>
-
-                        {/* Total RAM */}
-                        {stats.totalRAM > 0 && (
-                          <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#3F8277]/50 transition-all duration-300">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Zap className="w-4 h-4 text-[#3F8277]" />
-                              <span className="text-xs font-medium text-foreground/60 uppercase">Total RAM</span>
-                            </div>
-                            <div className="text-xl font-bold text-foreground">
-                              {formatStorageBytes(stats.totalRAM)}
-                            </div>
-                            {stats.usedRAM > 0 && (
-                              <div className="text-xs text-foreground/50 mt-1">
-                                {formatStorageBytes(stats.usedRAM)} used
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Packets */}
-                        {(stats.totalPacketsReceived > 0 || stats.totalPacketsSent > 0) && (
-                          <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#F0A741]/50 transition-all duration-300">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Activity className="w-4 h-4 text-[#F0A741]" />
-                              <span className="text-xs font-medium text-foreground/60 uppercase">Packets</span>
-                            </div>
-                            <div className="text-xl font-bold text-foreground">
-                              {formatNumber(stats.totalPacketsReceived + stats.totalPacketsSent)}
-                            </div>
-                            <div className="text-xs text-foreground/50 mt-1">
-                              {formatNumber(stats.totalPacketsReceived)} Rx / {formatNumber(stats.totalPacketsSent)} Tx
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Credits */}
-                        {stats.totalCredits > 0 && (
-                          <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#F0A741]/50 transition-all duration-300">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Award className="w-4 h-4 text-[#F0A741]" />
-                              <span className="text-xs font-medium text-foreground/60 uppercase">Credits</span>
-                            </div>
-                            <div className="text-xl font-bold text-foreground">
-                              <AnimatedNumber value={stats.totalCredits} />
-                            </div>
-                            <div className="text-xs text-foreground/50 mt-1">
-                              {stats.nodesReportingCredits} nodes
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Average Latency */}
-                        {stats.avgLatency > 0 && (
-                          <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#9CA3AF]/50 transition-all duration-300">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Clock className="w-4 h-4 text-[#9CA3AF]" />
-                              <span className="text-xs font-medium text-foreground/60 uppercase">Latency</span>
-                            </div>
-                            <div className="text-xl font-bold text-foreground">
-                              <AnimatedNumber value={stats.avgLatency} />ms
-                            </div>
-                            <div className="text-xs text-foreground/50 mt-1">Average</div>
-                          </div>
-                        )}
-
-                        {/* Average Uptime */}
-                        {stats.avgUptimeSeconds > 0 && (
-                          <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#3F8277]/50 transition-all duration-300">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Clock className="w-4 h-4 text-[#3F8277]" />
-                              <span className="text-xs font-medium text-foreground/60 uppercase">Uptime</span>
-                            </div>
-                            <div className="text-xl font-bold text-foreground">
-                              {formatUptimeDuration(stats.avgUptimeSeconds)}
-                            </div>
-                            <div className="text-xs text-foreground/50 mt-1">Average</div>
-                          </div>
-                        )}
-
-                        {/* Active Streams */}
-                        {stats.totalActiveStreams > 0 && (
-                          <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#F0A741]/50 transition-all duration-300">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Activity className="w-4 h-4 text-[#F0A741]" />
-                              <span className="text-xs font-medium text-foreground/60 uppercase">Streams</span>
-                            </div>
-                            <div className="text-xl font-bold text-foreground">
-                              <AnimatedNumber value={stats.totalActiveStreams} />
-                            </div>
-                            <div className="text-xs text-foreground/50 mt-1">Active</div>
-                          </div>
-                        )}
-
-                        {/* Packet Rate */}
-                        {stats.avgPacketRate > 0 && (
-                          <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#3F8277]/50 transition-all duration-300">
-                            <div className="flex items-center gap-2 mb-2">
-                              <TrendingUp className="w-4 h-4 text-[#3F8277]" />
-                              <span className="text-xs font-medium text-foreground/60 uppercase">Packet Rate</span>
-                            </div>
-                            <div className="text-xl font-bold text-foreground">
-                              {formatPacketRate(stats.avgPacketRate)}
-                            </div>
-                            <div className="text-xs text-foreground/50 mt-1">Average</div>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -1214,90 +1319,9 @@ function CountryDetailContent() {
                 </div>
               </div>
 
-              {/* Loading State - Show all 4 charts with empty axes */}
-              {loadingHistory && (
-                <>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-                    <div className="card">
-                      <HistoricalLineChart
-                        title="Network Activity (Packet Rate)"
-                        data={[]}
-                        height={250}
-                        yDomain={[0, 100]}
-                        strokeColor="#3F8277"
-                        yLabel="Packets/s"
-                        tooltipFormatter={() => <div />}
-                        headerContent={
-                          <span className="text-xs text-muted-foreground">
-                            Loading data...
-                          </span>
-                        }
-                      />
-                    </div>
-                    <div className="card">
-                      <HistoricalLineChart
-                        title="Credits Earned History"
-                        data={[]}
-                        height={250}
-                        yDomain={[-10, 10]}
-                        strokeColor="#F0A741"
-                        yLabel="Credits"
-                        tooltipFormatter={() => <div />}
-                        headerContent={
-                          <span className="text-xs text-muted-foreground">
-                            Loading data...
-                          </span>
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div className="card">
-                      <HistoricalLineChart
-                        title="Average CPU Usage"
-                        data={[]}
-                        height={250}
-                        yDomain={[0, 100]}
-                        strokeColor="#F0A741"
-                        yLabel="CPU %"
-                        tooltipFormatter={() => <div />}
-                        headerContent={
-                          <span className="text-xs text-muted-foreground">
-                            Loading data...
-                          </span>
-                        }
-                      />
-                    </div>
-                    <div className="card">
-                      <HistoricalLineChart
-                        title="Average RAM Usage"
-                        data={[]}
-                        height={250}
-                        yDomain={[0, 100]}
-                        strokeColor="#9CA3AF"
-                        yLabel="RAM %"
-                        tooltipFormatter={() => <div />}
-                        headerContent={
-                          <span className="text-xs text-muted-foreground">
-                            Loading data...
-                          </span>
-                        }
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* No Data State */}
-              {!loadingHistory && historicalData.length === 0 && (
-                <div className="card p-8 text-center">
-                  <p className="text-muted-foreground">No historical data available for this region yet.</p>
-                  <p className="text-sm text-muted-foreground mt-2">Data will appear as nodes report their metrics over time.</p>
-                </div>
-              )}
-
-              {/* Charts */}
-              {!loadingHistory && historicalData.length > 0 && (() => {
+              {/* Charts - Always show, with empty axes when loading or no data */}
+              {(() => {
+              // Always show charts, even if no data (they'll show empty axes)
               const now = Date.now();
               const timeRangeMs = {
                 '30m': 30 * 60 * 1000,
@@ -1306,7 +1330,9 @@ function CountryDetailContent() {
                 '1w': 7 * 24 * 60 * 60 * 1000,
               };
               const cutoffTime = now - timeRangeMs[timeRange];
-              const filteredData = historicalData.filter(d => d.timestamp >= cutoffTime);
+              const filteredData = historicalData.length > 0 
+                ? historicalData.filter(d => d.timestamp >= cutoffTime)
+                : [];
 
               // Calculate packet earning rate (packets/s) from historical data
               const sorted = [...filteredData].sort((a, b) => a.timestamp - b.timestamp);
@@ -1444,40 +1470,59 @@ function CountryDetailContent() {
               const maxCPU = Math.max(...cpuData.map(d => d.value), 10);
               const maxRAM = Math.max(...ramData.map(d => d.value), 10);
 
-              // Calculate network health score (composite metric)
-              // Use the same formula weights as the standard calculateNetworkHealth function
-              // - 40% Availability (online nodes)
-              // - 35% Resource/Version Health (CPU/RAM efficiency as proxy for version health)
-              // - 25% Activity Health (packet rate normalized to 0-100)
-              const healthData = filteredData.map((d, idx) => {
-                const onlineRate = d.totalNodes > 0 ? (d.onlineCount / d.totalNodes) * 100 : 0;
-
-                // Resource health (CPU/RAM efficiency) - proxy for version health
-                const cpuHealth = d.avgCPU !== undefined ? Math.max(0, 100 - d.avgCPU) : 100;
-                const ramHealth = d.avgRAM !== undefined ? Math.max(0, 100 - d.avgRAM) : 100;
-                const resourceHealth = (cpuHealth + ramHealth) / 2;
-
-                // Activity health - normalize packet rate (0-100 scale)
-                // Higher packet rates indicate more active/healthy network
-                const currentPacketRate = packetRateData[idx]?.value || 0;
-                const activityHealth = maxPacketRateForHealth > 0 
-                  ? Math.min(100, (currentPacketRate / maxPacketRateForHealth) * 100)
-                  : onlineRate; // Fallback to availability if no packet data
-
-                // Use standard network health formula weights (aligned with calculateNetworkHealth)
-                const healthScore = (
-                  onlineRate * 0.40 +           // 40% Availability
-                  resourceHealth * 0.35 +       // 35% Resource/Version Health
-                  activityHealth * 0.25          // 25% Activity/Distribution
-                );
-
-                return {
-                  timestamp: d.timestamp,
-                  networkHealthScore: Math.min(100, Math.max(0, healthScore)),
-                  networkHealthAvailability: onlineRate,
-                  networkHealthVersion: resourceHealth, // Resource health as proxy for version health
-                  networkHealthDistribution: activityHealth, // Activity health as proxy for distribution
-                };
+              // Network health data - format same as other charts
+              // Calculate from backend fields (availability, version, distribution) if networkHealthScore not available
+              const healthData = filteredData.map((d: any) => {
+                // First, try to use networkHealthScore from backend
+                if (d.networkHealthScore !== undefined && d.networkHealthScore !== null && !isNaN(d.networkHealthScore)) {
+                  return {
+                    timestamp: d.timestamp,
+                    value: d.networkHealthScore,
+                  };
+                }
+                
+                // Fallback: Calculate from component fields if available
+                if (d.networkHealthAvailability !== undefined && d.networkHealthVersion !== undefined && d.networkHealthDistribution !== undefined) {
+                  const calculated = Math.round(
+                    (d.networkHealthAvailability || 0) * 0.40 +
+                    (d.networkHealthVersion || 0) * 0.35 +
+                    (d.networkHealthDistribution || 0) * 0.25
+                  );
+                  return {
+                    timestamp: d.timestamp,
+                    value: calculated,
+                  };
+                }
+                
+                // Last resort: Calculate from basic availability if we have node counts
+                if (d.totalNodes > 0 && d.onlineCount !== undefined) {
+                  const availability = (d.onlineCount / d.totalNodes) * 100;
+                  // Use availability as a simplified health score (better than nothing)
+                  return {
+                    timestamp: d.timestamp,
+                    value: Math.round(availability * 0.40), // At least show availability component
+                  };
+                }
+                
+                // If we have absolutely nothing, return null (will be filtered out)
+                return null;
+              }).filter((d): d is { timestamp: number; value: number } => d !== null);
+              
+              console.log('[RegionPage] Health data processing:', {
+                filteredDataLength: filteredData.length,
+                healthDataLength: healthData.length,
+                sampleRaw: filteredData.slice(0, 3).map((d: any) => ({
+                  timestamp: new Date(d.timestamp).toISOString(),
+                  hasNetworkHealthScore: 'networkHealthScore' in d,
+                  networkHealthScore: d.networkHealthScore,
+                  networkHealthAvailability: d.networkHealthAvailability,
+                  networkHealthVersion: d.networkHealthVersion,
+                  networkHealthDistribution: d.networkHealthDistribution,
+                  onlineCount: d.onlineCount,
+                  totalNodes: d.totalNodes,
+                  allKeys: Object.keys(d),
+                })),
+                sampleProcessed: healthData.slice(0, 3),
               });
 
               return (
@@ -1505,7 +1550,7 @@ function CountryDetailContent() {
                         )}
                         headerContent={
                           <span className="text-xs text-muted-foreground">
-                            Total packet rate across all nodes
+                            {packetRateData.length === 0 && loadingHistory ? 'Loading data...' : packetRateData.length > 0 ? 'Total packet rate across all nodes' : 'No data available'}
                           </span>
                         }
                       />
@@ -1555,72 +1600,89 @@ function CountryDetailContent() {
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* CPU Usage Chart */}
-                    {cpuData.length > 0 && (
-                      <div className="card">
-                        <HistoricalLineChart
-                          title="Average CPU Usage"
-                          data={cpuData}
-                          height={250}
-                          yDomain={[0, 100]}
-                          strokeColor="#F0A741"
-                          yLabel="CPU %"
-                          yTickFormatter={(v) => `${v.toFixed(0)}%`}
-                          tooltipFormatter={(d) => (
-                            <div className="space-y-1">
-                              <div className="text-xs text-foreground/60">
-                                {timeFormat('%b %d, %H:%M')(new Date(d.timestamp))}
-                              </div>
-                              <div className="font-semibold text-foreground">
-                                {d.value.toFixed(1)}% CPU
-                              </div>
+                    {/* CPU Usage Chart - Always show, empty axes when no data */}
+                    <div className="card">
+                      <HistoricalLineChart
+                        title="Average CPU Usage"
+                        data={cpuData}
+                        height={250}
+                        yDomain={[0, 100]}
+                        strokeColor="#F0A741"
+                        yLabel="CPU %"
+                        yTickFormatter={(v) => `${v.toFixed(0)}%`}
+                        tooltipFormatter={(d) => (
+                          <div className="space-y-1">
+                            <div className="text-xs text-foreground/60">
+                              {timeFormat('%b %d, %H:%M')(new Date(d.timestamp))}
                             </div>
-                          )}
-                          headerContent={
-                            <span className="text-xs text-muted-foreground">
-                              Avg CPU across reporting nodes
-                            </span>
-                          }
-                        />
-                      </div>
-                    )}
-
-                    {/* RAM Usage Chart */}
-                    {ramData.length > 0 && (
-                      <div className="card">
-                        <HistoricalLineChart
-                          title="Average RAM Usage"
-                          data={ramData}
-                          height={250}
-                          yDomain={[0, 100]}
-                          strokeColor="#9CA3AF"
-                          yLabel="RAM %"
-                          yTickFormatter={(v) => `${v.toFixed(0)}%`}
-                          tooltipFormatter={(d) => (
-                            <div className="space-y-1">
-                              <div className="text-xs text-foreground/60">
-                                {timeFormat('%b %d, %H:%M')(new Date(d.timestamp))}
-                              </div>
-                              <div className="font-semibold text-foreground">
-                                {d.value.toFixed(1)}% RAM
-                              </div>
+                            <div className="font-semibold text-foreground">
+                              {d.value.toFixed(1)}% CPU
                             </div>
-                          )}
-                          headerContent={
-                            <span className="text-xs text-muted-foreground">
-                              Avg RAM across reporting nodes
-                            </span>
-                          }
-                        />
-                      </div>
-                    )}
+                          </div>
+                        )}
+                        headerContent={
+                          <span className="text-xs text-muted-foreground">
+                            {cpuData.length === 0 && loadingHistory ? 'Loading data...' : cpuData.length > 0 ? 'Avg CPU across reporting nodes' : 'No data available'}
+                          </span>
+                        }
+                      />
+                    </div>
 
-                    {/* Network Health Chart */}
-                    {healthData.length > 0 && (
-                      <div className="card lg:col-span-2">
-                        <NetworkHealthTrendChart historicalData={healthData} height={250} />
-                      </div>
-                    )}
+                    {/* RAM Usage Chart - Always show, empty axes when no data */}
+                    <div className="card">
+                      <HistoricalLineChart
+                        title="Average RAM Usage"
+                        data={ramData}
+                        height={250}
+                        yDomain={[0, 100]}
+                        strokeColor="#9CA3AF"
+                        yLabel="RAM %"
+                        yTickFormatter={(v) => `${v.toFixed(0)}%`}
+                        tooltipFormatter={(d) => (
+                          <div className="space-y-1">
+                            <div className="text-xs text-foreground/60">
+                              {timeFormat('%b %d, %H:%M')(new Date(d.timestamp))}
+                            </div>
+                            <div className="font-semibold text-foreground">
+                              {d.value.toFixed(1)}% RAM
+                            </div>
+                          </div>
+                        )}
+                        headerContent={
+                          <span className="text-xs text-muted-foreground">
+                            {ramData.length === 0 && loadingHistory ? 'Loading data...' : ramData.length > 0 ? 'Avg RAM across reporting nodes' : 'No data available'}
+                          </span>
+                        }
+                      />
+                    </div>
+
+                    {/* Network Health Chart - Always show, empty axes when no data */}
+                    <div className="card lg:col-span-2">
+                      <HistoricalLineChart
+                        title="Network Health Trend"
+                        data={healthData}
+                        height={250}
+                        yDomain={[0, 100]}
+                        strokeColor="#F0A741"
+                        yLabel="Health Score"
+                        yTickFormatter={(v) => `${v.toFixed(0)}%`}
+                        tooltipFormatter={(d) => (
+                          <div className="space-y-1">
+                            <div className="text-xs text-foreground/60">
+                              {timeFormat('%b %d, %H:%M')(new Date(d.timestamp))}
+                            </div>
+                            <div className="font-semibold text-foreground">
+                              {d.value.toFixed(1)}% Health
+                            </div>
+                          </div>
+                        )}
+                        headerContent={
+                          <span className="text-xs text-muted-foreground">
+                            {loadingHistory ? 'Loading data...' : healthData.length > 0 ? 'Overall health score for this region' : 'No data available'}
+                          </span>
+                        }
+                      />
+                    </div>
                   </div>
                 </>
               );

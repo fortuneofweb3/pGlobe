@@ -44,7 +44,7 @@ export default function AnalyticsPage() {
       try {
         // Use the new public API endpoint for network health history
         const url = `/api/v1/network/health/history?period=${healthPeriod}`;
-        console.log('[Analytics] Fetching health history from', url);
+        console.log('[Analytics] Fetching health history from', url, 'with period:', healthPeriod);
         console.log('[Analytics] Starting fetch request...');
         
         const fetchStartTime = Date.now();
@@ -147,7 +147,34 @@ export default function AnalyticsPage() {
             } else {
               console.error('[Analytics] ❌ All data points were filtered out as invalid!');
             }
-            
+
+            // Add current live health score as the final point to ensure consistency
+            if (transformed.length > 0 && nodes.length > 0) {
+              try {
+                const { calculateNetworkHealth } = await import('@/lib/utils/network-health');
+                const currentHealth = calculateNetworkHealth(nodes);
+                const now = Date.now();
+
+                // Only add if the last historical point is more than 1 hour old
+                const lastHistorical = transformed[transformed.length - 1];
+                if (lastHistorical && now - lastHistorical.timestamp > 3600000) { // 1 hour
+                  transformed.push({
+                    timestamp: now,
+                    avgUptime: 0,
+                    onlineCount: nodes.filter(n => n.status === 'online').length,
+                    totalNodes: nodes.length,
+                    networkHealthScore: currentHealth.overall,
+                    networkHealthAvailability: currentHealth.availability,
+                    networkHealthVersion: currentHealth.versionHealth,
+                    networkHealthDistribution: currentHealth.distribution,
+                  });
+                  console.log('[Analytics] Added current live health score to historical data');
+                }
+              } catch (error) {
+                console.warn('[Analytics] Failed to add current health to historical data:', error);
+              }
+            }
+
             setHistoricalData(transformed);
           } else {
             console.error('[Analytics] ❌ Health history API returned invalid format:', {

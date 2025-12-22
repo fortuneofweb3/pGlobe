@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useEffect, useRef } from 'react';
+import { useMemo, useEffect, useRef, useState } from 'react';
 import { scaleTime, scaleLinear } from '@visx/scale';
 import { LinePath } from '@visx/shape';
 import { AxisBottom, AxisLeft } from '@visx/axis';
@@ -22,6 +22,7 @@ interface NetworkHealthTrendChartProps {
     networkHealthDistribution?: number;
   }>;
   height?: number;
+  headerContent?: React.ReactNode;
 }
 
 const formatDate = (date: Date): string => {
@@ -45,14 +46,20 @@ const formatDateAxis = (date: Date, chartData: Array<{ timestamp: number }>): st
   }
 };
 
-export default function NetworkHealthTrendChart({ 
-  historicalData, 
-  height = 300 
+export default function NetworkHealthTrendChart({
+  historicalData,
+  height = 300,
+  headerContent
 }: NetworkHealthTrendChartProps) {
   const { tooltipData, tooltipLeft, tooltipTop, tooltipOpen, showTooltip, hideTooltip } = useTooltip<any>();
-  const margin = { top: 30, right: 30, left: 60, bottom: 70 };
   const svgRef = useRef<SVGSVGElement>(null);
-  const hasAnimatedRef = useRef(false);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  // Animation refs and state
+  const pathGroupRef = useRef<SVGGElement | null>(null);
+  const [showCircle, setShowCircle] = useState(false);
+  const lastAnimatedKeyRef = useRef<string>('');
+  const lastDataKeyRef = useRef<string>('');
 
   const chartData = useMemo(() => {
     if (historicalData.length === 0) return [];
@@ -96,83 +103,143 @@ export default function NetworkHealthTrendChart({
     ];
   }, [chartData]);
 
-  // Animate paths on mount and when data changes
-  useEffect(() => {
-    if (!svgRef.current || chartData.length === 0) return;
-
-    // Reset animation flag when data changes
-    hasAnimatedRef.current = false;
-
-    let cleanupTimer: NodeJS.Timeout | null = null;
-
-    // Wait for paths to render, then animate
-    const timer = setTimeout(() => {
-      if (!svgRef.current || hasAnimatedRef.current) return;
-
-      // Find all path elements in the SVG
-      const paths = svgRef.current.querySelectorAll('path[stroke]:not([fill])');
-
-      paths.forEach((pathEl: Element) => {
-        const svgPath = pathEl as SVGPathElement;
-        try {
-          const pathLength = svgPath.getTotalLength();
-          if (pathLength > 0) {
-            // Set initial state
-            svgPath.style.strokeDasharray = `${pathLength}`;
-            svgPath.style.strokeDashoffset = `${pathLength}`;
-
-            // Trigger animation on next frame
-            requestAnimationFrame(() => {
-              svgPath.style.transition = 'stroke-dashoffset 1.2s ease-out';
-              svgPath.style.strokeDashoffset = '0';
-            });
-          }
-        } catch (e) {
-          // getTotalLength might fail on some elements, skip them
-        }
-      });
-
-      hasAnimatedRef.current = true;
-
-      // Clean up after animation completes
-      cleanupTimer = setTimeout(() => {
-        paths.forEach((pathEl: Element) => {
-          const svgPath = pathEl as SVGPathElement;
-          svgPath.style.strokeDasharray = 'none';
-          svgPath.style.strokeDashoffset = '0';
-          svgPath.style.transition = '';
-        });
-      }, 1500);
-    }, 100);
-
-    return () => {
-      clearTimeout(timer);
-      if (cleanupTimer) clearTimeout(cleanupTimer);
-    };
+  // Create data key for animation tracking
+  const dataKey = useMemo(() => {
+    if (chartData.length === 0) return null;
+    const first = chartData[0]?.timestamp || 0;
+    const last = chartData[chartData.length - 1]?.timestamp || 0;
+    return `health-${chartData.length}-${first}-${last}`;
   }, [chartData]);
 
-  if (chartData.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-foreground/60">
-        <p>No historical network health data available</p>
-      </div>
-    );
-  }
+  // Animate when data key changes
+  useEffect(() => {
+    if (!dataKey) {
+      return;
+    }
+
+    // If same data key, show immediately
+    if (dataKey === lastAnimatedKeyRef.current) {
+      setShowCircle(true);
+      const group = pathGroupRef.current;
+      const path = group?.querySelector('path');
+      if (group && path) {
+        group.classList.remove('line-initial-hidden');
+        path.style.strokeDasharray = 'none';
+        path.style.strokeDashoffset = '0';
+        path.style.visibility = 'visible';
+        path.style.willChange = 'auto';
+      }
+      return;
+    }
+
+    // New data - animate
+    lastAnimatedKeyRef.current = dataKey;
+    lastDataKeyRef.current = dataKey;
+    setShowCircle(false);
+
+    // Use requestAnimationFrame for better performance
+    const setupAnimation = () => {
+      const group = pathGroupRef.current;
+      const path = group?.querySelector('path');
+      if (!group || !path) {
+        // Retry once if not ready
+        requestAnimationFrame(setupAnimation);
+        return;
+      }
+
+      const length = path.getTotalLength();
+      if (length === 0) {
+        // Path not ready, retry once more
+        requestAnimationFrame(() => {
+          const retryPath = pathGroupRef.current?.querySelector('path');
+          if (retryPath) {
+            const retryLength = retryPath.getTotalLength();
+            if (retryLength > 0) {
+              startAnimation(group, retryPath, retryLength);
+            } else {
+              // Still not ready, show without animation
+              setShowCircle(true);
+              retryPath.style.strokeDasharray = 'none';
+              retryPath.style.strokeDashoffset = '0';
+              retryPath.style.visibility = 'visible';
+            }
+          }
+        });
+        return;
+      }
+
+      startAnimation(group, path, length);
+    };
+
+    requestAnimationFrame(setupAnimation);
+
+    function startAnimation(group: SVGGElement, path: SVGPathElement, length: number) {
+      group.classList.remove('line-initial-hidden');
+
+      // Set initial state
+      path.style.strokeDasharray = `${length}`;
+      path.style.strokeDashoffset = `${length}`;
+      path.style.visibility = 'visible';
+      path.style.willChange = 'stroke-dashoffset';
+      path.style.transition = 'none';
+
+      // Start animation with optimized timing (0.6s for snappier feel)
+      const animationDuration = 600; // 0.6 seconds
+
+      // Use requestAnimationFrame to ensure initial state is painted before animation
+      requestAnimationFrame(() => {
+        path.style.transition = `stroke-dashoffset ${animationDuration}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+        path.style.strokeDashoffset = '0';
+
+        // Show circle exactly when animation completes
+        setTimeout(() => {
+          setShowCircle(true);
+          path.style.strokeDasharray = 'none';
+          path.style.strokeDashoffset = '0';
+          path.style.transition = '';
+          path.style.willChange = 'auto';
+        }, animationDuration);
+      });
+    }
+  }, [dataKey]);
+
+  // Default time domain (last 7 days) when no data
+  const defaultTimeDomain = useMemo(() => {
+    const now = Date.now();
+    return [now - (7 * 24 * 60 * 60 * 1000), now];
+  }, []);
 
   return (
-    <div style={{ width: '100%', height, position: 'relative' }}>
-      <ParentSize>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-foreground">Network Health Trend</h3>
+        <div className="flex items-center gap-3">
+          {headerContent}
+        </div>
+      </div>
+      <div style={{ width: '100%', height, position: 'relative' }}>
+        <ParentSize>
         {({ width: parentWidth = 800 }) => {
           const width = parentWidth;
+          // Responsive margins - smaller on mobile for better chart size
+          const isMobile = width < 640;
+          const margin = { 
+            top: 30, 
+            right: isMobile ? 10 : 30, 
+            left: isMobile ? 40 : 60, 
+            bottom: isMobile ? 50 : 70 
+          };
           const xMax = width - margin.left - margin.right;
           const yMax = height - margin.top - margin.bottom;
 
           const xScale = scaleTime<number>({
             range: [0, xMax],
-            domain: [
-              Math.min(...chartData.map(d => d.timestamp)),
-              Math.max(...chartData.map(d => d.timestamp))
-            ],
+            domain: chartData.length > 0
+              ? [
+                  Math.min(...chartData.map(d => d.timestamp)),
+                  Math.max(...chartData.map(d => d.timestamp))
+                ]
+              : defaultTimeDomain,
           });
 
           const yScale = scaleLinear<number>({
@@ -186,7 +253,7 @@ export default function NetworkHealthTrendChart({
             if (!coords) return;
 
             const x = coords.x - margin.left;
-            
+
             let closestIndex = 0;
             let minDistance = Infinity;
             chartData.forEach((d, i) => {
@@ -197,10 +264,11 @@ export default function NetworkHealthTrendChart({
                 closestIndex = i;
               }
             });
-            
+
             const d = chartData[closestIndex];
 
             if (d) {
+              setHoveredIndex(closestIndex);
               const xPos = xScale(d.timestamp) + margin.left;
               showTooltip({
                 tooltipData: d,
@@ -210,6 +278,26 @@ export default function NetworkHealthTrendChart({
             }
           };
 
+          const handleMouseLeave = () => {
+            setHoveredIndex(null);
+            hideTooltip();
+          };
+
+          // Split data for hover effect
+          const highlightedData = useMemo(() => {
+            if (hoveredIndex === null || chartData.length === 0) {
+              return chartData;
+            }
+            return chartData.slice(0, hoveredIndex + 1);
+          }, [chartData, hoveredIndex]);
+
+          const dimmedData = useMemo(() => {
+            if (hoveredIndex === null || chartData.length === 0) {
+              return [];
+            }
+            return chartData.slice(hoveredIndex);
+          }, [chartData, hoveredIndex]);
+
           return (
             <>
               <svg
@@ -217,8 +305,16 @@ export default function NetworkHealthTrendChart({
                 width={width}
                 height={height}
                 onMouseMove={handleMouseMove}
-                onMouseLeave={hideTooltip}
+                onMouseLeave={handleMouseLeave}
               >
+                <defs>
+                  {/* Animation styles */}
+                  <style>{`
+                    .line-initial-hidden path {
+                      visibility: hidden;
+                    }
+                  `}</style>
+                </defs>
                 <Group transform={`translate(${margin.left},${margin.top})`}>
                   <GridRows
                     scale={yScale}
@@ -235,15 +331,33 @@ export default function NetworkHealthTrendChart({
                     opacity={0.3}
                   />
 
-                  {/* Overall Health Score Line */}
-                  <LinePath
-                    data={chartData}
-                    x={(d) => xScale(d.timestamp)}
-                    y={(d) => yScale(d.overall)}
-                    stroke="#F0A741"
-                    strokeWidth={3}
-                    curve={curveMonotoneX}
-                  />
+                  {/* Highlighted line - show if we have data, even if loading new data */}
+                  {highlightedData.length > 0 && (
+                    <g ref={pathGroupRef} key={`line-${dataKey || 'loading'}`} className="line-initial-hidden">
+                      <LinePath
+                        data={highlightedData}
+                        x={(d) => xScale(d.timestamp)}
+                        y={(d) => yScale(d.overall)}
+                        stroke="#F0A741"
+                        strokeWidth={3}
+                        strokeOpacity={1}
+                        curve={curveMonotoneX}
+                      />
+                    </g>
+                  )}
+
+                  {/* Dimmed line (when hovering) - render AFTER highlighted line so it appears on top but dimmed */}
+                  {hoveredIndex !== null && dimmedData.length > 0 && (
+                    <LinePath
+                      data={dimmedData}
+                      x={(d) => xScale(d.timestamp)}
+                      y={(d) => yScale(d.overall)}
+                      stroke="#F0A741"
+                      strokeWidth={3}
+                      strokeOpacity={0.25}
+                      curve={curveMonotoneX}
+                    />
+                  )}
 
                   {tooltipOpen && tooltipData && (
                     <>
@@ -258,15 +372,17 @@ export default function NetworkHealthTrendChart({
                         opacity={0.5}
                         pointerEvents="none"
                       />
-                      <Circle
-                        cx={xScale(tooltipData.timestamp)}
-                        cy={yScale(tooltipData.overall)}
-                        r={5}
-                        fill="#F0A741"
-                        stroke="#fff"
-                        strokeWidth={2}
-                        pointerEvents="none"
-                      />
+                      {showCircle && (
+                        <Circle
+                          cx={xScale(tooltipData.timestamp)}
+                          cy={yScale(tooltipData.overall)}
+                          r={5}
+                          fill="#F0A741"
+                          stroke="#fff"
+                          strokeWidth={2}
+                          pointerEvents="none"
+                        />
+                      )}
                     </>
                   )}
 
@@ -276,6 +392,12 @@ export default function NetworkHealthTrendChart({
                     numTicks={Math.min(6, Math.floor(xMax / 100))}
                     tickFormat={(d) => {
                       const date = d as Date;
+                      if (chartData.length === 0) {
+                        // Default formatting when no data
+                        const timeSpan = defaultTimeDomain[1] - defaultTimeDomain[0];
+                        const isSameDay = timeSpan < 86400000;
+                        return isSameDay ? formatTime(date) : formatDate(date);
+                      }
                       return formatDateAxis(date, chartData);
                     }}
                     stroke="#6B7280"
@@ -346,6 +468,7 @@ export default function NetworkHealthTrendChart({
           );
         }}
       </ParentSize>
+      </div>
     </div>
   );
 }
