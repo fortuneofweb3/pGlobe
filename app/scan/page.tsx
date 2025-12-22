@@ -257,7 +257,7 @@ export default function ScanPage() {
         
         <div className="flex-1 flex overflow-hidden relative">
           {/* Left Sidebar - Scan Controls */}
-          <aside className="hidden md:block w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-y-auto">
+          <aside className="hidden md:block w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-hidden">
             <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-2">

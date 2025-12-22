@@ -949,49 +949,119 @@ function CountryDetailContent() {
             {/* Cover Image Section */}
             {countryCode && (() => {
               const flagUrl = `/api/flag-proxy?code=${countryCode.toLowerCase()}`;
+              const onlinePercent = stats.totalNodes > 0 ? Math.round((stats.onlineNodes / stats.totalNodes) * 100) : 0;
               return (
-                <div className="relative mb-8">
-                  {/* Back button outside cover */}
-                  <Link href="/regions" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-4 transition-colors">
-                    <ArrowLeft className="w-4 h-4" />
-                    Back to Regions
+                <div className="relative mb-8 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }}>
+                  {/* Back button */}
+                  <Link href="/regions" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6 transition-all duration-300 hover:translate-x-[-4px] group">
+                    <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
+                    <span>Back to Regions</span>
                   </Link>
 
-                  <div className="relative h-56 sm:h-72 rounded-2xl overflow-hidden shadow-2xl">
+                  <div className="relative rounded-2xl overflow-hidden border border-border/40 shadow-2xl bg-card">
                     {/* Flag background */}
                     <div className="absolute inset-0">
                       <img
                         src={flagUrl}
                         alt={countryName}
-                        className="w-full h-full object-fill blur-[3px] scale-110"
+                        className="w-full h-full object-cover opacity-10"
                         crossOrigin="anonymous"
                         referrerPolicy="no-referrer"
                       />
-                      {/* Enhanced multi-layer gradient for better diffusion */}
-                      <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-black/90" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-                      <div className="absolute inset-0 bg-gradient-to-br from-black/30 via-transparent to-black/40" />
                     </div>
 
-                    {/* Content overlay */}
-                    <div className="relative h-full flex flex-col justify-end p-8">
-                      <div className="flex items-center gap-4 mb-3">
-                        {countryCode && (
-                          <span className="text-5xl sm:text-6xl drop-shadow-lg">
-                            {getFlagForCountry(countryName, countryCode)}
-                          </span>
-                        )}
-                        <h1 className="text-4xl sm:text-5xl font-bold text-white drop-shadow-lg">
-                          {countryName}
-                        </h1>
+                    {/* Content */}
+                    <div className="relative p-6 sm:p-8 lg:p-10">
+                      {/* Header Row */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 mb-8">
+                        <div className="animate-slide-in-left" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
+                          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-2">
+                            {countryName}
+                          </h1>
+                          <p className="text-foreground/60 text-sm sm:text-base flex items-center gap-2">
+                            <MapPin className="w-4 h-4" />
+                            {countryNodes[0]?.locationData?.city ? `${countryNodes[0].locationData.city}, ` : ''}{countryCode}
+                          </p>
+                        </div>
+
+                        {/* Quick Stats Badges */}
+                        <div className="flex flex-wrap gap-3 sm:gap-4 animate-fade-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
+                          <div className="px-4 py-2 rounded-lg bg-[#3F8277]/20 border border-[#3F8277]/30 backdrop-blur-sm">
+                            <div className="text-xs text-foreground/60 uppercase tracking-wide mb-1">Online</div>
+                            <div className="text-xl font-bold text-[#3F8277]">
+                              <AnimatedNumber value={onlinePercent} suffix="%" />
+                            </div>
+                          </div>
+                          <div className="px-4 py-2 rounded-lg bg-[#F0A741]/20 border border-[#F0A741]/30 backdrop-blur-sm">
+                            <div className="text-xs text-foreground/60 uppercase tracking-wide mb-1">Nodes</div>
+                            <div className="text-xl font-bold text-[#F0A741]">
+                              <AnimatedNumber value={stats.totalNodes} />
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-white/90 text-lg sm:text-xl drop-shadow-md">
-                        {stats.totalNodes} node{stats.totalNodes !== 1 ? 's' : ''} operating in this region
-                      </p>
-                    </div>
 
-                    {/* Enhanced bottom fade to seamlessly match page background */}
-                    <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black via-black/80 to-transparent" />
+                      {/* Stats Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 animate-slide-in-bottom" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
+                        <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#3F8277]/50 transition-all duration-300">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Server className="w-4 h-4 text-[#3F8277]" />
+                            <span className="text-xs font-medium text-foreground/60 uppercase">Total</span>
+                          </div>
+                          <div className="text-2xl font-bold text-foreground">
+                            <AnimatedNumber value={stats.totalNodes} />
+                          </div>
+                          <div className="text-xs text-foreground/50 mt-1">
+                            {stats.onlineNodes} online
+                          </div>
+                        </div>
+
+                        <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#F0A741]/50 transition-all duration-300">
+                          <div className="flex items-center gap-2 mb-2">
+                            <HardDrive className="w-4 h-4 text-[#F0A741]" />
+                            <span className="text-xs font-medium text-foreground/60 uppercase">Storage</span>
+                          </div>
+                          <div className="text-xl font-bold text-foreground">
+                            {formatStorageBytes(stats.totalStorage)}
+                          </div>
+                          {stats.usedStorage > 0 && (
+                            <div className="text-xs text-foreground/50 mt-1">
+                              {((stats.usedStorage / stats.totalStorage) * 100).toFixed(1)}% used
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#9CA3AF]/50 transition-all duration-300">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Activity className="w-4 h-4 text-[#9CA3AF]" />
+                            <span className="text-xs font-medium text-foreground/60 uppercase">CPU</span>
+                          </div>
+                          <div className="text-xl font-bold text-foreground">
+                            {stats.avgCPU > 0 ? (
+                              <AnimatedNumber value={stats.avgCPU} decimals={1} suffix="%" />
+                            ) : (
+                              'N/A'
+                            )}
+                          </div>
+                          <div className="text-xs text-foreground/50 mt-1">Average</div>
+                        </div>
+
+                        <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#3F8277]/50 transition-all duration-300">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Zap className="w-4 h-4 text-[#3F8277]" />
+                            <span className="text-xs font-medium text-foreground/60 uppercase">RAM</span>
+                          </div>
+                          <div className="text-xl font-bold text-foreground">
+                            {stats.avgRAMUsage > 0 ? (
+                              <AnimatedNumber value={stats.avgRAMUsage} decimals={1} suffix="%" />
+                            ) : (
+                              'N/A'
+                            )}
+                          </div>
+                          <div className="text-xs text-foreground/50 mt-1">Average</div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
@@ -1012,123 +1082,6 @@ function CountryDetailContent() {
                 </p>
               </div>
             )}
-
-            {/* Summary Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6 stagger-children">
-              <div className="card-stat">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Nodes</span>
-                  <Server className="w-4 h-4 text-foreground/40" />
-                </div>
-                <div className="text-2xl font-bold text-foreground">{stats.totalNodes}</div>
-                <div className="text-xs text-muted-foreground mt-1">In this region</div>
-              </div>
-
-              <div className="card-stat">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Online</span>
-                  <TrendingUp className="w-4 h-4 text-foreground/40" />
-                </div>
-                <div className="text-2xl font-bold text-[#3F8277]">
-                  <AnimatedNumber value={stats.onlineNodes} />
-                </div>
-                <div className="text-xs text-muted-foreground mt-1 flex items-baseline">
-                  {stats.totalNodes > 0 ? (
-                    <>
-                      <AnimatedNumber value={Math.round((stats.onlineNodes / stats.totalNodes) * 100)} suffix="%" /> <span className="ml-1">of region</span>
-                    </>
-                  ) : (
-                    '0% of region'
-                  )}
-                </div>
-              </div>
-
-              <div className="card-stat">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Storage</span>
-                  <HardDrive className="w-4 h-4 text-foreground/40" />
-                </div>
-                <div className="text-2xl font-bold text-foreground">{formatStorageBytes(stats.totalStorage)}</div>
-                {stats.usedStorage > 0 && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {formatStorageBytes(stats.usedStorage)} used ({((stats.usedStorage / stats.totalStorage) * 100).toFixed(1)}%)
-                  </div>
-                )}
-              </div>
-
-              <div className="card-stat">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">RAM</span>
-                  <Activity className="w-4 h-4 text-foreground/40" />
-                </div>
-                <div className="text-2xl font-bold text-foreground">{formatStorageBytes(stats.totalRAM)}</div>
-                <div className="text-xs text-muted-foreground mt-1 flex items-baseline">
-                  {stats.avgRAMUsage > 0 ? (
-                    <>
-                      <AnimatedNumber value={stats.avgRAMUsage} decimals={1} suffix="%" /> <span className="ml-1">avg usage</span>
-                    </>
-                  ) : (
-                    'N/A'
-                  )}
-                </div>
-              </div>
-
-              <div className="card-stat">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">CPU</span>
-                  <Activity className="w-4 h-4 text-foreground/40" />
-                </div>
-                <div className="text-2xl font-bold text-foreground">
-                  {stats.avgCPU > 0 ? (
-                    <AnimatedNumber value={stats.avgCPU} decimals={1} suffix="%" />
-                  ) : (
-                    'N/A'
-                  )}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1 flex items-baseline">
-                  <AnimatedNumber value={countryNodes.filter(n => n.cpuPercent !== undefined).length} /> <span className="ml-1">nodes reporting</span>
-                </div>
-              </div>
-
-              <div className="card-stat">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Avg Uptime</span>
-                  <Clock className="w-4 h-4 text-foreground/40" />
-                </div>
-                <div className="text-xl font-bold text-[#3F8277]">
-                  {stats.avgUptimeSeconds > 0 ? formatUptimeDuration(stats.avgUptimeSeconds) : 'N/A'}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1 flex items-baseline">
-                  <AnimatedNumber value={countryNodes.filter(n => n.uptime && n.uptime > 0).length} /> <span className="ml-1">nodes reporting</span>
-                </div>
-              </div>
-
-              <div className="card-stat">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Credits</span>
-                  <Award className="w-4 h-4 text-foreground/40" />
-                </div>
-                <div className="text-xl font-bold text-[#F0A741]">
-                  <AnimatedNumber value={stats.totalCredits} />
-                </div>
-                <div className="text-xs text-muted-foreground mt-1 flex items-baseline">
-                  <AnimatedNumber value={stats.nodesReportingCredits} /> <span className="ml-1">nodes reporting</span>
-                </div>
-              </div>
-
-              <div className="card-stat">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Active Streams</span>
-                  <Zap className="w-4 h-4 text-foreground/40" />
-                </div>
-                <div className="text-xl font-bold text-foreground">
-                  <AnimatedNumber value={stats.totalActiveStreams} />
-                </div>
-                <div className="text-xs text-muted-foreground mt-1 flex items-baseline">
-                  <AnimatedNumber value={countryNodes.filter(n => n.activeStreams && n.activeStreams > 0).length} /> <span className="ml-1">nodes active</span>
-                </div>
-              </div>
-            </div>
 
             {/* Historical Performance Section */}
             <div className="mb-4 sm:mb-6 space-y-4 animate-slide-in-left" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>

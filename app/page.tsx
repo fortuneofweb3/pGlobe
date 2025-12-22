@@ -420,7 +420,7 @@ function HomeContent() {
         {/* Main Content Area */}
         <div className="flex-1 flex overflow-hidden relative">
           {/* Left Sidebar */}
-          <aside className="hidden md:block w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-y-auto">
+          <aside className="hidden md:block w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-hidden">
             <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
               <div>
                 <h2 className="text-xs font-semibold text-foreground/60 mb-3 sm:mb-4 uppercase tracking-wide">Network Stats</h2>
