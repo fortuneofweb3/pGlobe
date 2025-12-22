@@ -306,8 +306,19 @@ export async function getRegionHistory(
           ...timeQuery,
         }
       },
-      // Unwind nodeSnapshots to work with individual nodes
-      { $unwind: '$nodeSnapshots' },
+      // Unwind nodeSnapshots to work with individual nodes, preserving snapshot timestamp
+      { 
+        $unwind: {
+          path: '$nodeSnapshots',
+          preserveNullAndEmptyArrays: false
+        }
+      },
+      // Add snapshot timestamp to each node document for grouping
+      {
+        $addFields: {
+          snapshotTimestamp: '$timestamp'
+        }
+      },
       // Filter nodes by country (try both country name and countryCode)
       {
         $match: {
@@ -317,11 +328,11 @@ export async function getRegionHistory(
           ]
         }
       },
-      // Group by timestamp and aggregate metrics
+      // Group by snapshot timestamp and aggregate metrics
       {
         $group: {
-          _id: '$timestamp',
-          timestamp: { $first: '$timestamp' },
+          _id: '$snapshotTimestamp',
+          timestamp: { $first: '$snapshotTimestamp' },
           nodes: { $push: '$nodeSnapshots' },
         }
       },
