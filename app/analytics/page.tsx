@@ -35,6 +35,7 @@ export default function AnalyticsPage() {
   
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
   const [isComparisonOpen, setIsComparisonOpen] = useState(false);
+  const [healthPeriod, setHealthPeriod] = useState<'1h' | '6h' | '24h' | '7d' | '30d'>('7d');
   const router = useRouter();
 
   // Fetch historical data for charts (deferred to avoid blocking initial render)
@@ -42,7 +43,7 @@ export default function AnalyticsPage() {
     const fetchHistoricalData = async () => {
       try {
         // Use the new public API endpoint for network health history
-        const url = `/api/v1/network/health/history?period=7d`;
+        const url = `/api/v1/network/health/history?period=${healthPeriod}`;
         console.log('[Analytics] Fetching health history from', url);
         console.log('[Analytics] Starting fetch request...');
         
@@ -58,7 +59,7 @@ export default function AnalyticsPage() {
         let response: Response;
         try {
           response = await fetch(url, {
-            cache: 'no-store', // Don't cache to ensure fresh data
+          cache: 'no-store', // Don't cache to ensure fresh data
             signal: controller.signal,
           });
           clearTimeout(timeoutId);
@@ -108,14 +109,14 @@ export default function AnalyticsPage() {
             
             const transformed = result.data.health.map((snapshot: any) => {
               const dataPoint = {
-                timestamp: snapshot.timestamp,
-                avgUptime: 0, // Not provided by this endpoint
-                onlineCount: snapshot.onlineNodes || 0,
-                totalNodes: snapshot.totalNodes || 0,
-                networkHealthScore: snapshot.overall,
-                networkHealthAvailability: snapshot.availability,
-                networkHealthVersion: snapshot.versionHealth,
-                networkHealthDistribution: snapshot.distribution,
+              timestamp: snapshot.timestamp,
+              avgUptime: 0, // Not provided by this endpoint
+              onlineCount: snapshot.onlineNodes || 0,
+              totalNodes: snapshot.totalNodes || 0,
+              networkHealthScore: snapshot.overall,
+              networkHealthAvailability: snapshot.availability,
+              networkHealthVersion: snapshot.versionHealth,
+              networkHealthDistribution: snapshot.distribution,
               };
               
               // Validate required fields
@@ -205,7 +206,7 @@ export default function AnalyticsPage() {
         fetchHistoricalData();
       }, 100);
     }
-  }, [selectedNetwork]);
+  }, [selectedNetwork, healthPeriod]);
 
   // Export functions
   const exportToCSV = () => {
@@ -635,9 +636,26 @@ export default function AnalyticsPage() {
             </div>
             {/* Row 1: Network Health Trend Chart */}
             <div className="lg:col-span-2 card flex flex-col animate-slide-in-right" style={{ animationDelay: '0.15s', opacity: 0, animationFillMode: 'forwards' }}>
-              <div className="flex items-center gap-2 mb-3">
-                <TrendingUp className="w-4 h-4 text-foreground/40" />
-                <h2 className="text-base font-semibold text-foreground">Network Health Trend</h2>
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-foreground/40" />
+                  <h2 className="text-base font-semibold text-foreground">Network Health Trend</h2>
+                </div>
+                <div className="flex items-center gap-1 bg-muted/30 rounded-lg p-1 border border-border/40">
+                  {(['1h', '6h', '24h', '7d', '30d'] as const).map((period) => (
+                    <button
+                      key={period}
+                      onClick={() => setHealthPeriod(period)}
+                      className={`px-2.5 py-1 text-xs font-medium rounded transition-all duration-200 ${
+                        healthPeriod === period
+                          ? 'bg-[#F0A741] text-black shadow-sm'
+                          : 'text-foreground/60 hover:text-foreground hover:bg-muted/50'
+                      }`}
+                    >
+                      {period.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="flex-1">
                 <NetworkHealthTrendChart 

@@ -663,7 +663,7 @@ app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
     const snapshots = await getHistoricalSnapshots(startTime, now, 1000);
     
     console.log(`[RenderAPI] MongoDB query returned ${snapshots.length} snapshots`);
-    
+
     if (snapshots.length === 0) {
       // Check if there are ANY snapshots in the database (regardless of time range)
       const allSnapshots = await getHistoricalSnapshots(undefined, undefined, 10);
@@ -701,8 +701,8 @@ app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
     const healthData = snapshots.map(snapshot => {
       // 1. Availability (40% weight) - % of nodes online
       const availability = snapshot.totalNodes > 0 
-        ? (snapshot.onlineNodes / snapshot.totalNodes) * 100 
-        : 0;
+          ? (snapshot.onlineNodes / snapshot.totalNodes) * 100 
+          : 0;
       
       // 2. Version Health (35% weight) - % on latest version
       let versionHealth = 0;
@@ -717,9 +717,9 @@ app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
       }
       
       // 3. Distribution (25% weight) - Geographic diversity
-      // Normalize: 10+ countries = 100%, 1 country = 10%
-      const countryDiversity = Math.min(100, (snapshot.countries / 10) * 100);
-      const cityDiversity = Math.min(100, (snapshot.cities / 20) * 100);
+            // Normalize: 10+ countries = 100%, 1 country = 10%
+            const countryDiversity = Math.min(100, (snapshot.countries / 10) * 100);
+            const cityDiversity = Math.min(100, (snapshot.cities / 20) * 100);
       const distribution = (countryDiversity * 0.6 + cityDiversity * 0.4);
       
       // Overall weighted score
@@ -743,8 +743,95 @@ app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
       };
     });
 
-    // Calculate summary stats
-    const healthScores = healthData.map(d => d.overall);
+    // Space out points by time intervals for better chart readability
+    // Group by time intervals (e.g., every 1 hour for 7d, every 6 hours for 30d)
+    let spacedHealthData = healthData;
+    if (healthData.length > 0) {
+      // Determine interval based on period
+      let intervalMs: number;
+      switch (period) {
+        case '1h':
+          intervalMs = 5 * 60 * 1000; // 5 minutes for 1h
+          break;
+        case '6h':
+          intervalMs = 30 * 60 * 1000; // 30 minutes for 6h
+          break;
+        case '24h':
+          intervalMs = 1 * 60 * 60 * 1000; // 1 hour for 24h
+          break;
+        case '7d':
+          intervalMs = 6 * 60 * 60 * 1000; // 6 hours for 7d
+          break;
+        case '30d':
+          intervalMs = 24 * 60 * 60 * 1000; // 1 day for 30d
+          break;
+        default:
+          intervalMs = 6 * 60 * 60 * 1000; // Default: 6 hours
+      }
+
+      // Group points by time intervals and average them
+      const grouped = new Map<number, typeof healthData>();
+      
+      healthData.forEach(point => {
+        // Round timestamp down to the nearest interval
+        const intervalStart = Math.floor(point.timestamp / intervalMs) * intervalMs;
+        
+        if (!grouped.has(intervalStart)) {
+          grouped.set(intervalStart, []);
+        }
+        grouped.get(intervalStart)!.push(point);
+      });
+
+      // Average points within each interval
+      spacedHealthData = Array.from(grouped.entries())
+        .sort(([a], [b]) => a - b)
+        .map(([intervalStart, points]) => {
+          // Average all metrics for points in this interval
+          const avg = points.reduce((acc, point) => ({
+            timestamp: intervalStart,
+            interval: point.interval,
+            overall: acc.overall + point.overall,
+            availability: acc.availability + point.availability,
+            versionHealth: acc.versionHealth + point.versionHealth,
+            distribution: acc.distribution + point.distribution,
+            totalNodes: acc.totalNodes + point.totalNodes,
+            onlineNodes: acc.onlineNodes + point.onlineNodes,
+            offlineNodes: acc.offlineNodes + point.offlineNodes,
+            syncingNodes: acc.syncingNodes + point.syncingNodes,
+            count: acc.count + 1,
+          }), {
+            timestamp: intervalStart,
+            interval: points[0].interval,
+            overall: 0,
+            availability: 0,
+            versionHealth: 0,
+            distribution: 0,
+            totalNodes: 0,
+            onlineNodes: 0,
+            offlineNodes: 0,
+            syncingNodes: 0,
+            count: 0,
+          });
+
+          return {
+            timestamp: avg.timestamp,
+            interval: avg.interval,
+            overall: Math.round((avg.overall / avg.count) * 10) / 10,
+            availability: Math.round((avg.availability / avg.count) * 10) / 10,
+            versionHealth: Math.round((avg.versionHealth / avg.count) * 10) / 10,
+            distribution: Math.round((avg.distribution / avg.count) * 10) / 10,
+            totalNodes: Math.round(avg.totalNodes / avg.count),
+            onlineNodes: Math.round(avg.onlineNodes / avg.count),
+            offlineNodes: Math.round(avg.offlineNodes / avg.count),
+            syncingNodes: Math.round(avg.syncingNodes / avg.count),
+          };
+        });
+
+      console.log(`[RenderAPI] Spaced ${healthData.length} points into ${spacedHealthData.length} time intervals (${intervalMs / 1000 / 60} min intervals)`);
+    }
+
+    // Calculate summary stats from spaced data
+    const healthScores = spacedHealthData.map(d => d.overall);
     const current = healthScores[healthScores.length - 1] || 0;
     const average = healthScores.length > 0 
       ? healthScores.reduce((sum, val) => sum + val, 0) / healthScores.length 
@@ -769,14 +856,14 @@ app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
       }
     }
 
-    console.log(`[RenderAPI] ✅ Returning health history: ${healthData.length} data points, current: ${current}, trend: ${trend}`);
+    console.log(`[RenderAPI] ✅ Returning health history: ${spacedHealthData.length} data points (from ${healthData.length} raw), current: ${current}, trend: ${trend}`);
 
     res.json({
       success: true,
       data: {
         period,
-        dataPoints: healthData.length,
-        health: healthData,
+        dataPoints: spacedHealthData.length,
+        health: spacedHealthData,
         summary: {
           current: Math.round(current * 10) / 10,
           average: Math.round(average * 10) / 10,
