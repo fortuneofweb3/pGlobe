@@ -375,13 +375,15 @@ export default function AnalyticsPage() {
 
             {/* Content - Collapsible */}
             <div 
-              className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                isComparisonOpen ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'
+              className={`transition-all duration-300 ease-in-out ${
+                isComparisonOpen ? 'max-h-[6000px] opacity-100' : 'max-h-0 opacity-0'
               }`}
+              style={{ overflow: isComparisonOpen ? 'visible' : 'hidden', minHeight: isComparisonOpen ? '420px' : '0' }}
             >
               <div 
                 id="node-comparison" 
                 className="px-4 pb-4 pt-2"
+                style={{ overflow: 'visible', minHeight: '420px' }}
               >
                 <NodeComparison nodes={nodes} />
               </div>

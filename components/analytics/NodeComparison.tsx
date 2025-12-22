@@ -2,845 +2,452 @@
 
 import { PNode } from '@/lib/types/pnode';
 import { useMemo, useState, useRef, useEffect } from 'react';
-import { X, Search, TrendingUp, TrendingDown, Minus, Server, Activity, HardDrive, Cpu, MemoryStick, Wifi, MapPin, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { X, Search, Server, HardDrive, Cpu, MemoryStick, Wifi, MapPin, Clock, CheckCircle2, XCircle, Plus, Globe, Lock, Activity, Award } from 'lucide-react';
 import { formatStorageBytes } from '@/lib/utils/storage';
 import { getLatestVersion } from '@/lib/utils/network-health';
 import NodeStatusBadge from '../NodeStatusBadge';
-import { formatPacketRate } from '@/lib/utils/packet-rates';
 import AnimatedNumber from '../AnimatedNumber';
 
 interface NodeComparisonProps {
   nodes: PNode[];
 }
 
-type ComparisonNode = {
+type ComparisonSlot = {
   node: PNode | null;
   searchQuery: string;
   isOpen: boolean;
 };
 
 export default function NodeComparison({ nodes }: NodeComparisonProps) {
-  const [comparisonNodes, setComparisonNodes] = useState<ComparisonNode[]>([
+  const [slots, setSlots] = useState<ComparisonSlot[]>([
     { node: null, searchQuery: '', isOpen: false },
     { node: null, searchQuery: '', isOpen: false },
   ]);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const dropdownRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Add third slot
-  const addThirdSlot = () => {
-    if (comparisonNodes.length < 3) {
-      setComparisonNodes([...comparisonNodes, { node: null, searchQuery: '', isOpen: false }]);
-    }
-  };
-
-  // Remove a slot
-  const removeSlot = (index: number) => {
-    if (comparisonNodes.length > 2) {
-      setComparisonNodes(comparisonNodes.filter((_, i) => i !== index));
-    }
-  };
-
-  // Auto-scroll effect when dropdown opens
+  // Close dropdowns on outside click
   useEffect(() => {
-    comparisonNodes.forEach((comparison, index) => {
-      if (comparison.isOpen) {
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            const input = inputRefs.current[index];
-            const dropdown = dropdownRefs.current[index];
-            if (input && dropdown) {
-              const inputRect = input.getBoundingClientRect();
-              const dropdownRect = dropdown.getBoundingClientRect();
-              const viewportHeight = window.innerHeight;
-              const scrollPadding = 100;
-              
-              const dropdownBottom = dropdownRect.bottom;
-              const dropdownTop = dropdownRect.top;
-              
-              const needsScrollDown = dropdownBottom > viewportHeight - scrollPadding;
-              const needsScrollUp = dropdownTop < scrollPadding;
-              
-              if (needsScrollDown) {
-                const scrollTarget = window.scrollY + dropdownBottom - viewportHeight + scrollPadding;
-                window.scrollTo({
-                  top: Math.max(0, scrollTarget),
-                  behavior: 'smooth'
-                });
-              } else if (needsScrollUp) {
-                const scrollTarget = window.scrollY + inputRect.top - scrollPadding;
-                window.scrollTo({
-                  top: Math.max(0, scrollTarget),
-                  behavior: 'smooth'
-                });
-              }
-            }
-          }, 150);
-        });
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (containerRef.current && !containerRef.current.contains(target)) {
+        setSlots(prev => prev.map(s => ({ ...s, isOpen: false })));
       }
-    });
-  }, [comparisonNodes]);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
-  // Update search query
-  const updateSearch = (index: number, query: string) => {
-    const updated = [...comparisonNodes];
-    updated[index].searchQuery = query;
-    updated[index].isOpen = query.length > 0;
-    setComparisonNodes(updated);
-  };
-
-  // Select a node
-  const selectNode = (index: number, node: PNode) => {
-    const updated = [...comparisonNodes];
-    updated[index].node = node;
-    updated[index].searchQuery = '';
-    updated[index].isOpen = false;
-    setComparisonNodes(updated);
-  };
-
-  // Clear a node
-  const clearNode = (index: number) => {
-    const updated = [...comparisonNodes];
-    updated[index].node = null;
-    updated[index].searchQuery = '';
-    updated[index].isOpen = false;
-    setComparisonNodes(updated);
-  };
-
-  // Filter nodes for search
-  const getFilteredNodes = (query: string, excludeIds: string[]) => {
-    if (!query || query.length === 0) return [];
-    
-    const lowerQuery = query.toLowerCase();
-    return nodes
-      .filter(node => !excludeIds.includes(node.id))
-      .filter(node => {
-        const searchableText = [
-          node.id,
-          node.pubkey,
-          node.publicKey,
-          node.address,
-          node.locationData?.city,
-          node.locationData?.country,
-          node.version,
-        ].filter(Boolean).join(' ').toLowerCase();
-        
-        return searchableText.includes(lowerQuery);
-      })
-      .slice(0, 10);
-  };
-
-  // Get selected nodes
-  const selectedNodes = useMemo(() => {
-    return comparisonNodes.map(c => c.node).filter((n): n is PNode => n !== null);
-  }, [comparisonNodes]);
-
-  // Get latest version for badges (excluding trynet versions)
   const latestVersion = useMemo(() => {
     const versions = nodes.map(n => n.version).filter((v): v is string => !!v);
     return getLatestVersion(versions) || versions.sort().reverse()[0];
   }, [nodes]);
 
-  // Comparison metrics
-  const getComparisonValue = (node: PNode, metric: string): number | null => {
-    switch (metric) {
-      case 'uptime':
-        return node.uptimePercent ?? (node.uptime ? Math.min(99.9, (node.uptime / (30 * 24 * 3600)) * 100) : null);
-      case 'storage':
-        return node.storageCapacity ?? null;
-      case 'cpu':
-        return node.cpuPercent ?? null;
-      case 'ram':
-        return node.ramUsed && node.ramTotal ? (node.ramUsed / node.ramTotal) * 100 : null;
-      case 'latency':
-        return node.latency ?? null;
-      case 'packetsRx':
-        return node.packetsReceived ?? null;
-      case 'packetsTx':
-        return node.packetsSent ?? null;
-      case 'packetsRxRate':
-        // Estimate rate from cumulative total and uptime
-        if (node.packetsReceived && node.uptime && node.uptime > 0) {
-          return node.packetsReceived / node.uptime;
-        }
-        return null;
-      case 'packetsTxRate':
-        // Estimate rate from cumulative total and uptime
-        if (node.packetsSent && node.uptime && node.uptime > 0) {
-          return node.packetsSent / node.uptime;
-        }
-        return null;
-      case 'credits':
-        return node.credits ?? null;
-      default:
-        return null;
-    }
-  };
+  const selectedNodes = useMemo(() => slots.map(s => s.node).filter((n): n is PNode => n !== null), [slots]);
 
-  const getComparisonIcon = (values: (number | null)[]): 'up' | 'down' | 'equal' | null => {
-    const validValues = values.filter((v): v is number => v !== null);
-    if (validValues.length < 2) return null;
-    
-    const max = Math.max(...validValues);
-    const min = Math.min(...validValues);
-    const diff = max - min;
-    const threshold = max * 0.05;
-    
-    if (diff < threshold) return 'equal';
-    return values[0] === max ? 'up' : 'down';
-  };
-
-  const formatIdentifier = (node: PNode) => {
+  const formatId = (node: PNode) => {
     if (node.address) return node.address;
     const key = node.pubkey || node.publicKey;
-    if (key) {
-      if (key.length <= 16) return key;
-      return `${key.slice(0, 8)}...${key.slice(-6)}`;
-    }
-    return node.id.slice(0, 16);
+    if (key) return key.length <= 12 ? key : `${key.slice(0, 6)}...${key.slice(-4)}`;
+    const nodeId = node.id || node.pubkey || node.publicKey || 'unknown';
+    return nodeId.length <= 12 ? nodeId : `${nodeId.slice(0, 6)}...${nodeId.slice(-4)}`;
   };
 
-  return (
-    <div className="w-full space-y-5">
-      {/* Add Node Button */}
-      <div className="flex items-center justify-end">
-        {comparisonNodes.length < 3 && (
-          <button
-            onClick={addThirdSlot}
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-foreground/70 hover:text-foreground bg-muted/30 hover:bg-muted/50 border border-border/50 rounded-lg transition-all duration-300 hover:scale-105 active:scale-100 hover:shadow-md"
-          >
-            <span>+</span>
-            <span>Add Third Node</span>
-          </button>
-        )}
-      </div>
+  const getFiltered = (query: string, excludeIds: string[]) => {
+    const q = query.toLowerCase();
+    return nodes
+      .filter(n => {
+        const nodeId = n.id || n.pubkey || n.publicKey || '';
+        return !excludeIds.includes(nodeId);
+      })
+      .filter(n => {
+        if (!query) return true;
+        const searchableFields = [
+          n.id,
+          n.pubkey,
+          n.publicKey,
+          n.address,
+          n.locationData?.city,
+          n.locationData?.country,
+          n.version
+        ].filter(Boolean);
+        return searchableFields.join(' ').toLowerCase().includes(q);
+      })
+      .slice(0, 5);
+  };
 
-      {/* Node Selectors */}
-      <div className={`grid gap-4 ${comparisonNodes.length === 3 ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
-        {comparisonNodes.map((comparison, index) => (
-          <div key={index} className="relative">
-            {comparison.node ? (
-              /* Selected Node Card */
-              <div className="group relative bg-card border border-[#F0A741]/30 rounded-xl p-3 hover:border-[#F0A741]/50 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] overflow-hidden">
-                {/* Remove button */}
+  const updateSlot = (idx: number, updates: Partial<ComparisonSlot>) => {
+    setSlots(prev => prev.map((s, i) => i === idx ? { ...s, ...updates } : s));
+  };
+
+  const addSlot = () => slots.length < 4 && setSlots([...slots, { node: null, searchQuery: '', isOpen: false }]);
+  const removeSlot = (idx: number) => slots.length > 2 && setSlots(slots.filter((_, i) => i !== idx));
+
+  // Metric helpers
+  const getValue = (node: PNode, key: string): number | null => {
+    switch (key) {
+      case 'uptime': return node.uptimePercent ?? (node.uptime ? Math.min(99.9, (node.uptime / (30 * 24 * 3600)) * 100) : null);
+      case 'storage': return node.storageCapacity ?? null;
+      case 'cpu': return node.cpuPercent ?? null;
+      case 'ram': return node.ramUsed && node.ramTotal ? (node.ramUsed / node.ramTotal) * 100 : null;
+      case 'latency': return node.latency ?? null;
+      case 'credits': return node.credits ?? null;
+      default: return null;
+    }
+  };
+
+  // Get max value for scaling bars
+  const getMaxValue = (key: string): number => {
+    const vals = selectedNodes.map(n => getValue(n, key)).filter((v): v is number => v !== null);
+    if (vals.length === 0) return 100;
+    if (['uptime', 'cpu', 'ram'].includes(key)) return 100;
+    return Math.max(...vals) * 1.1;
+  };
+
+  // Determine best performer for a metric
+  const getBest = (key: string, higherBetter: boolean): string | null => {
+    if (selectedNodes.length < 2) return null;
+    const entries = selectedNodes
+      .map(n => ({ 
+        id: n.id || n.pubkey || n.publicKey || 'unknown', 
+        val: getValue(n, key) 
+      }))
+      .filter(e => e.val !== null && e.id !== 'unknown');
+    if (entries.length < 2) return null;
+    const sorted = [...entries].sort((a, b) => higherBetter ? (b.val! - a.val!) : (a.val! - b.val!));
+    const best = sorted[0].val!;
+    const second = sorted[1].val!;
+    if (Math.abs(best - second) / Math.max(best, 1) < 0.05) return null;
+    return sorted[0].id;
+  };
+
+  const metrics = [
+    { key: 'uptime', label: 'Uptime', icon: Clock, unit: '%', higherBetter: true, color: '#3F8277' },
+    { key: 'storage', label: 'Storage', icon: HardDrive, format: formatStorageBytes, higherBetter: true, color: '#3B82F6' },
+    { key: 'cpu', label: 'CPU', icon: Cpu, unit: '%', higherBetter: false, color: '#F0A741' },
+    { key: 'ram', label: 'RAM', icon: MemoryStick, unit: '%', higherBetter: false, color: '#A855F7' },
+    { key: 'latency', label: 'Latency', icon: Wifi, unit: 'ms', higherBetter: false, color: '#06B6D4' },
+    { key: 'credits', label: 'Credits', icon: Award, higherBetter: true, color: '#EC4899' },
+  ];
+
+  return (
+    <div ref={containerRef} className="space-y-4" style={{ overflow: 'visible' }}>
+      {/* Node Selector */}
+      <div className="flex flex-wrap gap-3" style={{ overflow: 'visible' }}>
+        {slots.map((slot, idx) => (
+          <div key={idx} className="relative flex-1 min-w-[200px] max-w-[280px]" style={{ overflow: 'visible', zIndex: slot.isOpen ? 100 : 'auto' }}>
+            {slot.node ? (
+              <div className="card p-3 group relative border border-border hover:border-[#3F8277]/30 transition-colors">
                 <button
-                  onClick={() => clearNode(index)}
-                  className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 p-1.5 text-foreground/40 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-all duration-300 hover:scale-110 active:scale-100"
-                  title="Remove node"
+                  onClick={() => updateSlot(idx, { node: null, searchQuery: '' })}
+                  className="absolute top-2 right-2 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 opacity-0 group-hover:opacity-100 transition-all"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-4 h-4" />
                 </button>
-                
-                <div className="relative space-y-2 pr-8">
-                  {/* Header with identifier and status */}
-                  <div className="flex items-start gap-2">
-                    <div className="mt-0.5 w-2 h-2 rounded-full bg-[#F0A741] flex-shrink-0 animate-pulse"></div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-mono text-sm font-semibold text-foreground truncate mb-1 tracking-tight">
-                        {formatIdentifier(comparison.node)}
-                      </div>
-                      <NodeStatusBadge node={comparison.node} latestVersion={latestVersion} showLabel={true} />
+
+                {slots.length > 2 && (
+                  <button
+                    onClick={() => removeSlot(idx)}
+                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors z-10"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-9 h-9 rounded-lg bg-[#3F8277]/10 border border-[#3F8277]/20 flex items-center justify-center flex-shrink-0">
+                    <Server className="w-4 h-4 text-[#3F8277]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-mono text-sm font-semibold text-foreground truncate">
+                      {formatId(slot.node)}
+                    </p>
+                    <div className="mt-1">
+                      <NodeStatusBadge node={slot.node} latestVersion={latestVersion} showLabel={true} />
                     </div>
                   </div>
-                  
-                  {/* Quick stats grid */}
-                  <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-border/30">
-                    {comparison.node.locationData?.city && (
-                      <div className="flex items-center gap-1.5 text-xs">
-                        <MapPin className="w-3 h-3 text-[#F0A741] flex-shrink-0" />
-                        <span className="text-foreground/70 truncate">{comparison.node.locationData.city}</span>
-                      </div>
-                    )}
-                    
-                    {comparison.node.version && (
-                      <div className="flex items-center gap-1.5 text-xs">
-                        <Server className="w-3 h-3 text-foreground/40 flex-shrink-0" />
-                        <span className="font-mono font-medium text-foreground/80">v{comparison.node.version}</span>
-                      </div>
-                    )}
-                    
-                    {comparison.node.credits !== undefined && comparison.node.credits !== null && (
-                      <div className="flex items-center gap-1.5 text-xs">
-                        <Activity className="w-3 h-3 text-[#3F8277] flex-shrink-0" />
-                        <span className="font-semibold text-foreground/80">
-                          <AnimatedNumber value={comparison.node.credits} />
-                        </span>
-                        <span className="text-foreground/50">credits</span>
-                      </div>
-                    )}
-                    
-                    {comparison.node.uptimePercent !== undefined && (
-                      <div className="flex items-center gap-1.5 text-xs">
-                        <Clock className="w-3 h-3 text-foreground/40 flex-shrink-0" />
-                        <span className="font-semibold text-foreground/80">
-                          <AnimatedNumber value={comparison.node.uptimePercent} decimals={1} suffix="%" />
-                        </span>
-                        <span className="text-foreground/50">uptime</span>
-                      </div>
+                </div>
+
+                <div className="space-y-1.5 text-xs text-muted-foreground">
+                  {slot.node.locationData?.city && (
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="truncate">{slot.node.locationData.city}, {slot.node.locationData.country}</span>
+                    </div>
+                  )}
+                  {slot.node.version && (
+                    <div className="flex items-center gap-1.5">
+                      <Server className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="font-mono">v{slot.node.version}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1.5">
+                    {slot.node.isPublic ? (
+                      <>
+                        <Globe className="w-3.5 h-3.5 text-[#3F8277] flex-shrink-0" />
+                        <span className="text-[#3F8277]">Public</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>Private</span>
+                      </>
                     )}
                   </div>
                 </div>
               </div>
             ) : (
-              /* Search Input */
-              <div className="relative">
+              <div className="relative" style={{ zIndex: slot.isOpen ? 100 : 'auto' }}>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40 pointer-events-none" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
                   <input
-                    ref={(el) => { inputRefs.current[index] = el; }}
                     type="text"
-                    value={comparison.searchQuery}
-                    onChange={(e) => updateSearch(index, e.target.value)}
-                    onFocus={() => updateSearch(index, comparison.searchQuery)}
-                    placeholder={`Search node ${index + 1}...`}
-                    className="w-full pl-10 pr-3 py-2.5 bg-muted/20 border border-border/50 rounded-lg text-base font-medium text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-[#F0A741]/40 focus:border-[#F0A741]/60 transition-all duration-300 hover:bg-muted/30"
+                    value={slot.searchQuery}
+                    onChange={(e) => updateSlot(idx, { searchQuery: e.target.value, isOpen: true })}
+                    onFocus={() => updateSlot(idx, { isOpen: true })}
+                    placeholder={`Node ${idx + 1}...`}
+                    className="input pl-12 pr-3 h-11 w-full focus:border-border focus:ring-0 focus:shadow-none"
+                    style={{ paddingLeft: '2.75rem' }}
                   />
                 </div>
-                
-                {/* Dropdown */}
-                {comparison.isOpen && (
-                  <div
-                    ref={(el) => { dropdownRefs.current[index] = el; }}
-                    className="absolute top-full left-0 right-0 mt-2 bg-black/98 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl max-h-72 overflow-y-auto z-40"
-                    style={{
-                      animation: 'dropdownFadeIn 0.2s ease-out',
-                      transformOrigin: 'top',
-                    }}
-                  >
-                    {getFilteredNodes(comparison.searchQuery, selectedNodes.map(n => n.id)).length === 0 ? (
-                      <div className="p-4 text-center">
-                        <div className="text-xs font-medium text-foreground/50">No nodes found</div>
-                        <div className="text-xs text-foreground/30 mt-1">Try a different search term</div>
-                      </div>
-                    ) : (
-                      <div className="py-1.5">
-                        {getFilteredNodes(comparison.searchQuery, selectedNodes.map(n => n.id)).map((node, nodeIndex) => (
-                          <button
-                            key={node.id}
-                            onClick={() => selectNode(index, node)}
-                            className="w-full px-4 py-3 text-left hover:bg-[#F0A741]/10 active:bg-[#F0A741]/15 transition-all duration-300 hover:translate-x-1 border-b border-border/10 last:border-b-0 group"
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className="mt-0.5 w-1.5 h-1.5 rounded-full bg-[#F0A741]/40 group-hover:bg-[#F0A741] transition-colors flex-shrink-0"></div>
-                              <div className="flex-1 min-w-0 space-y-1.5">
-                                <div className="font-mono text-sm font-semibold text-foreground truncate">
-                                  {formatIdentifier(node)}
-                                </div>
-                                {node.locationData?.city && (
-                                  <div className="flex items-center gap-1.5 text-xs text-foreground/50">
-                                    <MapPin className="w-3 h-3 flex-shrink-0" />
-                                    <span className="truncate">{node.locationData.city}, {node.locationData.country}</span>
-                                  </div>
-                                )}
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <NodeStatusBadge node={node} latestVersion={latestVersion} showLabel={true} />
-                                  {node.version && (
-                                    <span className="text-xs text-foreground/40 font-mono">v{node.version}</span>
+
+                {slot.isOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-xl z-[100] overflow-hidden">
+                    <div className="max-h-72 overflow-y-auto">
+                      {(() => {
+                        const excludedIds = selectedNodes.map(n => n.id || n.pubkey || n.publicKey || '').filter(Boolean);
+                        const filtered = getFiltered(slot.searchQuery, excludedIds);
+                        return filtered.length === 0 ? (
+                          <div className="p-4 text-center text-sm text-muted-foreground">
+                            {slot.searchQuery ? 'No nodes found' : 'Start typing...'}
+                          </div>
+                        ) : (
+                          filtered.map((node) => {
+                            const nodeKey = node.id || node.pubkey || node.publicKey || `node-${Math.random()}`;
+                            return (
+                              <button
+                                key={nodeKey}
+                                onClick={() => updateSlot(idx, { node, searchQuery: '', isOpen: false })}
+                                className="w-full px-4 py-2.5 text-left hover:bg-muted/50 transition-colors flex items-center gap-3 border-b border-border/50 last:border-0"
+                              >
+                                <Server className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-mono text-sm text-foreground truncate">{formatId(node)}</p>
+                                  {node.locationData?.city && (
+                                    <p className="text-xs text-muted-foreground truncate">{node.locationData.city}, {node.locationData.country}</p>
                                   )}
                                 </div>
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                                <NodeStatusBadge node={node} latestVersion={latestVersion} showLabel={false} />
+                              </button>
+                            );
+                          })
+                        );
+                      })()}
+                    </div>
                   </div>
+                )}
+
+                {slots.length > 2 && (
+                  <button
+                    onClick={() => removeSlot(idx)}
+                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors z-10"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
                 )}
               </div>
             )}
-            
-            {/* Remove Slot Button */}
-            {comparisonNodes.length > 2 && (
-              <button
-                onClick={() => removeSlot(index)}
-                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-full flex items-center justify-center text-red-400 hover:text-red-300 transition-all duration-300 hover:scale-110 active:scale-100 shadow-lg"
-                title="Remove slot"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
           </div>
         ))}
+
+        {slots.length < 4 && (
+          <button
+            onClick={addSlot}
+            className="flex-shrink-0 h-11 px-4 border-2 border-dashed border-border rounded-lg flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground hover:border-[#3F8277]/30 hover:bg-[#3F8277]/5 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Node</span>
+          </button>
+        )}
       </div>
 
       {/* Comparison Table */}
-      {selectedNodes.length >= 2 && (
-        <div className="relative bg-gradient-to-br from-black/40 via-card/50 to-black/40 border-2 border-[#F0A741]/20 rounded-3xl overflow-hidden shadow-2xl">
-          {/* Decorative gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[#F0A741]/5 via-transparent to-[#3F8277]/5 pointer-events-none" />
-
-          <div className="relative overflow-x-auto">
+      {selectedNodes.length >= 2 ? (
+        <div className="card overflow-hidden p-0">
+          <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b-2 border-[#F0A741]/30 bg-gradient-to-r from-black/60 via-black/40 to-black/60 backdrop-blur-sm">
-                  <th className="px-6 py-5 text-left sticky left-0 bg-black/80 backdrop-blur-md z-10">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1 h-8 bg-[#F0A741] rounded-full" />
-                      <span className="text-xs font-black text-[#F0A741] uppercase tracking-widest">Metric</span>
-                    </div>
-                  </th>
-                  {selectedNodes.map((node, idx) => (
-                    <th key={node.id} className="px-6 py-5 text-center min-w-[220px] bg-gradient-to-b from-[#F0A741]/10 via-[#F0A741]/5 to-transparent">
-                      <div className="space-y-2">
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#F0A741]/10 border border-[#F0A741]/30 rounded-lg">
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#F0A741] animate-pulse" />
-                          <span className="font-mono text-sm font-bold text-foreground truncate">
-                            Node {idx + 1}
-                          </span>
+                <tr className="border-b border-border/60 bg-muted/20">
+                  <th className="text-left p-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Metric</th>
+                  {selectedNodes.map((node) => {
+                    const nodeKey = node.id || node.pubkey || node.publicKey || `node-${Math.random()}`;
+                    return (
+                      <th key={nodeKey} className="text-center p-3 min-w-[140px]">
+                        <div className="flex flex-col items-center gap-1">
+                          <p className="font-mono text-sm font-semibold text-foreground">{formatId(node)}</p>
+                          <NodeStatusBadge node={node} latestVersion={latestVersion} showLabel={false} />
                         </div>
-                        <div className="font-mono text-xs font-semibold text-foreground/90 truncate px-2">
-                          {formatIdentifier(node)}
-                        </div>
-                        {node.locationData?.city && (
-                          <div className="text-xs text-foreground/50 truncate flex items-center justify-center gap-1">
-                            <MapPin className="w-3 h-3" />
-                            {node.locationData.city}
-                          </div>
-                        )}
-                      </div>
-                    </th>
-                  ))}
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F0A741]/10">
-                {/* Status */}
-                <tr className="group hover:bg-[#F0A741]/5 transition-all duration-300 hover:shadow-md bg-gradient-to-r from-transparent via-muted/5 to-transparent">
-                  <td className="px-6 py-5 sticky left-0 bg-black/60 backdrop-blur-md z-10 group-hover:bg-[#F0A741]/10">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-xl bg-gradient-to-br from-[#F0A741]/20 to-[#F0A741]/10 border border-[#F0A741]/20 group-hover:scale-110 transition-transform">
-                        <Activity className="w-4 h-4 text-[#F0A741]" />
-                      </div>
-                      <span className="text-sm font-bold text-foreground group-hover:text-[#F0A741] transition-colors">Status</span>
+              <tbody className="divide-y divide-border/50">
+                {metrics.map((metric) => {
+                  const Icon = metric.icon;
+                  const max = getMaxValue(metric.key);
+                  const bestId = getBest(metric.key, metric.higherBetter);
+                  const hasData = selectedNodes.some(n => getValue(n, metric.key) !== null);
+
+                  if (!hasData) return null;
+
+                  return (
+                    <tr key={metric.key} className="hover:bg-muted/10 transition-colors">
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <Icon className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm font-medium text-foreground">{metric.label}</span>
+                        </div>
+                      </td>
+                      {selectedNodes.map((node) => {
+                        const val = getValue(node, metric.key);
+                        const nodeId = node.id || node.pubkey || node.publicKey || 'unknown';
+                        const nodeKey = node.id || node.pubkey || node.publicKey || `node-${Math.random()}`;
+                        const isBest = nodeId === bestId;
+                        const barWidth = val !== null ? Math.max((val / max) * 100, 2) : 0;
+
+                        return (
+                          <td key={nodeKey} className="p-3 text-center">
+                            <div className="flex flex-col items-center gap-2">
+                              <div className={`flex items-center gap-2 ${isBest ? 'text-[#3F8277]' : 'text-foreground'}`}>
+                                {val !== null ? (
+                                  metric.format ? (
+                                    <span className="font-semibold">{metric.format(val)}</span>
+                                  ) : (
+                                    <span className="font-semibold">
+                                      <AnimatedNumber value={val} decimals={metric.unit === '%' ? 1 : 0} />
+                                      {metric.unit && <span className="text-muted-foreground ml-1 text-xs">{metric.unit}</span>}
+                                    </span>
+                                  )
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                                {isBest && (
+                                  <span className="text-[10px] text-[#3F8277] font-bold bg-[#3F8277]/10 px-1.5 py-0.5 rounded">
+                                    BEST
+                                  </span>
+                                )}
+                              </div>
+                              {val !== null && (
+                                <div className="w-full max-w-[120px] h-2 bg-muted/50 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full transition-all duration-500"
+                                    style={{
+                                      width: `${barWidth}%`,
+                                      backgroundColor: isBest ? '#3F8277' : metric.color,
+                                      opacity: isBest ? 1 : 0.7,
+                                    }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+
+                {/* Location Row */}
+                <tr className="hover:bg-muted/10 transition-colors">
+                  <td className="p-3">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm font-medium text-foreground">Location</span>
                     </div>
                   </td>
-                  {selectedNodes.map((node) => (
-                    <td key={node.id} className="px-6 py-4 text-center">
-                      <NodeStatusBadge node={node} latestVersion={latestVersion} showLabel={true} />
+                  {selectedNodes.map((node) => {
+                    const nodeKey = node.id || node.pubkey || node.publicKey || `node-${Math.random()}`;
+                    return (
+                      <td key={nodeKey} className="p-3 text-center">
+                        <span className="text-sm text-foreground">
+                          {node.locationData?.city ? `${node.locationData.city}, ${node.locationData.country}` : '—'}
+                        </span>
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                {/* Registration Row */}
+                <tr className="hover:bg-muted/10 transition-colors">
+                  <td className="p-3">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm font-medium text-foreground">Registration</span>
+                    </div>
+                  </td>
+                  {selectedNodes.map((node) => {
+                    const nodeKey = node.id || node.pubkey || node.publicKey || `node-${Math.random()}`;
+                    return (
+                      <td key={nodeKey} className="p-3 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {node.isRegistered ? (
+                            <>
+                              <CheckCircle2 className="w-4 h-4 text-[#3F8277]" />
+                              <span className="text-sm text-[#3F8277] font-medium">Registered</span>
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="w-4 h-4 text-muted-foreground" />
+                              <span className="text-sm text-muted-foreground">Not registered</span>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                {/* Network Activity Row */}
+                {selectedNodes.some(n => n.packetsReceived || n.packetsSent) && (
+                  <tr className="hover:bg-muted/10 transition-colors">
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm font-medium text-foreground">Network Activity</span>
+                      </div>
                     </td>
-                  ))}
-                </tr>
-
-                {/* Version */}
-                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-lg bg-foreground/5">
-                        <Server className="w-4 h-4 text-foreground/60" />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">Version</span>
-                    </div>
-                  </td>
-                  {selectedNodes.map((node) => (
-                    <td key={node.id} className="px-6 py-4 text-center">
-                      <span className="text-sm font-mono font-semibold text-foreground bg-muted/30 px-3 py-1 rounded-lg inline-block">
-                        {node.version ? `v${node.version}` : <span className="text-foreground/40">N/A</span>}
-                      </span>
-                    </td>
-                  ))}
-                </tr>
-
-                {/* Uptime */}
-                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm bg-gradient-to-r from-transparent via-muted/5 to-transparent">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-lg bg-[#3F8277]/10">
-                        <Clock className="w-4 h-4 text-[#3F8277]" />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">Uptime</span>
-                    </div>
-                  </td>
-                  {selectedNodes.map((node) => {
-                    const uptime = getComparisonValue(node, 'uptime');
-                    const values = selectedNodes.map(n => getComparisonValue(n, 'uptime'));
-                    const icon = getComparisonIcon(values);
-                    return (
-                      <td key={node.id} className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          {uptime !== null ? (
-                            <>
-                              <span className="text-base font-bold text-foreground">
-                                <AnimatedNumber value={uptime} decimals={1} suffix="%" />
-                              </span>
-                              {icon === 'up' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
-                              {icon === 'down' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
-                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
-                            </>
-                          ) : (
-                            <span className="text-sm text-foreground/40">N/A</span>
-                          )}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* Storage Capacity */}
-                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-lg bg-foreground/5">
-                        <HardDrive className="w-4 h-4 text-foreground/60" />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">Storage</span>
-                    </div>
-                  </td>
-                  {selectedNodes.map((node) => {
-                    const storage = getComparisonValue(node, 'storage');
-                    const values = selectedNodes.map(n => getComparisonValue(n, 'storage'));
-                    const icon = getComparisonIcon(values);
-                    return (
-                      <td key={node.id} className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          {storage !== null ? (
-                            <>
-                              <span className="text-base font-bold text-foreground">{formatStorageBytes(storage)}</span>
-                              {icon === 'up' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
-                              {icon === 'down' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
-                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
-                            </>
-                          ) : (
-                            <span className="text-sm text-foreground/40">N/A</span>
-                          )}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* CPU Usage */}
-                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm bg-gradient-to-r from-transparent via-muted/5 to-transparent">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-lg bg-[#F0A741]/10">
-                        <Cpu className="w-4 h-4 text-[#F0A741]" />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">CPU</span>
-                    </div>
-                  </td>
-                  {selectedNodes.map((node) => {
-                    const cpu = getComparisonValue(node, 'cpu');
-                    const values = selectedNodes.map(n => getComparisonValue(n, 'cpu'));
-                    const icon = getComparisonIcon(values);
-                    return (
-                      <td key={node.id} className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          {cpu !== null ? (
-                            <>
-                              <span className="text-base font-bold text-foreground">
-                                <AnimatedNumber value={cpu} decimals={1} suffix="%" />
-                              </span>
-                              {icon === 'up' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
-                              {icon === 'down' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
-                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
-                            </>
-                          ) : (
-                            <span className="text-sm text-foreground/40">N/A</span>
-                          )}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* RAM Usage */}
-                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-lg bg-foreground/5">
-                        <MemoryStick className="w-4 h-4 text-foreground/60" />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">RAM</span>
-                    </div>
-                  </td>
-                  {selectedNodes.map((node) => {
-                    const ram = getComparisonValue(node, 'ram');
-                    const values = selectedNodes.map(n => getComparisonValue(n, 'ram'));
-                    const icon = getComparisonIcon(values);
-                    return (
-                      <td key={node.id} className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          {ram !== null ? (
-                            <>
-                              <span className="text-base font-bold text-foreground">
-                                <AnimatedNumber value={ram} decimals={1} suffix="%" />
-                              </span>
-                              {icon === 'up' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
-                              {icon === 'down' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
-                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
-                            </>
-                          ) : (
-                            <span className="text-sm text-foreground/40">N/A</span>
-                          )}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* Latency */}
-                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm bg-gradient-to-r from-transparent via-muted/5 to-transparent">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-lg bg-foreground/5">
-                        <Wifi className="w-4 h-4 text-foreground/60" />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">Latency</span>
-                    </div>
-                  </td>
-                  {selectedNodes.map((node) => {
-                    const latency = getComparisonValue(node, 'latency');
-                    const values = selectedNodes.map(n => getComparisonValue(n, 'latency'));
-                    const icon = getComparisonIcon(values);
-                    return (
-                      <td key={node.id} className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          {latency !== null ? (
-                            <>
-                              <span className="text-base font-bold text-foreground">
-                                <AnimatedNumber value={Math.round(latency)} suffix="ms" />
-                              </span>
-                              {icon === 'up' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
-                              {icon === 'down' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
-                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
-                            </>
-                          ) : (
-                            <span className="text-sm text-foreground/40">N/A</span>
-                          )}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* Location */}
-                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-lg bg-foreground/5">
-                        <MapPin className="w-4 h-4 text-foreground/60" />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">Location</span>
-                    </div>
-                  </td>
-                  {selectedNodes.map((node) => (
-                    <td key={node.id} className="px-6 py-4 text-center">
-                      <span className="text-sm font-medium text-foreground">
-                        {node.locationData?.city && node.locationData?.country
-                          ? `${node.locationData.city}, ${node.locationData.country}`
-                          : <span className="text-foreground/40">N/A</span>}
-                      </span>
-                    </td>
-                  ))}
-                </tr>
-
-                {/* Packets Received */}
-                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm bg-gradient-to-r from-transparent via-muted/5 to-transparent">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-lg bg-[#3F8277]/10">
-                        <Wifi className="w-4 h-4 text-[#3F8277]" />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">Packets Rx (Total)</span>
-                    </div>
-                  </td>
-                  {selectedNodes.map((node) => {
-                    const packetsRx = getComparisonValue(node, 'packetsRx');
-                    const values = selectedNodes.map(n => getComparisonValue(n, 'packetsRx'));
-                    const icon = getComparisonIcon(values);
-                    return (
-                      <td key={node.id} className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          {packetsRx !== null ? (
-                            <>
-                              <span className="text-base font-bold text-foreground">
-                                <AnimatedNumber value={packetsRx} />
-                              </span>
-                              {icon === 'up' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
-                              {icon === 'down' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
-                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
-                            </>
-                          ) : (
-                            <span className="text-sm text-foreground/40">N/A</span>
-                          )}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* Packets Sent */}
-                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-lg bg-[#3F8277]/10">
-                        <Wifi className="w-4 h-4 text-[#3F8277]" />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">Packets Tx (Total)</span>
-                    </div>
-                  </td>
-                  {selectedNodes.map((node) => {
-                    const packetsTx = getComparisonValue(node, 'packetsTx');
-                    const values = selectedNodes.map(n => getComparisonValue(n, 'packetsTx'));
-                    const icon = getComparisonIcon(values);
-                    return (
-                      <td key={node.id} className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          {packetsTx !== null ? (
-                            <>
-                              <span className="text-base font-bold text-foreground">
-                                <AnimatedNumber value={packetsTx} />
-                              </span>
-                              {icon === 'up' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
-                              {icon === 'down' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
-                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
-                            </>
-                          ) : (
-                            <span className="text-sm text-foreground/40">N/A</span>
-                          )}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* Packets Rx Rate */}
-                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm bg-gradient-to-r from-transparent via-muted/5 to-transparent">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-lg bg-[#3F8277]/10">
-                        <Activity className="w-4 h-4 text-[#3F8277]" />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">Packets Rx Rate</span>
-                    </div>
-                  </td>
-                  {selectedNodes.map((node) => {
-                    const rxRate = getComparisonValue(node, 'packetsRxRate');
-                    const values = selectedNodes.map(n => getComparisonValue(n, 'packetsRxRate'));
-                    const icon = getComparisonIcon(values);
-                    return (
-                      <td key={node.id} className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          {rxRate !== null && rxRate > 0 ? (
-                            <>
-                              <span className="text-base font-bold text-foreground">{formatPacketRate(rxRate)}</span>
-                              {icon === 'up' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
-                              {icon === 'down' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
-                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
-                            </>
-                          ) : (
-                            <span className="text-sm text-foreground/40">N/A</span>
-                          )}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* Packets Tx Rate */}
-                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-lg bg-[#3F8277]/10">
-                        <Activity className="w-4 h-4 text-[#3F8277]" />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">Packets Tx Rate</span>
-                    </div>
-                  </td>
-                  {selectedNodes.map((node) => {
-                    const txRate = getComparisonValue(node, 'packetsTxRate');
-                    const values = selectedNodes.map(n => getComparisonValue(n, 'packetsTxRate'));
-                    const icon = getComparisonIcon(values);
-                    return (
-                      <td key={node.id} className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          {txRate !== null && txRate > 0 ? (
-                            <>
-                              <span className="text-base font-bold text-foreground">{formatPacketRate(txRate)}</span>
-                              {icon === 'up' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
-                              {icon === 'down' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
-                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
-                            </>
-                          ) : (
-                            <span className="text-sm text-foreground/40">N/A</span>
-                          )}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* Credits */}
-                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm bg-gradient-to-r from-transparent via-muted/5 to-transparent">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-lg bg-[#3F8277]/10">
-                        <Activity className="w-4 h-4 text-[#3F8277]" />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">Credits</span>
-                    </div>
-                  </td>
-                  {selectedNodes.map((node) => {
-                    const credits = getComparisonValue(node, 'credits');
-                    const values = selectedNodes.map(n => getComparisonValue(n, 'credits'));
-                    const icon = getComparisonIcon(values);
-                    return (
-                      <td key={node.id} className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          {credits !== null ? (
-                            <>
-                              <span className="text-base font-bold text-foreground">
-                                <AnimatedNumber value={credits} />
-                              </span>
-                              {icon === 'up' && <TrendingUp className="w-4 h-4 text-[#3F8277]" />}
-                              {icon === 'down' && <TrendingDown className="w-4 h-4 text-[#FF6B6B]" />}
-                              {icon === 'equal' && <Minus className="w-4 h-4 text-foreground/30" />}
-                            </>
-                          ) : (
-                            <span className="text-sm text-foreground/40">N/A</span>
-                          )}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* Registered */}
-                <tr className="hover:bg-muted/20 transition-all duration-300 hover:shadow-sm bg-gradient-to-r from-transparent via-muted/5 to-transparent">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-lg bg-foreground/5">
-                        <CheckCircle2 className="w-4 h-4 text-foreground/60" />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">Registered</span>
-                    </div>
-                  </td>
-                  {selectedNodes.map((node) => (
-                    <td key={node.id} className="px-6 py-4 text-center">
-                      {node.isRegistered ? (
-                        <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#3F8277]/10">
-                          <CheckCircle2 className="w-5 h-5 text-[#3F8277]" />
-                        </div>
-                      ) : (
-                        <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-foreground/5">
-                          <XCircle className="w-5 h-5 text-foreground/30" />
-                        </div>
-                      )}
-                    </td>
-                  ))}
-                </tr>
+                    {selectedNodes.map((node) => {
+                      const nodeKey = node.id || node.pubkey || node.publicKey || `node-${Math.random()}`;
+                      return (
+                        <td key={nodeKey} className="p-3 text-center">
+                          <div className="flex flex-col gap-1 text-xs">
+                            <div>
+                              <span className="text-muted-foreground">Rx: </span>
+                              <span className="text-foreground font-medium">{node.packetsReceived?.toLocaleString() ?? '—'}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Tx: </span>
+                              <span className="text-foreground font-medium">{node.packetsSent?.toLocaleString() ?? '—'}</span>
+                            </div>
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         </div>
-      )}
-
-      {selectedNodes.length < 2 && (
-        <div className="text-center py-12">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-muted/30 mb-3">
-            <Server className="w-6 h-6 text-foreground/40" />
+      ) : (
+        <div className="card flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-16 h-16 rounded-xl bg-muted/50 flex items-center justify-center mb-4">
+            <Server className="w-8 h-8 text-muted-foreground" />
           </div>
-          <p className="text-sm font-medium text-foreground/60">Select at least 2 nodes to compare</p>
-          <p className="text-xs text-foreground/40 mt-1">Use the search boxes above to add nodes</p>
+          <p className="text-sm font-semibold text-foreground mb-2">Compare Nodes</p>
+          <p className="text-xs text-muted-foreground max-w-[280px]">
+            Select at least 2 nodes above to see a side-by-side comparison of their metrics
+          </p>
         </div>
       )}
     </div>
