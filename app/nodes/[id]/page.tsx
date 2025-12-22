@@ -57,6 +57,28 @@ const Tooltip = dynamic(
   { ssr: false }
 );
 
+// Helper function to calculate center offset to position node on right side (desktop) or center (mobile)
+function calculateOffsetCenter(nodeLat: number, nodeLon: number, zoom: number): [number, number] {
+  // On mobile, center the point
+  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+    return [nodeLat, nodeLon];
+  }
+  
+  // On desktop, offset to position node on right side
+  // At zoom level, approximate degrees per pixel
+  // For zoom 10: ~0.00137 degrees per pixel at equator
+  // For zoom 5: ~0.0439 degrees per pixel at equator
+  const baseDegreesPerPixel = zoom === 10 ? 0.00137 : 0.0439;
+  const degreesPerPixel = baseDegreesPerPixel / Math.cos(nodeLat * Math.PI / 180);
+  
+  // For a typical container width of ~1200px, we want node at ~62% = 744px from left
+  // This means we need to shift center ~18% to the left = -210px offset
+  const offsetPixels = -210; // Negative to shift left
+  const lonOffset = offsetPixels * degreesPerPixel;
+  
+  return [nodeLat, nodeLon + lonOffset];
+}
+
 interface HistoricalDataPoint {
   timestamp: number;
   status?: 'online' | 'offline' | 'syncing';
@@ -784,7 +806,7 @@ function NodeDetailContent() {
 
   // Show loading skeleton when loading or no data
   const isLoading = loading || (allNodes.length === 0);
-  
+
   if (isLoading && !node && allNodes.length === 0) {
     return (
       <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
@@ -899,7 +921,7 @@ function NodeDetailContent() {
                 </div>
               ))}
             </div>
-              </div>
+          </div>
             </div>
           </div>
         </main>
@@ -1012,45 +1034,309 @@ function NodeDetailContent() {
       <main className="flex-1 overflow-hidden">
           <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
-            {/* Back to Nodes */}
-            <Link href="/nodes" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6 transition-all duration-300 hover:translate-x-[-4px] hover:scale-105">
-              <ArrowLeft className="w-4 h-4" />
-              Back to Nodes
-            </Link>
+            {/* Cover Section with Map Background */}
+            {node.locationData && node.locationData.lat && node.locationData.lon ? (
+              <div className="relative mb-8 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }}>
+                {/* Back button */}
+                <Link href="/nodes" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6 transition-all duration-300 hover:translate-x-[-4px] group">
+                  <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
+                  <span>Back to Nodes</span>
+                </Link>
 
-            {/* Page Header */}
-            <div className="mb-6 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }}>
-              {/* Title and Status Row */}
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div className="flex-1 min-w-0">
+                <div className="relative rounded-2xl overflow-hidden border border-border/40 shadow-2xl bg-card">
+                  {/* Map Background */}
+                  <div className="absolute inset-0 h-full w-full">
+                    <style jsx global>{`
+                      .node-details-map-container .leaflet-container .leaflet-control-attribution {
+                        display: none !important;
+                      }
+                      .node-details-map-container .leaflet-container {
+                        background: #000;
+                      }
+                      .node-details-map-container .leaflet-container img.leaflet-tile {
+                        opacity: 0.8;
+                      }
+                      .node-details-map-container .leaflet-tile-container img {
+                        opacity: 0.8;
+                      }
+                      .node-details-map-container .leaflet-container .leaflet-tile-pane img {
+                        opacity: 0.8;
+                      }
+                    `}</style>
+                    {/* Blur gradient overlay - blurred on left, clear on right */}
+                    <div 
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        maskImage: 'linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 25%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0) 75%, transparent 100%)',
+                        WebkitMaskImage: 'linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 25%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0) 75%, transparent 100%)',
+                      }}
+                    />
+                    {isClient && node.locationData?.lat && node.locationData?.lon ? (
+                      <MapContainer
+                        key={`map-bg-${node.id}`}
+                        center={calculateOffsetCenter(
+                          node.locationData.lat,
+                          node.locationData.lon,
+                          node.locationData.city ? 10 : 5
+                        )}
+                        zoom={node.locationData.city ? 10 : 5}
+                        scrollWheelZoom={false}
+                        dragging={false}
+                        touchZoom={false}
+                        doubleClickZoom={false}
+                        boxZoom={false}
+                        keyboard={false}
+                        zoomControl={false}
+                        style={{ height: '100%', width: '100%' }}
+                        className="z-0 node-details-map-container"
+                        attributionControl={false}
+                      >
+                        <TileLayer
+                          attribution=""
+                          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                          subdomains="abcd"
+                          maxZoom={20}
+                        />
+                        {(() => {
+                          if (!node.locationData?.lat || !node.locationData?.lon) return null;
+
+                          const nodeLat = node.locationData.lat;
+                          const nodeLon = node.locationData.lon;
+                          
+                          // Find all other nodes with location data
+                          const otherNodes = allNodes.filter((n) => {
+                            if (!n.locationData?.lat || !n.locationData?.lon) return false;
+                            if (n.id === node.id) return false;
+                            return true;
+                          });
+                          
+                          const statusColors = {
+                            online: '#3F8277',
+                            syncing: '#F0A741',
+                            offline: '#ED1C24',
+                          };
+                          
+                          // Create custom pin icon for main node
+                          const createPinIcon = (color: string) => {
+                            if (typeof window === 'undefined') return undefined;
+                            const L = (window as any).L;
+                            if (!L) return undefined;
+
+                            return L.divIcon({
+                              html: `
+                                <div style="position: relative; width: 32px; height: 40px;">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 24 30" fill="none">
+                                    <path d="M12 0C7.03 0 3 4.03 3 9c0 5.25 9 21 9 21s9-15.75 9-21c0-4.97-4.03-9-9-9zm0 12.5c-1.93 0-3.5-1.57-3.5-3.5S10.07 5.5 12 5.5s3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+                                  </svg>
+                                  <div style="position: absolute; top: 6px; left: 50%; transform: translateX(-50%); width: 7px; height: 7px; background: white; border-radius: 50%;"></div>
+                                </div>
+                              `,
+                              className: 'custom-pin-icon',
+                              iconSize: [32, 40],
+                              iconAnchor: [16, 40],
+                              popupAnchor: [0, -40]
+                            });
+                          };
+
+                          const pinColor = statusColors[node.status || 'offline'] || statusColors.offline;
+                          const pinIcon = createPinIcon(pinColor);
+
+                          return (
+                            <>
+                              {/* Main node marker */}
+                              {pinIcon ? (
+                                <Marker
+                                  position={[node.locationData.lat, node.locationData.lon]}
+                                  icon={pinIcon}
+                                  interactive={false}
+                                >
+                                  <Tooltip permanent={false} direction="top" offset={[0, -40]}>
+                                    <div className="text-sm">
+                                      <div className="font-semibold mb-1 text-[#F0A741]">📍 Current Node</div>
+                                      <div className="font-semibold">{node.locationData.city || 'Unknown'}, {node.locationData.country || 'Unknown'}</div>
+                                      <div className="text-xs text-gray-400 mt-1">
+                                        {node.locationData.lat.toFixed(4)}, {node.locationData.lon.toFixed(4)}
+                                      </div>
+                                    </div>
+                                  </Tooltip>
+                                </Marker>
+                              ) : (
+                                <CircleMarker
+                                  center={[node.locationData.lat, node.locationData.lon]}
+                                  radius={12}
+                                  pathOptions={{
+                                    fillColor: statusColors[node.status || 'offline'] || statusColors.offline,
+                                    fillOpacity: 0.8,
+                                    color: '#fff',
+                                    weight: 2,
+                                  }}
+                                  interactive={false}
+                                >
+                                  <Tooltip permanent={false} direction="top" offset={[0, -10]}>
+                                    <div className="text-sm">
+                                      <div className="font-semibold mb-1 text-[#F0A741]">📍 Current Node</div>
+                                      <div className="font-semibold">{node.locationData.city || 'Unknown'}, {node.locationData.country || 'Unknown'}</div>
+                                    </div>
+                                  </Tooltip>
+                                </CircleMarker>
+                              )}
+                              
+                              {/* Other nearby nodes */}
+                              {otherNodes.filter((n) => {
+                                if (!n.locationData?.lat || !n.locationData?.lon) return false;
+                                const latDiff = Math.abs(n.locationData.lat - nodeLat);
+                                const lonDiff = Math.abs(n.locationData.lon - nodeLon);
+                                const kmLat = latDiff * 111;
+                                const kmLon = lonDiff * 111 * Math.cos(nodeLat * Math.PI / 180);
+                                const distance = Math.sqrt(kmLat * kmLat + kmLon * kmLon);
+                                return distance < 50;
+                              }).map((nearbyNode) => {
+                                const status = nearbyNode.status || 'offline';
+                                const color = statusColors[status] || statusColors.offline;
+                                
+                                if (!nearbyNode.locationData?.lat || !nearbyNode.locationData?.lon) return null;
+                                
+                                return (
+                                  <CircleMarker
+                                    key={nearbyNode.id}
+                                    center={[nearbyNode.locationData.lat, nearbyNode.locationData.lon]}
+                                    radius={8}
+                                    pathOptions={{
+                                      fillColor: color,
+                                      fillOpacity: 0.5,
+                                      color: '#fff',
+                                      weight: 1.5,
+                                    }}
+                                    interactive={false}
+                                  >
+                                    <Tooltip permanent={false} direction="top" offset={[0, -10]}>
+                                      <div className="text-sm">
+                                        <div className="font-semibold mb-1">
+                                          {nearbyNode.locationData.city || 'Unknown'}, {nearbyNode.locationData.country || 'Unknown'}
+                                        </div>
+                                      </div>
+                                    </Tooltip>
+                                  </CircleMarker>
+                                );
+                              })}
+                            </>
+                          );
+                        })()}
+                      </MapContainer>
+                    ) : (
+                      <div className="h-full w-full bg-muted/20 animate-pulse" />
+                    )}
+                  </div>
+
+                  {/* Content Overlay - Left Side */}
+                  <div className="relative p-6 sm:p-8 lg:p-10">
+                    {/* Header Row */}
+                    <div className="mb-8">
+                      <div className="animate-slide-in-left" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
+                        {/* Badges */}
+                        <div className="flex items-center gap-3 flex-wrap mb-4">
+                          {getStatusBadge(node.status)}
+                          {node.isPublic === true && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30" title="Public node - pRPC is publicly accessible">
+                              <Globe className="w-3 h-3" />
+                              Public
+                            </span>
+                          )}
+                          {node.isPublic === false && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30" title="Private node - pRPC is not publicly accessible">
+                              <Lock className="w-3 h-3" />
+                              Private
+                            </span>
+                          )}
+                          {node.version && node.version.includes('-trynet') && (
+                            <span className="text-xs px-2 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 font-medium">
+                              TRYNET
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Title */}
+                        <div className="flex items-center gap-3 mb-3">
+                          <Server className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
+                          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-mono text-foreground">
+                            {gossipAddress}
+                          </h1>
+                        </div>
+
+                        {/* Location & Version */}
+                        <div className="space-y-2">
+                          {node.locationData?.city && (
+                            <p className="text-foreground/60 text-sm sm:text-base flex items-center gap-2">
+                              <MapPin className="w-4 h-4" />
+                              {node.locationData.city}{node.locationData.country ? `, ${node.locationData.country}` : ''}
+                            </p>
+                          )}
+                          {node.version && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="text-foreground/60">Version</span>
+                              <span className="font-semibold text-foreground">{node.version}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Public Key */}
+                        <div className="mt-4 inline-flex items-center gap-2 p-2 bg-background/40 border border-border/40 rounded-lg backdrop-blur-sm">
+                          <p className="text-sm font-mono text-foreground/80 truncate max-w-md">{pubkey}</p>
+                          <button
+                            onClick={async () => {
+                              if (pubkey) {
+                                await navigator.clipboard.writeText(pubkey);
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 2000);
+                              }
+                            }}
+                            className="p-1.5 hover:bg-muted/40 rounded transition-colors border border-border/60 shrink-0"
+                            title="Copy Public Key"
+                          >
+                            {copied ? (
+                              <Check className="w-3.5 h-3.5 text-[#3F8277]" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5 text-foreground/60" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Fallback Header (no location) */}
+                <Link href="/nodes" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6 transition-all duration-300 hover:translate-x-[-4px] group">
+                  <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
+                  <span>Back to Nodes</span>
+                </Link>
+
+                <div className="mb-6 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }}>
                   <div className="flex items-center gap-3 flex-wrap mb-3">
                     {getStatusBadge(node.status)}
                     {node.isPublic === true && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30" title="Public node - pRPC is publicly accessible">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
                         <Globe className="w-3 h-3" />
                         Public
                       </span>
                     )}
                     {node.isPublic === false && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30" title="Private node - pRPC is not publicly accessible">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
                         <Lock className="w-3 h-3" />
                         Private
                       </span>
                     )}
-                    {node.version && node.version.includes('-trynet') && (
-                      <span className="text-xs px-2 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 font-medium">
-                        TRYNET
-                      </span>
-                    )}
                   </div>
-
                   <div className="flex items-center gap-3 mb-2">
                     <Server className="w-6 h-6 text-[#F0A741]" />
                     <h1 className="text-2xl sm:text-3xl font-bold font-mono text-foreground">
                       {gossipAddress}
                     </h1>
                   </div>
-
                   {node.version && (
                     <div className="flex items-center gap-2 text-sm">
                       <span className="text-foreground/60">Version</span>
@@ -1058,295 +1344,8 @@ function NodeDetailContent() {
                     </div>
                   )}
                 </div>
-
-                {/* Quick Stats - Inline */}
-                <div className="hidden lg:flex items-center gap-4">
-                  <div className="text-right">
-                    <div className="text-xs text-foreground/60 mb-1">Uptime</div>
-                    <div className="text-lg font-bold text-foreground">{formatUptime(node.uptime)}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs text-foreground/60 mb-1">Latency</div>
-                    <div className="text-lg font-bold text-foreground">
-                      {nodeLatency !== null && nodeLatency !== undefined
-                          ? `${nodeLatency.toFixed(0)}ms`
-                          : measuringLatency
-                          ? <span className="text-sm text-muted-foreground">...</span>
-                          : <span className="text-sm text-muted-foreground">N/A</span>
-                        }
-                    </div>
-                  </div>
-                  {/* Refresh button */}
-                  <button
-                    onClick={handleRefresh}
-                    disabled={refreshingStats}
-                    className="p-2 hover:bg-muted/40 rounded-lg transition-colors disabled:opacity-50 border border-border/60"
-                    title="Refresh Stats"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${refreshingStats ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Public Key Row */}
-              <div className="flex items-center gap-3 pb-4 border-b border-border/40">
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-foreground/60 uppercase tracking-wide mb-1">Public Key</div>
-                  <p className="text-sm font-mono text-foreground/80 truncate">{pubkey}</p>
-                </div>
-                <button
-                  onClick={async () => {
-                    if (pubkey) {
-                      await navigator.clipboard.writeText(pubkey);
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 2000);
-                    }
-                  }}
-                  className="p-2 hover:bg-muted/40 rounded transition-colors border border-border/60 shrink-0"
-                  title="Copy Public Key"
-                >
-                  {copied ? (
-                    <Check className="w-4 h-4 text-[#3F8277]" />
-                  ) : (
-                    <Copy className="w-4 h-4 text-foreground/60" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-        {/* 2D Map Section */}
-        {node.locationData && node.locationData.lat && node.locationData.lon && (
-          <div className="card mb-6 animate-slide-in-right" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-foreground/40" />
-                <h2 className="text-base font-semibold text-foreground">Location</h2>
-              </div>
-              {(() => {
-                if (!node.locationData?.lat || !node.locationData?.lon) return null;
-                const nodeLat = node.locationData.lat;
-                const nodeLon = node.locationData.lon;
-                const nearbyCount = allNodes.filter((n) => {
-                  if (!n.locationData?.lat || !n.locationData?.lon || n.id === node.id) return false;
-                  const latDiff = Math.abs(n.locationData.lat - nodeLat);
-                  const lonDiff = Math.abs(n.locationData.lon - nodeLon);
-                  const kmLat = latDiff * 111;
-                  const kmLon = lonDiff * 111 * Math.cos(nodeLat * Math.PI / 180);
-                  const distance = Math.sqrt(kmLat * kmLat + kmLon * kmLon);
-                  return distance < 50;
-                }).length;
-                return nearbyCount > 0 && (
-                  <span className="text-xs text-foreground/60">
-                    {nearbyCount} nearby node{nearbyCount !== 1 ? 's' : ''}
-                  </span>
-                );
-              })()}
-            </div>
-            <div className="h-[300px] w-full rounded-lg overflow-hidden border border-border/40 relative">
-              <style jsx global>{`
-                .leaflet-container .leaflet-control-attribution {
-                  display: none !important;
-                }
-                .leaflet-container a.leaflet-popup-close-button {
-                  color: #fff;
-                }
-                .leaflet-popup-content-wrapper {
-                  background: rgb(15, 15, 15);
-                  color: #fff;
-                  border: 1px solid rgb(40, 40, 40);
-                }
-                .leaflet-popup-tip {
-                  background: rgb(15, 15, 15);
-                }
-                .leaflet-container {
-                  background: #000;
-                }
-                .custom-pin-icon {
-                  background: transparent !important;
-                  border: none !important;
-                }
-                /* Brighten map division lines and borders */
-                .leaflet-container img.leaflet-tile {
-                  filter: brightness(1.5) contrast(1.2);
-                }
-                .leaflet-tile-container img {
-                  filter: brightness(1.5) contrast(1.2);
-                }
-                /* Brighten map tiles specifically */
-                .leaflet-container .leaflet-tile-pane img {
-                  filter: brightness(1.5) contrast(1.2);
-                }
-              `}</style>
-              {isClient && node.locationData?.lat && node.locationData?.lon ? (
-                <MapContainer
-                  key={`map-${node.id}-${node.locationData.lat}-${node.locationData.lon}`}
-                  center={[node.locationData.lat, node.locationData.lon]}
-                  zoom={node.locationData.city ? 10 : 5}
-                  scrollWheelZoom={false}
-                  dragging={false}
-                  touchZoom={false}
-                  doubleClickZoom={false}
-                  boxZoom={false}
-                  keyboard={false}
-                  zoomControl={false}
-                  style={{ height: '100%', width: '100%' }}
-                  className="z-0"
-                  attributionControl={false}
-                >
-                  <TileLayer
-                    attribution=""
-                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                    subdomains="abcd"
-                    maxZoom={20}
-                  />
-                  {(() => {
-                    if (!node.locationData?.lat || !node.locationData?.lon) return null;
-
-                    const nodeLat = node.locationData.lat;
-                    const nodeLon = node.locationData.lon;
-                    
-                    // Find all other nodes with location data
-                    const otherNodes = allNodes.filter((n) => {
-                      if (!n.locationData?.lat || !n.locationData?.lon) return false;
-                      if (n.id === node.id) return false;
-                      return true;
-                    });
-                    
-                    const statusColors = {
-                      online: '#3F8277',
-                      syncing: '#F0A741',
-                      offline: '#ED1C24',
-                    };
-                    
-                    // Create custom pin icon for main node using L.divIcon
-                    const createPinIcon = (color: string) => {
-                      if (typeof window === 'undefined') return undefined;
-                      const L = (window as any).L;
-                      if (!L) return undefined;
-
-                      return L.divIcon({
-                        html: `
-                          <div style="position: relative; width: 32px; height: 40px;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 24 30" fill="none">
-                              <path d="M12 0C7.03 0 3 4.03 3 9c0 5.25 9 21 9 21s9-15.75 9-21c0-4.97-4.03-9-9-9zm0 12.5c-1.93 0-3.5-1.57-3.5-3.5S10.07 5.5 12 5.5s3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z" fill="${color}" stroke="#fff" stroke-width="1.5"/>
-                            </svg>
-                            <div style="position: absolute; top: 6px; left: 50%; transform: translateX(-50%); width: 7px; height: 7px; background: white; border-radius: 50%;"></div>
-                          </div>
-                        `,
-                        className: 'custom-pin-icon',
-                        iconSize: [32, 40],
-                        iconAnchor: [16, 40],
-                        popupAnchor: [0, -40]
-                      });
-                    };
-
-                    const pinColor = statusColors[node.status || 'offline'] || statusColors.offline;
-                    const pinIcon = createPinIcon(pinColor);
-
-                    return (
-                      <>
-                        {/* Main node marker with pin icon */}
-                        {pinIcon ? (
-                          <Marker
-                            position={[node.locationData.lat, node.locationData.lon]}
-                            icon={pinIcon}
-                            interactive={false}
-                          >
-                            <Tooltip permanent={false} direction="top" offset={[0, -40]}>
-                              <div className="text-sm">
-                                <div className="font-semibold mb-1 text-[#F0A741]">📍 Current Node</div>
-                                <div className="font-semibold">{node.locationData.city || 'Unknown'}, {node.locationData.country || 'Unknown'}</div>
-                                <div className="text-xs text-gray-400 mt-1">
-                                  {node.locationData.lat.toFixed(4)}, {node.locationData.lon.toFixed(4)}
-                                </div>
-                                <div className="mt-1 text-xs">
-                                  <strong>Status:</strong> <span className="capitalize">{node.status || 'offline'}</span>
-                                </div>
-                                {node.address && (
-                                  <div className="mt-1 text-xs font-mono">{node.address}</div>
-                                )}
-                              </div>
-                            </Tooltip>
-                          </Marker>
-                        ) : (
-                          <CircleMarker
-                            center={[node.locationData.lat, node.locationData.lon]}
-                            radius={12}
-                            pathOptions={{
-                              fillColor: statusColors[node.status || 'offline'] || statusColors.offline,
-                              fillOpacity: 0.8,
-                              color: '#fff',
-                              weight: 2,
-                            }}
-                            interactive={false}
-                          >
-                            <Tooltip permanent={false} direction="top" offset={[0, -10]}>
-                              <div className="text-sm">
-                                <div className="font-semibold mb-1 text-[#F0A741]">📍 Current Node</div>
-                                <div className="font-semibold">{node.locationData.city || 'Unknown'}, {node.locationData.country || 'Unknown'}</div>
-                                <div className="text-xs text-gray-400 mt-1">
-                                  {node.locationData.lat.toFixed(4)}, {node.locationData.lon.toFixed(4)}
-                                </div>
-                                <div className="mt-1 text-xs">
-                                  <strong>Status:</strong> <span className="capitalize">{node.status || 'offline'}</span>
-                                </div>
-                                {node.address && (
-                                  <div className="mt-1 text-xs font-mono">{node.address}</div>
-                                )}
-                              </div>
-                            </Tooltip>
-                          </CircleMarker>
-                        )}
-                        
-                        {/* Other nodes */}
-                        {otherNodes.map((nearbyNode) => {
-                          const status = nearbyNode.status || 'offline';
-                          const color = statusColors[status] || statusColors.offline;
-                          
-                          if (!nearbyNode.locationData?.lat || !nearbyNode.locationData?.lon) return null;
-                          
-                          return (
-                            <CircleMarker
-                              key={nearbyNode.id}
-                              center={[nearbyNode.locationData.lat, nearbyNode.locationData.lon]}
-                              radius={8}
-                              pathOptions={{
-                                fillColor: color,
-                                fillOpacity: 0.7,
-                                color: '#fff',
-                                weight: 1.5,
-                              }}
-                              interactive={false}
-                            >
-                              <Tooltip permanent={false} direction="top" offset={[0, -10]}>
-                                <div className="text-sm">
-                                  <div className="font-semibold mb-1">
-                                    {nearbyNode.locationData.city || 'Unknown'}, {nearbyNode.locationData.country || 'Unknown'}
-                                  </div>
-                                  <div className="text-xs text-gray-400 mt-1">
-                                    {nearbyNode.locationData.lat.toFixed(4)}, {nearbyNode.locationData.lon.toFixed(4)}
-                                  </div>
-                                  <div className="mt-1 text-xs">
-                                    <strong>Status:</strong> <span className="capitalize">{status}</span>
-                                  </div>
-                                  {nearbyNode.address && (
-                                    <div className="mt-1 text-xs font-mono">{nearbyNode.address}</div>
-                                  )}
-                                </div>
-                              </Tooltip>
-                            </CircleMarker>
-                          );
-                        })}
-                      </>
-                    );
-                  })()}
-                </MapContainer>
-              ) : (
-                <MapSkeleton height={300} />
-              )}
-            </div>
-          </div>
-        )}
+              </>
+            )}
 
         {/* Private Node View */}
         {node.isPublic === false ? (
