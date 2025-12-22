@@ -2253,74 +2253,73 @@ function NodeDetailContent() {
                 </div>
 
                 {/* CPU & RAM over time - Always show, empty axes when no data */}
-                  <div className="card">
-                    <HistoricalLineChart
-                      title="Resource Utilization"
-                      data={filteredData.map(d => ({
-                        timestamp: d.timestamp,
-                        cpu: d.cpuPercent,
-                        ram: d.ramPercent,
-                      }))}
-                      height={250}
-                      yDomain={[0, 100]}
-                      strokeColor="#F0A741"
-                      yLabel="Usage (%)"
-                      multiLine={[
-                        { key: 'cpu', color: '#F0A741', label: 'CPU' },
-                        { key: 'ram', color: '#3F8277', label: 'RAM' },
-                      ]}
-                      tooltipFormatter={(d) => (
-                        <div className="text-xs">
-                          <div className="font-semibold text-foreground mb-1">
-                            {new Date(d.timestamp).toLocaleString()}
-                          </div>
-                          <div className="text-foreground/80 space-y-1">
-                            {d.cpu !== undefined && d.cpu !== null && (
-                              <div>CPU: {d.cpu.toFixed(1)}%</div>
-                            )}
-                            {d.ram !== undefined && d.ram !== null && (
-                              <div>RAM: {d.ram.toFixed(1)}%</div>
-                            )}
-                          </div>
+                <div className="card">
+                  <HistoricalLineChart
+                    title="Resource Utilization"
+                    data={filteredData.map(d => ({
+                      timestamp: d.timestamp,
+                      cpu: d.cpuPercent,
+                      ram: d.ramPercent,
+                    }))}
+                    height={250}
+                    yDomain={[0, 100]}
+                    strokeColor="#F0A741"
+                    yLabel="Usage (%)"
+                    multiLine={[
+                      { key: 'cpu', color: '#F0A741', label: 'CPU' },
+                      { key: 'ram', color: '#3F8277', label: 'RAM' },
+                    ]}
+                    tooltipFormatter={(d) => (
+                      <div className="text-xs">
+                        <div className="font-semibold text-foreground mb-1">
+                          {new Date(d.timestamp).toLocaleString()}
                         </div>
-                      )}
-                      headerContent={
-                        loadingHistory ? (
-                          <span className="text-xs text-muted-foreground">Loading historical data...</span>
-                        ) : filteredData.length > 0 ? (
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          {(() => {
-                            const cpuData = filteredData.filter(d => d.cpuPercent !== undefined && d.cpuPercent !== null && !isNaN(d.cpuPercent));
-                            if (cpuData.length === 0) return null;
-                            const cpuAvg = cpuData.reduce((sum, d) => sum + (d.cpuPercent || 0), 0) / cpuData.length;
-                            if (isNaN(cpuAvg)) return null;
-                            return (
-                              <div className="flex items-center gap-1">
-                                <Cpu className="w-3.5 h-3.5" />
-                                <span>CPU: <span className="text-foreground font-semibold">{cpuAvg.toFixed(1)}%</span></span>
-                              </div>
-                            );
-                          })()}
-                          {(() => {
-                            const ramData = filteredData.filter(d => d.ramPercent !== undefined && d.ramPercent !== null && !isNaN(d.ramPercent));
-                            if (ramData.length === 0) return null;
-                            const ramAvg = ramData.reduce((sum, d) => sum + (d.ramPercent || 0), 0) / ramData.length;
-                            if (isNaN(ramAvg)) return null;
-                            return (
-                              <div className="flex items-center gap-1">
-                                <MemoryStick className="w-3.5 h-3.5" />
-                                <span>RAM: <span className="text-foreground font-semibold">{ramAvg.toFixed(1)}%</span></span>
-                              </div>
-                            );
-                          })()}
+                        <div className="text-foreground/80 space-y-1">
+                          {d.cpu !== undefined && d.cpu !== null && (
+                            <div>CPU: {d.cpu.toFixed(1)}%</div>
+                          )}
+                          {d.ram !== undefined && d.ram !== null && (
+                            <div>RAM: {d.ram.toFixed(1)}%</div>
+                          )}
                         </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">No data available</span>
-                        )
-                      }
-                    />
-                  </div>
-                )}
+                      </div>
+                    )}
+                    headerContent={
+                      loadingHistory ? (
+                        <span className="text-xs text-muted-foreground">Loading historical data...</span>
+                      ) : filteredData.length > 0 ? (
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        {(() => {
+                          const cpuData = filteredData.filter(d => d.cpuPercent !== undefined && d.cpuPercent !== null && !isNaN(d.cpuPercent));
+                          if (cpuData.length === 0) return null;
+                          const cpuAvg = cpuData.reduce((sum, d) => sum + (d.cpuPercent || 0), 0) / cpuData.length;
+                          if (isNaN(cpuAvg)) return null;
+                          return (
+                            <div className="flex items-center gap-1">
+                              <Cpu className="w-3.5 h-3.5" />
+                              <span>CPU: <span className="text-foreground font-semibold">{cpuAvg.toFixed(1)}%</span></span>
+                            </div>
+                          );
+                        })()}
+                        {(() => {
+                          const ramData = filteredData.filter(d => d.ramPercent !== undefined && d.ramPercent !== null && !isNaN(d.ramPercent));
+                          if (ramData.length === 0) return null;
+                          const ramAvg = ramData.reduce((sum, d) => sum + (d.ramPercent || 0), 0) / ramData.length;
+                          if (isNaN(ramAvg)) return null;
+                          return (
+                            <div className="flex items-center gap-1">
+                              <MemoryStick className="w-3.5 h-3.5" />
+                              <span>RAM: <span className="text-foreground font-semibold">{ramAvg.toFixed(1)}%</span></span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">No data available</span>
+                      )
+                    }
+                  />
+                </div>
 
               </div>
 

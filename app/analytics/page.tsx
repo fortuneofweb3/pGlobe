@@ -414,8 +414,9 @@ export default function AnalyticsPage() {
         showNetworkSelector={false}
       />
 
-      <main className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-3 sm:pt-6 pb-4">
+      <main className="flex-1 overflow-hidden">
+        <div className="w-full px-3 sm:px-6 pt-3 sm:pt-6 pb-2 overflow-y-auto">
+          <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="mb-4 sm:mb-6">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
@@ -730,6 +731,7 @@ export default function AnalyticsPage() {
             <div className="lg:col-span-2 card flex flex-col animate-scale-in" style={{ animationDelay: '0.35s', opacity: 0, animationFillMode: 'forwards' }}>
               <GeographicMetrics nodes={nodes} />
             </div>
+          </div>
           </div>
         </div>
       </main>
