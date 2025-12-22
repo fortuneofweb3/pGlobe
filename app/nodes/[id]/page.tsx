@@ -574,6 +574,9 @@ function HistoricalLineChart({
   );
 }
 
+// Cache for pin icons to avoid recreation
+const pinIconCache = new Map<string, any>();
+
 function NodeDetailContent() {
   const params = useParams();
   const router = useRouter();
@@ -592,6 +595,7 @@ function NodeDetailContent() {
   });
   const [measuringLatency, setMeasuringLatency] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [pinIconsReady, setPinIconsReady] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -604,11 +608,101 @@ function NodeDetailContent() {
       link.crossOrigin = '';
       document.head.appendChild(link);
     }
-  }, []);
+    
+    // Pre-create pin icons when Leaflet is available
+    if (typeof window !== 'undefined') {
+      const checkLeaflet = () => {
+        const L = (window as any).L;
+        if (L && !pinIconsReady) {
+          // Pre-create pin icons for all status colors
+          const statusColors = {
+            online: '#3F8277',
+            syncing: '#F0A741',
+            offline: '#ED1C24',
+          };
+          
+          Object.values(statusColors).forEach((color) => {
+            if (!pinIconCache.has(color)) {
+              const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 24 30" fill="none"><path d="M12 0C7.03 0 3 4.03 3 9c0 5.25 9 21 9 21s9-15.75 9-21c0-4.97-4.03-9-9-9zm0 12.5c-1.93 0-3.5-1.57-3.5-3.5S10.07 5.5 12 5.5s3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z" fill="${color}" stroke="#fff" stroke-width="1.5"/></svg>`;
+              const icon = L.divIcon({
+                html: `
+                  <div style="position: relative; width: 32px; height: 40px;">
+                    ${svgString}
+                    <div style="position: absolute; top: 6px; left: 50%; transform: translateX(-50%); width: 7px; height: 7px; background: white; border-radius: 50%;"></div>
+                  </div>
+                `,
+                className: 'custom-pin-icon',
+                iconSize: [32, 40],
+                iconAnchor: [16, 40],
+                popupAnchor: [0, -40]
+              });
+              pinIconCache.set(color, icon);
+            }
+          });
+          setPinIconsReady(true);
+        }
+      };
+      
+      // Check immediately
+      checkLeaflet();
+      
+      // Also check after a short delay in case Leaflet loads asynchronously
+      const timeout = setTimeout(checkLeaflet, 100);
+      return () => clearTimeout(timeout);
+    }
+  }, [pinIconsReady]);
 
   const node = useMemo(() => {
     return allNodes.find(n => n.id === nodeId || n.pubkey === nodeId || n.publicKey === nodeId);
   }, [allNodes, nodeId]);
+
+  // Pre-create pin icons immediately when Leaflet is available
+  const [pinIcons, setPinIcons] = useState<Record<string, any>>({});
+  
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isClient) return;
+    
+    const createIcons = () => {
+      const L = (window as any).L;
+      if (!L) {
+        // Retry after a short delay if Leaflet isn't loaded yet
+        setTimeout(createIcons, 50);
+        return;
+      }
+
+      const statusColors = {
+        online: '#3F8277',
+        syncing: '#F0A741',
+        offline: '#ED1C24',
+      };
+
+      const icons: Record<string, any> = {};
+      Object.entries(statusColors).forEach(([status, color]) => {
+        if (!pinIconCache.has(color)) {
+          const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 24 30" fill="none"><path d="M12 0C7.03 0 3 4.03 3 9c0 5.25 9 21 9 21s9-15.75 9-21c0-4.97-4.03-9-9-9zm0 12.5c-1.93 0-3.5-1.57-3.5-3.5S10.07 5.5 12 5.5s3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z" fill="${color}" stroke="#fff" stroke-width="1.5"/></svg>`;
+          const icon = L.divIcon({
+            html: `
+              <div style="position: relative; width: 32px; height: 40px; overflow: visible;">
+                ${svgString}
+                <div style="position: absolute; top: 6px; left: 50%; transform: translateX(-50%); width: 7px; height: 7px; background: white; border-radius: 50%;"></div>
+              </div>
+            `,
+            className: 'custom-pin-icon',
+            iconSize: [32, 40],
+            iconAnchor: [16, 40],
+            popupAnchor: [0, -40]
+          });
+          pinIconCache.set(color, icon);
+          icons[status] = icon;
+        } else {
+          icons[status] = pinIconCache.get(color);
+        }
+      });
+      setPinIcons(icons);
+    };
+    
+    createIcons();
+  }, [isClient]);
 
   useEffect(() => {
     let mounted = true;
@@ -1043,15 +1137,27 @@ function NodeDetailContent() {
                   <span>Back to Nodes</span>
                 </Link>
 
-                <div className="relative rounded-2xl overflow-hidden border border-border/40 shadow-2xl bg-card">
+                <div className="relative rounded-2xl overflow-hidden border border-border/40 shadow-2xl bg-card" style={{ minHeight: '234px', maxHeight: '260px' }}>
                   {/* Map Background */}
-                  <div className="absolute inset-0 h-full w-full">
+                  <div className="absolute inset-0 h-full w-full" style={{ overflow: 'visible' }}>
                     <style jsx global>{`
                       .node-details-map-container .leaflet-container .leaflet-control-attribution {
                         display: none !important;
                       }
                       .node-details-map-container .leaflet-container {
-                        background: #000;
+                        background: #000 !important;
+                        overflow: visible !important;
+                      }
+                      .node-details-map-container .leaflet-container .leaflet-tile-pane {
+                        background: #000 !important;
+                      }
+                      .node-details-map-container .leaflet-container .leaflet-map-pane {
+                        background: #000 !important;
+                        overflow: visible !important;
+                      }
+                      .node-details-map-container .leaflet-container .leaflet-marker-pane {
+                        overflow: visible !important;
+                        z-index: 600 !important;
                       }
                       .node-details-map-container .leaflet-container img.leaflet-tile {
                         opacity: 0.8;
@@ -1061,6 +1167,9 @@ function NodeDetailContent() {
                       }
                       .node-details-map-container .leaflet-container .leaflet-tile-pane img {
                         opacity: 0.8;
+                      }
+                      .custom-pin-icon {
+                        overflow: visible !important;
                       }
                     `}</style>
                     {/* Blur gradient overlay - blurred on left, clear on right */}
@@ -1089,7 +1198,7 @@ function NodeDetailContent() {
                         boxZoom={false}
                         keyboard={false}
                         zoomControl={false}
-                        style={{ height: '100%', width: '100%' }}
+                        style={{ height: '100%', width: '100%', backgroundColor: '#000' }}
                         className="z-0 node-details-map-container"
                         attributionControl={false}
                       >
@@ -1118,34 +1227,40 @@ function NodeDetailContent() {
                             offline: '#ED1C24',
                           };
                           
-                          // Create custom pin icon for main node
-                          const createPinIcon = (color: string) => {
-                            if (typeof window === 'undefined') return undefined;
+                          // Get pre-created pin icon - create synchronously if not ready
+                          const nodeStatus = node.status || 'offline';
+                          let pinIcon = pinIcons[nodeStatus] || pinIcons.offline;
+                          
+                          // If pin icon not ready, create it immediately
+                          if (!pinIcon && typeof window !== 'undefined') {
                             const L = (window as any).L;
-                            if (!L) return undefined;
-
-                            return L.divIcon({
-                              html: `
-                                <div style="position: relative; width: 32px; height: 40px;">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 24 30" fill="none">
-                                    <path d="M12 0C7.03 0 3 4.03 3 9c0 5.25 9 21 9 21s9-15.75 9-21c0-4.97-4.03-9-9-9zm0 12.5c-1.93 0-3.5-1.57-3.5-3.5S10.07 5.5 12 5.5s3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z" fill="${color}" stroke="#fff" stroke-width="1.5"/>
-                                  </svg>
-                                  <div style="position: absolute; top: 6px; left: 50%; transform: translateX(-50%); width: 7px; height: 7px; background: white; border-radius: 50%;"></div>
-                                </div>
-                              `,
-                              className: 'custom-pin-icon',
-                              iconSize: [32, 40],
-                              iconAnchor: [16, 40],
-                              popupAnchor: [0, -40]
-                            });
-                          };
-
-                          const pinColor = statusColors[node.status || 'offline'] || statusColors.offline;
-                          const pinIcon = createPinIcon(pinColor);
+                            if (L) {
+                              const color = statusColors[nodeStatus] || statusColors.offline;
+                              if (!pinIconCache.has(color)) {
+                                const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 24 30" fill="none"><path d="M12 0C7.03 0 3 4.03 3 9c0 5.25 9 21 9 21s9-15.75 9-21c0-4.97-4.03-9-9-9zm0 12.5c-1.93 0-3.5-1.57-3.5-3.5S10.07 5.5 12 5.5s3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z" fill="${color}" stroke="#fff" stroke-width="1.5"/></svg>`;
+                                pinIcon = L.divIcon({
+                                  html: `
+                                    <div style="position: relative; width: 32px; height: 40px; overflow: visible;">
+                                      ${svgString}
+                                      <div style="position: absolute; top: 6px; left: 50%; transform: translateX(-50%); width: 7px; height: 7px; background: white; border-radius: 50%;"></div>
+                                    </div>
+                                  `,
+                                  className: 'custom-pin-icon',
+                                  iconSize: [32, 40],
+                                  iconAnchor: [16, 40],
+                                  popupAnchor: [0, -40],
+                                  iconSize: [32, 40]
+                                });
+                                pinIconCache.set(color, pinIcon);
+                              } else {
+                                pinIcon = pinIconCache.get(color);
+                              }
+                            }
+                          }
 
                           return (
                             <>
-                              {/* Main node marker */}
+                              {/* Main node marker - always show pin if available, otherwise show circle */}
                               {pinIcon ? (
                                 <Marker
                                   position={[node.locationData.lat, node.locationData.lon]}
@@ -1231,7 +1346,7 @@ function NodeDetailContent() {
                   </div>
 
                   {/* Content Overlay - Left Side */}
-                  <div className="relative p-6 sm:p-8 lg:p-10">
+                  <div className="relative px-5 sm:px-7 lg:px-9 pt-8 pb-8">
                     {/* Header Row */}
                     <div className="mb-8">
                       <div className="animate-slide-in-left" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
