@@ -42,12 +42,41 @@ export default function AnalyticsPage() {
     const fetchHistoricalData = async () => {
       try {
         // Use the new public API endpoint for network health history
-        console.log('[Analytics] Fetching health history from /api/v1/network/health/history?period=7d');
-        const response = await fetch(`/api/v1/network/health/history?period=7d`, {
-          cache: 'no-store', // Don't cache to ensure fresh data
-        });
+        const url = `/api/v1/network/health/history?period=7d`;
+        console.log('[Analytics] Fetching health history from', url);
+        console.log('[Analytics] Starting fetch request...');
         
-        console.log('[Analytics] Health history API response status:', response.status);
+        const fetchStartTime = Date.now();
+        
+        // Add timeout to fetch (45 seconds - matches backend)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          controller.abort();
+          console.error('[Analytics] ❌ Fetch timeout after 45 seconds');
+        }, 45000); // 45 second timeout
+        
+        let response: Response;
+        try {
+          response = await fetch(url, {
+            cache: 'no-store', // Don't cache to ensure fresh data
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+        } catch (fetchError: any) {
+          clearTimeout(timeoutId);
+          if (fetchError.name === 'AbortError') {
+            throw new Error('Request timeout - API took too long to respond');
+          }
+          throw fetchError;
+        }
+        
+        const fetchDuration = Date.now() - fetchStartTime;
+        console.log(`[Analytics] Fetch completed in ${fetchDuration}ms`);
+        console.log('[Analytics] Health history API response status:', response.status, response.statusText);
+        console.log('[Analytics] Response headers:', {
+          contentType: response.headers.get('content-type'),
+          ok: response.ok,
+        });
         
         if (response.ok) {
           const result = await response.json();
@@ -61,26 +90,70 @@ export default function AnalyticsPage() {
           
           // Transform health data to HistoricalDataPoint format
           if (result.success && result.data && Array.isArray(result.data.health)) {
-            const transformed = result.data.health.map((snapshot: any) => ({
-              timestamp: snapshot.timestamp,
-              avgUptime: 0, // Not provided by this endpoint
-              onlineCount: snapshot.onlineNodes || 0,
-              totalNodes: snapshot.totalNodes || 0,
-              networkHealthScore: snapshot.overall,
-              networkHealthAvailability: snapshot.availability,
-              networkHealthVersion: snapshot.versionHealth,
-              networkHealthDistribution: snapshot.distribution,
-            }));
-            console.log('[Analytics] Transformed health data:', transformed.length, 'points');
+            console.log('[Analytics] Health array length:', result.data.health.length);
+            
+            if (result.data.health.length === 0) {
+              console.warn('[Analytics] ⚠️  Health array is empty - no historical data available');
+              console.warn('[Analytics] Response summary:', {
+                dataPoints: result.data.dataPoints,
+                period: result.data.period,
+                summary: result.data.summary,
+              });
+              setHistoricalData([]);
+              return;
+            }
+            
+            // Log sample of raw data before transformation
+            console.log('[Analytics] Sample raw health data:', result.data.health.slice(0, 2));
+            
+            const transformed = result.data.health.map((snapshot: any) => {
+              const dataPoint = {
+                timestamp: snapshot.timestamp,
+                avgUptime: 0, // Not provided by this endpoint
+                onlineCount: snapshot.onlineNodes || 0,
+                totalNodes: snapshot.totalNodes || 0,
+                networkHealthScore: snapshot.overall,
+                networkHealthAvailability: snapshot.availability,
+                networkHealthVersion: snapshot.versionHealth,
+                networkHealthDistribution: snapshot.distribution,
+              };
+              
+              // Validate required fields
+              if (snapshot.timestamp === undefined || snapshot.timestamp === null) {
+                console.warn('[Analytics] ⚠️  Snapshot missing timestamp:', snapshot);
+              }
+              if (snapshot.overall === undefined || snapshot.overall === null) {
+                console.warn('[Analytics] ⚠️  Snapshot missing overall score:', snapshot);
+              }
+              
+              return dataPoint;
+            }).filter((d: any) => {
+              // Filter out invalid data points
+              const isValid = d.timestamp !== undefined && d.timestamp !== null && d.networkHealthScore !== undefined && d.networkHealthScore !== null;
+              if (!isValid) {
+                console.warn('[Analytics] ⚠️  Filtered out invalid data point:', d);
+              }
+              return isValid;
+            });
+            
+            console.log('[Analytics] Transformed health data:', transformed.length, 'valid points (from', result.data.health.length, 'total)');
             if (transformed.length > 0) {
               console.log('[Analytics] Sample transformed data:', transformed.slice(0, 3));
+              console.log('[Analytics] Timestamp range:', {
+                first: new Date(transformed[0].timestamp).toISOString(),
+                last: new Date(transformed[transformed.length - 1].timestamp).toISOString(),
+              });
+            } else {
+              console.error('[Analytics] ❌ All data points were filtered out as invalid!');
             }
+            
             setHistoricalData(transformed);
           } else {
-            console.warn('[Analytics] Health history API returned invalid format:', {
+            console.error('[Analytics] ❌ Health history API returned invalid format:', {
               success: result.success,
               hasData: !!result.data,
               hasHealth: !!result.data?.health,
+              healthIsArray: Array.isArray(result.data?.health),
               dataType: typeof result.data,
               dataKeys: result.data ? Object.keys(result.data) : [],
               fullResult: result
@@ -88,7 +161,20 @@ export default function AnalyticsPage() {
             setHistoricalData([]);
           }
         } else {
-          const errorText = await response.text().catch(() => 'Failed to read error response');
+          console.error('[Analytics] ❌ Health history API returned non-OK status:', response.status, response.statusText);
+          let errorText = '';
+          try {
+            errorText = await response.text();
+            console.error('[Analytics] Error response body:', errorText);
+            try {
+              const errorJson = JSON.parse(errorText);
+              console.error('[Analytics] Parsed error JSON:', errorJson);
+            } catch (e) {
+              console.error('[Analytics] Error response is not JSON');
+            }
+          } catch (textError) {
+            console.error('[Analytics] Failed to read error response:', textError);
+          }
           console.error('[Analytics] Health history API failed:', {
             status: response.status,
             statusText: response.statusText,
@@ -97,10 +183,12 @@ export default function AnalyticsPage() {
           setHistoricalData([]);
         }
       } catch (err: any) {
-        console.error('[Analytics] Failed to fetch historical data:', {
+        console.error('[Analytics] ❌ Exception while fetching historical data:', {
           error: err?.message,
           stack: err?.stack,
-          name: err?.name
+          name: err?.name,
+          cause: err?.cause,
+          toString: err?.toString(),
         });
         // Failed to fetch historical data
         setHistoricalData([]);

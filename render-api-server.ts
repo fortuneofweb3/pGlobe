@@ -22,7 +22,7 @@ import { getAllNodes, getNodeByPubkey, createIndexes, upsertNodes } from './lib/
 import { createHistoryIndexes, getHistoricalSnapshots, getDailyStats, getNodeHistory } from './lib/server/mongodb-history';
 import { syncNodes, fetchAllNodes } from './lib/server/sync-nodes';
 import { getNetworkConfig } from './lib/server/network-config';
-import { calculateNetworkHealth } from './lib/utils/network-health';
+import { calculateNetworkHealth, getLatestVersion } from './lib/utils/network-health';
 import { PNode } from './lib/types/pnode';
 
 const app = express();
@@ -657,12 +657,27 @@ app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
     }
 
     console.log(`[RenderAPI] Fetching health history for period: ${period} (${new Date(startTime).toISOString()} to ${new Date(now).toISOString()})`);
+    console.log(`[RenderAPI] Query parameters: startTime=${startTime}, endTime=${now}, limit=1000`);
 
     // Fetch historical snapshots
     const snapshots = await getHistoricalSnapshots(startTime, now, 1000);
-
+    
+    console.log(`[RenderAPI] MongoDB query returned ${snapshots.length} snapshots`);
+    
     if (snapshots.length === 0) {
-      console.log('[RenderAPI] No historical snapshots found');
+      // Check if there are ANY snapshots in the database (regardless of time range)
+      const allSnapshots = await getHistoricalSnapshots(undefined, undefined, 10);
+      console.log(`[RenderAPI] Total snapshots in database (any time): ${allSnapshots.length}`);
+      
+      if (allSnapshots.length > 0) {
+        console.log(`[RenderAPI] ⚠️  Found ${allSnapshots.length} snapshots but none in the requested time range`);
+        console.log(`[RenderAPI] Oldest snapshot: ${allSnapshots[0] ? new Date(allSnapshots[0].timestamp).toISOString() : 'N/A'}`);
+        console.log(`[RenderAPI] Newest snapshot: ${allSnapshots[allSnapshots.length - 1] ? new Date(allSnapshots[allSnapshots.length - 1].timestamp).toISOString() : 'N/A'}`);
+      } else {
+        console.log(`[RenderAPI] ⚠️  No snapshots found in database at all - historical snapshots may not be being stored`);
+      }
+      
+      console.log('[RenderAPI] No historical snapshots found for requested period');
       return res.json({
         success: true,
         data: {
@@ -682,53 +697,45 @@ app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
 
     console.log(`[RenderAPI] Found ${snapshots.length} historical snapshots`);
 
-    // Extract network health data points
-    // If health fields are missing, calculate them from snapshot data
+    // Calculate health directly from aggregated snapshot fields (much faster)
     const healthData = snapshots.map(snapshot => {
-      // Calculate availability if missing
-      const availability = snapshot.networkHealthAvailability !== undefined && snapshot.networkHealthAvailability !== null
-        ? snapshot.networkHealthAvailability
-        : snapshot.totalNodes > 0 
-          ? (snapshot.onlineNodes / snapshot.totalNodes) * 100 
-          : 0;
+      // 1. Availability (40% weight) - % of nodes online
+      const availability = snapshot.totalNodes > 0 
+        ? (snapshot.onlineNodes / snapshot.totalNodes) * 100 
+        : 0;
       
-      // Calculate version health if missing (use version distribution)
-      const versionHealth = snapshot.networkHealthVersion !== undefined && snapshot.networkHealthVersion !== null
-        ? snapshot.networkHealthVersion
-        : snapshot.versionDistribution && Object.keys(snapshot.versionDistribution).length > 0
-          ? (() => {
-              // Find most common version
-              const versions = Object.entries(snapshot.versionDistribution);
-              if (versions.length === 0) return 0;
-              const mostCommon = versions.reduce((max, [v, count]) => 
-                count > max[1] ? [v, count] : max, versions[0]
-              );
-              return mostCommon[1] > 0 ? (mostCommon[1] / snapshot.totalNodes) * 100 : 0;
-            })()
-          : 0;
+      // 2. Version Health (35% weight) - % on latest version
+      let versionHealth = 0;
+      if (snapshot.versionDistribution && Object.keys(snapshot.versionDistribution).length > 0) {
+        // Find latest version
+        const versions = Object.keys(snapshot.versionDistribution);
+        const latestVersion = getLatestVersion(versions);
+        if (latestVersion) {
+          const latestVersionCount = snapshot.versionDistribution[latestVersion] || 0;
+          versionHealth = (latestVersionCount / snapshot.totalNodes) * 100;
+        }
+      }
       
-      // Calculate distribution if missing
-      const distribution = snapshot.networkHealthDistribution !== undefined && snapshot.networkHealthDistribution !== null
-        ? snapshot.networkHealthDistribution
-        : (() => {
-            // Normalize: 10+ countries = 100%, 1 country = 10%
-            const countryDiversity = Math.min(100, (snapshot.countries / 10) * 100);
-            const cityDiversity = Math.min(100, (snapshot.cities / 20) * 100);
-            return (countryDiversity * 0.6 + cityDiversity * 0.4);
-          })();
+      // 3. Distribution (25% weight) - Geographic diversity
+      // Normalize: 10+ countries = 100%, 1 country = 10%
+      const countryDiversity = Math.min(100, (snapshot.countries / 10) * 100);
+      const cityDiversity = Math.min(100, (snapshot.cities / 20) * 100);
+      const distribution = (countryDiversity * 0.6 + cityDiversity * 0.4);
       
-      // Calculate overall if missing
-      const overall = snapshot.networkHealthScore !== undefined && snapshot.networkHealthScore !== null
-        ? snapshot.networkHealthScore
-        : (availability * 0.40 + versionHealth * 0.35 + distribution * 0.25);
+      // Overall weighted score
+      const overall = Math.round(
+        availability * 0.40 +
+        versionHealth * 0.35 +
+        distribution * 0.25
+      );
       
       return {
         timestamp: snapshot.timestamp,
         interval: snapshot.interval,
-        overall: Math.round(overall * 10) / 10,
-        availability: Math.round(availability * 10) / 10,
-        versionHealth: Math.round(versionHealth * 10) / 10,
-        distribution: Math.round(distribution * 10) / 10,
+        overall,
+        availability: Math.round(availability),
+        versionHealth: Math.round(versionHealth),
+        distribution: Math.round(distribution),
         totalNodes: snapshot.totalNodes,
         onlineNodes: snapshot.onlineNodes,
         offlineNodes: snapshot.offlineNodes,

@@ -248,15 +248,68 @@ export async function getHistoricalSnapshots(
       if (endTime) query.timestamp.$lte = endTime;
     }
     
-    const snapshots = await collection
-      .find(query)
+    console.log(`[MongoDB History] Querying snapshots:`, {
+      hasStartTime: !!startTime,
+      hasEndTime: !!endTime,
+      startTime: startTime ? new Date(startTime).toISOString() : undefined,
+      endTime: endTime ? new Date(endTime).toISOString() : undefined,
+      limit,
+      query: JSON.stringify(query),
+    });
+    
+    const queryStartTime = Date.now();
+    
+    // Add timeout to MongoDB query (15 seconds)
+    const queryPromise = collection
+      .find(query, {
+        projection: {
+          timestamp: 1,
+          interval: 1,
+          totalNodes: 1,
+          onlineNodes: 1,
+          offlineNodes: 1,
+          syncingNodes: 1,
+          countries: 1,
+          cities: 1,
+          versionDistribution: 1, // Need this for version health calculation
+        }
+      })
       .sort({ timestamp: 1 }) // Oldest first
       .limit(limit)
+      .maxTimeMS(15000) // 15 second timeout
       .toArray();
+    
+    const timeoutPromise = new Promise<HistoricalSnapshot[]>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('MongoDB query timeout after 15 seconds'));
+      }, 15000);
+    });
+    
+    const snapshots = await Promise.race([queryPromise, timeoutPromise]);
+    const queryDuration = Date.now() - queryStartTime;
+    
+    console.log(`[MongoDB History] Query returned ${snapshots.length} snapshots in ${queryDuration}ms`);
+    
+    if (snapshots.length > 0) {
+      console.log(`[MongoDB History] Sample snapshot fields:`, {
+        timestamp: snapshots[0].timestamp,
+        interval: snapshots[0].interval,
+        totalNodes: snapshots[0].totalNodes,
+        networkHealthScore: snapshots[0].networkHealthScore,
+        hasNetworkHealthAvailability: 'networkHealthAvailability' in snapshots[0],
+        hasNetworkHealthVersion: 'networkHealthVersion' in snapshots[0],
+        hasNetworkHealthDistribution: 'networkHealthDistribution' in snapshots[0],
+      });
+    }
     
     return snapshots;
   } catch (error: any) {
-    console.error('[MongoDB History] ❌ Failed to get snapshots:', error?.message || error);
+    console.error('[MongoDB History] ❌ Failed to get snapshots:', {
+      error: error?.message || error,
+      stack: error?.stack,
+      name: error?.name,
+      isTimeout: error?.message?.includes('timeout'),
+    });
     return [];
   }
 }

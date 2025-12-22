@@ -1002,7 +1002,7 @@ function CountryDetailContent() {
                       </div>
 
                       {/* Stats Grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 animate-slide-in-bottom" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 animate-slide-in-bottom" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
                         <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#3F8277]/50 transition-all duration-300">
                           <div className="flex items-center gap-2 mb-2">
                             <Server className="w-4 h-4 text-[#3F8277]" />
@@ -1060,6 +1060,112 @@ function CountryDetailContent() {
                           </div>
                           <div className="text-xs text-foreground/50 mt-1">Average</div>
                         </div>
+
+                        {/* Total RAM */}
+                        {stats.totalRAM > 0 && (
+                          <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#3F8277]/50 transition-all duration-300">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Zap className="w-4 h-4 text-[#3F8277]" />
+                              <span className="text-xs font-medium text-foreground/60 uppercase">Total RAM</span>
+                            </div>
+                            <div className="text-xl font-bold text-foreground">
+                              {formatStorageBytes(stats.totalRAM)}
+                            </div>
+                            {stats.usedRAM > 0 && (
+                              <div className="text-xs text-foreground/50 mt-1">
+                                {formatStorageBytes(stats.usedRAM)} used
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Packets */}
+                        {(stats.totalPacketsReceived > 0 || stats.totalPacketsSent > 0) && (
+                          <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#F0A741]/50 transition-all duration-300">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Activity className="w-4 h-4 text-[#F0A741]" />
+                              <span className="text-xs font-medium text-foreground/60 uppercase">Packets</span>
+                            </div>
+                            <div className="text-xl font-bold text-foreground">
+                              {formatNumber(stats.totalPacketsReceived + stats.totalPacketsSent)}
+                            </div>
+                            <div className="text-xs text-foreground/50 mt-1">
+                              {formatNumber(stats.totalPacketsReceived)} Rx / {formatNumber(stats.totalPacketsSent)} Tx
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Credits */}
+                        {stats.totalCredits > 0 && (
+                          <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#F0A741]/50 transition-all duration-300">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Award className="w-4 h-4 text-[#F0A741]" />
+                              <span className="text-xs font-medium text-foreground/60 uppercase">Credits</span>
+                            </div>
+                            <div className="text-xl font-bold text-foreground">
+                              <AnimatedNumber value={stats.totalCredits} />
+                            </div>
+                            <div className="text-xs text-foreground/50 mt-1">
+                              {stats.nodesReportingCredits} nodes
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Average Latency */}
+                        {stats.avgLatency > 0 && (
+                          <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#9CA3AF]/50 transition-all duration-300">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Clock className="w-4 h-4 text-[#9CA3AF]" />
+                              <span className="text-xs font-medium text-foreground/60 uppercase">Latency</span>
+                            </div>
+                            <div className="text-xl font-bold text-foreground">
+                              <AnimatedNumber value={stats.avgLatency} />ms
+                            </div>
+                            <div className="text-xs text-foreground/50 mt-1">Average</div>
+                          </div>
+                        )}
+
+                        {/* Average Uptime */}
+                        {stats.avgUptimeSeconds > 0 && (
+                          <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#3F8277]/50 transition-all duration-300">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Clock className="w-4 h-4 text-[#3F8277]" />
+                              <span className="text-xs font-medium text-foreground/60 uppercase">Uptime</span>
+                            </div>
+                            <div className="text-xl font-bold text-foreground">
+                              {formatUptimeDuration(stats.avgUptimeSeconds)}
+                            </div>
+                            <div className="text-xs text-foreground/50 mt-1">Average</div>
+                          </div>
+                        )}
+
+                        {/* Active Streams */}
+                        {stats.totalActiveStreams > 0 && (
+                          <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#F0A741]/50 transition-all duration-300">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Activity className="w-4 h-4 text-[#F0A741]" />
+                              <span className="text-xs font-medium text-foreground/60 uppercase">Streams</span>
+                            </div>
+                            <div className="text-xl font-bold text-foreground">
+                              <AnimatedNumber value={stats.totalActiveStreams} />
+                            </div>
+                            <div className="text-xs text-foreground/50 mt-1">Active</div>
+                          </div>
+                        )}
+
+                        {/* Packet Rate */}
+                        {stats.avgPacketRate > 0 && (
+                          <div className="p-4 rounded-xl bg-background/40 border border-border/40 backdrop-blur-sm hover:border-[#3F8277]/50 transition-all duration-300">
+                            <div className="flex items-center gap-2 mb-2">
+                              <TrendingUp className="w-4 h-4 text-[#3F8277]" />
+                              <span className="text-xs font-medium text-foreground/60 uppercase">Packet Rate</span>
+                            </div>
+                            <div className="text-xl font-bold text-foreground">
+                              {formatPacketRate(stats.avgPacketRate)}
+                            </div>
+                            <div className="text-xs text-foreground/50 mt-1">Average</div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

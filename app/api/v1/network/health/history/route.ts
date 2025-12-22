@@ -31,18 +31,74 @@ export async function GET(request: Request) {
     const period = searchParams.get('period') || '7d';
 
     console.log(`[NetworkHealthHistory] Proxying health history request to backend: period=${period}`);
+    console.log(`[NetworkHealthHistory] RENDER_API_URL: ${RENDER_API_URL ? 'SET' : 'NOT SET'}`);
+    console.log(`[NetworkHealthHistory] API_SECRET: ${API_SECRET ? 'SET' : 'NOT SET'}`);
 
     // Proxy to backend API server
     const url = `${RENDER_API_URL}/api/v1/network/health/history?period=${period}`;
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
-      },
-    });
+    console.log(`[NetworkHealthHistory] Backend URL: ${url}`);
+    
+    // Add timeout to backend fetch (40 seconds - allows time for MongoDB + calculation)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      console.error('[NetworkHealthHistory] ❌ Backend fetch timeout after 40 seconds');
+    }, 40000); // 40 second timeout
+    
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        console.error('[NetworkHealthHistory] ❌ Backend fetch timed out');
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Backend API timeout - the backend server took too long to respond. Check if the backend is running and accessible.',
+            data: {
+              health: [],
+            },
+          },
+          { status: 504 }
+        );
+      }
+      console.error('[NetworkHealthHistory] ❌ Backend fetch error:', {
+        error: fetchError.message,
+        name: fetchError.name,
+        cause: fetchError.cause,
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Failed to connect to backend: ${fetchError.message}. Check if RENDER_API_URL is correct and the backend is running.`,
+          data: {
+            health: [],
+          },
+        },
+        { status: 502 }
+      );
+    }
+
+    console.log(`[NetworkHealthHistory] Backend response status: ${response.status} ${response.statusText}`);
 
     const data = await response.json();
+    console.log(`[NetworkHealthHistory] Backend response data:`, {
+      success: data.success,
+      hasData: !!data.data,
+      hasHealth: !!data.data?.health,
+      healthLength: data.data?.health?.length || 0,
+      dataPoints: data.data?.dataPoints || 0,
+      error: data.error,
+    });
 
     if (!response.ok) {
       console.error('[NetworkHealthHistory] ❌ Backend API returned error:', response.status, data);
@@ -58,7 +114,25 @@ export async function GET(request: Request) {
       );
     }
 
-    console.log(`[NetworkHealthHistory] ✅ Returning health history from backend: ${data.data?.health?.length || 0} data points`);
+    // Log detailed response structure
+    if (data.success && data.data) {
+      console.log(`[NetworkHealthHistory] ✅ Returning health history from backend: ${data.data.health?.length || 0} data points`);
+      if (data.data.health && data.data.health.length > 0) {
+        console.log(`[NetworkHealthHistory] Sample data point:`, {
+          timestamp: data.data.health[0].timestamp,
+          overall: data.data.health[0].overall,
+          availability: data.data.health[0].availability,
+          versionHealth: data.data.health[0].versionHealth,
+          distribution: data.data.health[0].distribution,
+        });
+      } else {
+        console.warn(`[NetworkHealthHistory] ⚠️  Backend returned success but health array is empty`);
+        console.warn(`[NetworkHealthHistory] Full response:`, JSON.stringify(data, null, 2));
+      }
+    } else {
+      console.error(`[NetworkHealthHistory] ❌ Backend response missing expected structure:`, data);
+    }
+
     return NextResponse.json(data);
   } catch (error: any) {
     console.error('[NetworkHealthHistory] ❌ Failed to fetch health history:', error);
