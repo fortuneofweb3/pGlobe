@@ -1404,6 +1404,12 @@ function NodeDetailContent() {
                               TRYNET
                             </span>
                           )}
+                          {node.createdAt && (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-background/50 text-foreground/70 border border-border/30 backdrop-blur-sm" title="First detected by database. Actual network join time may vary.">
+                              <Clock className="w-3 h-3 text-[#F0A741]" />
+                              Joined {new Date(node.createdAt).toLocaleString()}
+                            </span>
+                          )}
                         </div>
 
                         {/* Title */}
@@ -1473,10 +1479,10 @@ function NodeDetailContent() {
                         Public
                       </span>
                     )}
-                    {node.isPublic === false && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
-                        <Lock className="w-3 h-3" />
-                        Private
+                    {node.createdAt && (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-muted/20 text-foreground/60 border border-border/30" title="First detected by database. Actual network join time may vary.">
+                        <Clock className="w-3 h-3 text-[#F0A741]" />
+                        Joined {new Date(node.createdAt).toLocaleString()}
                       </span>
                     )}
                   </div>
@@ -1539,17 +1545,6 @@ function NodeDetailContent() {
                         <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
                           <span className="text-sm text-foreground/80">Version</span>
                           <span className="text-sm font-mono font-semibold text-foreground">{node.version}</span>
-                        </div>
-                      )}
-                      {node.createdAt && (
-                        <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                          <span className="text-sm text-foreground/80">Joined</span>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-sm font-mono font-semibold text-foreground">
-                              {new Date(node.createdAt).toLocaleString()}
-                            </span>
-                            <InfoTooltip content={`First detected by database. Actual network join time may vary.`} />
-                          </div>
                         </div>
                       )}
                     </div>
@@ -1709,17 +1704,6 @@ function NodeDetailContent() {
                             : '—'}
                         </span>
                       </div>
-                      {node.createdAt && (
-                        <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                          <span className="text-sm text-foreground/80">Joined</span>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-sm font-mono font-semibold text-foreground">
-                              {new Date(node.createdAt).toLocaleString()}
-                            </span>
-                            <InfoTooltip content={`First detected by database. Actual network join time may vary.`} />
-                          </div>
-                        </div>
-                      )}
                       <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
                         <span className="text-sm text-foreground/80">Registered</span>
                         <div className="flex items-center gap-1.5">
@@ -2341,9 +2325,11 @@ function NodeDetailContent() {
                             _shouldFilter: false,
                           });
                         } else if (timeSinceLastPoint < 60000) {
-                          // Gap is too short (< 1 minute), just update the last point's total for tooltip accuracy
-                          // But don't change the value (delta) to avoid spikes
+                          // Gap is too short (< 1 minute), update the last point's total and RELATIVE delta for accuracy
                           lastPoint._credits = currentTotalCredits;
+                          if (lastPoint._previousCredits !== undefined && lastPoint._previousCredits !== null) {
+                            lastPoint.value = currentTotalCredits - lastPoint._previousCredits;
+                          }
                         }
                       } else if (node.credits !== undefined && node.credits !== null) {
                         // No data points yet, add initial point
@@ -2399,7 +2385,7 @@ function NodeDetailContent() {
                                       </span>
                                     </div>
                                     <div className="text-foreground/60">Total Credits: {displayTotal.toLocaleString()}</div>
-                                    {d._previousCredits !== undefined && d._previousCredits !== null && !isMostRecent && (
+                                    {d._previousCredits !== undefined && d._previousCredits !== null && (
                                       <div className="text-foreground/60 text-[10px]">Previous: {d._previousCredits.toLocaleString()}</div>
                                     )}
                                   </div>
