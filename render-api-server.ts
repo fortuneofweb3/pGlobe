@@ -697,45 +697,22 @@ app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
 
     console.log(`[RenderAPI] Found ${snapshots.length} historical snapshots`);
 
-    // Calculate health directly from aggregated snapshot fields (much faster)
+    // Use pre-calculated health scores from snapshots (already calculated with full node data)
     const healthData = snapshots.map(snapshot => {
-      // 1. Availability (40% weight) - % of nodes online
-      const availability = snapshot.totalNodes > 0 
-          ? (snapshot.onlineNodes / snapshot.totalNodes) * 100 
-          : 0;
-      
-      // 2. Version Health (35% weight) - % on latest version
-      let versionHealth = 0;
-      if (snapshot.versionDistribution && Object.keys(snapshot.versionDistribution).length > 0) {
-        // Find latest version
-        const versions = Object.keys(snapshot.versionDistribution);
-        const latestVersion = getLatestVersion(versions);
-        if (latestVersion) {
-          const latestVersionCount = snapshot.versionDistribution[latestVersion] || 0;
-          versionHealth = (latestVersionCount / snapshot.totalNodes) * 100;
-        }
-      }
-      
-      // 3. Distribution (25% weight) - Geographic diversity
-            // Normalize: 10+ countries = 100%, 1 country = 10%
-            const countryDiversity = Math.min(100, (snapshot.countries / 10) * 100);
-            const cityDiversity = Math.min(100, (snapshot.cities / 20) * 100);
-      const distribution = (countryDiversity * 0.6 + cityDiversity * 0.4);
-      
-      // Overall weighted score
-      const overall = Math.round(
-        availability * 0.40 +
-        versionHealth * 0.35 +
-        distribution * 0.25
-      );
-      
+      // Use stored health scores if available (calculated when snapshot was created)
+      // This ensures consistency with the live health score calculation
+      const overall = snapshot.networkHealthScore ?? 0;
+      const availability = snapshot.networkHealthAvailability ?? 0;
+      const versionHealth = snapshot.networkHealthVersion ?? 0;
+      const distribution = snapshot.networkHealthDistribution ?? 0;
+
       return {
         timestamp: snapshot.timestamp,
         interval: snapshot.interval,
         overall,
-        availability: Math.round(availability),
-        versionHealth: Math.round(versionHealth),
-        distribution: Math.round(distribution),
+        availability,
+        versionHealth,
+        distribution,
         totalNodes: snapshot.totalNodes,
         onlineNodes: snapshot.onlineNodes,
         offlineNodes: snapshot.offlineNodes,

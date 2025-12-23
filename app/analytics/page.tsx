@@ -149,16 +149,32 @@ export default function AnalyticsPage() {
               console.error('[Analytics] ❌ All data points were filtered out as invalid!');
             }
 
-            // Add current live health score as the final point to ensure consistency
+            // Always add current live health score as the final point to ensure chart matches live score
             if (transformed.length > 0 && nodes.length > 0) {
               try {
                 const { calculateNetworkHealth } = await import('@/lib/utils/network-health');
                 const currentHealth = calculateNetworkHealth(nodes);
                 const now = Date.now();
 
-                // Only add if the last historical point is more than 1 hour old
+                // Always add current point (replaces the last point if it's recent to avoid duplication)
                 const lastHistorical = transformed[transformed.length - 1];
-                if (lastHistorical && now - lastHistorical.timestamp > 3600000) { // 1 hour
+                const timeSinceLastSnapshot = lastHistorical ? now - lastHistorical.timestamp : Infinity;
+
+                // If last snapshot is less than 5 minutes old, replace it with current data
+                // Otherwise, add as new point
+                if (timeSinceLastSnapshot < 300000) { // 5 minutes
+                  transformed[transformed.length - 1] = {
+                    timestamp: now,
+                    avgUptime: 0,
+                    onlineCount: nodes.filter(n => n.status === 'online').length,
+                    totalNodes: nodes.length,
+                    networkHealthScore: currentHealth.overall,
+                    networkHealthAvailability: currentHealth.availability,
+                    networkHealthVersion: currentHealth.versionHealth,
+                    networkHealthDistribution: currentHealth.distribution,
+                  };
+                  console.log('[Analytics] Replaced most recent snapshot with current live health score:', currentHealth.overall);
+                } else {
                   transformed.push({
                     timestamp: now,
                     avgUptime: 0,
@@ -169,7 +185,7 @@ export default function AnalyticsPage() {
                     networkHealthVersion: currentHealth.versionHealth,
                     networkHealthDistribution: currentHealth.distribution,
                   });
-                  console.log('[Analytics] Added current live health score to historical data');
+                  console.log('[Analytics] Added current live health score to historical data:', currentHealth.overall);
                 }
               } catch (error) {
                 console.warn('[Analytics] Failed to add current health to historical data:', error);
