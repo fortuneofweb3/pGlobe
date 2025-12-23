@@ -444,6 +444,7 @@ function QuickStartGuide() {
             <li><strong>40%</strong> - Availability (online nodes / total nodes)</li>
             <li><strong>35%</strong> - Version Health (% of nodes on the latest version)</li>
             <li><strong>25%</strong> - Geographic Distribution (diversity of node locations)</li>
+            <li><strong>Regional Scores</strong> - Health is also calculated individually for every country and region based on local node performance.</li>
           </ul>
 
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Node Identification</h3>
@@ -474,8 +475,8 @@ function QuickStartGuide() {
             <h3 className="font-semibold text-foreground mb-2">Why do some nodes show "N/A" for stats?</h3>
             <p className="text-sm text-muted-foreground">
               pNode operators can choose to keep their pRPC endpoint private (localhost-only) for security.
-              This is the recommended security configuration. Only nodes with public pRPC expose detailed statistics.
-              We still track these nodes for network discovery and basic status, but detailed metrics aren't available.
+              This is the recommended security configuration and the network-wide standard. Only nodes with public pRPC expose detailed statistics.
+              Typically, only ~10-15 nodes per hundred report full hardware metrics. We still track all nodes via gossip for discovery and basic status, but resource metrics are absent by design for security-conscious operators.
             </p>
           </div>
           <div className="border border-border rounded-lg p-4">
@@ -913,6 +914,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
             <li><strong>Storage:</strong> Nodes with the highest storage capacity</li>
             <li><strong>Packets:</strong> Nodes with the highest packet transfer rates</li>
             <li><strong>Credits:</strong> Nodes with the highest reputation credits</li>
+            <li><strong>Regional Earnings:</strong> Top earning countries and regions based on aggregate credit accumulation.</li>
           </ul>
           <p className="text-foreground mb-4">
             Click any node in the rankings to view its detailed information.
@@ -1289,6 +1291,8 @@ function AIFeaturesDocs({ onClose }: { onClose: () => void }) {
                   <li>Smart analysis - combines multiple data sources to answer complex questions</li>
                   <li>Performance insights - analyzes historical trends and patterns</li>
                   <li>Geographic intelligence - finds closest nodes, compares countries</li>
+                  <li>Regional Analytics - understands regional health scores and credit earnings</li>
+                  <li>Metadata Insights - explains database discovery vs network join times</li>
                 </ul>
               </div>
             </div>
@@ -1321,6 +1325,16 @@ function AIFeaturesDocs({ onClose }: { onClose: () => void }) {
                 <li>"Show me nodes with high CPU usage"</li>
                 <li>"What's the health score of node [pubkey]?"</li>
                 <li>"Compare these two nodes: [pubkey1] and [pubkey2]"</li>
+                <li>"Which nodes joined the database this week?"</li>
+              </ul>
+            </div>
+            <div className="border border-border rounded-lg p-4">
+              <h4 className="font-semibold text-foreground mb-2">Regional Analytics</h4>
+              <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                <li>"What's the health score of Nigeria?"</li>
+                <li>"Which region earns the most credits?"</li>
+                <li>"Compare credit trends between US and Germany"</li>
+                <li>"How has the online rate changed in Europe?"</li>
               </ul>
             </div>
             <div className="border border-border rounded-lg p-4">
@@ -1415,6 +1429,7 @@ function AIFeaturesDocs({ onClose }: { onClose: () => void }) {
             <li>Locate nodes nearest to you or any IP</li>
             <li>Calculate distances between locations and nodes</li>
             <li>Compare geographic distributions</li>
+            <li>Analyze historical patterns for specific regions or the whole network</li>
           </ul>
         </section>
 
@@ -1458,6 +1473,18 @@ function AIFeaturesDocs({ onClose }: { onClose: () => void }) {
         </section>
 
         <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Technical Details & Accuracy</h2>
+
+          <div className="bg-orange-950/30 border border-orange-800 rounded-lg p-4 mb-6">
+            <h4 className="font-semibold text-foreground mb-2">⚠️ Important Note on Metadata</h4>
+            <p className="text-sm text-foreground mb-2">
+              <strong>Created At Fields:</strong> The timestamps for when a pNode "joined" the network reflect when pGlobe first discovered the node in our database. It does not necessarily reflect the official Solana on-chain registration time.
+            </p>
+            <p className="text-sm text-foreground">
+              <strong>Snapshot Frequency:</strong> Network-wide snapshots are recorded every <strong>10 minutes</strong>. Historical charts and AI-driven performance trends reflect these 10-minute intervals.
+            </p>
+          </div>
+
           <h2 className="text-2xl font-semibold text-foreground mb-4">Technical Details</h2>
 
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">AI Model</h3>

@@ -1289,7 +1289,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
       let lineEndY: number;
 
       if (isNodeOnRight) {
-        targetPopupX = containerLeft + margin + 60; // Shift right to avoid covering zoom buttons at bottom-left
+        targetPopupX = containerLeft + margin + (currentIsMobile ? 0 : 60); // Shift right on desktop to avoid covering zoom buttons
         // Add mobile offset to prevent covering bottom controls
         targetPopupY = containerTop + containerHeight - popupHeight - margin - currentMobileBottomOffset;
         lineEndX = popupWidth / 2;
@@ -1413,7 +1413,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
         let lineEndY: number;
 
         if (isNodeOnRight) {
-          popupX = initialContainerRect.left + margin + 60; // Shift right to avoid covering zoom buttons
+          popupX = initialContainerRect.left + margin + (initialIsMobile ? 0 : 60); // Shift right on desktop to avoid covering zoom buttons
           // Add mobile offset to prevent covering bottom controls
           popupY = initialContainerRect.top + initialContainerRect.height - popupHeight - margin - initialMobileBottomOffset;
           lineEndY = 0;

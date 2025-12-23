@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { calculateNetworkHealth } from '@/lib/utils/network-health';
+import { PNode } from '@/lib/types/pnode';
 
 export const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 
@@ -208,13 +210,13 @@ export const tools = [
       parameters: {
         type: 'object',
         properties: {
-          country: { 
-            type: 'string', 
-            description: 'Country name (e.g., "Nigeria", "United States") or country code (e.g., "NG", "US")' 
+          country: {
+            type: 'string',
+            description: 'Country name (e.g., "Nigeria", "United States") or country code (e.g., "NG", "US")'
           },
-          countryCode: { 
-            type: 'string', 
-            description: 'Optional: ISO 2-letter country code (e.g., "NG", "US") - helps with matching if provided' 
+          countryCode: {
+            type: 'string',
+            description: 'Optional: ISO 2-letter country code (e.g., "NG", "US") - helps with matching if provided'
           }
         },
         required: ['country']
@@ -229,21 +231,21 @@ export const tools = [
       parameters: {
         type: 'object',
         properties: {
-          country: { 
-            type: 'string', 
-            description: 'Country name (e.g., "Nigeria", "United States") or country code (e.g., "NG", "US")' 
+          country: {
+            type: 'string',
+            description: 'Country name (e.g., "Nigeria", "United States") or country code (e.g., "NG", "US")'
           },
-          countryCode: { 
-            type: 'string', 
-            description: 'Optional: ISO 2-letter country code (e.g., "NG", "US") - helps with matching if provided' 
+          countryCode: {
+            type: 'string',
+            description: 'Optional: ISO 2-letter country code (e.g., "NG", "US") - helps with matching if provided'
           },
-          hours: { 
-            type: 'number', 
-            description: 'Number of hours to look back (default: 168 = 7 days)' 
+          hours: {
+            type: 'number',
+            description: 'Number of hours to look back (default: 168 = 7 days)'
           },
-          days: { 
-            type: 'number', 
-            description: 'Number of days to look back (alternative to hours, default: 7)' 
+          days: {
+            type: 'number',
+            description: 'Number of days to look back (alternative to hours, default: 7)'
           }
         },
         required: ['country']
@@ -264,9 +266,9 @@ export const continentCountries: Record<string, string[]> = {
 
 // Execute a function call
 export async function executeFunction(
-  name: string, 
-  args: any, 
-  baseUrl: string, 
+  name: string,
+  args: any,
+  baseUrl: string,
   clientIp?: string,
   onStatusUpdate?: (status: string) => void
 ): Promise<any> {
@@ -284,29 +286,29 @@ export async function executeFunction(
     'get_country_data': 'Fetching country statistics...',
     'get_country_history': 'Fetching country historical data...',
   };
-  
+
   const statusMessage = functionStatusMap[name] || `Executing ${name}...`;
   if (onStatusUpdate) {
     onStatusUpdate(statusMessage);
   }
   console.log(`[AI Chat] Executing function: ${name}`, args);
-  
+
   try {
     switch (name) {
       case 'filter_nodes': {
         const filters: any = {};
-        
+
         if (args.continent) {
           const countries = continentCountries[args.continent.toLowerCase()];
           if (countries) {
             filters.country = countries;
           }
         } else if (args.country) {
-          filters.country = args.country.includes(',') 
+          filters.country = args.country.includes(',')
             ? args.country.split(',').map((c: string) => c.trim().toUpperCase())
             : args.country.toUpperCase();
         }
-        
+
         if (args.status) filters.status = args.status;
         if (args.minRamPercent !== undefined) filters.minRamPercent = args.minRamPercent;
         if (args.maxRamPercent !== undefined) filters.maxRamPercent = args.maxRamPercent;
@@ -315,43 +317,43 @@ export async function executeFunction(
         if (args.minCredits !== undefined) filters.minCredits = args.minCredits;
         if (args.minStorageBytes !== undefined) filters.minStorageBytes = args.minStorageBytes;
         if (args.minUptimeDays !== undefined) filters.minUptimeDays = args.minUptimeDays;
-        
+
         const response = await fetch(`${baseUrl}/api/ai/query`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ queryType: 'nodes', filters }),
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           return formatNodesResult(data.nodes || [], name);
         }
         return { error: 'Failed to fetch nodes' };
       }
-      
+
       case 'get_node_details': {
         const response = await fetch(`${baseUrl}/api/ai/query`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            queryType: 'node', 
+          body: JSON.stringify({
+            queryType: 'node',
             pubkey: args.pubkey,
-            address: args.address 
+            address: args.address
           }),
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           return data.node ? formatNodeDetails(data.node) : { error: 'Node not found' };
         }
         return { error: 'Failed to fetch node details' };
       }
-      
+
       case 'get_credits_change': {
         const response = await fetch(`${baseUrl}/api/ai/query`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             queryType: 'credits-change',
             filters: {
               minCreditsEarned: args.minCreditsEarned ?? 0,
@@ -360,15 +362,15 @@ export async function executeFunction(
             }
           }),
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           let nodes = data.nodes || [];
-          
+
           if (args.maxCreditsEarned !== undefined) {
             nodes = nodes.filter((n: any) => n.creditsEarned < args.maxCreditsEarned);
           }
-          
+
           return {
             count: nodes.length,
             timeRange: args.timeRange || '1h',
@@ -383,18 +385,18 @@ export async function executeFunction(
         }
         return { error: 'Failed to fetch credit changes' };
       }
-      
+
       case 'get_network_stats': {
         const response = await fetch(`${baseUrl}/api/ai/query`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ queryType: 'nodes', filters: {} }),
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           const nodes = data.nodes || [];
-          
+
           const stats = {
             totalNodes: nodes.length,
             onlineNodes: nodes.filter((n: any) => n.s === 'online').length,
@@ -402,22 +404,31 @@ export async function executeFunction(
             offlineNodes: nodes.filter((n: any) => n.s === 'offline').length,
             totalStorageBytes: nodes.reduce((sum: number, n: any) => sum + (n.sc || 0), 0),
             totalCredits: nodes.reduce((sum: number, n: any) => sum + (n.cr || 0), 0),
-            avgUptimeSeconds: nodes.length > 0 
-              ? nodes.reduce((sum: number, n: any) => sum + (n.us || 0), 0) / nodes.length 
+            avgUptimeSeconds: nodes.length > 0
+              ? nodes.reduce((sum: number, n: any) => sum + (n.us || 0), 0) / nodes.length
               : 0,
+            healthScore: calculateNetworkHealth(nodes.map((n: any) => ({
+              id: n.p || n.pubkey,
+              status: n.s || n.status,
+              version: n.v || n.version,
+              locationData: {
+                country: n.c || n.country,
+                city: n.cy || n.city
+              }
+            } as PNode))).overall,
             countryDistribution: {} as Record<string, number>
           };
-          
+
           nodes.forEach((n: any) => {
             const country = n.c || 'Unknown';
             stats.countryDistribution[country] = (stats.countryDistribution[country] || 0) + 1;
           });
-          
+
           return stats;
         }
         return { error: 'Failed to fetch network stats' };
       }
-      
+
       case 'get_user_location': {
         // Use client-provided IP if available (more accurate), otherwise fall back to server-side detection
         if (clientIp) {
@@ -449,7 +460,7 @@ export async function executeFunction(
             };
           }
         }
-        
+
         // Fall back to server-side detection
         const response = await fetch(`${baseUrl}/api/client-location`);
         if (response.ok) {
@@ -461,7 +472,7 @@ export async function executeFunction(
         }
         return { error: 'Failed to get user location' };
       }
-      
+
       case 'get_location_for_ip': {
         const response = await fetch(`${baseUrl}/api/geo?ip=${encodeURIComponent(args.ip)}`);
         if (response.ok) {
@@ -480,11 +491,11 @@ export async function executeFunction(
         }
         return { error: 'Failed to get location for IP' };
       }
-      
+
       case 'find_closest_nodes': {
         let lat: number, lon: number;
         let userCountryCode: string | null = null;
-        
+
         // Get location from IP or use provided coordinates
         if (args.ip) {
           const geoResponse = await fetch(`${baseUrl}/api/geo?ip=${encodeURIComponent(args.ip)}`);
@@ -516,7 +527,7 @@ export async function executeFunction(
         } else {
           return { error: 'Either ip or lat/lon must be provided' };
         }
-        
+
         // Get all nodes - use the same fast endpoint as the frontend (/api/pnodes)
         // This is faster than /api/ai/query because it's cached and optimized (same as scan page uses)
         let nodesResponse: Response;
@@ -530,13 +541,13 @@ export async function executeFunction(
           console.error('[AI Chat] Failed to fetch nodes from /api/pnodes:', fetchError?.message);
           return { error: `Failed to fetch nodes: ${fetchError?.message || 'Network error'}` };
         }
-        
+
         if (!nodesResponse.ok) {
           const errorText = await nodesResponse.text().catch(() => 'Unknown error');
           console.error('[AI Chat] /api/pnodes returned error:', nodesResponse.status, errorText);
           return { error: `Failed to fetch nodes: ${nodesResponse.status} ${errorText}` };
         }
-        
+
         let nodesData: any;
         try {
           nodesData = await nodesResponse.json();
@@ -544,22 +555,22 @@ export async function executeFunction(
           console.error('[AI Chat] Failed to parse nodes response:', parseError?.message);
           return { error: 'Failed to parse nodes response' };
         }
-        
+
         const nodes = nodesData.nodes || [];
         if (!Array.isArray(nodes)) {
           console.error('[AI Chat] Invalid nodes data structure:', typeof nodes);
           return { error: 'Invalid nodes data structure' };
         }
-        
+
         // Calculate distance for each node (Haversine formula - matches scan page exactly)
         // Use the same structure as scan page: node.locationData.lat/lon
         const nodesWithDistance = nodes
           .filter((node: any) => {
             // Same filter as scan page
-            const hasLocation = node.locationData?.lat != null && 
-                                node.locationData?.lon != null &&
-                                !isNaN(node.locationData.lat) &&
-                                !isNaN(node.locationData.lon);
+            const hasLocation = node.locationData?.lat != null &&
+              node.locationData?.lon != null &&
+              !isNaN(node.locationData.lat) &&
+              !isNaN(node.locationData.lon);
             return hasLocation;
           })
           .map((node: any) => {
@@ -567,16 +578,16 @@ export async function executeFunction(
             const R = 6371; // Radius of the Earth in kilometers
             const dLat = (node.locationData.lat - lat) * Math.PI / 180;
             const dLon = (node.locationData.lon - lon) * Math.PI / 180;
-            const a = 
+            const a =
               Math.sin(dLat / 2) * Math.sin(dLat / 2) +
               Math.cos(lat * Math.PI / 180) * Math.cos(node.locationData.lat * Math.PI / 180) *
               Math.sin(dLon / 2) * Math.sin(dLon / 2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             const distanceKm = R * c;
-            
+
             const nodeCountry = (node.locationData?.countryCode || node.locationData?.country || 'Unknown').toUpperCase();
             const isSameCountry = userCountryCode && nodeCountry === userCountryCode.toUpperCase();
-            
+
             // Format node details for AI response
             return {
               pubkey: node.pubkey || node.publicKey || node.id,
@@ -603,7 +614,7 @@ export async function executeFunction(
             return (a.distanceKm || Infinity) - (b.distanceKm || Infinity);
           })
           .slice(0, args.limit || 20);
-        
+
         return {
           location: { lat, lon, countryCode: userCountryCode },
           count: nodesWithDistance.length,
@@ -611,73 +622,73 @@ export async function executeFunction(
           sameCountryNodes: nodesWithDistance.filter((n: any) => n.isSameCountry).length
         };
       }
-      
+
       case 'compare_nodes': {
         const pubkeys = args.pubkeys || [];
         const addresses = args.addresses || [];
-        
+
         if (pubkeys.length === 0 && addresses.length === 0) {
           return { error: 'At least one pubkey or address must be provided' };
         }
-        
+
         // Fetch all nodes
         const nodesResponse = await fetch(`${baseUrl}/api/ai/query`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ queryType: 'nodes', filters: {} }),
         });
-        
+
         if (!nodesResponse.ok) {
           return { error: 'Failed to fetch nodes' };
         }
-        
+
         const nodesData = await nodesResponse.json();
         const allNodes = nodesData.nodes || [];
-        
+
         // Find matching nodes (case-insensitive comparison)
         const matchedNodes = allNodes.filter((n: any) => {
           const nodePubkey = (n.p || n.pubkey || '').toString().toLowerCase();
           const nodeAddress = (n.a || n.address || '').toString().toLowerCase();
-          
+
           return pubkeys.some((pk: string) => nodePubkey === pk.toLowerCase()) ||
-                 addresses.some((addr: string) => nodeAddress === addr.toLowerCase());
+            addresses.some((addr: string) => nodeAddress === addr.toLowerCase());
         });
-        
+
         if (matchedNodes.length === 0) {
           return { error: 'No matching nodes found' };
         }
-        
+
         return {
           count: matchedNodes.length,
           nodes: matchedNodes.map((n: any) => formatNodeDetails(n))
         };
       }
-      
+
       case 'compare_countries': {
         const countries = (args.countries || []).map((c: string) => c.toUpperCase());
-        
+
         if (countries.length === 0) {
           return { error: 'At least one country code must be provided' };
         }
-        
+
         // Fetch all nodes
         const nodesResponse = await fetch(`${baseUrl}/api/ai/query`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ queryType: 'nodes', filters: {} }),
         });
-        
+
         if (!nodesResponse.ok) {
           return { error: 'Failed to fetch nodes' };
         }
-        
+
         const nodesData = await nodesResponse.json();
         const allNodes = nodesData.nodes || [];
-        
+
         // Group by country and calculate stats
         const countryStats = countries.map((country: string) => {
           const countryNodes = allNodes.filter((n: any) => (n.c || 'Unknown').toUpperCase() === country);
-          
+
           if (countryNodes.length === 0) {
             return {
               country,
@@ -693,7 +704,7 @@ export async function executeFunction(
               avgCpuPercent: 0
             };
           }
-          
+
           const online = countryNodes.filter((n: any) => n.s === 'online').length;
           const syncing = countryNodes.filter((n: any) => n.s === 'syncing').length;
           const offline = countryNodes.filter((n: any) => n.s === 'offline').length;
@@ -704,7 +715,7 @@ export async function executeFunction(
           const ramCount = countryNodes.filter((n: any) => n.rp != null).length;
           const totalCpu = countryNodes.filter((n: any) => n.cpu != null).reduce((sum: number, n: any) => sum + (n.cpu || 0), 0);
           const cpuCount = countryNodes.filter((n: any) => n.cpu != null).length;
-          
+
           return {
             country,
             totalNodes: countryNodes.length,
@@ -719,12 +730,12 @@ export async function executeFunction(
             avgCpuPercent: cpuCount > 0 ? totalCpu / cpuCount : 0
           };
         });
-        
+
         return {
           countries: countryStats
         };
       }
-      
+
       case 'get_node_history': {
         // Calculate time range
         const endTime = Date.now();
@@ -735,27 +746,27 @@ export async function executeFunction(
           const hours = args.hours || 24;
           startTime = endTime - (hours * 60 * 60 * 1000);
         }
-        
+
         let nodePubkey: string | null = null;
-        
+
         // If pubkey or address provided, get that specific node's history
         if (args.pubkey || args.address) {
           const nodeResponse = await fetch(`${baseUrl}/api/ai/query`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              queryType: 'node', 
+            body: JSON.stringify({
+              queryType: 'node',
               pubkey: args.pubkey,
-              address: args.address 
+              address: args.address
             }),
           });
-          
+
           if (nodeResponse.ok) {
             const nodeData = await nodeResponse.json();
             nodePubkey = nodeData.node?.p || args.pubkey;
           }
         }
-        
+
         // Get historical data
         const historyUrl = new URL('/api/history', baseUrl);
         if (nodePubkey) {
@@ -763,18 +774,18 @@ export async function executeFunction(
         }
         historyUrl.searchParams.set('startTime', startTime.toString());
         historyUrl.searchParams.set('endTime', endTime.toString());
-        
+
         const historyResponse = await fetch(historyUrl.toString(), {
           signal: AbortSignal.timeout(15000),
         });
-        
+
         if (!historyResponse.ok) {
           return { error: 'Failed to fetch history' };
         }
-        
+
         const historyData = await historyResponse.json();
         const snapshots = historyData.data || [];
-        
+
         return {
           nodePubkey: nodePubkey || null,
           timeRange: {
@@ -786,7 +797,7 @@ export async function executeFunction(
           snapshots: snapshots // Return raw data - AI can analyze it
         };
       }
-      
+
       default:
       case 'get_country_data': {
         const response = await fetch(`${baseUrl}/api/ai/query`, {
@@ -856,9 +867,10 @@ export function formatNodesResult(nodes: any[], functionName: string): any {
     cpuPercent: n.cpu,
     ramPercent: n.rp,
     country: n.c || 'Unknown',
-    city: n.cy || ''
+    city: n.cy || '',
+    createdAt: n.ca || n.createdAt || null
   }));
-  
+
   return {
     count: nodes.length,
     nodes: formatted,
@@ -879,7 +891,8 @@ export function formatNodeDetails(node: any): any {
     cpuPercent: node.cpu,
     ramPercent: node.rp,
     country: node.c || 'Unknown',
-    city: node.cy || ''
+    city: node.cy || '',
+    createdAt: node.ca || node.createdAt || null
   };
 }
 
@@ -912,6 +925,7 @@ HOW DO pNODES EARN CREDITS?
 - Better performance (low latency, high uptime, more storage) = more credits
 - Credits reset monthly (this is the reward cycle)
 - Top performing nodes earn the most credits
+- Credit earnings are also aggregated and tracked at the country and regional level, allowing for cross-region performance comparisons.
 
 XANDEUM NETWORK ARCHITECTURE:
 - Built on Solana blockchain (devnet and mainnet)
@@ -922,6 +936,8 @@ XANDEUM NETWORK ARCHITECTURE:
 - Data is distributed using erasure coding (similar to RAID) for redundancy
 - Clients can retrieve data from any available node holding the shard
 - Network uses DHT (Distributed Hash Table) for content routing
+- Historical Data: The network tracks snapshots for individual pNodes, entire countries, and the total network, enabling deep trend analysis.
+- Resource Reporting Warning: Most pNode operators keep their pRPC (pNode RPC) interface private for security. Detailed metrics like CPU, RAM, and internal Uptime are only available for a small subset of nodes (~10-15 out of 135+) that have public pRPC. Absence of these metrics is normal and expected for security-conscious operators.
 
 WEBSITE PAGES & FEATURES:
 1. Overview (/): Main dashboard with interactive 3D globe, network statistics, health score, top rankings, and node list
@@ -947,6 +963,7 @@ KEY METRICS & DATA FIELDS:
 - Address: Network address in format IP:port (e.g., 192.168.1.1:9001)
 - Pubkey: Unique public key identifier (full base58 string, used for on-chain registration)
 - Latency: Round-trip time to reach the node (measured from user's location, in milliseconds)
+- Created At: The timestamp when the pNode was first indexed by the pGlobe database. IMPORTANT: This reflects database discovery time, not necessarily the official network join time, and should be treated as an estimate.
 
 NETWORK HEALTH & PERFORMANCE INSIGHTS:
 - Network Health Score: Calculated from uptime percentage, online node ratio, and version distribution
@@ -956,6 +973,7 @@ NETWORK HEALTH & PERFORMANCE INSIGHTS:
 - Version distribution matters: Nodes on latest versions typically perform better
 - Geographic distribution: Well-distributed network = better redundancy and latency
 - Storage distribution: Total network capacity indicates growth and adoption
+- Regional Health: Every country and region has its own specific Health Score calculated from its local node performance and version distribution.
 
 INTERPRETING METRICS:
 - High RAM/CPU usage (>80%): Node may be under heavy load or need more resources
@@ -1141,7 +1159,7 @@ export async function callOpenAICompatible(
 
     // Use longer timeout for reasoning models (they can take much longer)
     const timeoutMs = model.includes('reasoner') || model.includes('reasoning') ? 120000 : 60000; // 120s for reasoning, 60s for regular
-    
+
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -1164,13 +1182,13 @@ export async function callOpenAICompatible(
       // Check for timeout errors specifically
       if (fetchError?.name === 'TimeoutError' || fetchError?.name === 'AbortError' || fetchError?.message?.includes('timeout')) {
         console.error(`[${provider}] Request timeout for model ${model} (${timeoutMs}ms)`);
-        return { 
-          success: false, 
-          error: { 
+        return {
+          success: false,
+          error: {
             type: 'timeout',
             message: `Request timed out after ${timeoutMs}ms. The ${model} model may need more time to process.`,
             timeout: timeoutMs
-          } 
+          }
         };
       }
       throw fetchError; // Re-throw if not a timeout
@@ -1200,12 +1218,12 @@ export async function processResponse(
   // Check for tool calls
   if (message.tool_calls && message.tool_calls.length > 0) {
     console.log(`[${provider}] Executing ${message.tool_calls.length} function call(s)`);
-    
+
     const updatedMessages = [...messages, message];
-    
+
     // Execute all tool calls
     const toolResults: any[] = [];
-    
+
     for (const toolCall of message.tool_calls) {
       try {
         const { name, arguments: args } = toolCall.function;
@@ -1222,7 +1240,7 @@ export async function processResponse(
           });
           continue;
         }
-        
+
         if (onStatusUpdate) {
           onStatusUpdate(`Executing ${name}...`);
         }
@@ -1231,7 +1249,7 @@ export async function processResponse(
           executedFunctions.push(name);
         }
         const result = await executeFunction(name, parsedArgs, baseUrl, clientIp, onStatusUpdate);
-        
+
         toolResults.push({
           tool_call_id: toolCall.id,
           role: 'tool',
@@ -1250,12 +1268,12 @@ export async function processResponse(
         });
       }
     }
-    
+
     updatedMessages.push(...toolResults);
-    
+
     return { hasToolCalls: true, updatedMessages, executedFunctions };
   }
-  
+
   // No tool calls - we have a text response
   if (message.content) {
     console.log(`[${provider}] Text response received (no tool calls). Length: ${message.content.length}`);
@@ -1312,7 +1330,7 @@ export async function POST(request: Request) {
     let iteration = 0;
     let finalResponse = '';
     const allExecutedFunctions: string[] = []; // Track all functions executed across iterations
-    
+
     while (iteration < maxIterations) {
       iteration++;
       console.log(`[DeepSeek] Iteration ${iteration}, messages: ${messages.length}`);
@@ -1324,7 +1342,7 @@ export async function POST(request: Request) {
       for (const model of models) {
         try {
           console.log(`[DeepSeek] Trying model: ${model}`);
-          
+
           const result = await callOpenAICompatible(
             'https://api.deepseek.com/v1/chat/completions',
             DEEPSEEK_API_KEY,
@@ -1333,7 +1351,7 @@ export async function POST(request: Request) {
             'DeepSeek',
             true // with tools
           );
-          
+
           if (result.success && result.response) {
             response = result.response;
             console.log(`[DeepSeek] Success with model: ${model}`);
@@ -1352,8 +1370,8 @@ export async function POST(request: Request) {
         const errorDetails = lastError?.data || lastError?.message || JSON.stringify(lastError);
         console.error('[DeepSeek] All models failed. Last error:', errorDetails);
         return NextResponse.json(
-          { 
-            error: 'Failed to get AI response from DeepSeek', 
+          {
+            error: 'Failed to get AI response from DeepSeek',
             details: typeof errorDetails === 'string' ? errorDetails : JSON.stringify(errorDetails),
             suggestion: 'Please check your DeepSeek API key and account status'
           },
@@ -1362,20 +1380,20 @@ export async function POST(request: Request) {
       }
 
       const data = await response.json();
-      
+
       // Status update callback - use provided callback or default to console log
       const statusCallback = onStatusUpdate || ((status: string) => {
         console.log(`[AI Chat] Status: ${status}`);
       });
-      
+
       const result = await processResponse(data, messages, baseUrl, 'DeepSeek', clientIp, statusCallback, allExecutedFunctions);
-      
+
       if (result.hasToolCalls) {
         messages.length = 0; // Clear array
         messages.push(...result.updatedMessages);
         continue; // Continue loop with updated messages
       }
-      
+
       if (result.finalResponse) {
         finalResponse = result.finalResponse;
         break; // Success!
@@ -1399,7 +1417,7 @@ export async function POST(request: Request) {
       .trim();
 
     // Return the response with executed functions for streaming status updates
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: cleanResponse,
       executedFunctions: allExecutedFunctions,
       iterations: iteration
@@ -1410,8 +1428,8 @@ export async function POST(request: Request) {
     console.error('[DeepSeek] Exception stack:', error?.stack);
     console.error('[DeepSeek] Exception details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
     return NextResponse.json(
-      { 
-        error: 'Failed to process request', 
+      {
+        error: 'Failed to process request',
         message: error?.message || 'Unknown error',
         details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
       },

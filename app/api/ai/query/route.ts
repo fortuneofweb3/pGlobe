@@ -11,6 +11,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { calculateNetworkHealth } from '@/lib/utils/network-health';
 
 const RENDER_API_URL = process.env.RENDER_API_URL || process.env.NEXT_PUBLIC_RENDER_API_URL;
 const API_SECRET = process.env.API_SECRET;
@@ -55,9 +56,9 @@ export async function POST(request: Request) {
 
       const nodesData = await nodesResponse.json();
       const nodes = nodesData.nodes || [];
-      
+
       // Find node by pubkey or address
-      const node = nodes.find((n: any) => 
+      const node = nodes.find((n: any) =>
         (n.pubkey || n.publicKey || n.id || '').toString().toLowerCase() === identifier.toLowerCase() ||
         (n.address || '').toLowerCase() === identifier.toLowerCase()
       );
@@ -102,6 +103,7 @@ export async function POST(request: Request) {
         do: node.dataOperationsHandled || 0,
         tp: node.totalPages ?? null,
         ver: node.version || 'unknown',
+        ca: node.createdAt || null,
       };
 
       // If history requested, fetch it
@@ -169,7 +171,7 @@ export async function POST(request: Request) {
       // Get aggregated country/region data
       const targetCountry = country || filters?.country;
       const targetCountryCode = countryCode || filters?.countryCode;
-      
+
       if (!targetCountry) {
         return NextResponse.json(
           { error: 'country parameter required for country query', data: null },
@@ -197,17 +199,17 @@ export async function POST(request: Request) {
 
         const nodesData = await nodesResponse.json();
         const allNodes = nodesData.nodes || [];
-        
+
         // Filter nodes by country
         const countryNodes = allNodes.filter((n: any) => {
           const nodeCountry = (n.locationData?.country || '').toLowerCase();
           const nodeCountryCode = (n.locationData?.countryCode || '').toUpperCase();
           const target = targetCountry.toLowerCase();
           const targetCode = targetCountryCode?.toUpperCase();
-          
-          return nodeCountry === target || 
-                 (targetCode && nodeCountryCode === targetCode) ||
-                 nodeCountryCode === target.toUpperCase();
+
+          return nodeCountry === target ||
+            (targetCode && nodeCountryCode === targetCode) ||
+            nodeCountryCode === target.toUpperCase();
         });
 
         // Calculate aggregated stats
@@ -215,12 +217,12 @@ export async function POST(request: Request) {
         const onlineNodes = countryNodes.filter((n: any) => n.status === 'online').length;
         const offlineNodes = countryNodes.filter((n: any) => n.status === 'offline' || !n.status).length;
         const syncingNodes = countryNodes.filter((n: any) => n.status === 'syncing').length;
-        
+
         const totalStorage = countryNodes.reduce((sum: number, n: any) => sum + (n.storageCapacity || 0), 0);
         const usedStorage = countryNodes.reduce((sum: number, n: any) => sum + (n.storageUsed || 0), 0);
-        
+
         const totalCredits = countryNodes.reduce((sum: number, n: any) => sum + (n.credits || 0), 0);
-        
+
         const cpuValues = countryNodes
           .map((n: any) => n.cpuPercent)
           .filter((val: any): val is number => val !== undefined && val !== null && val >= 0);
@@ -277,6 +279,7 @@ export async function POST(request: Request) {
             versionDistribution,
             cityCount: cities.size,
             cities: Array.from(cities).slice(0, 10), // Top 10 cities
+            healthScore: calculateNetworkHealth(countryNodes).overall,
           },
         });
       } catch (error: any) {
@@ -291,7 +294,7 @@ export async function POST(request: Request) {
       // Get historical data for a country/region
       const targetCountry = country || filters?.country;
       const targetCountryCode = countryCode || filters?.countryCode;
-      
+
       if (!targetCountry) {
         return NextResponse.json(
           { error: 'country parameter required for country-history query', history: [] },
@@ -346,7 +349,7 @@ export async function POST(request: Request) {
       try {
         const timeRange = filters?.timeRange || '1h'; // default to 1 hour
         const minCreditsEarned = filters?.minCreditsEarned || 0;
-        
+
         // Calculate time range
         const endTime = Date.now();
         let startTime = endTime;
@@ -366,13 +369,13 @@ export async function POST(request: Request) {
         if (historyResponse.ok) {
           const historyData = await historyResponse.json();
           const snapshots = historyData.data || [];
-          
+
           // Calculate credit changes for each node
-          const creditChanges: Record<string, { 
-            pubkey: string; 
-            address: string; 
-            creditsEarned: number; 
-            startCredits: number; 
+          const creditChanges: Record<string, {
+            pubkey: string;
+            address: string;
+            creditsEarned: number;
+            startCredits: number;
             endCredits: number;
             nodeSnapshots: any[];
           }> = {};
@@ -476,10 +479,10 @@ export async function POST(request: Request) {
     if (filters) {
       if (filters.country) {
         // Support both single country code and array of country codes
-        const targetCountries = Array.isArray(filters.country) 
+        const targetCountries = Array.isArray(filters.country)
           ? filters.country.map((c: string) => c.toUpperCase())
           : [filters.country.toUpperCase()];
-        
+
         nodes = nodes.filter((n: any) => {
           const nodeCountry = (n.locationData?.countryCode || n.locationData?.country || '').toUpperCase();
           return targetCountries.includes(nodeCountry);
@@ -545,7 +548,7 @@ export async function POST(request: Request) {
         nodes.sort((a: any, b: any) => {
           let aVal: any = a[sortField];
           let bVal: any = b[sortField];
-          
+
           // Handle calculated fields
           if (sortField === 'ramPercent') {
             const aRamTotal = a.ramTotal || 0;
@@ -553,10 +556,10 @@ export async function POST(request: Request) {
             aVal = aRamTotal > 0 ? ((a.ramUsed || 0) / aRamTotal * 100) : 0;
             bVal = bRamTotal > 0 ? ((b.ramUsed || 0) / bRamTotal * 100) : 0;
           }
-          
+
           if (aVal === null || aVal === undefined) aVal = 0;
           if (bVal === null || bVal === undefined) bVal = 0;
-          
+
           if (sortOrder === 'asc') {
             return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
           } else {
@@ -602,6 +605,7 @@ export async function POST(request: Request) {
         ps: n.packetsSent || 0,
         as: n.activeStreams || 0,
         do: n.dataOperationsHandled || 0,
+        ca: n.createdAt || null,
       };
     });
 
