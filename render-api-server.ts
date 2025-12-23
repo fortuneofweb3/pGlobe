@@ -19,7 +19,7 @@ dotenv.config(); // Also load .env if it exists
 import express from 'express';
 import { performRefresh, startBackgroundRefresh, isRefreshRunning } from './lib/server/background-refresh';
 import { getAllNodes, getNodeByPubkey, createIndexes, upsertNodes } from './lib/server/mongodb-nodes';
-import { createHistoryIndexes, getHistoricalSnapshots, getDailyStats, getNodeHistory } from './lib/server/mongodb-history';
+import { createHistoryIndexes, getHistoricalSnapshots, getNodeHistory } from './lib/server/mongodb-history';
 import { syncNodes, fetchAllNodes } from './lib/server/sync-nodes';
 import { getNetworkConfig } from './lib/server/network-config';
 import { calculateNetworkHealth, getLatestVersion } from './lib/utils/network-health';
@@ -94,7 +94,7 @@ app.get('/health', async (req, res) => {
     const uptime = process.uptime();
     const uptimeMinutes = Math.floor(uptime / 60);
     const uptimeHours = Math.floor(uptimeMinutes / 60);
-    
+
     // Quick MongoDB ping to verify connection
     let dbStatus = 'unknown';
     try {
@@ -105,9 +105,9 @@ app.get('/health', async (req, res) => {
     } catch (err) {
       dbStatus = 'disconnected';
     }
-    
-    res.json({ 
-      status: 'ok', 
+
+    res.json({
+      status: 'ok',
       timestamp: new Date().toISOString(),
       uptime: Math.floor(uptime),
       uptimeFormatted: `${uptimeHours}h ${uptimeMinutes % 60}m`,
@@ -130,16 +130,16 @@ app.get('/health', async (req, res) => {
 app.post('/api/refresh-nodes', authenticate, async (req, res) => {
   try {
     console.log('[RenderAPI] Refresh request received');
-    
+
     // Always respond to client requests
     // If refresh is already running, return status immediately with cached data
     if (isRefreshRunning()) {
       console.log('[RenderAPI] ⏳ Background refresh already in progress');
-      
+
       // Return cached data instead of trying to read from DB
       const { nodes, fromCache } = await getNodesWithFallback();
       console.log(`[RenderAPI] Returning ${nodes.length} nodes ${fromCache ? 'from cache' : 'from DB'} while refresh in progress`);
-      
+
       return res.json({
         success: true,
         message: 'Background refresh already in progress',
@@ -151,14 +151,14 @@ app.post('/api/refresh-nodes', authenticate, async (req, res) => {
         fromCache,
       });
     }
-    
+
     // Trigger refresh (performRefresh handles its own concurrency)
     await performRefresh();
     console.log('[RenderAPI] ✅ Refresh completed');
-    
+
     // Get summary using cache-aware fetch (will have fresh data now)
     const { nodes, fromCache } = await getNodesWithFallback();
-    
+
     res.json({
       success: true,
       message: 'Background refresh completed',
@@ -189,7 +189,7 @@ app.post('/api/sync-nodes', authenticate, async (req, res) => {
 
     // Use the new simplified sync service
     const result = await syncNodes();
-    
+
     if (!result.success) {
       return res.status(500).json({
         success: false,
@@ -234,7 +234,7 @@ app.get('/api/pnodes', authenticate, async (req, res) => {
 
     // Always return from DB (fast), fall back to cache if DB fails
     const { nodes, fromCache } = await getNodesWithFallback();
-    
+
     if (fromCache) {
       console.log(`[RenderAPI] Returning ${nodes.length} nodes from cache (DB unavailable or empty)`);
       res.json({
@@ -284,7 +284,7 @@ app.get('/api/nodes/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     let node: PNode | null = null;
-    
+
     try {
       node = await getNodeByPubkey(id);
     } catch (dbError: any) {
@@ -294,7 +294,7 @@ app.get('/api/nodes/:id', authenticate, async (req, res) => {
         message: dbError?.message || 'Unknown error',
       });
     }
-    
+
     if (!node) {
       return res.status(404).json({ error: 'Node not found' });
     }
@@ -318,7 +318,7 @@ app.get('/api/nodes/:id/stats', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     let node: PNode | null = null;
-    
+
     try {
       node = await getNodeByPubkey(id);
     } catch (dbError: any) {
@@ -328,7 +328,7 @@ app.get('/api/nodes/:id/stats', authenticate, async (req, res) => {
         message: dbError?.message || 'Unknown error',
       });
     }
-    
+
     if (!node) {
       return res.status(404).json({ error: 'Node not found' });
     }
@@ -379,10 +379,10 @@ function formatNodeForAPI(node: PNode): any {
 app.get('/api/v1/nodes', authenticate, async (req, res) => {
   try {
     const { searchParams } = new URL(req.url, `http://${req.headers.host}`);
-    
+
     // Get all nodes - use cache-aware fetch
     const { nodes: allNodes, fromCache } = await getNodesWithFallback();
-    
+
     if (fromCache && allNodes.length > 0) {
       console.log(`[RenderAPI] ⚠️  Using ${allNodes.length} cached nodes (DB unavailable)`);
     }
@@ -419,7 +419,7 @@ app.get('/api/v1/nodes', authenticate, async (req, res) => {
     // Sorting
     const sortBy = searchParams.get('sort_by') || 'uptime';
     const sortOrder = searchParams.get('sort_order') || 'desc';
-    
+
     nodes.sort((a, b) => {
       const aVal = (a as any)[sortBy] || 0;
       const bVal = (b as any)[sortBy] || 0;
@@ -462,7 +462,7 @@ app.get('/api/v1/nodes/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     let node: PNode | null = null;
-    
+
     try {
       node = await getNodeByPubkey(id);
     } catch (dbError: any) {
@@ -473,7 +473,7 @@ app.get('/api/v1/nodes/:id', authenticate, async (req, res) => {
         message: dbError?.message || 'Unknown error',
       });
     }
-    
+
     if (!node) {
       return res.status(404).json({
         success: false,
@@ -502,7 +502,7 @@ app.get('/api/v1/nodes/:id', authenticate, async (req, res) => {
 app.get('/api/v1/network/health', authenticate, async (req, res) => {
   try {
     const { nodes } = await getNodesWithFallback();
-    
+
     if (nodes.length === 0) {
       return res.status(404).json({
         success: false,
@@ -582,11 +582,11 @@ app.get('/api/v1/network/stats', authenticate, async (req, res) => {
   try {
     // Always respond, use cache if DB fails
     const { nodes, fromCache } = await getNodesWithFallback();
-    
+
     if (fromCache && nodes.length > 0) {
       console.log(`[RenderAPI] ⚠️  Using ${nodes.length} cached nodes for stats (DB unavailable)`);
     }
-    
+
     if (nodes.length === 0) {
       return res.status(404).json({
         success: false,
@@ -662,14 +662,14 @@ app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
 
     // Fetch historical snapshots
     const snapshots = await getHistoricalSnapshots(startTime, now, 1000);
-    
+
     console.log(`[RenderAPI] MongoDB query returned ${snapshots.length} snapshots`);
 
     if (snapshots.length === 0) {
       // Check if there are ANY snapshots in the database (regardless of time range)
       const allSnapshots = await getHistoricalSnapshots(undefined, undefined, 10);
       console.log(`[RenderAPI] Total snapshots in database (any time): ${allSnapshots.length}`);
-      
+
       if (allSnapshots.length > 0) {
         console.log(`[RenderAPI] ⚠️  Found ${allSnapshots.length} snapshots but none in the requested time range`);
         console.log(`[RenderAPI] Oldest snapshot: ${allSnapshots[0] ? new Date(allSnapshots[0].timestamp).toISOString() : 'N/A'}`);
@@ -677,7 +677,7 @@ app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
       } else {
         console.log(`[RenderAPI] ⚠️  No snapshots found in database at all - historical snapshots may not be being stored`);
       }
-      
+
       console.log('[RenderAPI] No historical snapshots found for requested period');
       return res.json({
         success: true,
@@ -699,13 +699,53 @@ app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
     console.log(`[RenderAPI] Found ${snapshots.length} historical snapshots`);
 
     const healthData = snapshots.map(snapshot => {
+      let healthScore = snapshot.networkHealthScore || 0;
+      let healthAvailability = snapshot.networkHealthAvailability || 0;
+      let healthVersion = snapshot.networkHealthVersion || 0;
+      let healthDistribution = snapshot.networkHealthDistribution || 0;
+
+      // Fallback: If score is 0 but we have node data, calculate it on the fly
+      // This fixes historical data that might have been saved locally without scores
+      if (healthScore === 0 && snapshot.totalNodes > 0) {
+        // 1. Availability (40%)
+        const availability = (snapshot.onlineNodes / snapshot.totalNodes) * 100;
+
+        // 2. Version Health (35%)
+        let versionHealth = 0;
+        if (snapshot.versionDistribution) {
+          const versions = Object.keys(snapshot.versionDistribution);
+          const latest = getLatestVersion(versions);
+          if (latest) {
+            const count = snapshot.versionDistribution[latest] || 0;
+            versionHealth = (count / snapshot.totalNodes) * 100;
+          }
+        }
+
+        // 3. Distribution (25%)
+        const countryDiversity = Math.min(100, ((snapshot.countries || 0) / 10) * 100);
+        const cityDiversity = Math.min(100, ((snapshot.cities || 0) / 20) * 100);
+        const distribution = (countryDiversity * 0.6 + cityDiversity * 0.4);
+
+        // Overall
+        const overall = Math.round(
+          availability * 0.40 +
+          versionHealth * 0.35 +
+          distribution * 0.25
+        );
+
+        healthScore = overall;
+        healthAvailability = Math.round(availability);
+        healthVersion = Math.round(versionHealth);
+        healthDistribution = Math.round(distribution);
+      }
+
       return {
         timestamp: snapshot.timestamp,
         interval: snapshot.interval,
-        networkHealthScore: snapshot.networkHealthScore || 0,
-        networkHealthAvailability: snapshot.networkHealthAvailability || 0,
-        networkHealthVersion: snapshot.networkHealthVersion || 0,
-        networkHealthDistribution: snapshot.networkHealthDistribution || 0,
+        networkHealthScore: healthScore,
+        networkHealthAvailability: healthAvailability,
+        networkHealthVersion: healthVersion,
+        networkHealthDistribution: healthDistribution,
         totalNodes: snapshot.totalNodes,
         onlineNodes: snapshot.onlineNodes,
         offlineNodes: snapshot.offlineNodes,
@@ -741,11 +781,11 @@ app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
 
       // Group points by time intervals and average them
       const grouped = new Map<number, typeof healthData>();
-      
+
       healthData.forEach(point => {
         // Round timestamp down to the nearest interval
         const intervalStart = Math.floor(point.timestamp / intervalMs) * intervalMs;
-        
+
         if (!grouped.has(intervalStart)) {
           grouped.set(intervalStart, []);
         }
@@ -830,7 +870,7 @@ app.get('/api/history', authenticate, async (req, res) => {
     const days = parseInt(req.query.days as string || '30');
     const startTime = req.query.startTime ? parseInt(req.query.startTime as string) : undefined;
     const endTime = req.query.endTime ? parseInt(req.query.endTime as string) : undefined;
-    
+
     // Get node-specific history
     if (nodeId) {
       console.log('[RenderAPI] Fetching node history:', {
@@ -851,15 +891,17 @@ app.get('/api/history', authenticate, async (req, res) => {
         count: nodeHistory.length,
       });
     }
-    
+
     // Get summary statistics
     if (summary) {
-      const dailyStats = await getDailyStats(days);
+      // Daily stats (commented out as getDailyStats is not implemented in mongodb-history)
+      // const dailyStats = await getDailyStats(days);
+      const dailyStats: any[] = [];
       const snapshots = await getHistoricalSnapshots(
         startTime || (Date.now() - days * 24 * 60 * 60 * 1000),
         endTime
       );
-      
+
       if (snapshots.length === 0) {
         return res.json({
           totalDataPoints: 0,
@@ -869,10 +911,10 @@ app.get('/api/history', authenticate, async (req, res) => {
           dailyStats: [],
         });
       }
-      
+
       const avgNodes = snapshots.reduce((sum, s) => sum + s.totalNodes, 0) / snapshots.length;
       const avgUptime = snapshots.reduce((sum, s) => sum + s.avgUptimePercent, 0) / snapshots.length;
-      
+
       return res.json({
         totalDataPoints: snapshots.length,
         dateRange: {
@@ -884,10 +926,10 @@ app.get('/api/history', authenticate, async (req, res) => {
         dailyStats,
       });
     }
-    
+
     // Get full historical snapshots
     const snapshots = await getHistoricalSnapshots(startTime, endTime, 1000);
-    
+
     return res.json({
       data: snapshots,
       count: snapshots.length,
@@ -1114,7 +1156,7 @@ async function startServer() {
     console.log('[RenderAPI] Creating MongoDB indexes...');
     await createIndexes();
     console.log('[RenderAPI] ✅ MongoDB indexes created');
-    
+
     // Create historical data indexes
     try {
       await createHistoryIndexes();

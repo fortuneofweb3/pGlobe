@@ -37,24 +37,24 @@ export async function GET(request: Request) {
     // Proxy to backend API server
     const url = `${RENDER_API_URL}/api/v1/network/health/history?period=${period}`;
     console.log(`[NetworkHealthHistory] Backend URL: ${url}`);
-    
+
     // Add timeout to backend fetch (40 seconds - allows time for MongoDB + calculation)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
       controller.abort();
       console.error('[NetworkHealthHistory] ❌ Backend fetch timeout after 40 seconds');
     }, 40000); // 40 second timeout
-    
+
     let response: Response;
     try {
       response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
-      },
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
+        },
         signal: controller.signal,
-    });
+      });
       clearTimeout(timeoutId);
     } catch (fetchError: any) {
       clearTimeout(timeoutId);
@@ -118,16 +118,9 @@ export async function GET(request: Request) {
     if (data.success && data.data) {
       console.log(`[NetworkHealthHistory] ✅ Returning health history from backend: ${data.data.health?.length || 0} data points`);
       if (data.data.health && data.data.health.length > 0) {
-        console.log(`[NetworkHealthHistory] Sample data point:`, {
-          timestamp: data.data.health[0].timestamp,
-          overall: data.data.health[0].overall,
-          availability: data.data.health[0].availability,
-          versionHealth: data.data.health[0].versionHealth,
-          distribution: data.data.health[0].distribution,
-        });
-      } else {
-        console.warn(`[NetworkHealthHistory] ⚠️  Backend returned success but health array is empty`);
-        console.warn(`[NetworkHealthHistory] Full response:`, JSON.stringify(data, null, 2));
+        // Log first point for verification
+        const first = data.data.health[0];
+        console.log(`[NetworkHealthHistory] Sample data point: score=${first.networkHealthScore}, avail=${first.networkHealthAvailability}, ver=${first.networkHealthVersion}`);
       }
     } else {
       console.error(`[NetworkHealthHistory] ❌ Backend response missing expected structure:`, data);
