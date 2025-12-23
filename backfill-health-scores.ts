@@ -91,7 +91,7 @@ async function backfillHealthScores() {
     const collection = db.collection<HistoricalSnapshot>('node_history');
 
     // Find all snapshots without health scores
-    const query = {
+    const query: any = {
       $or: [
         { networkHealthScore: { $exists: false } },
         { networkHealthScore: null },

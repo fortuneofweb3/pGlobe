@@ -10,7 +10,7 @@ import { getFlagForCountry } from '@/lib/utils/country-flags';
 import { formatStorageBytes } from '@/lib/utils/storage';
 import { formatPacketRate } from '@/lib/utils/packet-rates';
 import { calculateNetworkHealth } from '@/lib/utils/network-health';
-import { ArrowLeft, MapPin, Server, TrendingUp, Activity, HardDrive, Award, Clock, Zap, ChevronDown, ChevronUp, Search, BarChart3, Info } from 'lucide-react';
+import { ArrowLeft, MapPin, Server, TrendingUp, Activity, HardDrive, Award, Clock, Zap, ChevronDown, ChevronUp, Search, BarChart3, Info, Globe, Cpu, Coins, Layers, MousePointer2 } from 'lucide-react';
 import AnimatedNumber from '@/components/AnimatedNumber';
 import PNodeTable from '@/components/PNodeTable';
 import { PNode } from '@/lib/types/pnode';
@@ -29,30 +29,9 @@ import { timeFormat } from 'd3-time-format';
 import ParentSize from '@visx/responsive/lib/components/ParentSize';
 import dynamic from 'next/dynamic';
 
-// Dynamically import Leaflet components to avoid SSR issues
-const MapContainer = dynamic(
-  () => import('react-leaflet').then((mod) => mod.MapContainer),
+const RegionMap = dynamic(
+  () => import('@/components/RegionMap'),
   { ssr: false, loading: () => <div className="h-full w-full bg-muted/20 rounded-lg animate-pulse" /> }
-);
-
-const TileLayer = dynamic(
-  () => import('react-leaflet').then((mod) => mod.TileLayer),
-  { ssr: false }
-);
-
-const Marker = dynamic(
-  () => import('react-leaflet').then((mod) => mod.Marker),
-  { ssr: false }
-);
-
-const CircleMarker = dynamic(
-  () => import('react-leaflet').then((mod) => mod.CircleMarker),
-  { ssr: false }
-);
-
-const Tooltip = dynamic(
-  () => import('react-leaflet').then((mod) => mod.Tooltip),
-  { ssr: false }
 );
 
 function formatUptimeDuration(seconds: number): string {
@@ -87,10 +66,10 @@ const formatCredits = (value: number): string => {
 
 const formatDateAxis = (date: Date, chartData: Array<{ timestamp: number }>): string => {
   if (chartData.length === 0) return '';
-  
+
   const timeSpan = Math.max(...chartData.map(d => d.timestamp)) - Math.min(...chartData.map(d => d.timestamp));
   const isSameDay = timeSpan < 86400000; // Less than 24 hours
-  
+
   if (isSameDay) {
     return timeFormat('%H:%M')(date);
   } else {
@@ -113,7 +92,7 @@ function HistoricalLineChart({
   yTicks,
 }: {
   title: string;
-  data: Array<{ timestamp: number; value?: number; label?: string; [key: string]: any }>;
+  data: Array<{ timestamp: number; value?: number; label?: string;[key: string]: any }>;
   height: number;
   yDomain: [number, number];
   strokeColor: string;
@@ -136,52 +115,52 @@ function HistoricalLineChart({
 
   const chartData = useMemo(() => {
     if (data.length === 0) return [];
-    
+
     const sorted = data.sort((a, b) => a.timestamp - b.timestamp);
     if (sorted.length < 2) return sorted;
-    
+
     const interpolated: typeof data = [];
     const interval = 10 * 60 * 1000;
-    
+
     for (let i = 0; i < sorted.length; i++) {
       interpolated.push(sorted[i]);
-      
+
       if (i < sorted.length - 1) {
         const current = sorted[i];
         const next = sorted[i + 1];
         const gap = next.timestamp - current.timestamp;
-        
+
         if (gap > interval * 1.5) {
           const numPoints = Math.floor(gap / interval) - 1;
-          
+
           for (let j = 1; j <= numPoints; j++) {
             const interpolatedTimestamp = current.timestamp + (gap * j / (numPoints + 1));
             const ratio = j / (numPoints + 1);
-            
+
             const interpolatedPoint: typeof data[0] = {
               timestamp: interpolatedTimestamp,
             };
-            
-            if (current.value !== undefined && current.value !== null && 
-                next.value !== undefined && next.value !== null &&
-                !isNaN(current.value) && !isNaN(next.value)) {
+
+            if (current.value !== undefined && current.value !== null &&
+              next.value !== undefined && next.value !== null &&
+              !isNaN(current.value) && !isNaN(next.value)) {
               interpolatedPoint.value = current.value + (next.value - current.value) * ratio;
             } else if (current.value !== undefined && current.value !== null && !isNaN(current.value)) {
               interpolatedPoint.value = current.value;
             } else if (next.value !== undefined && next.value !== null && !isNaN(next.value)) {
               interpolatedPoint.value = next.value;
             }
-            
+
             if (multiLine) {
               multiLine.forEach(line => {
                 const currentVal = current[line.key];
                 const nextVal = next[line.key];
-                
-                if (currentVal !== undefined && currentVal !== null && 
-                    nextVal !== undefined && nextVal !== null &&
-                    !isNaN(currentVal) && !isNaN(nextVal)) {
+
+                if (currentVal !== undefined && currentVal !== null &&
+                  nextVal !== undefined && nextVal !== null &&
+                  !isNaN(currentVal) && !isNaN(nextVal)) {
                   interpolatedPoint[line.key] = currentVal + (nextVal - currentVal) * ratio;
-                } 
+                }
                 else if (currentVal !== undefined && currentVal !== null && !isNaN(currentVal)) {
                   interpolatedPoint[line.key] = currentVal;
                 }
@@ -190,17 +169,17 @@ function HistoricalLineChart({
                 }
               });
             }
-            
+
             if (current.label) {
               interpolatedPoint.label = current.label;
             }
-            
+
             interpolated.push(interpolatedPoint);
           }
         }
       }
     }
-    
+
     return interpolated.sort((a, b) => a.timestamp - b.timestamp);
   }, [data, multiLine]);
 
@@ -265,7 +244,7 @@ function HistoricalLineChart({
 
       if (!allPathsReady) {
         // Retry if paths not ready
-            requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
           const retryPaths = pathGroupRef.current?.querySelectorAll('path');
           if (retryPaths) {
             let retryReady = true;
@@ -339,12 +318,12 @@ function HistoricalLineChart({
       });
     }
   }, [dataKey]);
-  
+
   const smartYFormatter = useMemo(() => {
     if (yTickFormatter) {
       return (d: any) => yTickFormatter(typeof d === 'number' ? d : d.valueOf());
     }
-    
+
     const maxValue = Math.max(...yDomain);
     if (maxValue >= 1000) {
       return (d: any) => formatNumber(typeof d === 'number' ? d : d.valueOf());
@@ -427,11 +406,11 @@ function HistoricalLineChart({
             const width = parentWidth;
             // Responsive margins - smaller on mobile for better chart size
             const isMobile = width < 640;
-            const margin = { 
-              top: 30, 
-              right: isMobile ? 10 : 30, 
-              left: isMobile ? 40 : 60, 
-              bottom: isMobile ? 50 : 70 
+            const margin = {
+              top: 30,
+              right: isMobile ? 10 : 30,
+              left: isMobile ? 40 : 60,
+              bottom: isMobile ? 50 : 70
             };
             const xMax = width - margin.left - margin.right;
             const yMax = height - margin.top - margin.bottom;
@@ -456,7 +435,7 @@ function HistoricalLineChart({
               if (!coords) return;
 
               const x = coords.x - margin.left;
-              
+
               let closestIndex = 0;
               let minDistance = Infinity;
               chartData.forEach((d, i) => {
@@ -467,7 +446,7 @@ function HistoricalLineChart({
                   closestIndex = i;
                 }
               });
-              
+
               const d = chartData[closestIndex];
 
               if (d) {
@@ -527,20 +506,20 @@ function HistoricalLineChart({
                             return val !== undefined && val !== null && !isNaN(val);
                           });
                           const validDimmedData = dimmedData.filter(d => {
-                          const val = d[line.key];
-                          return val !== undefined && val !== null && !isNaN(val);
-                        });
-                        return (
+                            const val = d[line.key];
+                            return val !== undefined && val !== null && !isNaN(val);
+                          });
+                          return (
                             <g key={line.key}>
-                          <LinePath
+                              <LinePath
                                 data={validHighlightedData}
-                            x={(d) => xScale(d.timestamp)}
-                            y={(d) => yScale(d[line.key] ?? 0)}
-                            stroke={line.color}
-                            strokeWidth={3}
+                                x={(d) => xScale(d.timestamp)}
+                                y={(d) => yScale(d[line.key] ?? 0)}
+                                stroke={line.color}
+                                strokeWidth={3}
                                 strokeOpacity={1}
-                            curve={curveMonotoneX}
-                          />
+                                curve={curveMonotoneX}
+                              />
                               {hoveredIndex !== null && validDimmedData.length > 0 && (
                                 <LinePath
                                   data={validDimmedData}
@@ -553,7 +532,7 @@ function HistoricalLineChart({
                                 />
                               )}
                             </g>
-                        );
+                          );
                         })}
                       </g>
                     ) : (
@@ -569,15 +548,15 @@ function HistoricalLineChart({
                         return (
                           <g ref={pathGroupRef} key={`single-${dataKey || 'loading'}`} className="line-initial-hidden">
                             {validHighlightedData.length > 0 && (
-                          <LinePath
+                              <LinePath
                                 data={validHighlightedData}
-                            x={(d) => xScale(d.timestamp)}
-                            y={(d) => yScale(d.value ?? 0)}
-                            stroke={strokeColor}
-                            strokeWidth={3}
+                                x={(d) => xScale(d.timestamp)}
+                                y={(d) => yScale(d.value ?? 0)}
+                                stroke={strokeColor}
+                                strokeWidth={3}
                                 strokeOpacity={1}
-                            curve={curveMonotoneX}
-                          />
+                                curve={curveMonotoneX}
+                              />
                             )}
                             {hoveredIndex !== null && validDimmedData.length > 0 && (
                               <LinePath
@@ -787,7 +766,7 @@ function CountryDetailContent() {
   const params = useParams();
   const router = useRouter();
   const { nodes, loading, error, lastUpdate, refreshNodes } = useNodes();
-  
+
   const countryName = decodeURIComponent(params.country as string);
   const [sortBy, setSortBy] = useState<string>('reputation');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -802,12 +781,16 @@ function CountryDetailContent() {
     totalCredits: number;
     avgCPU?: number;
     avgRAM?: number;
+    nodeCredits?: Array<{
+      nodeId: string;
+      credits: number;
+    }>;
   }>>([]);
   const [timeRange, setTimeRange] = useState<'30m' | '1h' | '24h' | '1w'>('24h');
   const [loadingHistory, setLoadingHistory] = useState(false);
   const fetchingHistoryRef = useRef(false);
   const fetchHistoryAbortControllerRef = useRef<AbortController | null>(null);
-  
+
   // Stabilization refs to prevent flickering node counts
   const stableNodeCountRef = useRef<number | null>(null);
   const nodeCountHistoryRef = useRef<number[]>([]);
@@ -885,14 +868,14 @@ function CountryDetailContent() {
   const countryNodes = useMemo(() => {
     const filtered = nodes.filter(node => {
       const nodeCountry = node.locationData?.country?.trim().toLowerCase();
-      
+
       // Match by country name (case-insensitive)
       return nodeCountry === normalizedCountryName;
     });
-    
+
     // Get country code from first node if available (for fallback matching)
     const countryCode = filtered[0]?.locationData?.countryCode?.trim().toLowerCase();
-    
+
     // If we have a country code, also include nodes that match by country code
     // This helps when country names might vary slightly
     if (countryCode) {
@@ -900,15 +883,15 @@ function CountryDetailContent() {
         // Skip if already included
         const nodeCountry = node.locationData?.country?.trim().toLowerCase();
         if (nodeCountry === normalizedCountryName) return false;
-        
+
         // Match by country code
         const nodeCountryCode = node.locationData?.countryCode?.trim().toLowerCase();
         return nodeCountryCode === countryCode;
       });
-      
+
       return [...filtered, ...additionalNodes];
     }
-    
+
     return filtered;
   }, [nodes, normalizedCountryName]);
 
@@ -916,7 +899,7 @@ function CountryDetailContent() {
   const stabilizedNodeCount = useMemo(() => {
     const currentCount = countryNodes.length;
     const now = Date.now();
-    
+
     // If this is the first time or we're loading, use current count
     if (stableNodeCountRef.current === null || loading) {
       stableNodeCountRef.current = currentCount;
@@ -924,42 +907,42 @@ function CountryDetailContent() {
       lastUpdateTimeRef.current = now;
       return currentCount;
     }
-    
+
     // Track recent counts
     nodeCountHistoryRef.current.push(currentCount);
     // Keep only last 5 counts (to detect patterns)
     if (nodeCountHistoryRef.current.length > 5) {
       nodeCountHistoryRef.current.shift();
     }
-    
+
     // If count hasn't changed, keep using stable count
     if (currentCount === stableNodeCountRef.current) {
       lastUpdateTimeRef.current = now;
       return currentCount;
     }
-    
+
     // If count changed, check if it's a persistent change
     const timeSinceLastUpdate = now - lastUpdateTimeRef.current;
     const recentCounts = nodeCountHistoryRef.current;
-    const mostCommonRecentCount = recentCounts.reduce((a, b, _, arr) => 
+    const mostCommonRecentCount = recentCounts.reduce((a, b, _, arr) =>
       arr.filter(v => v === a).length >= arr.filter(v => v === b).length ? a : b
     );
-    
+
     // Only update if:
     // 1. The change has persisted for at least 2 seconds, OR
     // 2. The new count appears in majority of recent samples, OR
     // 3. The count increased (nodes were added)
     const changePersisted = timeSinceLastUpdate > 2000;
-    const majorityMatch = mostCommonRecentCount === currentCount && 
-                          recentCounts.filter(c => c === currentCount).length >= 3;
+    const majorityMatch = mostCommonRecentCount === currentCount &&
+      recentCounts.filter(c => c === currentCount).length >= 3;
     const countIncreased = currentCount > stableNodeCountRef.current;
-    
+
     if (changePersisted || majorityMatch || countIncreased) {
       stableNodeCountRef.current = currentCount;
       lastUpdateTimeRef.current = now;
       return currentCount;
     }
-    
+
     // Otherwise, keep previous stable count to prevent flickering
     return stableNodeCountRef.current;
   }, [countryNodes.length, loading]);
@@ -997,7 +980,7 @@ function CountryDetailContent() {
         // Use new region history endpoint that aggregates server-side from snapshots
         const url = `/api/history/region?country=${encodeURIComponent(countryName)}${countryCode ? `&countryCode=${encodeURIComponent(countryCode)}` : ''}&startTime=${startTime}&endTime=${endTime}`;
         console.log('[RegionPage] Calling region history API:', url);
-        
+
         const response = await fetch(url, {
           signal: abortController.signal,
           cache: 'no-store', // Don't cache to ensure fresh data
@@ -1083,9 +1066,9 @@ function CountryDetailContent() {
     const nodesWithRAM = countryNodes.filter(n => n.ramTotal !== undefined);
     const avgRAMUsage = nodesWithRAM.length > 0
       ? nodesWithRAM.reduce((sum, n) => {
-          const usage = n.ramTotal && n.ramUsed ? (n.ramUsed / n.ramTotal) * 100 : 0;
-          return sum + usage;
-        }, 0) / nodesWithRAM.length
+        const usage = n.ramTotal && n.ramUsed ? (n.ramUsed / n.ramTotal) * 100 : 0;
+        return sum + usage;
+      }, 0) / nodesWithRAM.length
       : 0;
 
     const latencies = countryNodes
@@ -1186,27 +1169,27 @@ function CountryDetailContent() {
     filtered.sort((a, b) => {
       const aIsRegistered = a.isRegistered === true || (a.balance !== undefined && a.balance !== null && a.balance > 0);
       const bIsRegistered = b.isRegistered === true || (b.balance !== undefined && b.balance !== null && b.balance > 0);
-      
+
       if (aIsRegistered !== bIsRegistered) {
         return aIsRegistered ? -1 : 1;
       }
-      
+
       if (aIsRegistered && bIsRegistered) {
         const aScore = getCompletenessScore(a);
         const bScore = getCompletenessScore(b);
-        
+
         if (aScore !== bScore) {
           return bScore - aScore;
         }
       }
-      
+
       const aIsOnline = a.seenInGossip !== false && a.status === 'online';
       const bIsOnline = b.seenInGossip !== false && b.status === 'online';
-      
+
       if (aIsOnline !== bIsOnline) {
         return aIsOnline ? -1 : 1;
       }
-      
+
       let aVal: any = a[sortBy as keyof PNode];
       let bVal: any = b[sortBy as keyof PNode];
 
@@ -1229,7 +1212,7 @@ function CountryDetailContent() {
   if (isLoading && nodes.length === 0) {
     return (
       <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
-        <Header activePage="regions" nodeCount={0} lastUpdate={null} loading={true} onRefresh={() => {}} />
+        <Header activePage="regions" nodeCount={0} lastUpdate={null} loading={true} onRefresh={() => { }} />
         <main className="flex-1 overflow-hidden">
           <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
             <div className="max-w-7xl mx-auto">
@@ -1341,9 +1324,9 @@ function CountryDetailContent() {
   return (
     <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
       <Header activePage="regions" nodeCount={nodes.length} lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
-      
+
       <main className="flex-1 overflow-hidden">
-        <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
+        <div className="h-full w-full p-3 sm:p-6 pt-5 sm:pt-8 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
             {/* Cover Section with Map Background */}
             {countryCode && countryNodes.some(n => n.locationData?.lat && n.locationData?.lon) ? (
@@ -1399,7 +1382,7 @@ function CountryDetailContent() {
                     `}</style>
 
                     {/* Blur gradient overlay */}
-                    <div 
+                    <div
                       className="absolute inset-0 pointer-events-none"
                       style={{
                         backdropFilter: 'blur(12px)',
@@ -1410,144 +1393,154 @@ function CountryDetailContent() {
                     />
 
                     {typeof window !== 'undefined' ? (
-                      <MapContainer
-                        key={`region-map-${countryCode}`}
-                        center={(() => {
-                          const nodesWithLocation = countryNodes.filter(n => n.locationData?.lat && n.locationData?.lon);
-                          if (nodesWithLocation.length === 0) return [0, 0];
-
-                          const cityGroups = new Map<string, typeof nodesWithLocation>();
-                          nodesWithLocation.forEach(node => {
-                            const city = node.locationData?.city || 'unknown';
-                            if (!cityGroups.has(city)) {
-                              cityGroups.set(city, []);
-                            }
-                            cityGroups.get(city)!.push(node);
-                          });
-
-                          let mostPopulatedCity = nodesWithLocation;
-                          let maxNodes = 0;
-                          cityGroups.forEach(nodes => {
-                            if (nodes.length > maxNodes) {
-                              maxNodes = nodes.length;
-                              mostPopulatedCity = nodes;
-                            }
-                          });
-
-                          const avgLat = mostPopulatedCity.reduce((sum, n) => sum + (n.locationData!.lat), 0) / mostPopulatedCity.length;
-                          const avgLon = mostPopulatedCity.reduce((sum, n) => sum + (n.locationData!.lon), 0) / mostPopulatedCity.length;
-                          return [avgLat, avgLon];
-                        })()}
-                        zoom={6}
-                        scrollWheelZoom={false}
-                        dragging={false}
-                        touchZoom={false}
-                        doubleClickZoom={false}
-                        boxZoom={false}
-                        keyboard={false}
-                        zoomControl={false}
-                        style={{ height: '100%', width: '100%', backgroundColor: '#000' }}
-                        className="z-0 region-details-map"
-                        attributionControl={false}
-                      >
-                        <TileLayer
-                          attribution=""
-                          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                          subdomains="abcd"
-                          maxZoom={20}
-                        />
-
-                        {/* Render all nodes in the country */}
-                        {countryNodes
-                          .filter(n => n.locationData?.lat && n.locationData?.lon)
-                          .map((node) => {
-                            const statusColors = {
-                              online: '#3F8277',
-                              syncing: '#F0A741',
-                              offline: '#ED1C24',
-                            };
-                            const nodeStatus = node.status || 'offline';
-                            let pinIcon = pinIcons[nodeStatus] || pinIcons.offline;
-
-                            // If pin icon not ready, create it immediately
-                            if (!pinIcon && typeof window !== 'undefined') {
-                              const L = (window as any).L;
-                              if (L) {
-                                const color = statusColors[nodeStatus] || statusColors.offline;
-                                if (!pinIconCacheRef.current.has(color)) {
-                                  const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 24 30" fill="none"><path d="M12 0C7.03 0 3 4.03 3 9c0 5.25 9 21 9 21s9-15.75 9-21c0-4.97-4.03-9-9-9zm0 12.5c-1.93 0-3.5-1.57-3.5-3.5S10.07 5.5 12 5.5s3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z" fill="${color}" stroke="#fff" stroke-width="1.5"/></svg>`;
-                                  pinIcon = L.divIcon({
-                                    html: `
-                      <div style="position: relative; width: 32px; height: 40px; overflow: visible;">
-                        ${svgString}
-                        <div style="position: absolute; top: 6px; left: 50%; transform: translateX(-50%); width: 7px; height: 7px; background: white; border-radius: 50%;"></div>
-                      </div>
-                    `,
-                                    className: 'custom-pin-icon',
-                                    iconSize: [32, 40],
-                                    iconAnchor: [16, 40],
-                                    popupAnchor: [0, -40]
-                                  });
-                                  pinIconCacheRef.current.set(color, pinIcon);
-                                } else {
-                                  pinIcon = pinIconCacheRef.current.get(color);
-                                }
-                              }
-                            }
-
-                            return pinIcon ? (
-                              <Marker
-                                key={node.id}
-                                position={[node.locationData!.lat, node.locationData!.lon]}
-                                icon={pinIcon}
-                                interactive={false}
-                              />
-                            ) : (
-                              <CircleMarker
-                                key={node.id}
-                                center={[node.locationData!.lat, node.locationData!.lon]}
-                                radius={5}
-                                pathOptions={{
-                                  fillColor: statusColors[nodeStatus] || statusColors.offline,
-                                  fillOpacity: 0.7,
-                                  color: '#fff',
-                                  weight: 1.5,
-                                }}
-                                interactive={false}
-                              />
-                            );
-                          })}
-                      </MapContainer>
+                      <RegionMap nodes={countryNodes} />
                     ) : (
                       <div className="h-full w-full bg-muted/20" />
                     )}
                   </div>
 
                   {/* Content Overlay - Left Side */}
-                  <div className="relative px-5 sm:px-7 lg:px-9 pt-8 pb-8">
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className="text-5xl">{getFlagForCountry(countryName, countryCode)}</span>
-                      <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
-                        {countryName}
-                      </h1>
-                    </div>
-
-                    <div className="space-y-2">
-                      <p className="text-foreground/60 text-sm sm:text-base">
-                        {stats.totalNodes} node{stats.totalNodes !== 1 ? 's' : ''} • {stats.onlineNodes} online
-                      </p>
-                      <div className="flex items-center gap-3 text-xs sm:text-sm">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#3F8277' }} />
-                          <span className="text-foreground/70">{stats.onlineNodes} online</span>
-                        </div>
+                  <div className="relative px-5 sm:px-7 lg:px-9 pt-8 pb-8 h-full flex flex-col justify-end">
+                    <div className="animate-slide-in-left" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
+                      {/* Badges */}
+                      <div className="flex items-center gap-3 flex-wrap mb-4">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/10 text-white border border-white/20 backdrop-blur-md">
+                          <Activity className="w-3.5 h-3.5 text-[#F0A741]" />
+                          {stats.totalNodes} Nodes
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#3F8277]/20 text-[#3F8277] border border-[#3F8277]/30 backdrop-blur-md">
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#3F8277]" />
+                          {stats.onlineNodes} Online
+                        </span>
                         {stats.offlineNodes > 0 && (
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#ED1C24' }} />
-                            <span className="text-foreground/70">{stats.offlineNodes} offline</span>
-                          </div>
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#ED1C24]/20 text-[#ED1C24] border border-[#ED1C24]/30 backdrop-blur-md">
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#ED1C24]" />
+                            {stats.offlineNodes} Offline
+                          </span>
                         )}
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30 backdrop-blur-md">
+                          <Globe className="w-3.5 h-3.5" />
+                          {countryCode}
+                        </span>
                       </div>
+
+                      {/* Title */}
+                      <div className="flex items-center gap-4 mb-4">
+                        <span className="text-4xl sm:text-5xl lg:text-6xl drop-shadow-2xl">{getFlagForCountry(countryName, countryCode)}</span>
+                        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight">
+                          {countryName}
+                        </h1>
+                      </div>
+
+                      {/* Region Stats */}
+                      <div className="flex items-center gap-6 text-sm text-white/70">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] uppercase tracking-widest text-white/40 font-bold">Total Storage</span>
+                          <span className="text-white font-mono font-bold flex items-center gap-1.5">
+                            <HardDrive className="w-4 h-4 text-[#F0A741]" />
+                            {formatStorageBytes(stats.totalStorage)}
+                          </span>
+                        </div>
+                        <div className="h-8 w-[1px] bg-white/10 self-end mb-1" />
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] uppercase tracking-widest text-white/40 font-bold">Health Score</span>
+                          <span className="text-white font-mono font-bold flex items-center gap-1.5">
+                            <Award className="w-4 h-4 text-[#F0A741]" />
+                            {calculateNetworkHealth(countryNodes).overall}%
+                          </span>
+                        </div>
+                        <div className="h-8 w-[1px] bg-white/10 self-end mb-1" />
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] uppercase tracking-widest text-white/40 font-bold">Avg Latency</span>
+                          <span className="text-white font-mono font-bold flex items-center gap-1.5">
+                            <Zap className="w-4 h-4 text-[#F0A741]" />
+                            {stats.avgLatency}ms
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Extra Stats Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mt-8 mb-4 sm:mb-6 animate-fade-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
+                  <div className="card-stat bg-[#0a0a0a] border-white/5 backdrop-blur-md overflow-hidden group hover:bg-[#111] hover:border-[#F0A741]/20 transition-all duration-300">
+                    <div className="flex flex-col relative">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] uppercase tracking-widest text-foreground/40 font-bold group-hover:text-[#F0A741] transition-colors">Total Credits</span>
+                        <Coins className="w-3.5 h-3.5 text-[#F0A741] opacity-50 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-xl sm:text-2xl font-bold font-mono text-foreground">
+                          {stats.totalCredits > 1000000 ? (stats.totalCredits / 1000000).toFixed(1) + 'M' : stats.totalCredits.toLocaleString()}
+                        </span>
+                        <span className="text-[10px] text-foreground/40 font-bold">XND</span>
+                      </div>
+                      <span className="text-[9px] text-foreground/30 mt-1">From {stats.nodesReportingCredits} nodes</span>
+                      <div className="absolute -right-6 -bottom-6 w-12 h-12 bg-[#F0A741]/5 rounded-full blur-xl group-hover:bg-[#F0A741]/10 transition-colors" />
+                    </div>
+                  </div>
+
+                  <div className="card-stat bg-[#0a0a0a] border-white/5 backdrop-blur-sm overflow-hidden group hover:bg-[#111] hover:border-[#F0A741]/20 transition-all duration-300">
+                    <div className="flex flex-col relative">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] uppercase tracking-widest text-foreground/40 font-bold group-hover:text-[#F0A741] transition-colors">Avg CPU Load</span>
+                        <Cpu className="w-3.5 h-3.5 text-[#F0A741] opacity-50 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-xl sm:text-2xl font-bold font-mono text-foreground">{stats.avgCPU.toFixed(1)}</span>
+                        <span className="text-[10px] text-foreground/40 font-bold">%</span>
+                      </div>
+                      <div className="w-full h-1 bg-white/5 rounded-full mt-2 overflow-hidden">
+                        <div className="h-full bg-[#F0A741] rounded-full" style={{ width: `${stats.avgCPU}%` }} />
+                      </div>
+                      <div className="absolute -right-6 -bottom-6 w-12 h-12 bg-[#F0A741]/5 rounded-full blur-xl group-hover:bg-[#F0A741]/10 transition-colors" />
+                    </div>
+                  </div>
+
+                  <div className="card-stat bg-[#0a0a0a] border-white/5 backdrop-blur-sm overflow-hidden group hover:bg-[#111] hover:border-[#3F8277]/20 transition-all duration-300">
+                    <div className="flex flex-col relative">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] uppercase tracking-widest text-foreground/40 font-bold group-hover:text-[#3F8277] transition-colors">Avg RAM Usage</span>
+                        <Layers className="w-3.5 h-3.5 text-[#3F8277] opacity-50 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-xl sm:text-2xl font-bold font-mono text-foreground">{stats.avgRAMUsage.toFixed(1)}</span>
+                        <span className="text-[10px] text-foreground/40 font-bold">%</span>
+                      </div>
+                      <div className="w-full h-1 bg-white/5 rounded-full mt-2 overflow-hidden">
+                        <div className="h-full bg-[#3F8277] rounded-full" style={{ width: `${stats.avgRAMUsage}%` }} />
+                      </div>
+                      <div className="absolute -right-6 -bottom-6 w-12 h-12 bg-[#3F8277]/5 rounded-full blur-xl group-hover:bg-[#3F8277]/10 transition-colors" />
+                    </div>
+                  </div>
+
+                  <div className="card-stat bg-white/[0.03] border-white/5 backdrop-blur-sm overflow-hidden group hover:bg-white/[0.05] hover:border-[#F0A741]/20 transition-all duration-300">
+                    <div className="flex flex-col relative">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] uppercase tracking-widest text-foreground/40 font-bold group-hover:text-[#F0A741] transition-colors">Network Rate</span>
+                        <BarChart3 className="w-3.5 h-3.5 text-[#F0A741] opacity-50 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-xl sm:text-2xl font-bold font-mono text-foreground">{formatPacketRate(stats.avgPacketRate).split(' ')[0]}</span>
+                        <span className="text-[10px] text-foreground/40 font-bold pl-1">{formatPacketRate(stats.avgPacketRate).split(' ')[1]}</span>
+                      </div>
+                      <span className="text-[9px] text-foreground/30 mt-1">Avg per node</span>
+                      <div className="absolute -right-6 -bottom-6 w-12 h-12 bg-[#F0A741]/5 rounded-full blur-xl group-hover:bg-[#F0A741]/10 transition-colors" />
+                    </div>
+                  </div>
+
+                  <div className="card-stat bg-white/[0.03] border-white/5 backdrop-blur-sm overflow-hidden group hover:bg-white/[0.05] hover:border-[#3F8277]/20 transition-all duration-300">
+                    <div className="flex flex-col relative">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] uppercase tracking-widest text-foreground/40 font-bold group-hover:text-[#3F8277] transition-colors">Active Streams</span>
+                        <Activity className="w-3.5 h-3.5 text-[#3F8277] opacity-50 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-xl sm:text-2xl font-bold font-mono text-foreground">{stats.totalActiveStreams.toLocaleString()}</span>
+                      </div>
+                      <span className="text-[9px] text-foreground/30 mt-1">Total concurrent</span>
+                      <div className="absolute -right-6 -bottom-6 w-12 h-12 bg-[#3F8277]/5 rounded-full blur-xl group-hover:bg-[#3F8277]/10 transition-colors" />
                     </div>
                   </div>
                 </div>
@@ -1590,11 +1583,10 @@ function CountryDetailContent() {
                     <button
                       key={range}
                       onClick={() => setTimeRange(range)}
-                      className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-                        timeRange === range
-                          ? 'bg-[#F0A741] text-black'
-                          : 'text-foreground/60 hover:text-foreground'
-                      }`}
+                      className={`px-3 py-1 text-xs font-medium rounded transition-colors ${timeRange === range
+                        ? 'bg-[#F0A741] text-black'
+                        : 'text-foreground/60 hover:text-foreground'
+                        }`}
                     >
                       {range === '30m' ? '30m' : range === '1h' ? '1h' : range === '24h' ? '24h' : '1w'}
                     </button>
@@ -1604,316 +1596,374 @@ function CountryDetailContent() {
 
               {/* Charts - Always show, with empty axes when loading or no data */}
               {(() => {
-              // Always show charts, even if no data (they'll show empty axes)
-              const now = Date.now();
-              const timeRangeMs = {
-                '30m': 30 * 60 * 1000,
-                '1h': 60 * 60 * 1000,
-                '24h': 24 * 60 * 60 * 1000,
-                '1w': 7 * 24 * 60 * 60 * 1000,
-              };
-              const cutoffTime = now - timeRangeMs[timeRange];
-              const filteredData = historicalData.length > 0 
-                ? historicalData.filter(d => d.timestamp >= cutoffTime)
-                : [];
+                // Always show charts, even if no data (they'll show empty axes)
+                const now = Date.now();
+                const timeRangeMs = {
+                  '30m': 30 * 60 * 1000,
+                  '1h': 60 * 60 * 1000,
+                  '24h': 24 * 60 * 60 * 1000,
+                  '1w': 7 * 24 * 60 * 60 * 1000,
+                };
+                const cutoffTime = now - timeRangeMs[timeRange];
+                const filteredData = historicalData.length > 0
+                  ? historicalData.filter(d => d.timestamp >= cutoffTime)
+                  : [];
 
-              // Calculate packet earning rate (packets/s) from historical data
-              const sorted = [...filteredData].sort((a, b) => a.timestamp - b.timestamp);
-              const FIVE_MINUTES_MS = 5 * 60 * 1000;
+                // Calculate packet earning rate (packets/s) from historical data
+                const sorted = [...filteredData].sort((a, b) => a.timestamp - b.timestamp);
+                const FIVE_MINUTES_MS = 5 * 60 * 1000;
 
-              const packetRateData = sorted.map((current, index) => {
-                if (index === 0) {
-                  // For first point, use current total divided by uptime if available
-                  const totalPackets = (current.totalPacketsReceived || 0) + (current.totalPacketsSent || 0);
+                const packetRateData = sorted.map((current, index) => {
+                  if (index === 0) {
+                    // For first point, use current total divided by uptime if available
+                    const totalPackets = (current.totalPacketsReceived || 0) + (current.totalPacketsSent || 0);
+                    return {
+                      timestamp: current.timestamp,
+                      value: totalPackets > 0 ? totalPackets / 300 : 0, // Assume 5 min average
+                    };
+                  }
+
+                  let previousIndex = index - 1;
+                  let previous = sorted[previousIndex];
+
+                  const targetTime = current.timestamp - FIVE_MINUTES_MS;
+                  for (let i = index - 1; i >= 0; i--) {
+                    if (sorted[i].timestamp <= targetTime) {
+                      previous = sorted[i];
+                      previousIndex = i;
+                      break;
+                    }
+                  }
+
+                  let rate = 0;
+                  if (previous && previousIndex >= 0) {
+                    const timeDiff = (current.timestamp - previous.timestamp) / 1000;
+                    if (timeDiff > 0) {
+                      const rxDiff = (current.totalPacketsReceived || 0) - (previous.totalPacketsReceived || 0);
+                      const txDiff = (current.totalPacketsSent || 0) - (previous.totalPacketsSent || 0);
+                      rate = Math.max(0, (rxDiff + txDiff) / timeDiff);
+                    }
+                  }
+
                   return {
                     timestamp: current.timestamp,
-                    value: totalPackets > 0 ? totalPackets / 300 : 0, // Assume 5 min average
+                    value: rate,
                   };
-                }
+                });
 
-                let previousIndex = index - 1;
-                let previous = sorted[previousIndex];
+                console.log('[RegionPage] Packet rate data points:', packetRateData.length, 'Sample:', packetRateData.slice(0, 3));
 
-                const targetTime = current.timestamp - FIVE_MINUTES_MS;
-                for (let i = index - 1; i >= 0; i--) {
-                  if (sorted[i].timestamp <= targetTime) {
-                    previous = sorted[i];
-                    previousIndex = i;
-                    break;
+                // Calculate baseline packet rate for activity health normalization
+                const allPacketRates = packetRateData.map(p => p.value).filter(v => v > 0);
+                const avgPacketRate = allPacketRates.length > 0
+                  ? allPacketRates.reduce((sum, v) => sum + v, 0) / allPacketRates.length
+                  : 0;
+                const maxPacketRateForHealth = Math.max(avgPacketRate * 2, 100); // Use 2x average as max for normalization
+
+
+                // Calculate credits earned over time
+                // NEW APPROACH: Use per-node credit data when available to avoid spikes from nodes joining/leaving
+                const creditsData = sorted.map((current: any, index) => {
+                  let previousIndex = index - 1;
+                  let previous = sorted[previousIndex];
+
+                  const targetTime = current.timestamp - FIVE_MINUTES_MS;
+                  for (let i = index - 1; i >= 0; i--) {
+                    if (sorted[i].timestamp <= targetTime) {
+                      previous = sorted[i];
+                      previousIndex = i;
+                      break;
+                    }
                   }
-                }
 
-                let rate = 0;
-                if (previous && previousIndex >= 0) {
-                  const timeDiff = (current.timestamp - previous.timestamp) / 1000;
-                  if (timeDiff > 0) {
-                    const rxDiff = (current.totalPacketsReceived || 0) - (previous.totalPacketsReceived || 0);
-                    const txDiff = (current.totalPacketsSent || 0) - (previous.totalPacketsSent || 0);
-                    rate = Math.max(0, (rxDiff + txDiff) / timeDiff);
-                  }
-                }
+                  let creditsEarned = 0;
 
-                return {
-                  timestamp: current.timestamp,
-                  value: rate,
-                };
-              });
+                  if (previous && previousIndex >= 0) {
+                    // Check if BOTH snapshots have per-node credit data
+                    const currNodeCredits = current.nodeCredits;
+                    const prevNodeCredits = previous.nodeCredits;
 
-              console.log('[RegionPage] Packet rate data points:', packetRateData.length, 'Sample:', packetRateData.slice(0, 3));
+                    if (currNodeCredits && prevNodeCredits && Array.isArray(currNodeCredits) && Array.isArray(prevNodeCredits)) {
+                      // NEW METHOD: Calculate credits earned only for nodes present in BOTH snapshots
+                      // This eliminates spikes from nodes joining/leaving
 
-              // Calculate baseline packet rate for activity health normalization
-              const allPacketRates = packetRateData.map(p => p.value).filter(v => v > 0);
-              const avgPacketRate = allPacketRates.length > 0 
-                ? allPacketRates.reduce((sum, v) => sum + v, 0) / allPacketRates.length 
-                : 0;
-              const maxPacketRateForHealth = Math.max(avgPacketRate * 2, 100); // Use 2x average as max for normalization
+                      // Create maps for quick lookup
+                      const prevMap = new Map(prevNodeCredits.map((n: any) => [n.nodeId, n.credits]));
+                      const currMap = new Map(currNodeCredits.map((n: any) => [n.nodeId, n.credits]));
 
-              // Calculate credits earned over time
-              const creditsData = sorted.map((current, index) => {
-                let previousIndex = index - 1;
-                let previous = sorted[previousIndex];
-
-                const targetTime = current.timestamp - FIVE_MINUTES_MS;
-                for (let i = index - 1; i >= 0; i--) {
-                  if (sorted[i].timestamp <= targetTime) {
-                    previous = sorted[i];
-                    previousIndex = i;
-                    break;
-                  }
-                }
-
-                let creditsEarned = 0;
-
-                if (previous && previousIndex >= 0) {
-                  const prevCredits = previous.totalCredits || 0;
-                  const currCredits = current.totalCredits || 0;
-                  creditsEarned = currCredits - prevCredits;
-                }
-
-                return {
-                  timestamp: current.timestamp,
-                  value: creditsEarned,
-                  _totalCredits: current.totalCredits,
-                };
-              });
-
-              // Only add a current point if the last historical point is old enough (> 5 minutes)
-              // This prevents huge spikes from accumulating changes over long periods
-              const lastHistoricalTimestamp = sorted.length > 0 ? sorted[sorted.length - 1].timestamp : 0;
-              const currentTimestamp = Date.now();
-              const currentTotalCredits = stats.totalCredits;
-              const timeSinceLastHistorical = currentTimestamp - lastHistoricalTimestamp;
-              
-              // Only add/update a current point if the gap is reasonable
-              // This prevents huge spikes from accumulating changes over long periods
-              if (creditsData.length > 0) {
-                const lastPoint = creditsData[creditsData.length - 1];
-                const lastPointTimestamp = lastPoint.timestamp;
-                const timeSinceLastPoint = currentTimestamp - lastPointTimestamp;
-                
-                // Only add a new point if:
-                // 1. It's been at least 5 minutes since the last point (meaningful window)
-                // 2. It's been less than 30 minutes since the last point (prevent huge gaps)
-                // This ensures we show reasonable 5-minute windows, not accumulated changes over hours
-                if (timeSinceLastPoint >= FIVE_MINUTES_MS && timeSinceLastPoint <= 30 * 60 * 1000) {
-                  const lastPointTotal = lastPoint._totalCredits ?? (sorted.length > 0 ? sorted[sorted.length - 1].totalCredits || 0 : 0);
-                  const creditsEarnedSinceLastPoint = currentTotalCredits - lastPointTotal;
-
-                  console.log('[RegionPage] Adding current credit point:', {
-                    lastPointTotal,
-                    current: currentTotalCredits,
-                    earned: creditsEarnedSinceLastPoint,
-                    timeDiff: (timeSinceLastPoint / 1000 / 60).toFixed(1) + ' mins'
-                  });
-
-                  creditsData.push({
-                    timestamp: currentTimestamp,
-                    value: creditsEarnedSinceLastPoint,
-                    _totalCredits: currentTotalCredits,
-                  });
-                } else {
-                  // Gap is too short (< 5 min) or too long (> 30 min)
-                  // Just update the last point's total for tooltip accuracy
-                  // But don't change the value (delta) to avoid spikes
-                  lastPoint._totalCredits = currentTotalCredits;
-                }
-              }
-
-              // Log credit data for debugging large swings
-              const largeSwings = creditsData.filter(d => Math.abs(d.value) > 100000);
-              if (largeSwings.length > 0) {
-                console.log('[RegionPage] Large credit swings detected:', largeSwings.map(d => ({
-                  time: new Date(d.timestamp).toLocaleTimeString(),
-                  change: d.value,
-                  total: d._totalCredits
-                })));
-              }
-
-              const maxPacketRate = Math.max(...packetRateData.map(d => d.value || 0), 1);
-              const minCredits = Math.min(...creditsData.map(d => d.value || 0), 0);
-              const maxCredits = Math.max(...creditsData.map(d => d.value || 0), 10);
-
-              // CPU/RAM data
-              const cpuData = filteredData
-                .filter(d => d.avgCPU && d.avgCPU > 0)
-                .map(d => ({
-                  timestamp: d.timestamp,
-                  value: d.avgCPU || 0,
-                }));
-
-              const ramData = filteredData.map(d => {
-                const ramUsagePercent = d.avgRAM || 0;
-                return {
-                  timestamp: d.timestamp,
-                  value: ramUsagePercent,
-                };
-              });
-
-              const maxCPU = Math.max(...cpuData.map(d => d.value), 10);
-              const maxRAM = Math.max(...ramData.map(d => d.value), 10);
-
-              // Network health data - format same as other charts
-              // Calculate from backend fields (availability, version, distribution) if networkHealthScore not available
-              const healthData = filteredData.map((d: any) => {
-                // First, try to use networkHealthScore from backend
-                if (d.networkHealthScore !== undefined && d.networkHealthScore !== null && !isNaN(d.networkHealthScore)) {
-                  return {
-                    timestamp: d.timestamp,
-                    value: d.networkHealthScore,
-                  };
-                }
-                
-                // Fallback: Calculate from component fields if available
-                if (d.networkHealthAvailability !== undefined && d.networkHealthVersion !== undefined && d.networkHealthDistribution !== undefined) {
-                  const calculated = Math.round(
-                    (d.networkHealthAvailability || 0) * 0.40 +
-                    (d.networkHealthVersion || 0) * 0.35 +
-                    (d.networkHealthDistribution || 0) * 0.25
-                  );
-                  return {
-                    timestamp: d.timestamp,
-                    value: calculated,
-                  };
-                }
-                
-                // Last resort: Calculate from basic availability if we have node counts
-                if (d.totalNodes > 0 && d.onlineCount !== undefined) {
-                  const availability = (d.onlineCount / d.totalNodes) * 100;
-                  // Use availability as a simplified health score (better than nothing)
-                return {
-                  timestamp: d.timestamp,
-                    value: Math.round(availability * 0.40), // At least show availability component
-                  };
-                }
-                
-                // If we have absolutely nothing, return null (will be filtered out)
-                return null;
-              }).filter((d): d is { timestamp: number; value: number } => d !== null);
-              
-              console.log('[RegionPage] Health data processing:', {
-                filteredDataLength: filteredData.length,
-                healthDataLength: healthData.length,
-                sampleRaw: filteredData.slice(0, 3).map((d: any) => ({
-                  timestamp: new Date(d.timestamp).toISOString(),
-                  hasNetworkHealthScore: 'networkHealthScore' in d,
-                  networkHealthScore: d.networkHealthScore,
-                  networkHealthAvailability: d.networkHealthAvailability,
-                  networkHealthVersion: d.networkHealthVersion,
-                  networkHealthDistribution: d.networkHealthDistribution,
-                  onlineCount: d.onlineCount,
-                  totalNodes: d.totalNodes,
-                  allKeys: Object.keys(d),
-                })),
-                sampleProcessed: healthData.slice(0, 3),
-              });
-
-              return (
-                <>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-                    {/* Packet Earning Rate Chart */}
-                    <div className="card">
-                      <HistoricalLineChart
-                        title="Network Activity (Packet Rate)"
-                        data={packetRateData}
-                        height={250}
-                        yDomain={[0, maxPacketRate * 1.1]}
-                        strokeColor="#3F8277"
-                        yLabel="Packets/s"
-                        yTickFormatter={(v) => formatNumber(v)}
-                        tooltipFormatter={(d) => (
-                          <div className="space-y-1">
-                            <div className="text-xs text-foreground/60">
-                              {timeFormat('%b %d, %H:%M')(new Date(d.timestamp))}
-                            </div>
-                            <div className="font-semibold text-[#3F8277]">
-                              {formatNumber(d.value || 0)} packets/s
-                            </div>
-                          </div>
-                        )}
-                        headerContent={
-                          <span className="text-xs text-muted-foreground">
-                            {packetRateData.length === 0 && loadingHistory ? 'Loading data...' : packetRateData.length > 0 ? 'Total packet rate across all nodes' : 'No data available'}
-                          </span>
+                      // Only count credits for nodes that exist in BOTH snapshots
+                      currNodeCredits.forEach((currNode: any) => {
+                        const prevCredits = prevMap.get(currNode.nodeId);
+                        if (prevCredits !== undefined) {
+                          // Node exists in both snapshots - count the delta
+                          const delta = currNode.credits - prevCredits;
+                          creditsEarned += delta;
                         }
-                      />
-                    </div>
+                        // If node only exists in current (new node), ignore it - don't count as "earned"
+                      });
 
-                    {/* Credits Earned Chart */}
-                    <div className="card">
-                      <HistoricalLineChart
-                        title="Credits Earned History"
-                        data={creditsData}
-                        height={250}
-                        yDomain={[minCredits * 1.1 || -10, maxCredits * 1.1 || 10]}
-                        strokeColor="#F0A741"
-                        yLabel="Credits"
-                        yTickFormatter={(v) => {
-                          const formatted = formatCredits(v);
-                          return v > 0 ? `+${formatted}` : formatted;
-                        }}
-                        tooltipFormatter={(d) => {
-                          const value = d.value || 0;
-                          const isPositive = value > 0;
-                          const isNegative = value < 0;
-                          // If this is the most recent point, use current total from stats for accuracy
-                          const isMostRecent = creditsData.length > 0 && d.timestamp === creditsData[creditsData.length - 1].timestamp;
-                          const displayTotal = isMostRecent ? stats.totalCredits : (d._totalCredits ?? 0);
-                          return (
+                      // Log if we filtered out joining/leaving nodes
+                      const nodesJoined = currNodeCredits.filter((n: any) => !prevMap.has(n.nodeId)).length;
+                      const nodesLeft = prevNodeCredits.filter((n: any) => !currMap.has(n.nodeId)).length;
+                      if (nodesJoined > 0 || nodesLeft > 0) {
+                        console.log(`[RegionPage] Node membership changes at ${new Date(current.timestamp).toLocaleTimeString()}: +${nodesJoined} nodes, -${nodesLeft} nodes`);
+                      }
+                    } else {
+                      // FALLBACK: Old method for backward compatibility with snapshots without per-node data
+                      const prevCredits = previous.totalCredits || 0;
+                      const currCredits = current.totalCredits || 0;
+                      creditsEarned = currCredits - prevCredits;
+                    }
+                  }
+
+                  return {
+                    timestamp: current.timestamp,
+                    value: creditsEarned,
+                    _totalCredits: current.totalCredits,
+                  };
+                });
+
+                // Only add a current point if the last historical point is old enough (> 5 minutes)
+                // This prevents huge spikes from accumulating changes over long periods
+                const lastHistoricalTimestamp = sorted.length > 0 ? sorted[sorted.length - 1].timestamp : 0;
+                const currentTimestamp = Date.now();
+                const currentTotalCredits = stats.totalCredits;
+                const timeSinceLastHistorical = currentTimestamp - lastHistoricalTimestamp;
+
+                // Only add/update a current point if the gap is reasonable
+                // This prevents huge spikes from accumulating changes over long periods
+                if (creditsData.length > 0) {
+                  const lastPoint = creditsData[creditsData.length - 1];
+                  const lastPointTimestamp = lastPoint.timestamp;
+                  const timeSinceLastPoint = currentTimestamp - lastPointTimestamp;
+
+                  // Only add a new point if:
+                  // 1. It's been at least 5 minutes since the last point (meaningful window)
+                  // 2. It's been less than 30 minutes since the last point (prevent huge gaps)
+                  // This ensures we show reasonable 5-minute windows, not accumulated changes over hours
+                  if (timeSinceLastPoint >= FIVE_MINUTES_MS && timeSinceLastPoint <= 30 * 60 * 1000) {
+                    const lastHistoricalSnapshot = sorted.length > 0 ? sorted[sorted.length - 1] : null;
+                    const lastHistoricalNodeCredits = lastHistoricalSnapshot?.nodeCredits;
+
+                    let creditsEarnedSinceLastPoint = 0;
+                    let usedSmartCalculation = false;
+
+                    if (lastHistoricalNodeCredits && Array.isArray(lastHistoricalNodeCredits)) {
+                      // USE THE PERFECT STRATEGY: Only count deltas for nodes present in BOTH current state and last snapshot
+                      const prevMap = new Map(lastHistoricalNodeCredits.map((n: any) => [n.nodeId, n.credits]));
+
+                      countryNodes.forEach((currNode: any) => {
+                        const nodeId = currNode.pubkey || currNode.publicKey || currNode.id;
+                        const prevCredits = prevMap.get(nodeId);
+                        if (prevCredits !== undefined && currNode.credits !== undefined && currNode.credits !== null) {
+                          const delta = currNode.credits - prevCredits;
+                          // Only count positive deltas to be safe (credits should only go up)
+                          creditsEarnedSinceLastPoint += Math.max(0, delta);
+                        }
+                      });
+                      usedSmartCalculation = true;
+                    } else {
+                      // SKIP: Fallback unavailable - set sentinel to skip push
+                      console.log('[RegionPage] SKIPPING current point: No node credits history');
+                      creditsEarnedSinceLastPoint = -999999;
+                    }
+
+                    if (creditsEarnedSinceLastPoint !== -999999) {
+                      console.log(`[RegionPage] Adding current credit point (${usedSmartCalculation ? 'smart' : 'fallback'}):`, {
+                        current: currentTotalCredits,
+                        earned: creditsEarnedSinceLastPoint,
+                        timeDiff: (timeSinceLastPoint / 1000 / 60).toFixed(1) + ' mins'
+                      });
+
+                      creditsData.push({
+                        timestamp: currentTimestamp,
+                        value: creditsEarnedSinceLastPoint,
+                        _totalCredits: currentTotalCredits,
+                      });
+                    }
+                  } else {
+                    // Gap is too short (< 5 min) or too long (> 30 min)
+                    // Just update the last point's total for tooltip accuracy
+                    // But don't change the value (delta) to avoid spikes
+                    lastPoint._totalCredits = currentTotalCredits;
+                  }
+                }
+
+                // Log credit data for debugging large swings
+                const largeSwings = creditsData.filter(d => Math.abs(d.value) > 100000);
+                if (largeSwings.length > 0) {
+                  console.log('[RegionPage] Large credit swings detected:', largeSwings.map(d => ({
+                    time: new Date(d.timestamp).toLocaleTimeString(),
+                    change: d.value,
+                    total: d._totalCredits
+                  })));
+                }
+
+                const maxPacketRate = Math.max(...packetRateData.map(d => d.value || 0), 1);
+                const minCredits = Math.min(...creditsData.map(d => d.value || 0), 0);
+                const maxCredits = Math.max(...creditsData.map(d => d.value || 0), 10);
+
+                // CPU/RAM data
+                const cpuData = filteredData
+                  .filter(d => d.avgCPU && d.avgCPU > 0)
+                  .map(d => ({
+                    timestamp: d.timestamp,
+                    value: d.avgCPU || 0,
+                  }));
+
+                const ramData = filteredData.map(d => {
+                  const ramUsagePercent = d.avgRAM || 0;
+                  return {
+                    timestamp: d.timestamp,
+                    value: ramUsagePercent,
+                  };
+                });
+
+                const maxCPU = Math.max(...cpuData.map(d => d.value), 10);
+                const maxRAM = Math.max(...ramData.map(d => d.value), 10);
+
+                // Network health data - format same as other charts
+                // Calculate from backend fields (availability, version, distribution) if networkHealthScore not available
+                const healthData = filteredData.map((d: any) => {
+                  // First, try to use networkHealthScore from backend
+                  if (d.networkHealthScore !== undefined && d.networkHealthScore !== null && !isNaN(d.networkHealthScore)) {
+                    return {
+                      timestamp: d.timestamp,
+                      value: d.networkHealthScore,
+                    };
+                  }
+
+                  // Fallback: Calculate from component fields if available
+                  if (d.networkHealthAvailability !== undefined && d.networkHealthVersion !== undefined && d.networkHealthDistribution !== undefined) {
+                    const calculated = Math.round(
+                      (d.networkHealthAvailability || 0) * 0.40 +
+                      (d.networkHealthVersion || 0) * 0.35 +
+                      (d.networkHealthDistribution || 0) * 0.25
+                    );
+                    return {
+                      timestamp: d.timestamp,
+                      value: calculated,
+                    };
+                  }
+
+                  // Last resort: Calculate from basic availability if we have node counts
+                  if (d.totalNodes > 0 && d.onlineCount !== undefined) {
+                    const availability = (d.onlineCount / d.totalNodes) * 100;
+                    // Use availability as a simplified health score (better than nothing)
+                    return {
+                      timestamp: d.timestamp,
+                      value: Math.round(availability * 0.40), // At least show availability component
+                    };
+                  }
+
+                  // If we have absolutely nothing, return null (will be filtered out)
+                  return null;
+                }).filter((d): d is { timestamp: number; value: number } => d !== null);
+
+                console.log('[RegionPage] Health data processing:', {
+                  filteredDataLength: filteredData.length,
+                  healthDataLength: healthData.length,
+                  sampleRaw: filteredData.slice(0, 3).map((d: any) => ({
+                    timestamp: new Date(d.timestamp).toISOString(),
+                    hasNetworkHealthScore: 'networkHealthScore' in d,
+                    networkHealthScore: d.networkHealthScore,
+                    networkHealthAvailability: d.networkHealthAvailability,
+                    networkHealthVersion: d.networkHealthVersion,
+                    networkHealthDistribution: d.networkHealthDistribution,
+                    onlineCount: d.onlineCount,
+                    totalNodes: d.totalNodes,
+                    allKeys: Object.keys(d),
+                  })),
+                  sampleProcessed: healthData.slice(0, 3),
+                });
+
+                return (
+                  <>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                      {/* Packet Earning Rate Chart */}
+                      <div className="card">
+                        <HistoricalLineChart
+                          title="Network Activity (Packet Rate)"
+                          data={packetRateData}
+                          height={250}
+                          yDomain={[0, maxPacketRate * 1.1]}
+                          strokeColor="#3F8277"
+                          yLabel="Packets/s"
+                          yTickFormatter={(v) => formatNumber(v)}
+                          tooltipFormatter={(d) => (
                             <div className="space-y-1">
                               <div className="text-xs text-foreground/60">
                                 {timeFormat('%b %d, %H:%M')(new Date(d.timestamp))}
                               </div>
-                              <div className={`font-semibold ${isNegative ? 'text-red-400' : isPositive ? 'text-green-400' : 'text-foreground'}`}>
-                                {isNegative ? 'Lost: ' : 'Earned: '}
-                                {isPositive ? '+' : ''}{formatCredits(value)} credits
-                              </div>
-                              <div className="text-xs text-foreground/60">
-                                Total: {displayTotal.toLocaleString()}
+                              <div className="font-semibold text-[#3F8277]">
+                                {formatNumber(d.value || 0)} packets/s
                               </div>
                             </div>
-                          );
-                        }}
-                        headerContent={
-                          <div className="flex items-center gap-1.5 group relative">
+                          )}
+                          headerContent={
                             <span className="text-xs text-muted-foreground">
-                              Credits change over 5-min windows
+                              {packetRateData.length === 0 && loadingHistory ? 'Loading data...' : packetRateData.length > 0 ? 'Total packet rate across all nodes' : 'No data available'}
                             </span>
-                            <div className="relative">
-                              <Info className="w-3.5 h-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help transition-colors" />
-                              <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-zinc-900 border border-border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
-                                <p className="text-xs text-foreground/80 leading-relaxed">
-                                  Credit changes may fluctuate when nodes go online/offline. Nodes earn credits for responding to heartbeats and lose credits for missing data requests.
-                                </p>
+                          }
+                        />
+                      </div>
+
+                      {/* Credits Earned Chart */}
+                      <div className="card">
+                        <HistoricalLineChart
+                          title="Credits Earned History"
+                          data={creditsData}
+                          height={250}
+                          yDomain={[minCredits * 1.1 || -10, maxCredits * 1.1 || 10]}
+                          strokeColor="#F0A741"
+                          yLabel="Credits"
+                          yTickFormatter={(v) => {
+                            const formatted = formatCredits(v);
+                            return v > 0 ? `+${formatted}` : formatted;
+                          }}
+                          tooltipFormatter={(d) => {
+                            const value = d.value || 0;
+                            const isPositive = value > 0;
+                            const isNegative = value < 0;
+                            // If this is the most recent point, use current total from stats for accuracy
+                            const isMostRecent = creditsData.length > 0 && d.timestamp === creditsData[creditsData.length - 1].timestamp;
+                            const displayTotal = isMostRecent ? stats.totalCredits : (d._totalCredits ?? 0);
+                            return (
+                              <div className="space-y-1">
+                                <div className="text-xs text-foreground/60">
+                                  {timeFormat('%b %d, %H:%M')(new Date(d.timestamp))}
+                                </div>
+                                <div className={`font-semibold ${isNegative ? 'text-red-400' : isPositive ? 'text-green-400' : 'text-foreground'}`}>
+                                  {isNegative ? 'Lost: ' : 'Earned: '}
+                                  {isPositive ? '+' : ''}{formatCredits(value)} credits
+                                </div>
+                                <div className="text-xs text-foreground/60">
+                                  Total: {displayTotal.toLocaleString()}
+                                </div>
+                              </div>
+                            );
+                          }}
+                          headerContent={
+                            <div className="flex items-center gap-1.5 group relative">
+                              <span className="text-xs text-muted-foreground">
+                                Credits change over 5-min windows
+                              </span>
+                              <div className="relative">
+                                <Info className="w-3.5 h-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help transition-colors" />
+                                <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-zinc-900 border border-border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                                  <p className="text-xs text-foreground/80 leading-relaxed">
+                                    Credit changes may fluctuate when nodes go online/offline. Nodes earn credits for responding to heartbeats and lose credits for missing data requests.
+                                  </p>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        }
-                      />
+                          }
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* CPU Usage Chart - Always show, empty axes when no data */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {/* CPU Usage Chart - Always show, empty axes when no data */}
                       <div className="card">
                         <HistoricalLineChart
                           title="Average CPU Usage"
@@ -1935,13 +1985,13 @@ function CountryDetailContent() {
                           )}
                           headerContent={
                             <span className="text-xs text-muted-foreground">
-                            {cpuData.length === 0 && loadingHistory ? 'Loading data...' : cpuData.length > 0 ? 'Avg CPU across reporting nodes' : 'No data available'}
+                              {cpuData.length === 0 && loadingHistory ? 'Loading data...' : cpuData.length > 0 ? 'Avg CPU across reporting nodes' : 'No data available'}
                             </span>
                           }
                         />
                       </div>
 
-                    {/* RAM Usage Chart - Always show, empty axes when no data */}
+                      {/* RAM Usage Chart - Always show, empty axes when no data */}
                       <div className="card">
                         <HistoricalLineChart
                           title="Average RAM Usage"
@@ -1963,43 +2013,43 @@ function CountryDetailContent() {
                           )}
                           headerContent={
                             <span className="text-xs text-muted-foreground">
-                            {ramData.length === 0 && loadingHistory ? 'Loading data...' : ramData.length > 0 ? 'Avg RAM across reporting nodes' : 'No data available'}
+                              {ramData.length === 0 && loadingHistory ? 'Loading data...' : ramData.length > 0 ? 'Avg RAM across reporting nodes' : 'No data available'}
                             </span>
                           }
                         />
                       </div>
 
-                    {/* Network Health Chart - Always show, empty axes when no data */}
+                      {/* Network Health Chart - Always show, empty axes when no data */}
                       <div className="card lg:col-span-2">
-                      <HistoricalLineChart
-                        title="Network Health Trend"
-                        data={healthData}
-                        height={250}
-                        yDomain={[0, 100]}
-                        strokeColor="#F0A741"
-                        yLabel="Health Score"
-                        yTickFormatter={(v) => `${v.toFixed(0)}%`}
-                        tooltipFormatter={(d) => (
-                          <div className="space-y-1">
-                            <div className="text-xs text-foreground/60">
-                              {timeFormat('%b %d, %H:%M')(new Date(d.timestamp))}
+                        <HistoricalLineChart
+                          title="Network Health Trend"
+                          data={healthData}
+                          height={250}
+                          yDomain={[0, 100]}
+                          strokeColor="#F0A741"
+                          yLabel="Health Score"
+                          yTickFormatter={(v) => `${v.toFixed(0)}%`}
+                          tooltipFormatter={(d) => (
+                            <div className="space-y-1">
+                              <div className="text-xs text-foreground/60">
+                                {timeFormat('%b %d, %H:%M')(new Date(d.timestamp))}
+                              </div>
+                              <div className="font-semibold text-foreground">
+                                {d.value.toFixed(1)}% Health
+                              </div>
                             </div>
-                            <div className="font-semibold text-foreground">
-                              {d.value.toFixed(1)}% Health
-                            </div>
+                          )}
+                          headerContent={
+                            <span className="text-xs text-muted-foreground">
+                              {loadingHistory ? 'Loading data...' : healthData.length > 0 ? 'Overall health score for this region' : 'No data available'}
+                            </span>
+                          }
+                        />
                       </div>
-                    )}
-                        headerContent={
-                          <span className="text-xs text-muted-foreground">
-                            {loadingHistory ? 'Loading data...' : healthData.length > 0 ? 'Overall health score for this region' : 'No data available'}
-                          </span>
-                        }
-                      />
                     </div>
-                  </div>
-                </>
-              );
-            })()}
+                  </>
+                );
+              })()}
             </div>
 
             {/* Nodes Table - Collapsible */}
@@ -2039,7 +2089,7 @@ function CountryDetailContent() {
                   {loading ? (
                     <TableSkeleton rows={10} columns={7} />
                   ) : (
-                    <PNodeTable 
+                    <PNodeTable
                       nodes={filteredAndSortedNodes}
                       onNodeClick={(node) => {
                         const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';

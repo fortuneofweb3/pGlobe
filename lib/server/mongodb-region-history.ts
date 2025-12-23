@@ -67,6 +67,13 @@ export interface RegionHistorySnapshot {
   networkHealthAvailability: number; // % online
   networkHealthVersion: number; // % on latest version
   networkHealthDistribution: number; // Geographic diversity
+
+  // Per-node credit tracking (for accurate credit earned calculations)
+  // This allows us to calculate credits earned independent of nodes joining/leaving
+  nodeCredits?: Array<{
+    nodeId: string; // Node identifier (pubkey/id)
+    credits: number; // Credits for this specific node
+  }>;
 }
 
 // In-memory cache for region history
@@ -205,6 +212,20 @@ export async function storeRegionSnapshots(
       // (40% availability, 35% version, 25% distribution)
       const networkHealth = calculateNetworkHealth(nodes as any);
 
+      // Capture per-node credits for accurate credit earned calculations
+      // This allows tracking true earned credits independent of nodes joining/leaving
+      const nodeCredits = nodes
+        .filter(n => {
+          // Only include nodes with valid identifiers and credit data
+          const hasId = n.pubkey || n.publicKey || n.id;
+          const hasCredits = n.credits !== undefined && n.credits !== null && !isNaN(n.credits);
+          return hasId && hasCredits;
+        })
+        .map(n => ({
+          nodeId: n.pubkey || n.publicKey || n.id,
+          credits: n.credits || 0,
+        }));
+
       // Create snapshot document
       const snapshot: RegionHistorySnapshot = {
         timestamp,
@@ -230,6 +251,7 @@ export async function storeRegionSnapshots(
         networkHealthAvailability: networkHealth.availability,
         networkHealthVersion: networkHealth.versionHealth,
         networkHealthDistribution: networkHealth.distribution,
+        nodeCredits, // Store per-node credits for accurate delta calculations
       };
 
       // Use updateOne with upsert to avoid duplicates

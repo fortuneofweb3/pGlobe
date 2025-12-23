@@ -9,6 +9,7 @@ import { useNodes } from '@/lib/context/NodesContext';
 import { getFlagForCountry } from '@/lib/utils/country-flags';
 import { RefreshCw, MapPin, Server, Users, TrendingUp, X } from 'lucide-react';
 import AnimatedNumber from '@/components/AnimatedNumber';
+import StatsCard from '@/components/StatsCard';
 
 const formatBytes = (bytes: number) => {
   if (bytes === 0) return '0 B';
@@ -21,7 +22,7 @@ const formatBytes = (bytes: number) => {
 // Map country codes to continents
 const getContinentFromCountryCode = (countryCode?: string): string | null => {
   if (!countryCode) return null;
-  
+
   const continentMap: Record<string, string> = {
     // North America
     'US': 'North America', 'CA': 'North America', 'MX': 'North America',
@@ -84,12 +85,12 @@ const getContinentFromCountryCode = (countryCode?: string): string | null => {
     // Antarctica (unlikely but included)
     'AQ': 'Antarctica',
   };
-  
+
   return continentMap[countryCode.toUpperCase()] || null;
 };
 
 // Country Card Component with fade-in flag
-function CountryCard({ country, flagUrl }: { 
+function CountryCard({ country, flagUrl }: {
   country: {
     name: string;
     country: string;
@@ -102,8 +103,8 @@ function CountryCard({ country, flagUrl }: {
     totalCredits: number;
     avgLatency: number;
     nodeCount: number;
-  }; 
-  flagUrl: string | null 
+  };
+  flagUrl: string | null
 }) {
   const [imageLoaded, setImageLoaded] = useState(false);
 
@@ -122,9 +123,8 @@ function CountryCard({ country, flagUrl }: {
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               onLoad={() => setImageLoaded(true)}
-              className={`object-cover blur-sm scale-150 group-hover:scale-[1.7] transition-all duration-500 select-none pointer-events-none ${
-                imageLoaded ? 'opacity-100' : 'opacity-0'
-              }`}
+              className={`object-cover blur-sm scale-150 group-hover:scale-[1.7] transition-all duration-500 select-none pointer-events-none ${imageLoaded ? 'opacity-100' : 'opacity-0'
+                }`}
               priority={false}
               quality={75}
               unoptimized={false}
@@ -132,7 +132,7 @@ function CountryCard({ country, flagUrl }: {
           </div>
         </div>
       )}
-      
+
       {/* Content */}
       <div className="relative z-10">
         <div className="flex items-start justify-between mb-4">
@@ -237,7 +237,7 @@ function RegionsPageContent() {
       if (!node.locationData || !node.locationData.country) return;
 
       const countryName = node.locationData.country;
-      
+
       if (!countries[countryName]) {
         countries[countryName] = {
           name: countryName,
@@ -284,7 +284,7 @@ function RegionsPageContent() {
       const latencies = country.nodes
         .map(n => n.latency)
         .filter((lat): lat is number => lat !== undefined && lat !== null);
-      
+
       if (latencies.length > 0) {
         country.avgLatency = latencies.reduce((sum, lat) => sum + lat, 0) / latencies.length;
       }
@@ -301,7 +301,7 @@ function RegionsPageContent() {
     const continents = new Set<string>();
     const countriesSet = new Set<string>();
     const citiesSet = new Set<string>();
-    
+
     nodes.forEach((node) => {
       if (node.locationData?.country) {
         countriesSet.add(node.locationData.country);
@@ -316,7 +316,7 @@ function RegionsPageContent() {
         }
       }
     });
-    
+
     return {
       continents: continents.size,
       countries: countriesSet.size,
@@ -336,7 +336,7 @@ function RegionsPageContent() {
   if (loading && nodes.length === 0) {
     return (
       <div className="min-h-screen bg-black text-foreground">
-        <Header activePage="regions" loading={true} onRefresh={() => {}} />
+        <Header activePage="regions" loading={true} onRefresh={() => { }} />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           {/* Header */}
@@ -353,13 +353,13 @@ function RegionsPageContent() {
           {/* Summary Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             {['Total Regions', 'Total Nodes', 'Online Nodes'].map((label) => (
-              <div key={label} className="card-stat">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">{label}</span>
-                  <MapPin className="w-4 h-4 text-foreground/40" />
-                </div>
-                <div className="h-8 w-16 bg-muted/40 rounded animate-pulse" />
-              </div>
+              <StatsCard
+                key={label}
+                title={label}
+                value={0}
+                icon={<MapPin className="w-4 h-4" />}
+                loading={true}
+              />
             ))}
           </div>
 
@@ -392,7 +392,7 @@ function RegionsPageContent() {
   return (
     <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
       <Header activePage="regions" nodeCount={nodes.length} lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
-      
+
       <main className="flex-1 overflow-hidden">
         <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
@@ -427,68 +427,52 @@ function RegionsPageContent() {
               )}
             </div>
 
-        {/* Summary Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 stagger-children">
-          <div className="card-stat">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Nodes</span>
-              <Server className="w-4 h-4 text-foreground/40" />
-            </div>
-            <div className="text-2xl font-bold text-foreground">
-              <AnimatedNumber value={nodes.length} />
-            </div>
-          </div>
+            {/* Summary Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 stagger-children">
+              <StatsCard
+                title="Total Nodes"
+                value={nodes.length}
+                icon={<Server className="w-4 h-4" />}
+              />
 
-          <div className="card-stat">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Continents</span>
-              <MapPin className="w-4 h-4 text-foreground/40" />
-            </div>
-            <div className="text-2xl font-bold text-foreground">
-              <AnimatedNumber value={stats.continents} />
-            </div>
-          </div>
+              <StatsCard
+                title="Continents"
+                value={stats.continents}
+                icon={<MapPin className="w-4 h-4" />}
+              />
 
-          <div className="card-stat">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Countries</span>
-              <MapPin className="w-4 h-4 text-foreground/40" />
-            </div>
-            <div className="text-2xl font-bold text-foreground">
-              <AnimatedNumber value={stats.countries} />
-            </div>
-          </div>
+              <StatsCard
+                title="Countries"
+                value={stats.countries}
+                icon={<MapPin className="w-4 h-4" />}
+              />
 
-          <div className="card-stat">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Cities</span>
-              <MapPin className="w-4 h-4 text-foreground/40" />
+              <StatsCard
+                title="Cities"
+                value={stats.cities}
+                icon={<MapPin className="w-4 h-4" />}
+              />
             </div>
-            <div className="text-2xl font-bold text-foreground">
-              <AnimatedNumber value={stats.cities} />
+
+            {/* Countries Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 stagger-children">
+              {regionData
+                .filter(country => !selectedCountry || country.name === selectedCountry)
+                .map((country) => {
+                  const flagUrl = country.countryCode
+                    ? `/api/flag-proxy?code=${country.countryCode.toLowerCase()}`
+                    : null;
+                  return (
+                    <CountryCard key={country.name} country={country} flagUrl={flagUrl} />
+                  );
+                })}
             </div>
-          </div>
-        </div>
 
-        {/* Countries Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 stagger-children">
-          {regionData
-            .filter(country => !selectedCountry || country.name === selectedCountry)
-            .map((country) => {
-              const flagUrl = country.countryCode
-                ? `/api/flag-proxy?code=${country.countryCode.toLowerCase()}`
-                : null;
-              return (
-                <CountryCard key={country.name} country={country} flagUrl={flagUrl} />
-              );
-            })}
-        </div>
-
-        {regionData.length === 0 && !loading && (
-          <div className="card text-center" style={{ padding: '2rem' }}>
-            <p className="text-foreground/60">No countries found</p>
-          </div>
-        )}
+            {regionData.length === 0 && !loading && (
+              <div className="card text-center" style={{ padding: '2rem' }}>
+                <p className="text-foreground/60">No countries found</p>
+              </div>
+            )}
           </div>
         </div>
       </main>

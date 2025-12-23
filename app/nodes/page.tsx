@@ -11,12 +11,13 @@ import { RefreshCw, Server, TrendingUp, Search, Filter, X, Activity } from 'luci
 import SearchBar from '@/components/SearchBar';
 import { TableSkeleton, CardSkeleton } from '@/components/Skeletons';
 import AnimatedNumber from '@/components/AnimatedNumber';
+import StatsCard from '@/components/StatsCard';
 
 function NodesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { nodes, loading, error, lastUpdate, refreshNodes } = useNodes();
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [versionFilter, setVersionFilter] = useState<string>('all');
@@ -42,9 +43,9 @@ function NodesPageContent() {
 
     if (statusFilter !== 'all') {
       if (statusFilter === 'offline') {
-        filtered = filtered.filter((node) => 
-          node.status === 'offline' || 
-          node.status === 'syncing' || 
+        filtered = filtered.filter((node) =>
+          node.status === 'offline' ||
+          node.status === 'syncing' ||
           !node.status
         );
       } else {
@@ -66,12 +67,12 @@ function NodesPageContent() {
 
     if (packetsFilter !== 'all') {
       if (packetsFilter === 'with') {
-        filtered = filtered.filter((node) => 
+        filtered = filtered.filter((node) =>
           (node.packetsReceived !== undefined && node.packetsReceived !== null && node.packetsReceived > 0) ||
           (node.packetsSent !== undefined && node.packetsSent !== null && node.packetsSent > 0)
         );
       } else if (packetsFilter === 'without') {
-        filtered = filtered.filter((node) => 
+        filtered = filtered.filter((node) =>
           (!node.packetsReceived || node.packetsReceived === 0) &&
           (!node.packetsSent || node.packetsSent === 0)
         );
@@ -136,11 +137,11 @@ function NodesPageContent() {
   const packetsCounts = useMemo(() => {
     return {
       all: nodes.length,
-      with: nodes.filter(n => 
+      with: nodes.filter(n =>
         (n.packetsReceived !== undefined && n.packetsReceived !== null && n.packetsReceived > 0) ||
         (n.packetsSent !== undefined && n.packetsSent !== null && n.packetsSent > 0)
       ).length,
-      without: nodes.filter(n => 
+      without: nodes.filter(n =>
         (!n.packetsReceived || n.packetsReceived === 0) &&
         (!n.packetsSent || n.packetsSent === 0)
       ).length,
@@ -169,8 +170,8 @@ function NodesPageContent() {
   if (isLoading && nodes.length === 0) {
     return (
       <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
-        <Header activePage="nodes" loading={true} onRefresh={() => {}} />
-        
+        <Header activePage="nodes" loading={true} onRefresh={() => { }} />
+
         <main className="flex-1 overflow-hidden">
           <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
@@ -187,29 +188,26 @@ function NodesPageContent() {
 
               {/* Summary Stats - 3 cards */}
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6">
-                <div className="card-stat">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Nodes</span>
-                    <Server className="w-4 h-4 text-foreground/40" />
-                  </div>
-                  <div className="h-8 w-16 bg-muted/50 rounded animate-pulse" />
-                </div>
+                <StatsCard
+                  title="Total Nodes"
+                  value={0}
+                  icon={<Server className="w-4 h-4" />}
+                  loading={true}
+                />
 
-                <div className="card-stat">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Online Nodes</span>
-                    <TrendingUp className="w-4 h-4 text-foreground/40" />
-                  </div>
-                  <div className="h-8 w-16 bg-muted/50 rounded animate-pulse" />
-                </div>
+                <StatsCard
+                  title="Online Nodes"
+                  value={0}
+                  icon={<TrendingUp className="w-4 h-4" />}
+                  loading={true}
+                />
 
-                <div className="card-stat">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Showing</span>
-                    <Search className="w-4 h-4 text-foreground/40" />
-                  </div>
-                  <div className="h-8 w-16 bg-muted/50 rounded animate-pulse" />
-                </div>
+                <StatsCard
+                  title="Showing"
+                  value={0}
+                  icon={<Search className="w-4 h-4" />}
+                  loading={true}
+                />
               </div>
 
               {/* Search and Filters */}
@@ -276,7 +274,7 @@ function NodesPageContent() {
                       </thead>
                     </table>
                   </div>
-                  
+
                   {/* Table Rows */}
                   <div className="flex-1 overflow-y-auto">
                     <table className="min-w-full border-collapse" style={{ minWidth: '800px' }}>
@@ -321,7 +319,7 @@ function NodesPageContent() {
   return (
     <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
       <Header activePage="nodes" nodeCount={nodes.length} lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
-      
+
       <main className="flex-1 overflow-hidden">
         <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
@@ -338,45 +336,33 @@ function NodesPageContent() {
 
             {/* Summary Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6 stagger-children">
-              <div className="card-stat">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Total Nodes</span>
-                  <Server className="w-4 h-4 text-foreground/40" />
-                </div>
-                <div className="text-2xl font-bold text-foreground">
-                  <AnimatedNumber value={nodes.length} />
-                </div>
-              </div>
+              <StatsCard
+                title="Total Nodes"
+                value={nodes.length}
+                icon={<Server className="w-4 h-4" />}
+                color="orange"
+              />
 
-              <div className="card-stat">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Online Nodes</span>
-                  <TrendingUp className="w-4 h-4 text-foreground/40" />
-                </div>
-                <div className="text-2xl font-bold text-[#3F8277]">
-                  <AnimatedNumber value={statusCounts.online} />
-                </div>
-              </div>
+              <StatsCard
+                title="Online Nodes"
+                value={statusCounts.online}
+                icon={<TrendingUp className="w-4 h-4" />}
+                color="green"
+              />
 
-              <div className="card-stat">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Syncing</span>
-                  <Activity className="w-4 h-4 text-foreground/40" />
-                </div>
-                <div className="text-2xl font-bold text-[#F0A741]">
-                  <AnimatedNumber value={nodes.filter(n => n.status === 'syncing').length} />
-                </div>
-              </div>
+              <StatsCard
+                title="Syncing"
+                value={nodes.filter(n => n.status === 'syncing').length}
+                icon={<Activity className="w-4 h-4" />}
+                color="blue"
+              />
 
-              <div className="card-stat">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-foreground/60 uppercase tracking-wide">Offline Nodes</span>
-                  <Server className="w-4 h-4 text-foreground/40" />
-                </div>
-                <div className="text-2xl font-bold text-gray-400">
-                  <AnimatedNumber value={statusCounts.offline} />
-                </div>
-              </div>
+              <StatsCard
+                title="Offline Nodes"
+                value={statusCounts.offline}
+                icon={<Server className="w-4 h-4" />}
+                color="red"
+              />
             </div>
 
             {/* Search and Filters - Compact */}
@@ -405,11 +391,10 @@ function NodesPageContent() {
                 {/* Filters Button */}
                 <button
                   onClick={() => setShowFilters(!showFilters)}
-                  className={`flex items-center justify-center gap-2 rounded-lg transition-all text-sm border whitespace-nowrap h-[42px] ${
-                    showFilters || hasActiveFilters
-                      ? 'px-3 sm:px-4 bg-[#F0A741]/20 text-[#F0A741] border-[#F0A741]/30'
-                      : 'px-3 bg-card text-foreground/60 hover:text-foreground hover:border-[#F0A741]/30 border-border/60'
-                  }`}
+                  className={`flex items-center justify-center gap-2 rounded-lg transition-all text-sm border whitespace-nowrap h-[42px] ${showFilters || hasActiveFilters
+                    ? 'px-3 sm:px-4 bg-[#F0A741]/20 text-[#F0A741] border-[#F0A741]/30'
+                    : 'px-3 bg-card text-foreground/60 hover:text-foreground hover:border-[#F0A741]/30 border-border/60'
+                    }`}
                 >
                   <Filter className="w-4 h-4" />
                   <span className="hidden sm:inline font-medium">Filters</span>
@@ -519,11 +504,11 @@ function NodesPageContent() {
                     <p className="text-sm text-red-400">{error}</p>
                   </div>
                 )}
-                
+
                 {isLoading ? (
                   <TableSkeleton rows={10} columns={7} />
                 ) : (
-                  <PNodeTable 
+                  <PNodeTable
                     nodes={filteredAndSortedNodes}
                     onNodeClick={(node) => {
                       const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';
