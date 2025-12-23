@@ -6,6 +6,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCachedLocation, batchFetchLocations } from '@/lib/server/location-cache';
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 /**
  * Extract client IP from request headers
  * Handles Vercel, Cloudflare, and other proxy headers

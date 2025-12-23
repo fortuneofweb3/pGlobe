@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import "./globals.css";
 import { NodesProvider } from "@/lib/context/NodesContext";
 import { UserRegionProvider } from "@/lib/contexts/UserRegionContext";
@@ -31,13 +32,19 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
-                const stored = localStorage.getItem('darkMode');
-                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                const shouldBeDark = stored ? stored === 'true' : prefersDark;
-                if (shouldBeDark) {
-                  document.documentElement.classList.add('dark');
-                } else {
-                  document.documentElement.classList.add('light');
+                try {
+                  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+                    const stored = localStorage.getItem('darkMode');
+                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    const shouldBeDark = stored ? stored === 'true' : prefersDark;
+                    if (shouldBeDark) {
+                      document.documentElement.classList.add('dark');
+                    } else {
+                      document.documentElement.classList.add('light');
+                    }
+                  }
+                } catch (e) {
+                  // Silently fail during SSR
                 }
               })();
             `,
@@ -45,7 +52,9 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
-        <ProgressBar />
+        <Suspense fallback={null}>
+          <ProgressBar />
+        </Suspense>
         <NodesProvider>
           <UserRegionProvider>
             {children}

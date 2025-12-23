@@ -1,6 +1,6 @@
 /**
  * Region historical data endpoint - Proxies to API server (local in dev, Render in production)
- * 
+ *
  * API server handles:
  * - Aggregating historical snapshots by region/country
  * - Filtering nodes by country
@@ -8,6 +8,9 @@
  */
 
 import { NextResponse } from 'next/server';
+
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
 
 const RENDER_API_URL = process.env.RENDER_API_URL || process.env.NEXT_PUBLIC_RENDER_API_URL;
 const API_SECRET = process.env.API_SECRET;

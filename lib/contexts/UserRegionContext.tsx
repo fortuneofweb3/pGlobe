@@ -29,6 +29,9 @@ export function UserRegionProvider({ children }: { children: ReactNode }) {
 
   // Update selected region when detected region changes (but only if user hasn't manually changed it)
   useEffect(() => {
+    // Only run in browser environment
+    if (typeof window === 'undefined') return;
+
     if (!loading && userRegion.id) {
       const storedManualSelection = localStorage.getItem('manualRegionSelection');
       if (!storedManualSelection) {

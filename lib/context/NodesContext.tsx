@@ -217,6 +217,12 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   // Initial fetch - load from cache instantly, then fetch in background
   // Only run once on mount, not on every page switch
   useEffect(() => {
+    // Only run in browser environment
+    if (typeof window === 'undefined') {
+      setLoading(false);
+      return;
+    }
+
     if (hasInitializedRef.current) {
       // Already initialized, just load cache if needed
       const cached = loadCache();
@@ -234,7 +240,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     }
 
     hasInitializedRef.current = true;
-    
+
     // Hydrate from cache FIRST - show existing data immediately (no loading state)
     const cached = loadCache();
     if (cached?.nodes && cached.nodes.length > 0) {
@@ -253,11 +259,11 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       console.log('[NodesContext] No cache available, showing loading state');
     }
-    
+
     // STEP 1: ALWAYS fetch fresh data - don't rely on cache alone
     // This ensures we show current data, even if cache exists
     // Defer fetch until after initial render to avoid blocking navigation
-    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+    if ('requestIdleCallback' in window) {
       requestIdleCallback(() => {
         refreshNodes().catch((err) => {
           // Log error but don't fail silently - user should know if data is stale
@@ -278,23 +284,23 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         });
       }, 50);
     }
-    
+
     // STEP 2: Trigger server-side refresh AFTER fetching MongoDB data
     // This keeps MongoDB updated in the background
     const lastRefreshTime = localStorage.getItem('lastServerRefresh');
     const now = Date.now();
     const oneMinuteAgo = now - 60 * 1000;
-    
+
     if (!lastRefreshTime || parseInt(lastRefreshTime) < oneMinuteAgo) {
       console.log('[NodesContext] Triggering background refresh on Render (last refresh was', lastRefreshTime ? `${Math.floor((now - parseInt(lastRefreshTime)) / 1000)}s ago` : 'never', ')');
       // Defer background refresh to avoid blocking navigation
-      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      if ('requestIdleCallback' in window) {
         requestIdleCallback(() => {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 30000);
-          
+
           console.log('[NodesContext] Calling /api/refresh-nodes...');
-          fetch('/api/refresh-nodes', { 
+          fetch('/api/refresh-nodes', {
             method: 'GET',
             signal: controller.signal,
           })
@@ -325,9 +331,9 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         setTimeout(() => {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 30000);
-          
+
           console.log('[NodesContext] Calling /api/refresh-nodes...');
-          fetch('/api/refresh-nodes', { 
+          fetch('/api/refresh-nodes', {
             method: 'GET',
             signal: controller.signal,
           })
@@ -357,6 +363,9 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   // Reduced frequency to minimize flickering and improve performance
   // Only poll if we have nodes (don't poll if initial load failed)
   useEffect(() => {
+    // Only run in browser environment
+    if (typeof window === 'undefined') return;
+
     // Only start polling if we have nodes
     if (nodes.length === 0) return;
 
@@ -374,6 +383,9 @@ export function NodesProvider({ children }: { children: ReactNode }) {
 
   // Refresh when network changes
   useEffect(() => {
+    // Only run in browser environment
+    if (typeof window === 'undefined') return;
+
     if (selectedNetwork) {
       refreshNodes();
     }
@@ -381,6 +393,9 @@ export function NodesProvider({ children }: { children: ReactNode }) {
 
   // Fetch pod credits when nodes are loaded
   useEffect(() => {
+    // Only run in browser environment
+    if (typeof window === 'undefined') return;
+
     const fetchCredits = async () => {
       try {
         const response = await fetch('/api/pod-credits');
@@ -393,7 +408,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         console.error('[NodesContext] Failed to fetch pod credits:', error);
       }
     };
-    
+
     if (nodes.length > 0) {
       fetchCredits();
     }
