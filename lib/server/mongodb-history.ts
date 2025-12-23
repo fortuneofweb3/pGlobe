@@ -15,6 +15,7 @@ import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
 import { PNode } from '../types/pnode';
 import { getDb } from './mongodb-nodes';
 import { calculateNetworkHealth } from '../utils/network-health';
+import { storeRegionSnapshots } from './mongodb-region-history';
 
 const COLLECTION_NAME = 'node_history';
 
@@ -216,6 +217,15 @@ export async function storeHistoricalSnapshot(
     
     await collection.insertOne(snapshot);
     console.log(`[MongoDB History] ✅ Stored snapshot for interval ${interval} (${nodes.length} nodes, ${snapshot.nodeSnapshots.length} node snapshots)`);
+
+    // ✨ NEW: Store pre-aggregated region snapshots for faster queries
+    try {
+      const nodesByRegion = groupNodesByRegion(snapshot.nodeSnapshots);
+      await storeRegionSnapshots(nodesByRegion, now, interval, dateStr);
+    } catch (regionError: any) {
+      console.error('[MongoDB History] ⚠️  Failed to store region snapshots:', regionError?.message);
+      // Don't fail the entire snapshot if region storage fails
+    }
   } catch (error: any) {
     console.error('[MongoDB History] ❌ Failed to store snapshot:', {
       error: error?.message,
@@ -798,6 +808,34 @@ function calculateVersionDistribution(nodes: PNode[]): Record<string, number> {
     }
   }
   return distribution;
+}
+
+/**
+ * Group node snapshots by region for pre-aggregation
+ */
+function groupNodesByRegion(nodeSnapshots: HistoricalSnapshot['nodeSnapshots']): Map<string, HistoricalSnapshot['nodeSnapshots']> {
+  const byRegion = new Map<string, HistoricalSnapshot['nodeSnapshots']>();
+
+  for (const snapshot of nodeSnapshots) {
+    // Get country from node location
+    const country = snapshot.nodeLocation?.country;
+    const countryCode = snapshot.nodeLocation?.countryCode;
+
+    if (!country || country === 'Unknown') {
+      continue; // Skip nodes without location
+    }
+
+    // Use country name as key
+    const regionKey = country;
+
+    if (!byRegion.has(regionKey)) {
+      byRegion.set(regionKey, []);
+    }
+
+    byRegion.get(regionKey)!.push(snapshot);
+  }
+
+  return byRegion;
 }
 
 function createNodeSnapshots(nodes: PNode[]): HistoricalSnapshot['nodeSnapshots'] {

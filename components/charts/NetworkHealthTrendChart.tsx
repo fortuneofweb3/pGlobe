@@ -211,12 +211,11 @@ export default function NetworkHealthTrendChart({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-foreground">Network Health Trend</h3>
-        <div className="flex items-center gap-3">
+      {headerContent && (
+        <div className="flex items-center justify-end">
           {headerContent}
         </div>
-      </div>
+      )}
     <div style={{ width: '100%', height, position: 'relative' }}>
       <ParentSize>
         {({ width: parentWidth = 800 }) => {

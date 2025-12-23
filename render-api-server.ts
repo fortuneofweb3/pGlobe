@@ -24,6 +24,7 @@ import { syncNodes, fetchAllNodes } from './lib/server/sync-nodes';
 import { getNetworkConfig } from './lib/server/network-config';
 import { calculateNetworkHealth, getLatestVersion } from './lib/utils/network-health';
 import { PNode } from './lib/types/pnode';
+import { createRegionHistoryIndexes, getRegionHistory as getOptimizedRegionHistory, clearAllRegionCache, getRegionCacheStats } from './lib/server/mongodb-region-history';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -946,20 +947,23 @@ app.get('/api/history', authenticate, async (req, res) => {
 });
 
 /**
- * GET /api/history/region
+ * GET /api/history/region (OPTIMIZED VERSION)
  * Returns aggregated historical data for a region (country)
+ * Uses pre-aggregated region_history collection for MUCH faster queries
+ *
  * Query params:
  *   - country: country name (required)
  *   - countryCode: optional country code (ISO 2-letter)
  *   - startTime: optional start timestamp (ms)
  *   - endTime: optional end timestamp (ms)
- * Returns: { data: [...aggregated data points], count: number }
+ * Returns: { success: boolean, data: [...aggregated data points], count: number }
  */
 app.get('/api/history/region', authenticate, async (req, res) => {
   try {
     const country = req.query.country as string | undefined;
     if (!country) {
       return res.status(400).json({
+        success: false,
         error: 'country parameter is required',
         data: [],
         count: 0,
@@ -970,111 +974,48 @@ app.get('/api/history/region', authenticate, async (req, res) => {
     const startTime = req.query.startTime ? parseInt(req.query.startTime as string) : undefined;
     const endTime = req.query.endTime ? parseInt(req.query.endTime as string) : undefined;
 
-    console.log('[RenderAPI] Fetching region history:', {
+    console.log('[RenderAPI] 🚀 Fetching OPTIMIZED region history:', {
       country,
       countryCode,
       startTime: startTime ? new Date(startTime).toISOString() : undefined,
       endTime: endTime ? new Date(endTime).toISOString() : undefined,
     });
 
-    const { getRegionHistory } = await import('./lib/server/mongodb-history');
-    const rawRegionData = await getRegionHistory(country, countryCode, startTime, endTime);
+    const queryStartTime = Date.now();
 
-    console.log(`[RenderAPI] ✅ Region history: ${rawRegionData.length} raw data points for ${country}`);
+    // Use NEW optimized region history (from pre-aggregated collection)
+    const snapshots = await getOptimizedRegionHistory(country, countryCode, startTime, endTime);
 
-    // Space out points by time intervals for better chart readability
-    // Determine interval based on time range (default to 6 hours if not provided)
-    let intervalMs: number;
-    if (startTime && endTime) {
-      const timeRange = endTime - startTime;
-      if (timeRange <= 1 * 60 * 60 * 1000) {
-        intervalMs = 5 * 60 * 1000; // 5 minutes for <= 1 hour
-      } else if (timeRange <= 6 * 60 * 60 * 1000) {
-        intervalMs = 30 * 60 * 1000; // 30 minutes for <= 6 hours
-      } else if (timeRange <= 24 * 60 * 60 * 1000) {
-        intervalMs = 1 * 60 * 60 * 1000; // 1 hour for <= 24 hours
-      } else if (timeRange <= 7 * 24 * 60 * 60 * 1000) {
-        intervalMs = 6 * 60 * 60 * 1000; // 6 hours for <= 7 days
-      } else {
-        intervalMs = 24 * 60 * 60 * 1000; // 1 day for > 7 days
-      }
-    } else {
-      intervalMs = 6 * 60 * 60 * 1000; // Default: 6 hours
-    }
+    const queryDuration = Date.now() - queryStartTime;
 
-    // Group points by time intervals and average them
-    let regionData = rawRegionData;
-    if (rawRegionData.length > 0) {
-      const grouped = new Map<number, typeof rawRegionData>();
-      
-      rawRegionData.forEach(point => {
-        // Round timestamp down to the nearest interval
-        const intervalStart = Math.floor(point.timestamp / intervalMs) * intervalMs;
-        
-        if (!grouped.has(intervalStart)) {
-          grouped.set(intervalStart, []);
-        }
-        grouped.get(intervalStart)!.push(point);
-      });
+    console.log(`[RenderAPI] ✅ OPTIMIZED region history: ${snapshots.length} snapshots in ${queryDuration}ms (${country})`);
 
-      // Average points within each interval
-      regionData = Array.from(grouped.entries())
-        .sort(([a], [b]) => a - b)
-        .map(([intervalStart, points]) => {
-          // Average all metrics for points in this interval
-          const avg = points.reduce((acc, point) => ({
-            timestamp: intervalStart,
-            onlineCount: acc.onlineCount + point.onlineCount,
-            totalNodes: acc.totalNodes + point.totalNodes,
-            totalPacketsReceived: acc.totalPacketsReceived + point.totalPacketsReceived,
-            totalPacketsSent: acc.totalPacketsSent + point.totalPacketsSent,
-            totalCredits: acc.totalCredits + point.totalCredits,
-            avgCPU: acc.avgCPU + point.avgCPU,
-            avgRAM: acc.avgRAM + point.avgRAM,
-            networkHealthScore: acc.networkHealthScore + (point.networkHealthScore || 0),
-            networkHealthAvailability: acc.networkHealthAvailability + (point.networkHealthAvailability || 0),
-            networkHealthVersion: acc.networkHealthVersion + (point.networkHealthVersion || 0),
-            networkHealthDistribution: acc.networkHealthDistribution + (point.networkHealthDistribution || 0),
-            count: acc.count + 1,
-          }), {
-            timestamp: intervalStart,
-            onlineCount: 0,
-            totalNodes: 0,
-            totalPacketsReceived: 0,
-            totalPacketsSent: 0,
-            totalCredits: 0,
-            avgCPU: 0,
-            avgRAM: 0,
-            networkHealthScore: 0,
-            networkHealthAvailability: 0,
-            networkHealthVersion: 0,
-            networkHealthDistribution: 0,
-            count: 0,
-          });
+    // Transform to expected format for frontend
+    const regionData = snapshots.map(snapshot => ({
+      timestamp: snapshot.timestamp,
+      onlineCount: snapshot.onlineNodes,
+      totalNodes: snapshot.totalNodes,
+      totalPacketsReceived: snapshot.totalPacketsReceived,
+      totalPacketsSent: snapshot.totalPacketsSent,
+      totalCredits: snapshot.totalCredits,
+      avgCPU: snapshot.avgCpuPercent,
+      avgRAM: snapshot.avgRamPercent,
+      networkHealthScore: snapshot.networkHealthScore,
+      networkHealthAvailability: snapshot.networkHealthAvailability,
+      networkHealthVersion: snapshot.networkHealthVersion,
+      networkHealthDistribution: 0, // Not used for region health
+      versionDistribution: snapshot.versionDistribution,
+      cities: snapshot.cities,
+    }));
 
-          return {
-            timestamp: avg.timestamp,
-            onlineCount: Math.round(avg.onlineCount / avg.count),
-            totalNodes: Math.round(avg.totalNodes / avg.count),
-            totalPacketsReceived: Math.round(avg.totalPacketsReceived / avg.count),
-            totalPacketsSent: Math.round(avg.totalPacketsSent / avg.count),
-            totalCredits: Math.round((avg.totalCredits / avg.count) * 10) / 10,
-            avgCPU: Math.round((avg.avgCPU / avg.count) * 10) / 10,
-            avgRAM: Math.round((avg.avgRAM / avg.count) * 10) / 10,
-            networkHealthScore: Math.round(avg.networkHealthScore / avg.count),
-            networkHealthAvailability: Math.round(avg.networkHealthAvailability / avg.count),
-            networkHealthVersion: Math.round(avg.networkHealthVersion / avg.count),
-            networkHealthDistribution: Math.round(avg.networkHealthDistribution / avg.count),
-          };
-        });
-
-      console.log(`[RenderAPI] Spaced ${rawRegionData.length} points into ${regionData.length} time intervals (${intervalMs / 1000 / 60} min intervals)`);
-    }
+    // Cache control for better performance
+    res.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300');
 
     res.json({
       success: true,
       data: regionData,
       count: regionData.length,
+      cached: queryDuration < 100, // If query was super fast, it was likely cached
     });
   } catch (error: any) {
     console.error('[RenderAPI] ❌ Failed to fetch region history:', error);
@@ -1083,6 +1024,48 @@ app.get('/api/history/region', authenticate, async (req, res) => {
       message: error?.message || 'Unknown error',
       data: [],
       count: 0,
+    });
+  }
+});
+
+/**
+ * GET /api/admin/region-cache/stats
+ * Get region history cache statistics (admin only)
+ */
+app.get('/api/admin/region-cache/stats', authenticate, async (req, res) => {
+  try {
+    const stats = getRegionCacheStats();
+    res.json({
+      success: true,
+      stats,
+    });
+  } catch (error: any) {
+    console.error('[RenderAPI] ❌ Failed to get cache stats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get cache stats',
+      message: error?.message || 'Unknown error',
+    });
+  }
+});
+
+/**
+ * POST /api/admin/region-cache/clear
+ * Clear region history cache (admin only)
+ */
+app.post('/api/admin/region-cache/clear', authenticate, async (req, res) => {
+  try {
+    clearAllRegionCache();
+    res.json({
+      success: true,
+      message: 'Region cache cleared successfully',
+    });
+  } catch (error: any) {
+    console.error('[RenderAPI] ❌ Failed to clear cache:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to clear cache',
+      message: error?.message || 'Unknown error',
     });
   }
 });
@@ -1182,6 +1165,14 @@ async function startServer() {
       console.log('[RenderAPI] ✅ Historical data indexes created');
     } catch (error: any) {
       console.warn('[RenderAPI] ⚠️  Failed to create history indexes:', error?.message || error);
+    }
+
+    // Create region history indexes (NEW)
+    try {
+      await createRegionHistoryIndexes();
+      console.log('[RenderAPI] ✅ Region history indexes created');
+    } catch (error: any) {
+      console.warn('[RenderAPI] ⚠️  Failed to create region history indexes:', error?.message || error);
     }
 
     // Step 2: Verify MongoDB connection before starting background refresh
