@@ -43,24 +43,16 @@ export default function AnalyticsPage() {
   useEffect(() => {
     const fetchHistoricalData = async () => {
       try {
-        // Use the new public API endpoint for network health history
+        // Fetch network health history
         const url = `/api/v1/network/health/history?period=${healthPeriod}`;
-        console.log('[Analytics] Fetching health history from', url, 'with period:', healthPeriod);
-        console.log('[Analytics] Starting fetch request...');
-        
-        const fetchStartTime = Date.now();
-        
-        // Add timeout to fetch (45 seconds - matches backend)
+
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-          controller.abort();
-          console.error('[Analytics] ❌ Fetch timeout after 45 seconds');
-        }, 45000); // 45 second timeout
-        
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
+
         let response: Response;
         try {
           response = await fetch(url, {
-          cache: 'no-store', // Don't cache to ensure fresh data
+            cache: 'no-store',
             signal: controller.signal,
           });
           clearTimeout(timeoutId);
@@ -72,159 +64,35 @@ export default function AnalyticsPage() {
           throw fetchError;
         }
         
-        const fetchDuration = Date.now() - fetchStartTime;
-        console.log(`[Analytics] Fetch completed in ${fetchDuration}ms`);
-        console.log('[Analytics] Health history API response status:', response.status, response.statusText);
-        console.log('[Analytics] Response headers:', {
-          contentType: response.headers.get('content-type'),
-          ok: response.ok,
-        });
-        
         if (response.ok) {
           const result = await response.json();
-          console.log('[Analytics] Health history API response:', {
-            success: result.success,
-            hasData: !!result.data,
-            hasHealth: !!result.data?.health,
-            healthLength: result.data?.health?.length || 0,
-            fullResponse: result
-          });
-          
-          // Transform health data to HistoricalDataPoint format
+
           if (result.success && result.data && Array.isArray(result.data.health)) {
-            console.log('[Analytics] Health array length:', result.data.health.length);
-            
             if (result.data.health.length === 0) {
-              console.warn('[Analytics] ⚠️  Health array is empty - no historical data available');
-              console.warn('[Analytics] Response summary:', {
-                dataPoints: result.data.dataPoints,
-                period: result.data.period,
-                summary: result.data.summary,
-              });
               setHistoricalData([]);
               return;
             }
-            
-            // Log sample of raw data before transformation
-            console.log('[Analytics] Sample raw health data:', result.data.health.slice(0, 2));
-            
-            const transformed = result.data.health.map((snapshot: any) => {
-              const dataPoint = {
+
+            const transformed = result.data.health.map((snapshot: any) => ({
               timestamp: snapshot.timestamp,
-              avgUptime: 0, // Not provided by this endpoint
+              avgUptime: 0,
               onlineCount: snapshot.onlineNodes || 0,
               totalNodes: snapshot.totalNodes || 0,
-              networkHealthScore: snapshot.overall,
-              networkHealthAvailability: snapshot.availability,
-              networkHealthVersion: snapshot.versionHealth,
-              networkHealthDistribution: snapshot.distribution,
-              };
-              
-              // Validate required fields
-              if (snapshot.timestamp === undefined || snapshot.timestamp === null) {
-                console.warn('[Analytics] ⚠️  Snapshot missing timestamp:', snapshot);
-              }
-              if (snapshot.overall === undefined || snapshot.overall === null) {
-                console.warn('[Analytics] ⚠️  Snapshot missing overall score:', snapshot);
-              }
-              
-              return dataPoint;
-            }).filter((d: any) => {
-              // Filter out invalid data points
-              const isValid = d.timestamp !== undefined && d.timestamp !== null && d.networkHealthScore !== undefined && d.networkHealthScore !== null;
-              if (!isValid) {
-                console.warn('[Analytics] ⚠️  Filtered out invalid data point:', d);
-              }
-              return isValid;
-            });
-            
-            console.log('[Analytics] Transformed health data:', transformed.length, 'valid points (from', result.data.health.length, 'total)');
-            if (transformed.length > 0) {
-              console.log('[Analytics] Sample transformed data:', transformed.slice(0, 3));
-              console.log('[Analytics] Timestamp range:', {
-                first: new Date(transformed[0].timestamp).toISOString(),
-                last: new Date(transformed[transformed.length - 1].timestamp).toISOString(),
-              });
-            } else {
-              console.error('[Analytics] ❌ All data points were filtered out as invalid!');
-            }
-
-            // Always add current live health score as the final point to ensure chart matches live score
-            if (transformed.length > 0 && nodes.length > 0) {
-              try {
-                const { calculateNetworkHealth } = await import('@/lib/utils/network-health');
-                const currentHealth = calculateNetworkHealth(nodes);
-                const now = Date.now();
-
-                // Always add current point (replaces the last point if it's recent to avoid duplication)
-                const lastHistorical = transformed[transformed.length - 1];
-                const timeSinceLastSnapshot = lastHistorical ? now - lastHistorical.timestamp : Infinity;
-
-                // If last snapshot is less than 5 minutes old, replace it with current data
-                // Otherwise, add as new point
-                if (timeSinceLastSnapshot < 300000) { // 5 minutes
-                  transformed[transformed.length - 1] = {
-                    timestamp: now,
-                    avgUptime: 0,
-                    onlineCount: nodes.filter(n => n.status === 'online').length,
-                    totalNodes: nodes.length,
-                    networkHealthScore: currentHealth.overall,
-                    networkHealthAvailability: currentHealth.availability,
-                    networkHealthVersion: currentHealth.versionHealth,
-                    networkHealthDistribution: currentHealth.distribution,
-                  };
-                  console.log('[Analytics] Replaced most recent snapshot with current live health score:', currentHealth.overall);
-                } else {
-                  transformed.push({
-                    timestamp: now,
-                    avgUptime: 0,
-                    onlineCount: nodes.filter(n => n.status === 'online').length,
-                    totalNodes: nodes.length,
-                    networkHealthScore: currentHealth.overall,
-                    networkHealthAvailability: currentHealth.availability,
-                    networkHealthVersion: currentHealth.versionHealth,
-                    networkHealthDistribution: currentHealth.distribution,
-                  });
-                  console.log('[Analytics] Added current live health score to historical data:', currentHealth.overall);
-                }
-              } catch (error) {
-                console.warn('[Analytics] Failed to add current health to historical data:', error);
-              }
-            }
+              networkHealthScore: snapshot.networkHealthScore || 0,
+              networkHealthAvailability: snapshot.networkHealthAvailability || 0,
+              networkHealthVersion: snapshot.networkHealthVersion || 0,
+              networkHealthDistribution: snapshot.networkHealthDistribution || 0,
+            })).filter((d: any) =>
+              d.timestamp !== undefined && d.timestamp !== null && d.networkHealthScore !== undefined && d.networkHealthScore !== null
+            );
 
             setHistoricalData(transformed);
           } else {
-            console.error('[Analytics] ❌ Health history API returned invalid format:', {
-              success: result.success,
-              hasData: !!result.data,
-              hasHealth: !!result.data?.health,
-              healthIsArray: Array.isArray(result.data?.health),
-              dataType: typeof result.data,
-              dataKeys: result.data ? Object.keys(result.data) : [],
-              fullResult: result
-            });
+            console.error('[Analytics] Invalid API response format');
             setHistoricalData([]);
           }
         } else {
-          console.error('[Analytics] ❌ Health history API returned non-OK status:', response.status, response.statusText);
-          let errorText = '';
-          try {
-            errorText = await response.text();
-            console.error('[Analytics] Error response body:', errorText);
-            try {
-              const errorJson = JSON.parse(errorText);
-              console.error('[Analytics] Parsed error JSON:', errorJson);
-            } catch (e) {
-              console.error('[Analytics] Error response is not JSON');
-            }
-          } catch (textError) {
-            console.error('[Analytics] Failed to read error response:', textError);
-          }
-          console.error('[Analytics] Health history API failed:', {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorText
-          });
+          console.error('[Analytics] API returned non-OK status:', response.status);
           setHistoricalData([]);
         }
       } catch (err: any) {
@@ -691,7 +559,7 @@ export default function AnalyticsPage() {
                     <button
                       key={period}
                       onClick={() => setHealthPeriod(period)}
-                      className={`px-2.5 py-1 text-xs font-medium rounded transition-all duration-200 ${
+                     className={`px-2.5 py-1 text-xs font-medium rounded transition-all duration-200 ${
                         healthPeriod === period
                           ? 'bg-[#F0A741] text-black shadow-sm'
                           : 'text-foreground/60 hover:text-foreground hover:bg-muted/50'

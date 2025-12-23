@@ -698,22 +698,14 @@ app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
 
     console.log(`[RenderAPI] Found ${snapshots.length} historical snapshots`);
 
-    // Use pre-calculated health scores from snapshots (already calculated with full node data)
     const healthData = snapshots.map(snapshot => {
-      // Use stored health scores if available (calculated when snapshot was created)
-      // This ensures consistency with the live health score calculation
-      const overall = snapshot.networkHealthScore ?? 0;
-      const availability = snapshot.networkHealthAvailability ?? 0;
-      const versionHealth = snapshot.networkHealthVersion ?? 0;
-      const distribution = snapshot.networkHealthDistribution ?? 0;
-
       return {
         timestamp: snapshot.timestamp,
         interval: snapshot.interval,
-        overall,
-        availability,
-        versionHealth,
-        distribution,
+        networkHealthScore: snapshot.networkHealthScore || 0,
+        networkHealthAvailability: snapshot.networkHealthAvailability || 0,
+        networkHealthVersion: snapshot.networkHealthVersion || 0,
+        networkHealthDistribution: snapshot.networkHealthDistribution || 0,
         totalNodes: snapshot.totalNodes,
         onlineNodes: snapshot.onlineNodes,
         offlineNodes: snapshot.offlineNodes,
@@ -765,13 +757,13 @@ app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
         .sort(([a], [b]) => a - b)
         .map(([intervalStart, points]) => {
           // Average all metrics for points in this interval
-          const avg = points.reduce((acc, point) => ({
+          const avg: any = points.reduce((acc: any, point) => ({
             timestamp: intervalStart,
             interval: point.interval,
-            overall: acc.overall + point.overall,
-            availability: acc.availability + point.availability,
-            versionHealth: acc.versionHealth + point.versionHealth,
-            distribution: acc.distribution + point.distribution,
+            networkHealthScore: acc.networkHealthScore + point.networkHealthScore,
+            networkHealthAvailability: acc.networkHealthAvailability + point.networkHealthAvailability,
+            networkHealthVersion: acc.networkHealthVersion + point.networkHealthVersion,
+            networkHealthDistribution: acc.networkHealthDistribution + point.networkHealthDistribution,
             totalNodes: acc.totalNodes + point.totalNodes,
             onlineNodes: acc.onlineNodes + point.onlineNodes,
             offlineNodes: acc.offlineNodes + point.offlineNodes,
@@ -780,10 +772,10 @@ app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
           }), {
             timestamp: intervalStart,
             interval: points[0].interval,
-            overall: 0,
-            availability: 0,
-            versionHealth: 0,
-            distribution: 0,
+            networkHealthScore: 0,
+            networkHealthAvailability: 0,
+            networkHealthVersion: 0,
+            networkHealthDistribution: 0,
             totalNodes: 0,
             onlineNodes: 0,
             offlineNodes: 0,
@@ -794,10 +786,10 @@ app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
           return {
             timestamp: avg.timestamp,
             interval: avg.interval,
-            overall: Math.round((avg.overall / avg.count) * 10) / 10,
-            availability: Math.round((avg.availability / avg.count) * 10) / 10,
-            versionHealth: Math.round((avg.versionHealth / avg.count) * 10) / 10,
-            distribution: Math.round((avg.distribution / avg.count) * 10) / 10,
+            networkHealthScore: Math.round(avg.networkHealthScore / avg.count),
+            networkHealthAvailability: Math.round(avg.networkHealthAvailability / avg.count),
+            networkHealthVersion: Math.round(avg.networkHealthVersion / avg.count),
+            networkHealthDistribution: Math.round(avg.networkHealthDistribution / avg.count),
             totalNodes: Math.round(avg.totalNodes / avg.count),
             onlineNodes: Math.round(avg.onlineNodes / avg.count),
             offlineNodes: Math.round(avg.offlineNodes / avg.count),
@@ -808,33 +800,7 @@ app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
       console.log(`[RenderAPI] Spaced ${healthData.length} points into ${spacedHealthData.length} time intervals (${intervalMs / 1000 / 60} min intervals)`);
     }
 
-    // Calculate summary stats from spaced data
-    const healthScores = spacedHealthData.map(d => d.overall);
-    const current = healthScores[healthScores.length - 1] || 0;
-    const average = healthScores.length > 0 
-      ? healthScores.reduce((sum, val) => sum + val, 0) / healthScores.length 
-      : 0;
-    const min = healthScores.length > 0 ? Math.min(...healthScores) : 0;
-    const max = healthScores.length > 0 ? Math.max(...healthScores) : 0;
-
-    // Determine trend (compare first half vs second half)
-    let trend: 'improving' | 'declining' | 'stable' = 'stable';
-    if (healthScores.length >= 2) {
-      const midpoint = Math.floor(healthScores.length / 2);
-      const firstHalf = healthScores.slice(0, midpoint);
-      const secondHalf = healthScores.slice(midpoint);
-      const firstAvg = firstHalf.reduce((sum, val) => sum + val, 0) / firstHalf.length;
-      const secondAvg = secondHalf.reduce((sum, val) => sum + val, 0) / secondHalf.length;
-      const diff = secondAvg - firstAvg;
-
-      if (diff > 2) {
-        trend = 'improving';
-      } else if (diff < -2) {
-        trend = 'declining';
-      }
-    }
-
-    console.log(`[RenderAPI] ✅ Returning health history: ${spacedHealthData.length} data points (from ${healthData.length} raw), current: ${current}, trend: ${trend}`);
+    console.log(`[RenderAPI] ✅ Returning health history: ${spacedHealthData.length} data points (from ${healthData.length} raw)`);
 
     res.json({
       success: true,
@@ -842,16 +808,6 @@ app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
         period,
         dataPoints: spacedHealthData.length,
         health: spacedHealthData,
-        summary: {
-          current: Math.round(current * 10) / 10,
-          average: Math.round(average * 10) / 10,
-          min: Math.round(min * 10) / 10,
-          max: Math.round(max * 10) / 10,
-          trend,
-          changePercent: healthScores.length >= 2 
-            ? Math.round(((healthScores[healthScores.length - 1] - healthScores[0]) / healthScores[0]) * 1000) / 10 
-            : 0,
-        },
       },
     });
   } catch (error: any) {
@@ -1003,7 +959,7 @@ app.get('/api/history/region', authenticate, async (req, res) => {
       networkHealthScore: snapshot.networkHealthScore,
       networkHealthAvailability: snapshot.networkHealthAvailability,
       networkHealthVersion: snapshot.networkHealthVersion,
-      networkHealthDistribution: 0, // Not used for region health
+      networkHealthDistribution: snapshot.networkHealthDistribution,
       versionDistribution: snapshot.versionDistribution,
       cities: snapshot.cities,
     }));

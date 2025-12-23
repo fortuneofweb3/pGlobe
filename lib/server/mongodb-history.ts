@@ -46,13 +46,13 @@ export interface HistoricalSnapshot {
   // Geographic distribution
   countries: number;
   cities: number;
-  
-  // Network health score
+
+  // Network health score (calculated during snapshot creation using calculateNetworkHealth)
   networkHealthScore: number; // Overall network health score (0-100)
   networkHealthAvailability: number; // Availability component (0-100)
   networkHealthVersion: number; // Version health component (0-100)
   networkHealthDistribution: number; // Distribution component (0-100)
-  
+
   // Per-node snapshots (VARIABLE metrics only - these change over time)
   // Note: Uptime is cumulative (increases), but tracking it shows behavior over time
   // (e.g., if uptime stops increasing, node went offline)
@@ -150,10 +150,10 @@ export async function storeHistoricalSnapshot(
     const minutes = Math.floor(date.getUTCMinutes() / 10) * 10; // Round down to nearest 10 (0, 10, 20, 30, 40, 50)
     const interval = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}-${String(date.getUTCHours()).padStart(2, '0')}-${String(minutes).padStart(2, '0')}`;
     const dateStr = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
-    
-    // Calculate network health score
+
+    // Calculate network health score (40% availability, 35% version, 25% distribution)
     const networkHealth = calculateNetworkHealth(nodes);
-    
+
     // Check if we already have a snapshot for this 10-minute interval
     const existing = await collection.findOne({ interval });
     if (existing) {
@@ -305,10 +305,6 @@ export async function getHistoricalSnapshots(
         timestamp: snapshots[0].timestamp,
         interval: snapshots[0].interval,
         totalNodes: snapshots[0].totalNodes,
-        networkHealthScore: snapshots[0].networkHealthScore,
-        hasNetworkHealthAvailability: 'networkHealthAvailability' in snapshots[0],
-        hasNetworkHealthVersion: 'networkHealthVersion' in snapshots[0],
-        hasNetworkHealthDistribution: 'networkHealthDistribution' in snapshots[0],
       });
     }
     
@@ -353,11 +349,6 @@ export async function getRegionHistory(
   totalCredits: number;
   avgCPU: number;
   avgRAM: number;
-  // Network health metrics (calculated from node snapshots)
-  networkHealthScore?: number;
-  networkHealthAvailability?: number;
-  networkHealthVersion?: number;
-  networkHealthDistribution?: number;
   versionDistribution?: Record<string, number>;
   cities?: number;
 }>> {
@@ -574,13 +565,8 @@ export async function getRegionHistory(
       totalCredits: result.totalCredits || 0,
       avgCPU: result.avgCPU ? Math.round(result.avgCPU * 10) / 10 : 0,
       avgRAM: result.avgRAM ? Math.round(result.avgRAM * 10) / 10 : 0,
-        // Health metrics for region (50/50 availability/version, no distribution penalty)
-        networkHealthScore: overall,
-        networkHealthAvailability: Math.round(availability),
-        networkHealthVersion: Math.round(versionHealth),
-        networkHealthDistribution: 0, // Not used for region health calculation
-        versionDistribution: versionDistribution,
-        cities: cities.size,
+      versionDistribution: versionDistribution,
+      cities: cities.size,
       };
     });
     

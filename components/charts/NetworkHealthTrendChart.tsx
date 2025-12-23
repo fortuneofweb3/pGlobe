@@ -80,7 +80,13 @@ export default function NetworkHealthTrendChart({
   const yDomain = useMemo(() => {
     if (chartData.length === 0) return [0, 100];
 
-    const values = chartData.map(d => d.overall);
+    const values = chartData.map(d => d.overall).filter(v => v > 0);
+
+    // If all values are 0 or no valid values, show 0-100 range
+    if (values.length === 0) {
+      return [0, 100];
+    }
+
     const min = Math.min(...values);
     const max = Math.max(...values);
     const range = max - min;
@@ -88,15 +94,15 @@ export default function NetworkHealthTrendChart({
     // If the range is very small (nearly flat line), zoom in
     if (range < 10) {
       const center = (min + max) / 2;
-      const padding = Math.max(5, range * 0.5); // At least 5% padding, or 50% of range
+      const padding = Math.max(10, range * 1.5); // At least 10% padding, or 150% of range
       return [
         Math.max(0, Math.floor(center - padding)),
         Math.min(100, Math.ceil(center + padding))
       ];
     }
 
-    // Otherwise, add 10% padding to top and bottom
-    const padding = range * 0.1;
+    // Otherwise, add 15% padding to top and bottom for better visibility
+    const padding = range * 0.15;
     return [
       Math.max(0, Math.floor(min - padding)),
       Math.min(100, Math.ceil(max + padding))

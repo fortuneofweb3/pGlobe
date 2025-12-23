@@ -18,6 +18,7 @@
 
 import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
 import { getDb } from './mongodb-nodes';
+import { calculateNetworkHealth } from '../utils/network-health';
 
 const COLLECTION_NAME = 'region_history';
 
@@ -61,10 +62,11 @@ export interface RegionHistorySnapshot {
   // Version distribution
   versionDistribution: Record<string, number>;
 
-  // Region-specific network health
-  networkHealthScore: number; // Overall (50% availability + 50% version)
+  // Network health score (calculated from region nodes)
+  networkHealthScore: number; // Overall (40% availability + 35% version + 25% distribution)
   networkHealthAvailability: number; // % online
   networkHealthVersion: number; // % on latest version
+  networkHealthDistribution: number; // Geographic diversity
 }
 
 // In-memory cache for region history
@@ -199,20 +201,9 @@ export async function storeRegionSnapshots(
         versionDistribution[version] = (versionDistribution[version] || 0) + 1;
       });
 
-      // Calculate region health (50% availability + 50% version health)
-      const availability = nodes.length > 0 ? (onlineNodes / nodes.length) * 100 : 0;
-
-      let versionHealth = 0;
-      if (Object.keys(versionDistribution).length > 0) {
-        const versions = Object.keys(versionDistribution);
-        const latestVersion = getLatestVersion(versions);
-        if (latestVersion && nodes.length > 0) {
-          const latestCount = versionDistribution[latestVersion] || 0;
-          versionHealth = (latestCount / nodes.length) * 100;
-        }
-      }
-
-      const networkHealthScore = Math.round(availability * 0.5 + versionHealth * 0.5);
+      // Calculate network health score using the same formula as analytics
+      // (40% availability, 35% version, 25% distribution)
+      const networkHealth = calculateNetworkHealth(nodes as any);
 
       // Create snapshot document
       const snapshot: RegionHistorySnapshot = {
@@ -235,9 +226,10 @@ export async function storeRegionSnapshots(
         avgPacketRate,
         cities,
         versionDistribution,
-        networkHealthScore,
-        networkHealthAvailability: Math.round(availability),
-        networkHealthVersion: Math.round(versionHealth),
+        networkHealthScore: networkHealth.overall,
+        networkHealthAvailability: networkHealth.availability,
+        networkHealthVersion: networkHealth.versionHealth,
+        networkHealthDistribution: networkHealth.distribution,
       };
 
       // Use updateOne with upsert to avoid duplicates
