@@ -27,6 +27,33 @@ import { useTooltip, TooltipWithBounds, defaultStyles } from '@visx/tooltip';
 import { localPoint } from '@visx/event';
 import { timeFormat } from 'd3-time-format';
 import ParentSize from '@visx/responsive/lib/components/ParentSize';
+import dynamic from 'next/dynamic';
+
+// Dynamically import Leaflet components to avoid SSR issues
+const MapContainer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.MapContainer),
+  { ssr: false, loading: () => <div className="h-full w-full bg-muted/20 rounded-lg animate-pulse" /> }
+);
+
+const TileLayer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.TileLayer),
+  { ssr: false }
+);
+
+const Marker = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Marker),
+  { ssr: false }
+);
+
+const CircleMarker = dynamic(
+  () => import('react-leaflet').then((mod) => mod.CircleMarker),
+  { ssr: false }
+);
+
+const Tooltip = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Tooltip),
+  { ssr: false }
+);
 
 function formatUptimeDuration(seconds: number): string {
   const days = Math.floor(seconds / 86400);
@@ -786,6 +813,69 @@ function CountryDetailContent() {
   const nodeCountHistoryRef = useRef<number[]>([]);
   const lastUpdateTimeRef = useRef<number>(Date.now());
 
+  // Pin icon setup
+  const [isClient, setIsClient] = useState(false);
+  const [pinIcons, setPinIcons] = useState<Record<string, any>>({});
+  const pinIconCacheRef = useRef<Map<string, any>>(new Map());
+
+  useEffect(() => {
+    setIsClient(true);
+    // Load Leaflet CSS
+    if (typeof window !== 'undefined' && !document.head.querySelector('link[href*="leaflet"]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
+      link.crossOrigin = '';
+      document.head.appendChild(link);
+    }
+
+    // Pre-create pin icons when Leaflet is available
+    if (typeof window !== 'undefined') {
+      const createIcons = () => {
+        const L = (window as any).L;
+        if (!L) {
+          setTimeout(createIcons, 50);
+          return;
+        }
+
+        const statusColors = {
+          online: '#3F8277',
+          syncing: '#F0A741',
+          offline: '#ED1C24',
+        };
+
+        const icons: Record<string, any> = {};
+        Object.entries(statusColors).forEach(([status, color]) => {
+          if (!pinIconCacheRef.current.has(color)) {
+            const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 24 30" fill="none"><path d="M12 0C7.03 0 3 4.03 3 9c0 5.25 9 21 9 21s9-15.75 9-21c0-4.97-4.03-9-9-9zm0 12.5c-1.93 0-3.5-1.57-3.5-3.5S10.07 5.5 12 5.5s3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z" fill="${color}" stroke="#fff" stroke-width="1.5"/></svg>`;
+            const icon = L.divIcon({
+              html: `
+                <div style="position: relative; width: 32px; height: 40px; overflow: visible;">
+                  ${svgString}
+                  <div style="position: absolute; top: 6px; left: 50%; transform: translateX(-50%); width: 7px; height: 7px; background: white; border-radius: 50%;"></div>
+                </div>
+              `,
+              className: 'custom-pin-icon',
+              iconSize: [32, 40],
+              iconAnchor: [16, 40],
+              popupAnchor: [0, -40]
+            });
+            pinIconCacheRef.current.set(color, icon);
+            icons[status] = icon;
+          } else {
+            icons[status] = pinIconCacheRef.current.get(color);
+          }
+        });
+        setPinIcons(icons);
+      };
+
+      createIcons();
+      const timeout = setTimeout(createIcons, 100);
+      return () => clearTimeout(timeout);
+    }
+  }, []);
+
   // Normalize country name for comparison (case-insensitive, trimmed)
   const normalizedCountryName = useMemo(() => {
     return countryName.trim().toLowerCase();
@@ -1255,301 +1345,237 @@ function CountryDetailContent() {
       <main className="flex-1 overflow-hidden">
         <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
-            {/* Header Section - Complete Redesign */}
-            {countryCode && (() => {
-              const flagUrl = `/api/flag-proxy?code=${countryCode.toLowerCase()}`;
-              const onlinePercent = stats.totalNodes > 0 ? Math.round((stats.onlineNodes / stats.totalNodes) * 100) : 0;
-              const uniqueCities = new Set(countryNodes.map(n => n.locationData?.city).filter(Boolean));
-              const locationText = uniqueCities.size > 1
-                ? `${uniqueCities.size} cities across ${countryCode}`
-                : uniqueCities.size === 1
-                  ? `${Array.from(uniqueCities)[0]}, ${countryCode}`
-                  : countryCode;
-              
-              return (
-                <div className="mb-8 space-y-6">
-                  {/* Back Button */}
-                  <Link 
-                    href="/regions" 
-                    className="inline-flex items-center gap-2 text-sm text-foreground/70 hover:text-foreground transition-colors group"
-                  >
-                    <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-                    <span>Back to Regions</span>
-                  </Link>
-
-                  {/* Main Header Card */}
-                  <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card shadow-lg">
-                    {/* Flag Background - Fully Visible */}
-                    <div className="absolute inset-0">
-                      <img
-                        src={flagUrl}
-                        alt={countryName}
-                        className="w-full h-full object-cover"
-                        crossOrigin="anonymous"
-                        referrerPolicy="no-referrer"
-                      />
-                      {/* Gradient overlay for text readability */}
-                      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80" />
-                    </div>
-
-                    <div className="relative p-4 sm:p-6 lg:p-10">
-                      {/* Mobile Layout: Essential Stats */}
-                      <div className="sm:hidden space-y-4">
-                        {/* Title */}
-                        <div>
-                          <h1 className="text-2xl font-bold text-foreground mb-2 tracking-tight drop-shadow-lg">
-                            {countryName}
-                          </h1>
-                          <div className="flex items-center gap-2 text-foreground/80 drop-shadow">
-                            <MapPin className="w-4 h-4 shrink-0" />
-                            <span className="text-sm">{locationText}</span>
-                          </div>
-                        </div>
-
-                        {/* Essential Stats Only - 2 columns */}
-                        <div className="grid grid-cols-2 gap-3">
-                          {/* Online Status */}
-                          <div className="bg-[#3F8277]/20 border border-[#3F8277]/40 rounded-lg p-3 backdrop-blur-sm">
-                            <div className="flex items-center gap-2 mb-1.5">
-                              <div className="w-2 h-2 rounded-full bg-[#3F8277] animate-pulse" />
-                              <span className="text-[10px] font-medium text-foreground/90 uppercase tracking-wide">Online</span>
-                            </div>
-                            <div className="text-xl font-bold text-[#3F8277] mb-0.5">
-                              <AnimatedNumber value={onlinePercent} suffix="%" />
-                            </div>
-                            <div className="text-[10px] text-foreground/70">
-                              {stats.onlineNodes} of {stats.totalNodes}
-                            </div>
-                          </div>
-
-                          {/* Total Nodes */}
-                          <div className="bg-[#F0A741]/20 border border-[#F0A741]/40 rounded-lg p-3 backdrop-blur-sm">
-                            <div className="flex items-center gap-2 mb-1.5">
-                              <Server className="w-3.5 h-3.5 text-[#F0A741]" />
-                              <span className="text-[10px] font-medium text-foreground/90 uppercase tracking-wide">Nodes</span>
-                            </div>
-                            <div className="text-xl font-bold text-[#F0A741] mb-0.5">
-                              <AnimatedNumber value={stats.totalNodes} />
-                            </div>
-                            <div className="text-[10px] text-foreground/70">
-                              {stats.offlineNodes > 0 ? `${stats.offlineNodes} offline` : 'All online'}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Desktop Layout: Full Stats */}
-                      <div className="hidden sm:block">
-                        {/* Title Section */}
-                        <div className="mb-8">
-                          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-3 tracking-tight drop-shadow-lg">
-                            {countryName}
-                          </h1>
-                          <div className="flex items-center gap-2 text-foreground/80 drop-shadow">
-                            <MapPin className="w-4 h-4 shrink-0" />
-                            <span className="text-sm sm:text-base">{locationText}</span>
-                          </div>
-                        </div>
-
-                        {/* Key Metrics - Primary Stats */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-                          {/* Online Status */}
-                          <div className="bg-gradient-to-br from-[#3F8277]/20 to-[#3F8277]/10 border border-[#3F8277]/40 rounded-lg p-4 backdrop-blur-sm">
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="w-2 h-2 rounded-full bg-[#3F8277] animate-pulse" />
-                              <span className="text-xs font-medium text-foreground/90 uppercase tracking-wide">Online</span>
-                            </div>
-                            <div className="text-2xl sm:text-3xl font-bold text-[#3F8277] mb-1 drop-shadow">
-                              <AnimatedNumber value={onlinePercent} suffix="%" />
-                            </div>
-                            <div className="text-xs text-foreground/70">
-                              {stats.onlineNodes} of {stats.totalNodes} nodes
-                            </div>
-                          </div>
-
-                          {/* Total Nodes */}
-                          <div className="bg-gradient-to-br from-[#F0A741]/20 to-[#F0A741]/10 border border-[#F0A741]/40 rounded-lg p-4 backdrop-blur-sm">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Server className="w-4 h-4 text-[#F0A741]" />
-                              <span className="text-xs font-medium text-foreground/90 uppercase tracking-wide">Nodes</span>
-                            </div>
-                            <div className="text-2xl sm:text-3xl font-bold text-[#F0A741] mb-1 drop-shadow">
-                              <AnimatedNumber value={stats.totalNodes} />
-                            </div>
-                            <div className="text-xs text-foreground/70">
-                              {stats.offlineNodes > 0 && `${stats.offlineNodes} offline`}
-                              {stats.offlineNodes === 0 && stats.syncingNodes > 0 && `${stats.syncingNodes} syncing`}
-                              {stats.offlineNodes === 0 && stats.syncingNodes === 0 && 'All operational'}
-                            </div>
-                          </div>
-
-                          {/* Storage */}
-                          <div className="bg-background/40 border border-border/50 rounded-lg p-4 backdrop-blur-sm hover:border-[#F0A741]/50 transition-colors">
-                            <div className="flex items-center gap-2 mb-2">
-                              <HardDrive className="w-4 h-4 text-[#F0A741]" />
-                              <span className="text-xs font-medium text-foreground/90 uppercase tracking-wide">Storage</span>
-                            </div>
-                            <div className="text-xl sm:text-2xl font-bold text-foreground mb-1 drop-shadow">
-                              {formatStorageBytes(stats.totalStorage)}
-                            </div>
-                            <div className="text-xs text-foreground/70">
-                              {stats.usedStorage > 0 && stats.totalStorage > 0
-                                ? `${((stats.usedStorage / stats.totalStorage) * 100).toFixed(1)}% used`
-                                : 'Available'}
-                            </div>
-                          </div>
-
-                          {/* Credits */}
-                          <div className="bg-background/40 border border-border/50 rounded-lg p-4 backdrop-blur-sm hover:border-[#3F8277]/50 transition-colors">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Award className="w-4 h-4 text-[#3F8277]" />
-                              <span className="text-xs font-medium text-foreground/90 uppercase tracking-wide">Credits</span>
-                            </div>
-                            <div className="text-xl sm:text-2xl font-bold text-foreground mb-1 drop-shadow">
-                              {stats.totalCredits > 0 ? (
-                                <AnimatedNumber value={stats.totalCredits} />
-                              ) : (
-                                <span className="text-foreground/60">N/A</span>
-                              )}
-                            </div>
-                            <div className="text-xs text-foreground/70">
-                              {stats.nodesReportingCredits > 0 
-                                ? `${stats.nodesReportingCredits} nodes reporting`
-                                : 'No data'}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Secondary Metrics */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                          {/* CPU */}
-                          <div className="bg-background/40 border border-border/40 rounded-lg p-3 hover:border-border/60 transition-colors backdrop-blur-sm">
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                              <Activity className="w-3.5 h-3.5 text-foreground/70" />
-                              <span className="text-[10px] sm:text-xs font-medium text-foreground/80 uppercase">CPU</span>
-                            </div>
-                            <div className="text-lg sm:text-xl font-semibold text-foreground drop-shadow">
-                              {stats.avgCPU > 0 ? (
-                                <AnimatedNumber value={stats.avgCPU} decimals={1} suffix="%" />
-                              ) : (
-                                <span className="text-foreground/60 text-sm">N/A</span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* RAM */}
-                          <div className="bg-background/40 border border-border/40 rounded-lg p-3 hover:border-border/60 transition-colors backdrop-blur-sm">
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                              <Zap className="w-3.5 h-3.5 text-foreground/70" />
-                              <span className="text-[10px] sm:text-xs font-medium text-foreground/80 uppercase">RAM</span>
-                            </div>
-                            <div className="text-lg sm:text-xl font-semibold text-foreground drop-shadow">
-                              {stats.avgRAMUsage > 0 ? (
-                                <AnimatedNumber value={stats.avgRAMUsage} decimals={1} suffix="%" />
-                              ) : (
-                                <span className="text-foreground/60 text-sm">N/A</span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Latency */}
-                          <div className="bg-background/40 border border-border/40 rounded-lg p-3 hover:border-border/60 transition-colors backdrop-blur-sm">
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                              <Clock className="w-3.5 h-3.5 text-foreground/70" />
-                              <span className="text-[10px] sm:text-xs font-medium text-foreground/80 uppercase">Latency</span>
-                            </div>
-                            <div className="text-lg sm:text-xl font-semibold text-foreground drop-shadow">
-                              {stats.avgLatency > 0 ? (
-                                <>
-                                  <AnimatedNumber value={stats.avgLatency} />
-                                  <span className="text-xs text-foreground/70 ml-1">ms</span>
-                                </>
-                              ) : (
-                                <span className="text-foreground/60 text-sm">N/A</span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Packet Rate */}
-                          <div className="bg-background/40 border border-border/40 rounded-lg p-3 hover:border-border/60 transition-colors backdrop-blur-sm">
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                              <TrendingUp className="w-3.5 h-3.5 text-foreground/70" />
-                              <span className="text-[10px] sm:text-xs font-medium text-foreground/80 uppercase">Activity</span>
-                            </div>
-                            <div className="text-lg sm:text-xl font-semibold text-foreground drop-shadow">
-                              {stats.avgPacketRate > 0 ? (
-                                <>
-                                  <AnimatedNumber value={stats.avgPacketRate} decimals={1} />
-                                  <span className="text-xs text-foreground/70 ml-1">p/s</span>
-                                </>
-                              ) : (
-                                <span className="text-foreground/60 text-sm">N/A</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Header (fallback if no country code) */}
-            {!countryCode && (
-              <div className="mb-8 space-y-6">
-                <Link 
-                  href="/regions" 
-                  className="inline-flex items-center gap-2 text-sm text-foreground/70 hover:text-foreground transition-colors group"
-                >
-                  <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+            {/* Cover Section with Map Background */}
+            {countryCode && countryNodes.some(n => n.locationData?.lat && n.locationData?.lon) ? (
+              <div className="relative mb-8 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }}>
+                {/* Back button */}
+                <Link href="/regions" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6 transition-all duration-300 hover:translate-x-[-4px] group">
+                  <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
                   <span>Back to Regions</span>
                 </Link>
 
-                <div className="relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-card via-card to-card/95 shadow-lg p-6 sm:p-8 lg:p-10">
-                  <div className="mb-8">
-                    <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-3 tracking-tight">
-                      {countryName}
-                    </h1>
-                    <p className="text-foreground/60 text-sm sm:text-base">
-                      {stats.totalNodes} node{stats.totalNodes !== 1 ? 's' : ''} in this region
-                    </p>
+                <div className="relative rounded-2xl overflow-hidden border border-border/40 shadow-2xl bg-card" style={{ minHeight: '280px', height: '280px' }}>
+                  {/* Map Background */}
+                  <div className="absolute inset-0 h-full w-full">
+                    <style jsx global>{`
+                      .region-details-map {
+                        width: 100% !important;
+                        height: 100% !important;
+                      }
+                      .region-details-map .leaflet-container .leaflet-control-attribution {
+                        display: none !important;
+                      }
+                      .region-details-map .leaflet-container {
+                        background: #000 !important;
+                        overflow: hidden !important;
+                      }
+                      .region-details-map .leaflet-container .leaflet-tile-pane {
+                        background: #000 !important;
+                        width: 100% !important;
+                        height: 100% !important;
+                      }
+                      .region-details-map .leaflet-container .leaflet-map-pane {
+                        background: #000 !important;
+                        overflow: hidden !important;
+                        width: 100% !important;
+                        height: 100% !important;
+                      }
+                      .region-details-map .leaflet-container .leaflet-marker-pane {
+                        width: 100% !important;
+                        height: 100% !important;
+                      }
+                      .region-details-map .leaflet-container img.leaflet-tile {
+                        opacity: 0.8;
+                      }
+                      .region-details-map .leaflet-tile-container img {
+                        opacity: 0.8;
+                      }
+                      .region-details-map .leaflet-container .leaflet-tile-pane img {
+                        opacity: 0.8;
+                      }
+                      .custom-pin-icon {
+                        overflow: visible !important;
+                      }
+                    `}</style>
+
+                    {/* Blur gradient overlay */}
+                    <div 
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        maskImage: 'linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 25%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0) 75%, transparent 100%)',
+                        WebkitMaskImage: 'linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 25%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0) 75%, transparent 100%)',
+                      }}
+                    />
+
+                    {typeof window !== 'undefined' ? (
+                      <MapContainer
+                        key={`region-map-${countryCode}`}
+                        center={(() => {
+                          const nodesWithLocation = countryNodes.filter(n => n.locationData?.lat && n.locationData?.lon);
+                          if (nodesWithLocation.length === 0) return [0, 0];
+
+                          const cityGroups = new Map<string, typeof nodesWithLocation>();
+                          nodesWithLocation.forEach(node => {
+                            const city = node.locationData?.city || 'unknown';
+                            if (!cityGroups.has(city)) {
+                              cityGroups.set(city, []);
+                            }
+                            cityGroups.get(city)!.push(node);
+                          });
+
+                          let mostPopulatedCity = nodesWithLocation;
+                          let maxNodes = 0;
+                          cityGroups.forEach(nodes => {
+                            if (nodes.length > maxNodes) {
+                              maxNodes = nodes.length;
+                              mostPopulatedCity = nodes;
+                            }
+                          });
+
+                          const avgLat = mostPopulatedCity.reduce((sum, n) => sum + (n.locationData!.lat), 0) / mostPopulatedCity.length;
+                          const avgLon = mostPopulatedCity.reduce((sum, n) => sum + (n.locationData!.lon), 0) / mostPopulatedCity.length;
+                          return [avgLat, avgLon];
+                        })()}
+                        zoom={6}
+                        scrollWheelZoom={false}
+                        dragging={false}
+                        touchZoom={false}
+                        doubleClickZoom={false}
+                        boxZoom={false}
+                        keyboard={false}
+                        zoomControl={false}
+                        style={{ height: '100%', width: '100%', backgroundColor: '#000' }}
+                        className="z-0 region-details-map"
+                        attributionControl={false}
+                      >
+                        <TileLayer
+                          attribution=""
+                          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                          subdomains="abcd"
+                          maxZoom={20}
+                        />
+
+                        {/* Render all nodes in the country */}
+                        {countryNodes
+                          .filter(n => n.locationData?.lat && n.locationData?.lon)
+                          .map((node) => {
+                            const statusColors = {
+                              online: '#3F8277',
+                              syncing: '#F0A741',
+                              offline: '#ED1C24',
+                            };
+                            const nodeStatus = node.status || 'offline';
+                            let pinIcon = pinIcons[nodeStatus] || pinIcons.offline;
+
+                            // If pin icon not ready, create it immediately
+                            if (!pinIcon && typeof window !== 'undefined') {
+                              const L = (window as any).L;
+                              if (L) {
+                                const color = statusColors[nodeStatus] || statusColors.offline;
+                                if (!pinIconCacheRef.current.has(color)) {
+                                  const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 24 30" fill="none"><path d="M12 0C7.03 0 3 4.03 3 9c0 5.25 9 21 9 21s9-15.75 9-21c0-4.97-4.03-9-9-9zm0 12.5c-1.93 0-3.5-1.57-3.5-3.5S10.07 5.5 12 5.5s3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z" fill="${color}" stroke="#fff" stroke-width="1.5"/></svg>`;
+                                  pinIcon = L.divIcon({
+                                    html: `
+                      <div style="position: relative; width: 32px; height: 40px; overflow: visible;">
+                        ${svgString}
+                        <div style="position: absolute; top: 6px; left: 50%; transform: translateX(-50%); width: 7px; height: 7px; background: white; border-radius: 50%;"></div>
+                      </div>
+                    `,
+                                    className: 'custom-pin-icon',
+                                    iconSize: [32, 40],
+                                    iconAnchor: [16, 40],
+                                    popupAnchor: [0, -40]
+                                  });
+                                  pinIconCacheRef.current.set(color, pinIcon);
+                                } else {
+                                  pinIcon = pinIconCacheRef.current.get(color);
+                                }
+                              }
+                            }
+
+                            return pinIcon ? (
+                              <Marker
+                                key={node.id}
+                                position={[node.locationData!.lat, node.locationData!.lon]}
+                                icon={pinIcon}
+                                interactive={false}
+                              />
+                            ) : (
+                              <CircleMarker
+                                key={node.id}
+                                center={[node.locationData!.lat, node.locationData!.lon]}
+                                radius={5}
+                                pathOptions={{
+                                  fillColor: statusColors[nodeStatus] || statusColors.offline,
+                                  fillOpacity: 0.7,
+                                  color: '#fff',
+                                  weight: 1.5,
+                                }}
+                                interactive={false}
+                              />
+                            );
+                          })}
+                      </MapContainer>
+                    ) : (
+                      <div className="h-full w-full bg-muted/20" />
+                    )}
                   </div>
 
-                  {/* Key Metrics */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div className="bg-gradient-to-br from-[#3F8277]/10 to-[#3F8277]/5 border border-[#3F8277]/20 rounded-lg p-4">
-                      <div className="text-xs font-medium text-foreground/70 uppercase tracking-wide mb-2">Online</div>
-                      <div className="text-2xl sm:text-3xl font-bold text-[#3F8277]">
-                        {stats.onlineNodes}
-                      </div>
+                  {/* Content Overlay - Left Side */}
+                  <div className="relative px-5 sm:px-7 lg:px-9 pt-8 pb-8">
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="text-5xl">{getFlagForCountry(countryName, countryCode)}</span>
+                      <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
+                        {countryName}
+                      </h1>
                     </div>
-                    <div className="bg-gradient-to-br from-[#F0A741]/10 to-[#F0A741]/5 border border-[#F0A741]/20 rounded-lg p-4">
-                      <div className="text-xs font-medium text-foreground/70 uppercase tracking-wide mb-2">Total Nodes</div>
-                      <div className="text-2xl sm:text-3xl font-bold text-[#F0A741]">
-                        <AnimatedNumber value={stats.totalNodes} />
-                      </div>
-                    </div>
-                    <div className="bg-background/30 border border-border/30 rounded-lg p-4">
-                      <div className="text-xs font-medium text-foreground/60 uppercase tracking-wide mb-2">Storage</div>
-                      <div className="text-xl sm:text-2xl font-semibold text-foreground">
-                        {formatStorageBytes(stats.totalStorage)}
-                      </div>
-                    </div>
-                    <div className="bg-background/30 border border-border/30 rounded-lg p-4">
-                      <div className="text-xs font-medium text-foreground/60 uppercase tracking-wide mb-2">Credits</div>
-                      <div className="text-xl sm:text-2xl font-semibold text-foreground">
-                        {stats.totalCredits > 0 ? (
-                          <AnimatedNumber value={stats.totalCredits} />
-                        ) : (
-                          <span className="text-foreground/40">N/A</span>
+
+                    <div className="space-y-2">
+                      <p className="text-foreground/60 text-sm sm:text-base">
+                        {stats.totalNodes} node{stats.totalNodes !== 1 ? 's' : ''} • {stats.onlineNodes} online
+                      </p>
+                      <div className="flex items-center gap-3 text-xs sm:text-sm">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#3F8277' }} />
+                          <span className="text-foreground/70">{stats.onlineNodes} online</span>
+                        </div>
+                        {stats.offlineNodes > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#ED1C24' }} />
+                            <span className="text-foreground/70">{stats.offlineNodes} offline</span>
+                          </div>
                         )}
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
+            ) : (
+              <>
+                {/* Fallback Header (no location or no country code) */}
+                <Link href="/regions" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6 transition-all duration-300 hover:translate-x-[-4px] group">
+                  <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
+                  <span>Back to Regions</span>
+                </Link>
+
+                <div className="mb-8 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }}>
+                  <div className="card">
+                    <div className="flex items-center gap-3 mb-3">
+                      <MapPin className="w-6 h-6 text-[#F0A741]" />
+                      <h1 className="text-3xl font-bold text-foreground">
+                        {countryName}
+                      </h1>
+                    </div>
+                    <p className="text-foreground/60">
+                      {stats.totalNodes} node{stats.totalNodes !== 1 ? 's' : ''} in this region
+                    </p>
+                  </div>
+                </div>
+              </>
             )}
+
 
             {/* Historical Performance Section */}
             <div className="mb-4 sm:mb-6 space-y-4 animate-slide-in-left" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
