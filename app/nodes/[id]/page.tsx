@@ -16,6 +16,7 @@ import { scaleTime, scaleLinear } from '@visx/scale';
 import { LinePath } from '@visx/shape';
 import { Group } from '@visx/group';
 import { Circle } from '@visx/shape';
+import InfoTooltip from '@/components/InfoTooltip';
 import { AxisBottom, AxisLeft } from '@visx/axis';
 import { GridRows, GridColumns } from '@visx/grid';
 import { curveMonotoneX } from '@visx/curve';
@@ -1540,6 +1541,17 @@ function NodeDetailContent() {
                           <span className="text-sm font-mono font-semibold text-foreground">{node.version}</span>
                         </div>
                       )}
+                      {node.createdAt && (
+                        <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                          <span className="text-sm text-foreground/80">Joined</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-mono font-semibold text-foreground">
+                              {new Date(node.createdAt).toLocaleDateString()}
+                            </span>
+                            <InfoTooltip content={`First detected: ${new Date(node.createdAt).toLocaleString()}\nFirst detected by database. Actual network join time may vary.`} />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1697,6 +1709,17 @@ function NodeDetailContent() {
                             : '—'}
                         </span>
                       </div>
+                      {node.createdAt && (
+                        <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                          <span className="text-sm text-foreground/80">Joined</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-mono font-semibold text-foreground">
+                              {new Date(node.createdAt).toLocaleDateString()}
+                            </span>
+                            <InfoTooltip content={`First detected: ${new Date(node.createdAt).toLocaleString()}\nFirst detected by database. Actual network join time may vary.`} />
+                          </div>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
                         <span className="text-sm text-foreground/80">Registered</span>
                         <div className="flex items-center gap-1.5">

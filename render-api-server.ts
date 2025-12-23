@@ -369,6 +369,7 @@ function formatNodeForAPI(node: PNode): any {
     rpcPort: node.rpcPort,
     dataOperationsHandled: node.dataOperationsHandled,
     totalPages: node.totalPages,
+    createdAt: node.createdAt,
   };
 }
 

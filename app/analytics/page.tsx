@@ -123,7 +123,7 @@ export default function AnalyticsPage() {
 
   // Export functions
   const exportToCSV = () => {
-    const headers = ['ID', 'Status', 'Version', 'Address', 'Location', 'Uptime', 'Storage', 'CPU %', 'RAM %'];
+    const headers = ['ID', 'Status', 'Version', 'Address', 'Location', 'Uptime', 'Joined', 'Storage', 'CPU %', 'RAM %'];
     const rows = nodes.map(node => [
       node.id || node.pubkey || node.publicKey || '',
       node.status || '',
@@ -133,6 +133,7 @@ export default function AnalyticsPage() {
         ? `${node.locationData.city}, ${node.locationData.country}`
         : '',
       node.uptime ? Math.floor(node.uptime / 86400) + 'd' : '',
+      node.createdAt ? new Date(node.createdAt).toLocaleDateString() : '',
       node.storageCapacity ? formatStorageBytes(node.storageCapacity) : '',
       node.cpuPercent?.toFixed(1) || '',
       node.ramUsed && node.ramTotal ? ((node.ramUsed / node.ramTotal) * 100).toFixed(1) : '',
@@ -300,9 +301,9 @@ export default function AnalyticsPage() {
         showNetworkSelector={false}
       />
 
-      <main className="flex-1 overflow-hidden">
-        <div className="h-full w-full px-3 sm:px-6 pt-3 sm:pt-6 pb-6 overflow-y-auto">
-          <div className="max-w-7xl mx-auto pb-8">
+      <main className="flex-1 overflow-y-auto">
+        <div className="w-full px-3 sm:px-6 pt-3 sm:pt-6 pb-6">
+          <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="mb-4 sm:mb-6">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
@@ -375,20 +376,12 @@ export default function AnalyticsPage() {
                 </div>
               </button>
 
-              {/* Content - Collapsible */}
-              <div
-                className={`transition-all duration-300 ease-in-out ${isComparisonOpen ? 'max-h-[6000px] opacity-100' : 'max-h-0 opacity-0'
-                  }`}
-                style={{ overflow: isComparisonOpen ? 'visible' : 'hidden', minHeight: isComparisonOpen ? '420px' : '0' }}
-              >
-                <div
-                  id="node-comparison"
-                  className="px-4 pb-4 pt-2"
-                  style={{ overflow: 'visible', minHeight: '420px' }}
-                >
+              {/* Content - Simple Conditional Render for Clean Layout */}
+              {isComparisonOpen && (
+                <div className="px-4 pb-4 pt-2 animate-fade-in">
                   <NodeComparison nodes={nodes} />
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Error Banner */}
@@ -515,11 +508,11 @@ export default function AnalyticsPage() {
             {/* Main Analytics Sections */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mt-4 sm:mt-6 mb-0">
               {/* Row 1: Health Score */}
-              <div className="card flex flex-col animate-scale-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
+              <div className="card flex flex-col">
                 <NetworkHealthScoreDetailed nodes={nodes} />
               </div>
               {/* Row 1: Network Health Trend Chart */}
-              <div className="lg:col-span-2 card flex flex-col animate-slide-in-right" style={{ animationDelay: '0.15s', opacity: 0, animationFillMode: 'forwards' }}>
+              <div className="lg:col-span-2 card flex flex-col">
                 <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 text-foreground/40" />
@@ -549,11 +542,11 @@ export default function AnalyticsPage() {
               </div>
 
               {/* Row 2: Version Distribution */}
-              <div className="card flex flex-col animate-fade-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
+              <div className="card flex flex-col">
                 <VersionDistribution nodes={nodes} />
               </div>
               {/* Row 2: Performance Metrics */}
-              <div className="lg:col-span-2 card flex flex-col animate-slide-in-bottom" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
+              <div className="lg:col-span-2 card flex flex-col">
                 <div className="flex items-center gap-2 mb-3">
                   <TrendingUp className="w-4 h-4 text-foreground/40" />
                   <h2 className="text-base font-semibold text-foreground">Performance Metrics</h2>
@@ -565,7 +558,7 @@ export default function AnalyticsPage() {
               </div>
 
               {/* Row 3: Top Nodes */}
-              <div className="card flex flex-col animate-slide-in-left" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
+              <div className="card flex flex-col">
                 <div className="flex items-center gap-2 mb-3">
                   <Server className="w-4 h-4 text-foreground/40" />
                   <h2 className="text-base font-semibold text-foreground">Top Nodes</h2>
@@ -584,7 +577,7 @@ export default function AnalyticsPage() {
                 </div>
               </div>
               {/* Row 3: Geographic Metrics */}
-              <div className="lg:col-span-2 card flex flex-col animate-scale-in" style={{ animationDelay: '0.35s', opacity: 0, animationFillMode: 'forwards' }}>
+              <div className="lg:col-span-2 card flex flex-col">
                 <GeographicMetrics nodes={nodes} />
               </div>
             </div>

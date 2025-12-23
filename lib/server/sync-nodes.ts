@@ -94,7 +94,7 @@ function isValidPubkey(pubkey: string | null | undefined): boolean {
   if (trimmed.length < 32 || trimmed.length > 44) return false;
   if (/\s/.test(trimmed)) return false;
   if (/^\d+\.\d+\.\d+\.\d+/.test(trimmed)) return false;
-  
+
   try {
     const { PublicKey } = require('@solana/web3.js');
     new PublicKey(trimmed);
@@ -106,10 +106,10 @@ function isValidPubkey(pubkey: string | null | undefined): boolean {
 
 function calculateStatus(lastSeenTimestamp: number | undefined): 'online' | 'offline' | 'syncing' {
   if (!lastSeenTimestamp) return 'offline';
-  
+
   const lastSeen = lastSeenTimestamp > 1e12 ? lastSeenTimestamp : lastSeenTimestamp * 1000;
   const timeSinceLastSeen = Date.now() - lastSeen;
-  
+
   if (timeSinceLastSeen < 5 * 60 * 1000) return 'online';
   if (timeSinceLastSeen < 60 * 60 * 1000) return 'syncing';
   return 'offline';
@@ -144,10 +144,10 @@ interface RawPod {
 function rawPodToNode(pod: RawPod, index: number): PNode | null {
   const pubkey = pod.pubkey || pod.publicKey || '';
   if (!isValidPubkey(pubkey)) return null;
-  
+
   const address = pod.address || '';
   const status = calculateStatus(pod.last_seen_timestamp);
-  const lastSeen = pod.last_seen_timestamp 
+  const lastSeen = pod.last_seen_timestamp
     ? (pod.last_seen_timestamp > 1e12 ? pod.last_seen_timestamp : pod.last_seen_timestamp * 1000)
     : Date.now();
 
@@ -173,30 +173,30 @@ function rawPodToNode(pod: RawPod, index: number): PNode | null {
 
 async function fetchNodesFromEndpoint(endpoint: string): Promise<PNode[]> {
   const url = endpoint.startsWith('http') ? endpoint : `http://${endpoint}/rpc`;
-  
+
   // Try get-pods-with-stats first (v0.7.0+), fallback to get-pods
   let result = await callPRPC(url, 'get-pods-with-stats', 30000);
   if (!result) {
     result = await callPRPC(url, 'get-pods', 20000);
   }
   if (!result) return [];
-  
+
   // Extract pods array from response
-  const pods: RawPod[] = Array.isArray(result) ? result 
+  const pods: RawPod[] = Array.isArray(result) ? result
     : result.pods || result.nodes || result.result?.pods || [];
-  
+
   return pods.map((pod, i) => rawPodToNode(pod, i)).filter((n): n is PNode => n !== null);
 }
 
 export async function fetchAllNodes(): Promise<Map<string, PNode>> {
   const nodesMap = new Map<string, PNode>();
-  
+
   console.log('[Sync] Fetching nodes from gossip endpoints...');
-  
+
   // Query all endpoints in parallel
   const allEndpoints = [...PROXY_RPC_ENDPOINTS, ...DIRECT_PRPC_ENDPOINTS.map(e => `http://${e}/rpc`)];
   const results = await Promise.allSettled(allEndpoints.map(ep => fetchNodesFromEndpoint(ep)));
-  
+
   let totalFetched = 0;
   for (const result of results) {
     if (result.status === 'fulfilled') {
@@ -209,7 +209,7 @@ export async function fetchAllNodes(): Promise<Map<string, PNode>> {
       }
     }
   }
-  
+
   console.log(`[Sync] Fetched ${nodesMap.size} unique nodes from ${allEndpoints.length} endpoints`);
   return nodesMap;
 }
@@ -231,14 +231,14 @@ interface NodeStats {
 async function fetchStatsForNode(node: PNode): Promise<NodeStats | null> {
   const ip = node.address?.split(':')[0];
   if (!ip) return null;
-  
+
   const portsToTry = [node.rpcPort || 6000, 6000, 9000];
-  
+
   for (const port of portsToTry) {
     const result = await callPRPC(`http://${ip}:${port}/rpc`, 'get-stats', 2000);
     if (result) return result as NodeStats;
   }
-  
+
   return null;
 }
 
@@ -246,19 +246,19 @@ export async function enrichWithStats(nodesMap: Map<string, PNode>): Promise<voi
   const nodes = Array.from(nodesMap.values());
   const BATCH_SIZE = 20;
   let enrichedCount = 0;
-  
+
   console.log(`[Sync] Enriching ${nodes.length} nodes with detailed stats...`);
-  
+
   for (let i = 0; i < nodes.length; i += BATCH_SIZE) {
     const batch = nodes.slice(i, i + BATCH_SIZE);
     const results = await Promise.allSettled(batch.map(n => fetchStatsForNode(n)));
-    
+
     for (let j = 0; j < results.length; j++) {
       const result = results[j];
       if (result.status === 'fulfilled' && result.value) {
         const stats = result.value;
         const node = batch[j];
-        
+
         node.cpuPercent = stats.cpu_percent;
         node.ramUsed = stats.ram_used;
         node.ramTotal = stats.ram_total;
@@ -267,16 +267,16 @@ export async function enrichWithStats(nodesMap: Map<string, PNode>): Promise<voi
         node.activeStreams = stats.active_streams;
         if (stats.uptime) node.uptime = stats.uptime;
         if (node.status !== 'online') node.status = 'online';
-        
+
         enrichedCount++;
       }
     }
-    
+
     if ((i + BATCH_SIZE) % 100 === 0 || i + BATCH_SIZE >= nodes.length) {
       console.log(`[Sync] Stats progress: ${Math.min(i + BATCH_SIZE, nodes.length)}/${nodes.length}`);
     }
   }
-  
+
   console.log(`[Sync] Enriched ${enrichedCount}/${nodes.length} nodes with stats`);
 }
 
@@ -286,22 +286,22 @@ export async function enrichWithStats(nodesMap: Map<string, PNode>): Promise<voi
 
 export async function enrichWithLocation(nodesMap: Map<string, PNode>): Promise<void> {
   const { batchFetchLocations } = await import('./location-cache');
-  
+
   const nodesNeedingGeo = Array.from(nodesMap.values()).filter(n => {
     const ip = n.address?.split(':')[0];
     return ip && !n.locationData?.lat;
   });
-  
+
   if (nodesNeedingGeo.length === 0) {
     console.log('[Sync] All nodes already have location data');
     return;
   }
-  
+
   const ips = [...new Set(nodesNeedingGeo.map(n => n.address?.split(':')[0]).filter(Boolean))] as string[];
   console.log(`[Sync] Fetching location for ${ips.length} IPs...`);
-  
+
   const geoMap = await batchFetchLocations(ips);
-  
+
   for (const node of nodesNeedingGeo) {
     const ip = node.address?.split(':')[0];
     if (ip && geoMap.has(ip)) {
@@ -316,7 +316,7 @@ export async function enrichWithLocation(nodesMap: Map<string, PNode>): Promise<
       };
     }
   }
-  
+
   console.log(`[Sync] Added location data for ${geoMap.size} nodes`);
 }
 
@@ -326,17 +326,17 @@ export async function enrichWithLocation(nodesMap: Map<string, PNode>): Promise<
 
 export async function enrichWithCredits(nodesMap: Map<string, PNode>): Promise<void> {
   console.log('[Sync] Fetching pod credits...');
-  
+
   try {
     const response = await fetch(POD_CREDITS_API, { signal: AbortSignal.timeout(10000) });
     if (!response.ok) return;
-    
+
     const data = await response.json();
     if (data.status !== 'success' || !data.pods_credits) return;
-    
+
     const currentMonth = new Date().toISOString().slice(0, 7);
     let count = 0;
-    
+
     for (const pod of data.pods_credits) {
       const node = nodesMap.get(pod.pod_id);
       if (node) {
@@ -345,7 +345,7 @@ export async function enrichWithCredits(nodesMap: Map<string, PNode>): Promise<v
         count++;
       }
     }
-    
+
     console.log(`[Sync] Added credits for ${count} nodes`);
   } catch (error: any) {
     console.warn(`[Sync] Failed to fetch credits: ${error.message}`);
@@ -361,24 +361,24 @@ export async function enrichWithBalance(
   existingNodes: Map<string, PNode>
 ): Promise<void> {
   const { fetchBalanceForPubkey } = await import('./balance-cache');
-  
+
   // Only fetch balance for nodes that don't have it yet
   const nodesNeedingBalance = Array.from(nodesMap.values()).filter(node => {
     const existing = existingNodes.get(node.pubkey || node.publicKey || '');
     return !existing?.balance && existing?.balance !== 0;
   });
-  
+
   if (nodesNeedingBalance.length === 0) {
     console.log('[Sync] All nodes already have balance data');
     return;
   }
-  
+
   console.log(`[Sync] Fetching balance for ${nodesNeedingBalance.length} new nodes...`);
-  
+
   for (const node of nodesNeedingBalance) {
     const pubkey = node.pubkey || node.publicKey;
     if (!pubkey) continue;
-    
+
     try {
       const balanceData = await fetchBalanceForPubkey(pubkey);
       if (balanceData) {
@@ -390,7 +390,7 @@ export async function enrichWithBalance(
       // Silent fail for individual balance fetches
     }
   }
-  
+
   console.log(`[Sync] Balance enrichment complete`);
 }
 
@@ -400,17 +400,17 @@ export async function enrichWithBalance(
 
 export function deduplicateNodes(nodesMap: Map<string, PNode>): PNode[] {
   const byPubkey = new Map<string, PNode>();
-  
+
   for (const node of nodesMap.values()) {
     const pubkey = node.pubkey || node.publicKey;
     if (!pubkey) continue;
-    
+
     const existing = byPubkey.get(pubkey);
     if (!existing) {
       byPubkey.set(pubkey, node);
       continue;
     }
-    
+
     // Merge: keep newer data, track previous addresses
     const merged: PNode = {
       ...existing,
@@ -430,10 +430,10 @@ export function deduplicateNodes(nodesMap: Map<string, PNode>): PNode[] {
       location: node.location || existing.location,
       locationData: node.locationData || existing.locationData,
     };
-    
+
     byPubkey.set(pubkey, merged);
   }
-  
+
   console.log(`[Sync] Deduplicated to ${byPubkey.size} unique nodes`);
   return Array.from(byPubkey.values());
 }
@@ -444,7 +444,7 @@ export function deduplicateNodes(nodesMap: Map<string, PNode>): PNode[] {
 
 export async function saveNodes(nodes: PNode[]): Promise<void> {
   const { upsertNodes, getAllNodes: getExistingNodes } = await import('./mongodb-nodes');
-  
+
   console.log(`[Sync] Saving ${nodes.length} nodes to database...`);
   await upsertNodes(nodes);
   console.log(`[Sync] Save complete`);
@@ -456,23 +456,23 @@ export async function saveNodes(nodes: PNode[]): Promise<void> {
 
 export async function syncNodes(): Promise<{ success: boolean; count: number; error?: string }> {
   const startTime = Date.now();
-  
+
   try {
     // Step 1: Fetch all nodes from gossip
     const nodesMap = await fetchAllNodes();
     if (nodesMap.size === 0) {
       return { success: false, count: 0, error: 'No nodes fetched from gossip' };
     }
-    
+
     // Step 2: Enrich with detailed stats (CPU, RAM, packets)
     await enrichWithStats(nodesMap);
-    
+
     // Step 3: Enrich with location data
     await enrichWithLocation(nodesMap);
-    
+
     // Step 4: Enrich with credits
     await enrichWithCredits(nodesMap);
-    
+
     // Step 5: Get existing nodes for balance check
     const { getAllNodes: getExistingNodes } = await import('./mongodb-nodes');
     let existingNodesMap = new Map<string, PNode>();
@@ -485,21 +485,46 @@ export async function syncNodes(): Promise<{ success: boolean; count: number; er
     } catch {
       // Continue without existing nodes
     }
-    
+
     // Step 6: Enrich with balance (new nodes only)
     await enrichWithBalance(nodesMap, existingNodesMap);
-    
+
     // Step 7: Deduplicate
     const dedupedNodes = deduplicateNodes(nodesMap);
-    
+
     // Step 8: Save to database
     await saveNodes(dedupedNodes);
-    
-    // Step 9: Store historical snapshot
+
+    // Step 9: Merge with ALL DB nodes for complete snapshot
+    // This ensures offline nodes are included in health calculations
+    const { getAllNodes } = await import('./mongodb-nodes');
+    const allDbNodes = await getAllNodes();
+
+    // Create a set of pubkeys we saw in gossip this cycle
+    const seenPubkeys = new Set(dedupedNodes.map(n => n.pubkey || n.publicKey));
+
+    // Mark nodes not seen in gossip as offline, keep others as-is
+    const completeNodes = allDbNodes.map(node => {
+      const pubkey = node.pubkey || node.publicKey;
+      if (pubkey && !seenPubkeys.has(pubkey)) {
+        // Node wasn't seen in gossip - mark as offline
+        return {
+          ...node,
+          status: 'offline' as const,
+          seenInGossip: false,
+        };
+      }
+      // Node was seen in gossip - keep its current status
+      return node;
+    });
+
+    const offlineCount = completeNodes.length - seenPubkeys.size;
+
+    // Step 10: Store historical snapshot with ALL nodes
     try {
       const { storeHistoricalSnapshot } = await import('./mongodb-history');
-      console.log(`[Sync] Storing historical snapshot for ${dedupedNodes.length} nodes...`);
-      await storeHistoricalSnapshot(dedupedNodes);
+      console.log(`[Sync] Storing historical snapshot for ${completeNodes.length} nodes (${seenPubkeys.size} online, ${offlineCount} offline)...`);
+      await storeHistoricalSnapshot(completeNodes);
       console.log('[Sync] ✅ Historical snapshot stored successfully');
     } catch (e: any) {
       console.error('[Sync] ❌ Failed to store historical snapshot:', {
@@ -509,10 +534,10 @@ export async function syncNodes(): Promise<{ success: boolean; count: number; er
       });
       // Don't fail the entire sync if snapshot fails, but log it clearly
     }
-    
+
     const duration = Date.now() - startTime;
     console.log(`[Sync] ✅ Complete: ${dedupedNodes.length} nodes in ${Math.round(duration / 1000)}s`);
-    
+
     return { success: true, count: dedupedNodes.length };
   } catch (error: any) {
     const duration = Date.now() - startTime;

@@ -16,6 +16,7 @@ import BalanceDisplay from './BalanceDisplay';
 import { formatBytes, formatStorageBytes } from '@/lib/utils/storage';
 import { getFlagForCountry } from '@/lib/utils/country-flags';
 import { Check, X, ArrowUp, ArrowDown, Globe, Lock } from 'lucide-react';
+import InfoTooltip from './InfoTooltip';
 
 interface PNodeTableProps {
   nodes: PNode[];
@@ -31,14 +32,14 @@ interface PNodeTableProps {
  */
 function abbreviateVersion(version: string): string {
   if (!version) return version;
-  
+
   // Find the first dash followed by a dot (timestamp pattern)
   // Keep everything up to and including the dash
   const match = version.match(/^([^-]+-)/);
   if (match) {
     return match[1];
   }
-  
+
   // If no pattern match, return as is
   return version;
 }
@@ -53,26 +54,26 @@ function VersionTooltip({ version, abbreviated }: { version: string; abbreviated
 
   const handleMouseEnter = () => {
     if (!triggerRef.current) return;
-    
+
     const triggerRect = triggerRef.current.getBoundingClientRect();
     const padding = 8;
-    
+
     // Calculate center position
     let left = triggerRect.left + (triggerRect.width / 2);
     let top = triggerRect.top;
     let placement: 'top' | 'bottom' = 'top';
-    
+
     // Estimate tooltip size (will be measured after render)
     const estimatedWidth = version.length * 7 + 16; // Rough estimate
     const estimatedHeight = 28;
-    
+
     // Adjust horizontal position to prevent overflow
     if (left - estimatedWidth / 2 < padding) {
       left = estimatedWidth / 2 + padding;
     } else if (left + estimatedWidth / 2 > window.innerWidth - padding) {
       left = window.innerWidth - estimatedWidth / 2 - padding;
     }
-    
+
     // Check if tooltip would go above viewport
     if (top - estimatedHeight - padding < 0) {
       // Show below instead
@@ -81,34 +82,34 @@ function VersionTooltip({ version, abbreviated }: { version: string; abbreviated
     } else {
       top = top - estimatedHeight - padding;
     }
-    
+
     setTooltipPosition({ top, left, placement });
-    
+
     // After tooltip renders, adjust position based on actual size
     setTimeout(() => {
       if (!tooltipRef.current || !triggerRef.current) return;
-      
+
       const tooltipRect = tooltipRef.current.getBoundingClientRect();
       const newTriggerRect = triggerRef.current.getBoundingClientRect();
-      
+
       let adjustedLeft = newTriggerRect.left + (newTriggerRect.width / 2);
       let adjustedTop = tooltipPosition?.top || top;
       let adjustedPlacement = placement;
-      
+
       // Recalculate with actual tooltip size
       if (adjustedLeft - tooltipRect.width / 2 < padding) {
         adjustedLeft = tooltipRect.width / 2 + padding;
       } else if (adjustedLeft + tooltipRect.width / 2 > window.innerWidth - padding) {
         adjustedLeft = window.innerWidth - tooltipRect.width / 2 - padding;
       }
-      
+
       if (adjustedPlacement === 'top' && adjustedTop - tooltipRect.height < 0) {
         adjustedTop = newTriggerRect.bottom + padding;
         adjustedPlacement = 'bottom';
       } else if (adjustedPlacement === 'top') {
         adjustedTop = newTriggerRect.top - tooltipRect.height - padding;
       }
-      
+
       if (adjustedLeft !== left || adjustedTop !== top || adjustedPlacement !== placement) {
         setTooltipPosition({ top: adjustedTop, left: adjustedLeft, placement: adjustedPlacement });
       }
@@ -120,7 +121,7 @@ function VersionTooltip({ version, abbreviated }: { version: string; abbreviated
   };
 
   return (
-    <span 
+    <span
       ref={triggerRef}
       className="text-xs text-foreground/70 cursor-help group relative inline-block"
       title={version}
@@ -139,19 +140,17 @@ function VersionTooltip({ version, abbreviated }: { version: string; abbreviated
           }}
         >
           {version}
-          <div 
-            className={`absolute left-1/2 transform -translate-x-1/2 ${
-              tooltipPosition.placement === 'top' 
-                ? 'top-full -mt-1' 
-                : 'bottom-full -mb-1'
-            }`}
-          >
-            <div 
-              className={`border-4 border-transparent ${
-                tooltipPosition.placement === 'top'
-                  ? 'border-t-gray-900'
-                  : 'border-b-gray-900'
+          <div
+            className={`absolute left-1/2 transform -translate-x-1/2 ${tooltipPosition.placement === 'top'
+              ? 'top-full -mt-1'
+              : 'bottom-full -mb-1'
               }`}
+          >
+            <div
+              className={`border-4 border-transparent ${tooltipPosition.placement === 'top'
+                ? 'border-t-gray-900'
+                : 'border-b-gray-900'
+                }`}
             />
           </div>
         </div>
@@ -173,21 +172,21 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
   // Measure latency for uncached nodes after initial render (deferred for better UX)
   useEffect(() => {
     let mounted = true;
-    
+
     const measureLatencies = async () => {
       // Load cached values first (already done in useState initializer)
       const cached = getCachedNodesLatencies(nodes);
       if (mounted) {
         setNodeLatencies(cached);
       }
-      
+
       // Check if we need to measure any nodes
       const uncachedNodes = nodes.filter(node => cached[node.id] === undefined);
       if (uncachedNodes.length === 0) {
         // All nodes are cached, no need to measure
         return;
       }
-      
+
       // Defer measurement until after initial render to avoid blocking UI
       const deferMeasurement = () => {
         if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
@@ -202,7 +201,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
           }, 100);
         }
       };
-      
+
       const measureUncachedNodes = async () => {
         setMeasuringLatency(true);
         try {
@@ -220,14 +219,14 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
           }
         }
       };
-      
+
       if (nodes.length > 0) {
         deferMeasurement();
       }
     };
 
     measureLatencies();
-    
+
     return () => {
       mounted = false;
     };
@@ -245,7 +244,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
         if (!node.pubkey && !node.publicKey) continue;
 
         setFetchingBalances(prev => new Set(prev).add(node.id));
-        
+
         try {
           const balance = await fetchNodeBalance(node);
           // Only update if we got a valid balance (not null)
@@ -293,17 +292,17 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
   // Removed formatLastSeen - no longer displaying last seen column
   const _unusedFormatLastSeen = (lastSeen?: number) => {
     if (!lastSeen) return null;
-    
+
     // lastSeen is in milliseconds
     const now = Date.now();
     const diff = now - lastSeen;
-    
+
     // Convert to seconds, minutes, hours, days
     const seconds = Math.floor(diff / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
-    
+
     if (days > 0) {
       return `${days}d ago`;
     } else if (hours > 0) {
@@ -332,7 +331,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
     if (keyStr.length <= 16) return keyStr;
     return `${keyStr.slice(0, 8)}...${keyStr.slice(-8)}`;
   };
-  
+
   const formatNodeId = (id: any, address?: string) => {
     if (address) {
       return address.split(':')[0];
@@ -378,7 +377,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
       // Check for client-side latency measurement
       return nodeLatencies[n.id] !== null && nodeLatencies[n.id] !== undefined;
     }).length;
-    
+
     return { withUptime, withStorage, withCPU, withLatency, total: nodes.length };
   }, [nodes]);
 
@@ -392,25 +391,26 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
           <span className="sm:hidden">Limited stats: {statsWithData.withUptime} uptime, {statsWithData.withStorage} storage, {statsWithData.withCPU} CPU, {statsWithData.withLatency} latency</span>
         </div>
       )}
-      
+
       <div className="flex flex-col flex-1 overflow-hidden min-h-0 -mt-px bg-card">
         {/* Scrollable Container with Sticky Header */}
         <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0 bg-card" style={{ margin: 0, padding: 0, marginTop: '-1px' }}>
           <table className="min-w-full border-collapse m-0 border-spacing-0" style={{ minWidth: '800px', borderCollapse: 'collapse', margin: 0, padding: 0 }}>
             <colgroup>
-              <col className="w-[9%]" />
-              <col className="w-[12%]" />
-              <col className="w-[6%]" />
               <col className="w-[8%]" />
-              <col className="w-[9%]" />
-              <col className="w-[9%]" />
-              <col className="w-[8%]" />
-              <col className="w-[6%]" />
-              <col className="w-[6%]" />
-              <col className="w-[8%]" />
+              <col className="w-[10%]" />
               <col className="w-[6%]" />
               <col className="w-[6%]" />
               <col className="w-[7%]" />
+              <col className="w-[8%]" />
+              <col className="w-[8%]" />
+              <col className="w-[7%]" />
+              <col className="w-[6%]" />
+              <col className="w-[6%]" />
+              <col className="w-[7%]" />
+              <col className="w-[6%]" />
+              <col className="w-[6%]" />
+              <col className="w-[9%]" />
             </colgroup>
             <thead className="sticky top-0 z-10 bg-muted border-b border-border/60" style={{ margin: 0, padding: 0 }}>
               <tr>
@@ -423,12 +423,39 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                 <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   Registered
                 </th>
+                {onSort ? (
+                  <th
+                    className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none group"
+                    onClick={() => onSort('createdAt')}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="border-b border-dotted border-foreground/30 flex items-center gap-1">
+                        Joined
+                        <InfoTooltip content="First detected by database. Actual network join time may vary." />
+                      </span>
+                      {sortBy === 'createdAt' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
+                      ) : (
+                        <ArrowDown className="w-3 h-3 text-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      )}
+                    </div>
+                  </th>
+                ) : (
+                  <th
+                    className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider"
+                  >
+                    <span className="border-b border-dotted border-foreground/30 flex items-center gap-1 w-fit">
+                      Joined
+                      <InfoTooltip content="First detected by database. Actual network join time may vary." />
+                    </span>
+                  </th>
+                )}
                 <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   Access
                 </th>
                 {onSort ? (
                   <>
-                    <th 
+                    <th
                       className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                       onClick={() => onSort('uptime')}
                     >
@@ -441,7 +468,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         )}
                       </div>
                     </th>
-                    <th 
+                    <th
                       className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                       onClick={() => onSort('storageCapacity')}
                     >
@@ -454,7 +481,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         )}
                       </div>
                     </th>
-                    <th 
+                    <th
                       className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                       onClick={() => onSort?.('ramTotal')}
                     >
@@ -470,7 +497,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                     <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                       Location
                     </th>
-                    <th 
+                    <th
                       className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                       onClick={() => onSort('latency')}
                     >
@@ -483,7 +510,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         )}
                       </div>
                     </th>
-                    <th 
+                    <th
                       className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                       onClick={() => onSort('cpuPercent')}
                     >
@@ -496,7 +523,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         )}
                       </div>
                     </th>
-                    <th 
+                    <th
                       className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                       onClick={() => onSort('balance')}
                     >
@@ -509,7 +536,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         )}
                       </div>
                     </th>
-                    <th 
+                    <th
                       className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                       onClick={() => onSort('credits')}
                     >
@@ -522,7 +549,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         )}
                       </div>
                     </th>
-                    <th 
+                    <th
                       className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                       onClick={() => onSort('packetsReceived')}
                     >
@@ -535,7 +562,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         )}
                       </div>
                     </th>
-                    <th 
+                    <th
                       className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                       onClick={() => onSort('packetsSent')}
                     >
@@ -613,9 +640,8 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           }
                         }
                       }}
-                      className={`bg-card/30 hover:bg-muted/40 cursor-pointer transition-all duration-300 hover:shadow-md hover:translate-x-1 border-b border-border/40 ${
-                        duplicate ? 'bg-warning/10 border-l-2 border-warning' : ''
-                      } ${isTrynet ? 'bg-orange-500/10' : ''}`}
+                      className={`bg-card/30 hover:bg-muted/40 cursor-pointer transition-all duration-300 hover:shadow-md hover:translate-x-1 border-b border-border/40 ${duplicate ? 'bg-warning/10 border-l-2 border-warning' : ''
+                        } ${isTrynet ? 'bg-orange-500/10' : ''}`}
                     >
                       <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
                         <a
@@ -636,7 +662,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                             {formatPublicKey(node.pubkey || node.publicKey) || renderEmptyCell('Public key not available')}
                           </span>
                           {duplicate && (
-                            <span 
+                            <span
                               className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-warning/20 text-warning text-[10px] font-bold"
                               title={`Duplicate pubkey detected (appears ${pubkeyCounts[node.pubkey || node.publicKey]} times)`}
                             >
@@ -660,14 +686,26 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           );
                         })()}
                       </td>
+                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
+                        {node.createdAt ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs sm:text-sm text-foreground/80">
+                              {new Date(node.createdAt).toLocaleDateString()}
+                            </span>
+                            <InfoTooltip content={`First detected: ${new Date(node.createdAt).toLocaleString()}\nFirst detected by database. Actual network join time may vary.`} />
+                          </div>
+                        ) : (
+                          renderEmptyCell()
+                        )}
+                      </td>
                       <td className="px-3 sm:px-5 py-4 whitespace-nowrap text-center bg-card/20">
                         {(() => {
                           const isPublic = node.isPublic === true;
                           const isPrivate = node.isPublic === false;
-                          
+
                           if (isPublic) {
                             return (
-                              <span 
+                              <span
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-green-500/20 text-green-400 border border-green-500/30"
                                 title="Public node - pRPC is publicly accessible"
                               >
@@ -677,7 +715,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                             );
                           } else if (isPrivate) {
                             return (
-                              <span 
+                              <span
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30"
                                 title="Private node - pRPC is not publicly accessible"
                               >
@@ -698,7 +736,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         {(() => {
                           const capacity = node.storageCapacity;
                           const hasCapacity = capacity !== undefined && capacity !== null;
-                          
+
                           if (hasCapacity) {
                             return (
                               <span className="text-xs sm:text-sm text-foreground/80">
@@ -714,7 +752,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           const ramUsed = node.ramUsed;
                           const ramTotal = node.ramTotal;
                           const hasRAM = ramTotal !== undefined && ramTotal !== null;
-                          
+
                           if (hasRAM) {
                             const used = ramUsed !== undefined && ramUsed !== null ? formatBytes(ramUsed) : '—';
                             const total = formatBytes(ramTotal);
@@ -762,15 +800,15 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           if (node.seenInGossip === false) {
                             return renderEmptyCell();
                           }
-                          
+
                           // Use per-node latency measurement
                           const nodeLatency = nodeLatencies[node.id];
-                          
+
                           if (nodeLatency !== null && nodeLatency !== undefined) {
                             const color = getLatencyColor(nodeLatency, null);
                             return (
                               <div className="flex flex-col items-end gap-0.5">
-                                <span 
+                                <span
                                   className={`text-xs sm:text-sm font-mono font-medium ${color}`}
                                   title={`Measured from your browser: ${nodeLatency.toFixed(0)}ms`}
                                 >
@@ -779,17 +817,17 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                               </div>
                             );
                           }
-                          
+
                           if (measuringLatency) {
                             return <span className="text-muted-foreground/50 text-xs">Measuring...</span>;
                           }
-                          
+
                           return renderEmptyCell('Node not reachable');
                         })()}
                       </td>
                       <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
                         <span className="text-xs sm:text-sm text-foreground/80">
-                          {node.cpuPercent !== undefined && node.cpuPercent !== null 
+                          {node.cpuPercent !== undefined && node.cpuPercent !== null
                             ? `${node.cpuPercent.toFixed(1)}%`
                             : renderEmptyCell()}
                         </span>
@@ -798,7 +836,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         {(() => {
                           const balance = balances[node.id] !== undefined ? balances[node.id] : node.balance;
                           const isFetching = fetchingBalances.has(node.id);
-                          
+
                           if (isFetching) {
                             return (
                               <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -806,16 +844,16 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                               </span>
                             );
                           }
-                          
+
                           if (balance !== null && balance !== undefined) {
                             return (
-                              <BalanceDisplay 
-                                balance={balance} 
+                              <BalanceDisplay
+                                balance={balance}
                                 className="text-xs sm:text-sm font-mono text-foreground/80"
                               />
                             );
                           }
-                          
+
                           return renderEmptyCell();
                         })()}
                       </td>

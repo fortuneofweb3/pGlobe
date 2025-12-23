@@ -21,6 +21,7 @@ function NodesPageContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [versionFilter, setVersionFilter] = useState<string>('all');
+  const [joinedFilter, setJoinedFilter] = useState<string>('all');
   const [creditsFilter, setCreditsFilter] = useState<string>('all');
   const [packetsFilter, setPacketsFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('');
@@ -55,6 +56,20 @@ function NodesPageContent() {
 
     if (versionFilter !== 'all') {
       filtered = filtered.filter((node) => node.version === versionFilter);
+    }
+
+    if (joinedFilter !== 'all') {
+      const now = new Date();
+      filtered = filtered.filter((node) => {
+        if (!node.createdAt) return false;
+        const joined = new Date(node.createdAt);
+        const diffHours = (now.getTime() - joined.getTime()) / (1000 * 60 * 60);
+
+        if (joinedFilter === '24h') return diffHours <= 24;
+        if (joinedFilter === '7d') return diffHours <= 24 * 7;
+        if (joinedFilter === '30d') return diffHours <= 24 * 30;
+        return true;
+      });
     }
 
     if (creditsFilter !== 'all') {
@@ -108,7 +123,7 @@ function NodesPageContent() {
     }
 
     return filtered;
-  }, [nodes, searchQuery, statusFilter, versionFilter, creditsFilter, packetsFilter, sortBy, sortOrder]);
+  }, [nodes, searchQuery, statusFilter, versionFilter, joinedFilter, creditsFilter, packetsFilter, sortBy, sortOrder]);
 
   const versions = useMemo(() => {
     const versionSet = new Set<string>();
@@ -148,7 +163,7 @@ function NodesPageContent() {
     };
   }, [nodes]);
 
-  const hasActiveFilters = statusFilter !== 'all' || versionFilter !== 'all' || creditsFilter !== 'all' || packetsFilter !== 'all' || searchQuery;
+  const hasActiveFilters = statusFilter !== 'all' || versionFilter !== 'all' || joinedFilter !== 'all' || creditsFilter !== 'all' || packetsFilter !== 'all' || searchQuery;
 
   // Show loading skeleton when loading or no data available
   const isLoading = loading || (nodes.length === 0 && !error);
@@ -320,11 +335,11 @@ function NodesPageContent() {
     <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
       <Header activePage="nodes" nodeCount={nodes.length} lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
 
-      <main className="flex-1 overflow-hidden">
-        <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 w-full p-3 sm:p-6 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
-            <div className="mb-4 sm:mb-6 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }}>
+            <div className="mb-4 sm:mb-6">
               <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
                 <Server className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
                 Network Nodes
@@ -400,7 +415,7 @@ function NodesPageContent() {
                   <span className="hidden sm:inline font-medium">Filters</span>
                   {hasActiveFilters && (
                     <span className="px-1.5 py-0.5 bg-[#F0A741] text-black text-xs font-bold rounded">
-                      {[statusFilter !== 'all' && 1, versionFilter !== 'all' && 1, creditsFilter !== 'all' && 1, packetsFilter !== 'all' && 1].filter(Boolean).length}
+                      {[statusFilter !== 'all' && 1, versionFilter !== 'all' && 1, joinedFilter !== 'all' && 1, creditsFilter !== 'all' && 1, packetsFilter !== 'all' && 1].filter(Boolean).length}
                     </span>
                   )}
                 </button>
@@ -410,6 +425,7 @@ function NodesPageContent() {
                     onClick={() => {
                       setStatusFilter('all');
                       setVersionFilter('all');
+                      setJoinedFilter('all');
                       setCreditsFilter('all');
                       setPacketsFilter('all');
                       setSearchQuery('');
@@ -457,6 +473,23 @@ function NodesPageContent() {
                             {v}
                           </option>
                         ))}
+                      </select>
+                    </div>
+
+                    {/* Joined Filter */}
+                    <div>
+                      <label className="block text-xs font-medium text-foreground/60 uppercase tracking-wide mb-2">
+                        Joined
+                      </label>
+                      <select
+                        value={joinedFilter}
+                        onChange={(e) => setJoinedFilter(e.target.value)}
+                        className="input w-full text-foreground focus:outline-none focus:ring-2 focus:ring-[#F0A741]/20 focus:border-[#F0A741]/60 transition-all text-sm"
+                      >
+                        <option value="all">All Time</option>
+                        <option value="24h">Last 24 Hours</option>
+                        <option value="7d">Last 7 Days</option>
+                        <option value="30d">Last 30 Days</option>
                       </select>
                     </div>
 
@@ -539,6 +572,7 @@ function NodesPageContent() {
                       onClick={() => {
                         setStatusFilter('all');
                         setVersionFilter('all');
+                        setJoinedFilter('all');
                         setCreditsFilter('all');
                         setPacketsFilter('all');
                         setSearchQuery('');

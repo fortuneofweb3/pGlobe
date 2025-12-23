@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 interface InfoTooltipProps {
@@ -19,70 +19,67 @@ export default function InfoTooltip({ content, children }: InfoTooltipProps) {
   const triggerRef = useRef<HTMLSpanElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  // Use useLayoutEffect to prevent visual flash of unpositioned tooltip
+  const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect;
+
+  useIsomorphicLayoutEffect(() => {
     if (isVisible && triggerRef.current) {
       const updatePosition = () => {
         if (!triggerRef.current) return;
-        
+
+        // Measure immediately
         const triggerRect = triggerRef.current.getBoundingClientRect();
-        
-        // Wait for tooltip to be rendered and measured
-        const measureAndPosition = () => {
-          if (!tooltipRef.current || !triggerRef.current) {
-            requestAnimationFrame(measureAndPosition);
-            return;
-          }
-          
+
+        // If tooltip ref is available, measure and position immediately
+        if (tooltipRef.current) {
           const tooltip = tooltipRef.current;
           const tooltipRect = tooltip.getBoundingClientRect();
           const tooltipWidth = tooltipRect.width || tooltip.offsetWidth || 320;
+
           const triggerCenterX = triggerRect.left + triggerRect.width / 2;
           let left = triggerCenterX - tooltipWidth / 2;
           const top = triggerRect.top - 8; // 8px above trigger
-          
+
           // Prevent overflow on left edge
           const margin = 12;
           if (left < margin) {
             left = margin;
           }
-          
+
           // Prevent overflow on right edge
           const maxLeft = window.innerWidth - tooltipWidth - margin;
           if (left > maxLeft) {
             left = Math.max(margin, maxLeft);
           }
-          
+
           // Calculate arrow position relative to trigger center
           const arrowLeft = triggerCenterX - left;
-          
+
           setTooltipPosition({
             top,
             left,
             arrowLeft: Math.max(16, Math.min(arrowLeft, tooltipWidth - 16)),
             ready: true,
           });
-        };
-
-        // Start measurement after render
-        requestAnimationFrame(measureAndPosition);
+        } else {
+          // If ref not ready yet (first render), schedule update
+          requestAnimationFrame(updatePosition);
+        }
       };
 
-      // Initial position
+      // Update immediately
       updatePosition();
 
       // Update on scroll/resize
-      const handleScroll = () => updatePosition();
-      const handleResize = () => updatePosition();
-      
-      window.addEventListener('scroll', handleScroll, true);
-      window.addEventListener('resize', handleResize);
+      window.addEventListener('scroll', updatePosition, true);
+      window.addEventListener('resize', updatePosition);
 
       return () => {
-        window.removeEventListener('scroll', handleScroll, true);
-        window.removeEventListener('resize', handleResize);
+        window.removeEventListener('scroll', updatePosition, true);
+        window.removeEventListener('resize', updatePosition);
       };
     } else {
-      setTooltipPosition({ top: -9999, left: -9999, arrowLeft: 0, ready: false });
+      setTooltipPosition((prev) => prev.ready ? { ...prev, ready: false } : prev);
     }
   }, [isVisible]);
 
@@ -155,7 +152,7 @@ interface MetricRowProps {
 
 export function MetricRow({ label, value, tooltip, valueColor = 'text-foreground', animateValue = false, valueFormatter }: MetricRowProps) {
   const AnimatedNumber = animateValue && typeof value === 'number' ? require('@/components/AnimatedNumber').default : null;
-  
+
   return (
     <div className="flex items-center justify-between">
       <span className="text-sm text-foreground/70 flex items-center gap-1.5">

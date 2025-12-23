@@ -393,8 +393,8 @@ function RegionsPageContent() {
     <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
       <Header activePage="regions" nodeCount={nodes.length} lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
 
-      <main className="flex-1 overflow-hidden">
-        <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 w-full p-3 sm:p-6 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="mb-4 sm:mb-6 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }}>

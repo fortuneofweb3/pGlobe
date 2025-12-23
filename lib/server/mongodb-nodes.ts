@@ -39,8 +39,8 @@ async function getClient(retries: number = 3): Promise<MongoClient> {
       return client;
     } catch (error: any) {
       console.log(`[MongoDB] Connection lost, reconnecting... (${error?.message || 'ping failed'})`);
-      try { 
-        await client.close(); 
+      try {
+        await client.close();
       } catch (closeError) {
         // Ignore close errors
       }
@@ -54,10 +54,10 @@ async function getClient(retries: number = 3): Promise<MongoClient> {
     try {
       const uri = getMongoUri();
       if (!uri) throw new Error('MONGODB_URI not set');
-      
+
       const isVercel = !!process.env.VERCEL;
       const isLocalDev = process.env.NODE_ENV === 'development' && !isVercel;
-      
+
       // Use smaller connection pool for local dev to avoid competing with production
       // Production Render server should use more connections, local dev uses fewer
       client = new MongoClient(uri, {
@@ -73,13 +73,13 @@ async function getClient(retries: number = 3): Promise<MongoClient> {
         // For local dev, be more aggressive about closing idle connections
         maxIdleTimeMS: isLocalDev ? 30000 : 60000, // Close idle connections faster in dev
       });
-      
+
       await client.connect();
       await Promise.race([
         client.db(getDbName()).admin().command({ ping: 1 }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Connect timeout')), 3000))
       ]);
-      
+
       console.log(`[MongoDB] ✅ Connected to ${getDbName()}`);
       return client;
     } catch (error: any) {
@@ -97,12 +97,12 @@ async function getClient(retries: number = 3): Promise<MongoClient> {
           console.error('[MongoDB]   3. Use separate database for local dev (set MONGODB_DB_NAME)');
         }
       }
-      if (client) { try { await client.close(); } catch {} }
+      if (client) { try { await client.close(); } catch { } }
       client = null;
       db = null;
     }
   }
-  
+
   throw lastError;
 }
 
@@ -175,7 +175,7 @@ export function isValidPubkey(pubkey: string | null | undefined): boolean {
   if (trimmed.length < 32 || trimmed.length > 44) return false;
   if (/\s/.test(trimmed)) return false;
   if (/^\d+\.\d+\.\d+\.\d+/.test(trimmed)) return false;
-  
+
   try {
     const { PublicKey } = require('@solana/web3.js');
     new PublicKey(trimmed);
@@ -234,9 +234,9 @@ function nodeToDocument(node: PNode): Partial<NodeDocument> {
 }
 
 export function documentToNode(doc: NodeDocument): PNode {
-  const status: 'online' | 'offline' | 'syncing' = 
+  const status: 'online' | 'offline' | 'syncing' =
     doc.seenInGossip === false ? 'offline' : (doc.status || 'offline');
-  
+
   const node: PNode = {
     id: doc._id || '',
     pubkey: doc.pubkey || doc.publicKey || '',
@@ -270,6 +270,7 @@ export function documentToNode(doc: NodeDocument): PNode {
     firstSeenSlot: doc.firstSeenSlot,
     seenInGossip: doc.seenInGossip,
     onChainError: doc.onChainError,
+    createdAt: doc.createdAt,
   };
 
   if (doc.locationLat && doc.locationLon) {
@@ -301,7 +302,7 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
     await getClient(2);
     const collection = await getNodesCollection();
     const now = new Date();
-    
+
     // Collect all pubkeys from incoming nodes
     const incomingPubkeys = new Set<string>();
     const operations: any[] = [];
@@ -309,14 +310,14 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
     for (const node of nodes) {
       const pubkey = node.pubkey || node.publicKey;
       if (!pubkey || !isValidPubkey(pubkey)) continue;
-      
+
       incomingPubkeys.add(pubkey);
       const doc = nodeToDocument(node);
-      
+
       // Build update: overwrite stats, preserve balance/location if not in new data
       const setFields: any = { updatedAt: now };
       const setOnInsert: any = { _id: pubkey, createdAt: now };
-      
+
       // Stats fields - always overwrite (fresh from gossip)
       const statsFields = [
         'address', 'version', 'status', 'lastSeen', 'uptime',
@@ -325,18 +326,18 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
         'totalPages', 'dataOperationsHandled', 'isPublic', 'rpcPort', 'peerCount', 'peers',
         'credits', 'creditsResetMonth', 'seenInGossip', 'pubkey', 'publicKey', 'previousAddresses',
       ];
-      
+
       for (const field of statsFields) {
         const value = (doc as any)[field];
         if (value !== undefined) {
           setFields[field] = value;
         }
       }
-      
+
       // Preserved fields - only set if provided (don't overwrite with undefined)
-      const preservedFields = ['balance', 'isRegistered', 'managerPDA', 'accountCreatedAt', 'firstSeenSlot', 
-                               'location', 'locationLat', 'locationLon', 'locationCity', 'locationCountry', 'locationCountryCode'];
-      
+      const preservedFields = ['balance', 'isRegistered', 'managerPDA', 'accountCreatedAt', 'firstSeenSlot',
+        'location', 'locationLat', 'locationLon', 'locationCity', 'locationCountry', 'locationCountryCode'];
+
       for (const field of preservedFields) {
         const value = (doc as any)[field];
         if (value !== undefined && value !== null) {
@@ -356,13 +357,13 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
     if (operations.length > 0) {
       const result = await collection.bulkWrite(operations);
       console.log(`[MongoDB] ✅ Upserted ${result.upsertedCount} new, ${result.modifiedCount} updated`);
-      
+
       // Mark nodes NOT in this sync as offline
       const markOfflineResult = await collection.updateMany(
         { _id: { $nin: Array.from(incomingPubkeys) as any } },
         { $set: { seenInGossip: false, status: 'offline', updatedAt: now } }
       );
-      
+
       if (markOfflineResult.modifiedCount > 0) {
         console.log(`[MongoDB] 📍 Marked ${markOfflineResult.modifiedCount} nodes as offline`);
       }
@@ -383,18 +384,18 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
 export async function getAllNodes(): Promise<PNode[]> {
   let retries = 3;
   let lastError: any = null;
-  
+
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       // Get fresh connection each time
       await getClient();
       const collection = await getNodesCollection();
-      
+
       // Use explicit cursor to ensure we get all results
       // Set batchSize to ensure we get all documents in one batch
       const cursor = collection.find({}).sort({ updatedAt: -1 }).batchSize(1000);
       const docs = await cursor.toArray();
-      
+
       // Double-check we got all results - if we got exactly 101, it might be a batch limit issue
       if (docs.length === 101) {
         console.warn('[MongoDB] ⚠️  Got exactly 101 nodes - possible batch limit, checking total count...');
@@ -411,29 +412,29 @@ export async function getAllNodes(): Promise<PNode[]> {
           return allDocs.map(doc => documentToNode(doc as unknown as NodeDocument));
         }
       }
-      
+
       if (docs.length === 0 && attempt < retries) {
         console.warn(`[MongoDB] Attempt ${attempt}/${retries}: Retrieved 0 nodes, retrying...`);
         await new Promise(r => setTimeout(r, 1000 * attempt));
         continue;
       }
-      
+
       console.log(`[MongoDB] ✅ Retrieved ${docs.length} nodes`);
       return docs.map(doc => documentToNode(doc as unknown as NodeDocument));
     } catch (error: any) {
       lastError = error;
       const errorMsg = error?.message || String(error);
       console.error(`[MongoDB] Error fetching nodes (attempt ${attempt}/${retries}):`, errorMsg);
-      
+
       // Reset connection on connection errors
-      if (errorMsg.includes('Topology') || 
-          errorMsg.includes('connection') || 
-          errorMsg.includes('session') ||
-          errorMsg.includes('pool')) {
+      if (errorMsg.includes('Topology') ||
+        errorMsg.includes('connection') ||
+        errorMsg.includes('session') ||
+        errorMsg.includes('pool')) {
         client = null;
         db = null;
       }
-      
+
       if (attempt < retries) {
         const delay = 1000 * attempt;
         console.warn(`[MongoDB] Retrying in ${delay}ms...`);
@@ -441,7 +442,7 @@ export async function getAllNodes(): Promise<PNode[]> {
       }
     }
   }
-  
+
   // If all retries failed, return empty array
   console.error(`[MongoDB] ❌ All ${retries} attempts failed. Last error:`, lastError?.message || lastError);
   return [];
@@ -470,13 +471,13 @@ export async function cleanupInvalidNodes(): Promise<number> {
     await getClient();
     const collection = await getNodesCollection();
     const docs = await collection.find({}).toArray();
-    
+
     const invalidIds = docs
       .filter(doc => !isValidPubkey(doc.pubkey || doc.publicKey))
       .map(doc => doc._id);
-    
+
     if (invalidIds.length === 0) return 0;
-    
+
     const result = await collection.deleteMany({ _id: { $in: invalidIds } });
     console.log(`[MongoDB] 🧹 Cleaned up ${result.deletedCount} invalid nodes`);
     return result.deletedCount || 0;

@@ -8,7 +8,7 @@ import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
 // Dynamically import Globe to avoid SSR issues
 // react-globe.gl exports a default component
-const Globe = dynamic(() => import('react-globe.gl'), { 
+const Globe = dynamic(() => import('react-globe.gl'), {
   ssr: false,
   loading: () => <div className="h-full flex items-center justify-center text-muted-foreground">Loading globe...</div>
 });
@@ -44,7 +44,7 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
     return nodesWithLocation.map((node) => {
       const status = node.status || 'offline';
       const color = statusColors[status] || statusColors.offline;
-      
+
       return {
         lat: node.locationData!.lat,
         lng: node.locationData!.lon,
@@ -58,7 +58,7 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
   // Prepare labels data - show cities/countries based on zoom level (Google Earth style)
   const labels = useMemo(() => {
     const labelMap = new Map<string, { lat: number; lng: number; text: string; size: number; type: 'city' | 'country' }>();
-    
+
     // Group nodes by location to avoid duplicate labels
     const locationGroups = new Map<string, PNode[]>();
     nodesWithLocation.forEach((node) => {
@@ -70,13 +70,13 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
       }
       locationGroups.get(key)!.push(node);
     });
-    
+
     locationGroups.forEach((nodes, key) => {
       const node = nodes[0];
       if (!node.locationData) return;
-      
+
       const { city, country, lat, lon } = node.locationData;
-      
+
       // Very zoomed in (< 120): Show all cities with node counts
       if (cameraDistance < 120 && city) {
         const cityKey = `${city}-${country}`;
@@ -135,7 +135,7 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
         }
       }
     });
-    
+
     return Array.from(labelMap.values());
   }, [nodesWithLocation, cameraDistance]);
 
@@ -235,13 +235,13 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
                 pointLabel={(point: any) => {
                   const node = point.node;
                   if (!node) return '';
-                  
+
                   const status = node.status || 'offline';
                   const pubkey = node.pubkey || node.publicKey || node.id;
-                  const shortPubkey = pubkey.length > 12 
-                    ? `${pubkey.slice(0, 8)}...${pubkey.slice(-4)}` 
+                  const shortPubkey = pubkey.length > 12
+                    ? `${pubkey.slice(0, 8)}...${pubkey.slice(-4)}`
                     : pubkey;
-                  
+
                   return `
                     <div style="
                       background: rgba(0, 0, 0, 0.9);
@@ -304,7 +304,7 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
                   }
                 }}
               />
-              
+
               {/* Zoom Controls */}
               <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-10">
                 <button
@@ -329,7 +329,7 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
                   <RotateCcw className="w-4 h-4 text-foreground" />
                 </button>
               </div>
-              
+
               {/* Zoom Level Indicator */}
               <div className="absolute bottom-4 left-4 px-3 py-1 bg-card/90 border border-border rounded text-body-small text-muted-foreground">
                 {cameraDistance < 150 ? 'City View' : cameraDistance < 200 ? 'Country View' : 'Global View'}

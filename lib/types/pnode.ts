@@ -17,10 +17,10 @@ export interface PNode {
   publicKey: string;
   pubkey?: string; // Alternative field name (added in Pod v0.5.1+)
   version?: string;
-  
+
   // IP address history (for tracking IP changes)
   previousAddresses?: string[]; // Array of previous IP:port addresses
-  
+
   // From get-stats (pRPC)
   uptime?: number; // Uptime in seconds (from stats.uptime)
   uptimePercent?: number; // Calculated uptime percentage
@@ -28,8 +28,8 @@ export interface PNode {
   cpuPercent?: number; // CPU usage percentage (from stats.cpu_percent)
   ramUsed?: number; // RAM used in bytes (from stats.ram_used)
   ramTotal?: number; // Total RAM in bytes (from stats.ram_total)
-      packetsReceived?: number; // Total packets received (cumulative counter from stats.packets_received)
-      packetsSent?: number; // Total packets sent (cumulative counter from stats.packets_sent)
+  packetsReceived?: number; // Total packets received (cumulative counter from stats.packets_received)
+  packetsSent?: number; // Total packets sent (cumulative counter from stats.packets_sent)
   activeStreams?: number; // Active network streams (from stats.active_streams)
   storageCapacity?: number; // Total storage capacity in bytes (from storage_committed via get-pods-with-stats)
   storageUsed?: number; // Used storage in bytes (from storage_used via get-pods-with-stats)
@@ -37,12 +37,12 @@ export interface PNode {
   isPublic?: boolean; // Whether pRPC is publicly accessible (from get-pods-with-stats v0.7.0+)
   rpcPort?: number; // RPC port number (from get-pods-with-stats v0.7.0+)
   dataOperationsHandled?: number; // Data operations handled (from stats.data_operations_handled)
-  
+
   // From get-pods (pRPC)
   lastSeen?: number; // Last seen timestamp in milliseconds
   peers?: PNodePeer[]; // Peers this node knows about (from get-pods)
   peerCount?: number; // Total number of peers
-  
+
   // External data (not from pRPC)
   location?: string; // Location string (from IP geolocation)
   locationData?: {
@@ -63,14 +63,16 @@ export interface PNode {
   creditsResetMonth?: string; // YYYY-MM format to track which month these credits are for (e.g., "2025-01")
   isRegistered?: boolean; // Is node registered on-chain? (balance > 0)
   managerPDA?: string; // Manager PDA address (from on-chain)
-  
+
   // On-chain account tracking (from Solana blockchain)
   accountCreatedAt?: Date; // When the Solana account was created (approximate, from first transaction)
   firstSeenSlot?: number; // First slot where account was seen (from oldest transaction signature)
-  
+
   // Gossip tracking
   seenInGossip?: boolean; // true if node was returned by gossip in the last cycle, false if not (offline)
-  
+
+  createdAt?: Date | string; // When the node was first discovered/added to our database
+
   // Error tracking
   _statsError?: string;
   _explanation?: any;
