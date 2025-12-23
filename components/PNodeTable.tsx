@@ -14,6 +14,7 @@ import { measureNodesLatency, getCachedNodesLatencies } from '@/lib/utils/client
 import { fetchNodeBalance } from '@/lib/utils/balance';
 import BalanceDisplay from './BalanceDisplay';
 import { formatBytes, formatStorageBytes } from '@/lib/utils/storage';
+import { formatRelativeTime } from '@/lib/utils/time';
 import { getFlagForCountry } from '@/lib/utils/country-flags';
 import { Check, X, ArrowUp, ArrowDown, Globe, Lock } from 'lucide-react';
 import InfoTooltip from './InfoTooltip';
@@ -429,9 +430,8 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                     onClick={() => onSort('createdAt')}
                   >
                     <div className="flex items-center gap-1.5">
-                      <span className="border-b border-dotted border-foreground/30 flex items-center gap-1">
+                      <span className="flex items-center gap-1">
                         Joined
-                        <InfoTooltip content="First detected by database. Actual network join time may vary." />
                       </span>
                       {sortBy === 'createdAt' ? (
                         sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
@@ -444,9 +444,8 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                   <th
                     className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider"
                   >
-                    <span className="border-b border-dotted border-foreground/30 flex items-center gap-1 w-fit">
+                    <span className="flex items-center gap-1 w-fit">
                       Joined
-                      <InfoTooltip content="First detected by database. Actual network join time may vary." />
                     </span>
                   </th>
                 )}
@@ -689,10 +688,12 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                       <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
                         {node.createdAt ? (
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs sm:text-sm text-foreground/80">
-                              {new Date(node.createdAt).toLocaleDateString()}
+                            <span
+                              className="text-xs sm:text-sm text-foreground/80 border-b border-dotted border-foreground/30 cursor-help"
+                              title={`First detected: ${new Date(node.createdAt).toLocaleString()}\nFirst detected by database. Actual network join time may vary.`}
+                            >
+                              {formatRelativeTime(node.createdAt)}
                             </span>
-                            <InfoTooltip content={`First detected: ${new Date(node.createdAt).toLocaleString()}\nFirst detected by database. Actual network join time may vary.`} />
                           </div>
                         ) : (
                           renderEmptyCell()

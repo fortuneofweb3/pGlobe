@@ -1546,9 +1546,9 @@ function NodeDetailContent() {
                           <span className="text-sm text-foreground/80">Joined</span>
                           <div className="flex items-center gap-1.5">
                             <span className="text-sm font-mono font-semibold text-foreground">
-                              {new Date(node.createdAt).toLocaleDateString()}
+                              {new Date(node.createdAt).toLocaleString()}
                             </span>
-                            <InfoTooltip content={`First detected: ${new Date(node.createdAt).toLocaleString()}\nFirst detected by database. Actual network join time may vary.`} />
+                            <InfoTooltip content={`First detected by database. Actual network join time may vary.`} />
                           </div>
                         </div>
                       )}
@@ -1714,9 +1714,9 @@ function NodeDetailContent() {
                           <span className="text-sm text-foreground/80">Joined</span>
                           <div className="flex items-center gap-1.5">
                             <span className="text-sm font-mono font-semibold text-foreground">
-                              {new Date(node.createdAt).toLocaleDateString()}
+                              {new Date(node.createdAt).toLocaleString()}
                             </span>
-                            <InfoTooltip content={`First detected: ${new Date(node.createdAt).toLocaleString()}\nFirst detected by database. Actual network join time may vary.`} />
+                            <InfoTooltip content={`First detected by database. Actual network join time may vary.`} />
                           </div>
                         </div>
                       )}

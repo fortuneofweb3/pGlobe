@@ -83,7 +83,7 @@ export const tools = [
     type: 'function' as const,
     function: {
       name: 'get_network_stats',
-      description: 'Get overall network statistics including total nodes, online count, storage, and country distribution',
+      description: 'Get overall network statistics including total nodes, online count, storage, country distribution, and total network health score.',
       parameters: {
         type: 'object',
         properties: {}
@@ -206,7 +206,7 @@ export const tools = [
     type: 'function' as const,
     function: {
       name: 'get_country_data',
-      description: 'Get aggregated statistics for a specific country/region including total nodes, online count, average CPU/RAM, total storage, credits, version distribution, cities, etc. Use this to get comprehensive country-level metrics.',
+      description: 'Get aggregated statistics for a specific country/region including health scores, total nodes, online count, average CPU/RAM, total storage, credits, version distribution, cities, etc. Use this to get comprehensive country-level performance metrics.',
       parameters: {
         type: 'object',
         properties: {
@@ -227,7 +227,7 @@ export const tools = [
     type: 'function' as const,
     function: {
       name: 'get_country_history',
-      description: 'Get historical aggregated data for a country/region over time. Returns data points with online count, total nodes, packet rates, credits, average CPU/RAM, etc. Use this to analyze country performance trends over time.',
+      description: 'Get historical aggregated data for a country/region over time. Returns data points with health trends, online count, total nodes, packet rates, credits, average CPU/RAM, etc. Use this to analyze country performance and earning trends over time.',
       parameters: {
         type: 'object',
         properties: {
@@ -1092,6 +1092,7 @@ Network & Trends:
 
 Country & Regional:
 - "What are the statistics for Nigeria?" → Use get_country_data with country="Nigeria" or country="NG"
+- "What's the health score of Nigeria?" → Use get_country_data with country="Nigeria". It returns a specific healthScore.
 - "Show me Nigeria's network performance over the past week" → Use get_country_history with country="Nigeria" and days=7, then analyze trends
 - "How has France's network activity changed?" → Use get_country_history with country="France", then analyze the historical data points
 - "Rank countries by performance" → Use compare_countries with all countries, then sort/rank the results yourself
@@ -1101,6 +1102,7 @@ Location & Proximity:
 - "Find nodes near me" → Use get_user_location, then find_closest_nodes with the coordinates
 - "Nodes closest to this IP" → Use find_closest_nodes with ip parameter
 - "Where is this IP located?" → Use get_location_for_ip
+- "Which nodes joined the database today?" → Use filter_nodes (with optional status filters), then check the createdAt (ca) field in the result to find the most recent entries.
 
 Credit Analysis:
 - "Nodes that earned more than 100 credits in the last 7 days" → Use get_credits_change with timeRange="7d" and minCreditsEarned=100
