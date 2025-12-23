@@ -153,6 +153,7 @@ export async function storeHistoricalSnapshot(
 
     // Calculate network health score (40% availability, 35% version, 25% distribution)
     const networkHealth = calculateNetworkHealth(nodes);
+    console.log(`[MongoDB History] 🏥 Calculated health - Overall: ${networkHealth.overall}, Availability: ${networkHealth.availability}, Version: ${networkHealth.versionHealth}, Distribution: ${networkHealth.distribution}`);
 
     // Check if we already have a snapshot for this 10-minute interval
     const existing = await collection.findOne({ interval });
@@ -186,6 +187,7 @@ export async function storeHistoricalSnapshot(
         { $set: updateData }
       );
       console.log(`[MongoDB History] ✅ Updated snapshot for interval ${interval} with ${updateData.nodeSnapshots.length} node snapshots`);
+      console.log(`[MongoDB History] 🏥 Health scores - Overall: ${updateData.networkHealthScore}, Availability: ${updateData.networkHealthAvailability}, Version: ${updateData.networkHealthVersion}, Distribution: ${updateData.networkHealthDistribution}`);
       return;
     }
     
@@ -217,6 +219,7 @@ export async function storeHistoricalSnapshot(
     
     await collection.insertOne(snapshot);
     console.log(`[MongoDB History] ✅ Stored snapshot for interval ${interval} (${nodes.length} nodes, ${snapshot.nodeSnapshots.length} node snapshots)`);
+    console.log(`[MongoDB History] 🏥 Health scores - Overall: ${snapshot.networkHealthScore}, Availability: ${snapshot.networkHealthAvailability}, Version: ${snapshot.networkHealthVersion}, Distribution: ${snapshot.networkHealthDistribution}`);
 
     // ✨ NEW: Store pre-aggregated region snapshots for faster queries
     try {
