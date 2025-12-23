@@ -18,6 +18,7 @@ const MapLibreGlobe = dynamic(() => import('@/components/MapLibreGlobe'), {
 import Header from '@/components/Header';
 import { Search, MapPin, Navigation2, Loader2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { startProgress } from '@/lib/nprogress';
 import { enrichNodesWithGeo } from '@/lib/utils/geo';
 import { useNodes } from '@/lib/context/NodesContext';
 
@@ -611,6 +612,7 @@ export default function ScanPage() {
                 // Navigate to node details page when popup is clicked
                 const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';
                 if (nodeId) {
+                  startProgress();
                   router.push(`/nodes/${encodeURIComponent(nodeId)}`);
                 }
               }}

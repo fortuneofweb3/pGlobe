@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { startProgress } from '@/lib/nprogress';
 import { PNode } from '@/lib/types/pnode';
 // Latency is server-side but adjusted for user's region
 import {
@@ -607,6 +608,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         } else {
                           const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';
                           if (nodeId) {
+                            startProgress();
                             router.push(`/nodes/${encodeURIComponent(nodeId)}`);
                           }
                         }

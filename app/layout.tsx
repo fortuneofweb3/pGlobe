@@ -3,7 +3,7 @@ import "./globals.css";
 import { NodesProvider } from "@/lib/context/NodesContext";
 import { UserRegionProvider } from "@/lib/contexts/UserRegionContext";
 import AISupportWidget from "@/components/AISupportWidget";
-import NextTopLoader from 'nextjs-toploader';
+import ProgressBar from "@/components/ProgressBar";
 
 export const metadata: Metadata = {
   title: "pGlobe",
@@ -45,14 +45,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
-        <NextTopLoader
-          color="#F0A741"
-          height={2}
-          showSpinner={false}
-          easing="ease"
-          speed={200}
-          shadow="0 0 10px #F0A741,0 0 5px #F0A741"
-        />
+        <ProgressBar />
         <NodesProvider>
           <UserRegionProvider>
             {children}

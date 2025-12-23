@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { startProgress } from '@/lib/nprogress';
 import { PNode } from '@/lib/types/pnode';
 import StatsCard from '@/components/StatsCard';
 import dynamic from 'next/dynamic';
@@ -877,6 +878,7 @@ function HomeContent() {
                           // Navigate to node details page when popup is clicked
                           const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';
                           if (nodeId) {
+                            startProgress();
                             router.push(`/nodes/${encodeURIComponent(nodeId)}`);
                           }
                         }}

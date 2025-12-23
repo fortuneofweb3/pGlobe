@@ -2,6 +2,7 @@
 
 import { useMemo, useState, Suspense, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { startProgress } from '@/lib/nprogress';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
@@ -2017,6 +2018,7 @@ function CountryDetailContent() {
                       onNodeClick={(node) => {
                         const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';
                         if (nodeId) {
+                          startProgress();
                           router.push(`/nodes/${encodeURIComponent(nodeId)}`);
                         }
                       }}

@@ -2,6 +2,7 @@
 
 import { memo, useMemo, useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { startProgress } from '@/lib/nprogress';
 import { PNode } from '@/lib/types/pnode';
 import { formatStorageBytes } from '@/lib/utils/storage';
 import { WORLD_MAP_PATHS } from '@/lib/data/world-map-paths';
@@ -409,6 +410,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
     if (data && data.count > 0) {
       // Use reverse map to get the original node data country name for the URL
       const urlCountryName = reverseCountryNameMap[countryName] || countryName;
+      startProgress();
       router.push(`/regions/${encodeURIComponent(urlCountryName)}`);
     }
   };

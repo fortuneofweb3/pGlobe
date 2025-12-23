@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { startProgress } from '@/lib/nprogress';
 import { Map as MapGL, Marker, Source, Layer, MapRef } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -1057,6 +1058,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
       }
     } else {
       // Only navigate to /nodes page if no callback provided (e.g., in Overview page)
+      startProgress();
       router.push(`/nodes/${nodeId}`);
     }
   };

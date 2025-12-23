@@ -16,6 +16,7 @@ import { useNodes } from '@/lib/context/NodesContext';
 import { formatStorageBytes } from '@/lib/utils/storage';
 import { Activity, HardDrive, TrendingUp, Server, BarChart3, Download, FileJson, FileSpreadsheet, ArrowDown, MemoryStick, Cpu, Award, Network } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { startProgress } from '@/lib/nprogress';
 import AnimatedNumber from '@/components/AnimatedNumber';
 
 interface HistoricalDataPoint {
@@ -415,8 +416,8 @@ export default function AnalyticsPage() {
       />
 
       <main className="flex-1 overflow-hidden">
-        <div className="w-full px-3 sm:px-6 pt-3 sm:pt-6 pb-2 overflow-y-auto">
-          <div className="max-w-7xl mx-auto">
+        <div className="h-full w-full px-3 sm:px-6 pt-3 sm:pt-6 pb-6 overflow-y-auto">
+          <div className="max-w-7xl mx-auto pb-8">
             {/* Header */}
             <div className="mb-4 sm:mb-6">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
@@ -721,6 +722,7 @@ export default function AnalyticsPage() {
                   onNodeClick={(node) => {
                     const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';
                     if (nodeId) {
+                      startProgress();
                       router.push(`/nodes/${encodeURIComponent(nodeId)}`);
                     }
                   }}

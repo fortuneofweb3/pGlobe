@@ -2,6 +2,7 @@
 
 import { useMemo, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { startProgress } from '@/lib/nprogress';
 import { PNode } from '@/lib/types/pnode';
 import PNodeTable from '@/components/PNodeTable';
 import Header from '@/components/Header';
@@ -527,6 +528,7 @@ function NodesPageContent() {
                     onNodeClick={(node) => {
                       const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';
                       if (nodeId) {
+                        startProgress();
                         router.push(`/nodes/${encodeURIComponent(nodeId)}`);
                       }
                     }}
