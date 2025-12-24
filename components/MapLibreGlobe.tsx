@@ -51,7 +51,7 @@ const MAP_STYLE = {
       id: 'globe-background',
       type: 'background',
       paint: {
-        'background-color': '#030712', // Deep space black
+        'background-color': '#0a0f18', // Slightly lighter space black
       },
     },
     {
