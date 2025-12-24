@@ -418,6 +418,9 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                 <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   IP Address
                 </th>
+                <th className="px-2 sm:px-3 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                  Status
+                </th>
                 <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   Public Key
                 </th>
@@ -654,6 +657,33 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         >
                           {formatNodeId(node.id, node.address)}
                         </a>
+                      </td>
+                      <td className="px-2 sm:px-3 py-4 whitespace-nowrap text-center bg-card/20">
+                        {(() => {
+                          const status = node.status;
+                          if (status === 'online') {
+                            return (
+                              <span
+                                className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]"
+                                title="Online"
+                              />
+                            );
+                          } else if (status === 'syncing') {
+                            return (
+                              <span
+                                className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-blue-500 animate-pulse shadow-[0_0_6px_rgba(59,130,246,0.5)]"
+                                title="Syncing"
+                              />
+                            );
+                          } else {
+                            return (
+                              <span
+                                className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-red-500/70"
+                                title="Offline"
+                              />
+                            );
+                          }
+                        })()}
                       </td>
                       <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
                         <div className="flex items-center gap-2">

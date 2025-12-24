@@ -1,13 +1,13 @@
 'use client';
 
-import { useMemo, useState, Suspense } from 'react';
+import { useMemo, useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { startProgress } from '@/lib/nprogress';
 import { PNode } from '@/lib/types/pnode';
 import PNodeTable from '@/components/PNodeTable';
 import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
-import { RefreshCw, Server, TrendingUp, Search, Filter, X, Activity } from 'lucide-react';
+import { RefreshCw, Server, TrendingUp, Search, Filter, X, Activity, ChevronLeft, ChevronRight } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 import { TableSkeleton, CardSkeleton } from '@/components/Skeletons';
 import AnimatedNumber from '@/components/AnimatedNumber';
@@ -27,6 +27,9 @@ function NodesPageContent() {
   const [sortBy, setSortBy] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showFilters, setShowFilters] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 50;
+
 
   const filteredAndSortedNodes = useMemo(() => {
     let filtered = [...nodes];
@@ -164,6 +167,18 @@ function NodesPageContent() {
   }, [nodes]);
 
   const hasActiveFilters = statusFilter !== 'all' || versionFilter !== 'all' || joinedFilter !== 'all' || creditsFilter !== 'all' || packetsFilter !== 'all' || searchQuery;
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredAndSortedNodes.length / ITEMS_PER_PAGE);
+  const paginatedNodes = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredAndSortedNodes.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredAndSortedNodes, currentPage]);
+
+  // Reset to page 1 when filters/search/sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, versionFilter, joinedFilter, creditsFilter, packetsFilter, sortBy, sortOrder]);
 
   // Show loading skeleton when loading or no data available
   const isLoading = loading || (nodes.length === 0 && !error);
@@ -542,7 +557,7 @@ function NodesPageContent() {
                   <TableSkeleton rows={10} columns={7} />
                 ) : (
                   <PNodeTable
-                    nodes={filteredAndSortedNodes}
+                    nodes={paginatedNodes}
                     onNodeClick={(node) => {
                       const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';
                       if (nodeId) {
@@ -563,6 +578,78 @@ function NodesPageContent() {
                   />
                 )}
               </div>
+
+              {/* Pagination Controls */}
+              {filteredAndSortedNodes.length > 0 && totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4 px-2">
+                  <div className="text-sm text-foreground/60">
+                    Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredAndSortedNodes.length)} of {filteredAndSortedNodes.length} nodes
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className={`flex items-center gap-1 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${currentPage === 1
+                          ? 'border-border/40 text-foreground/30 cursor-not-allowed'
+                          : 'border-border/60 text-foreground/80 hover:border-[#F0A741]/50 hover:text-[#F0A741]'
+                        }`}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span className="hidden sm:inline">Previous</span>
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      {/* Show page numbers with ellipsis for large page counts */}
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(page => {
+                          // Always show first, last, current, and adjacent pages
+                          if (page === 1 || page === totalPages) return true;
+                          if (Math.abs(page - currentPage) <= 1) return true;
+                          return false;
+                        })
+                        .reduce((acc: (number | string)[], page, idx, arr) => {
+                          if (idx > 0) {
+                            const prevPage = arr[idx - 1];
+                            if (typeof prevPage === 'number' && page - prevPage > 1) {
+                              acc.push('...');
+                            }
+                          }
+                          acc.push(page);
+                          return acc;
+                        }, [])
+                        .map((page, idx) => (
+                          typeof page === 'string' ? (
+                            <span key={`ellipsis-${idx}`} className="px-2 text-foreground/40">...</span>
+                          ) : (
+                            <button
+                              key={page}
+                              onClick={() => setCurrentPage(page)}
+                              className={`min-w-[36px] h-9 px-2 rounded-lg text-sm font-medium transition-all ${currentPage === page
+                                  ? 'bg-[#F0A741] text-black'
+                                  : 'text-foreground/60 hover:bg-muted hover:text-foreground'
+                                }`}
+                            >
+                              {page}
+                            </button>
+                          )
+                        ))
+                      }
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className={`flex items-center gap-1 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${currentPage === totalPages
+                          ? 'border-border/40 text-foreground/30 cursor-not-allowed'
+                          : 'border-border/60 text-foreground/80 hover:border-[#F0A741]/50 hover:text-[#F0A741]'
+                        }`}
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {filteredAndSortedNodes.length === 0 && !loading && (
                 <div className="card text-center" style={{ padding: '2rem' }}>
