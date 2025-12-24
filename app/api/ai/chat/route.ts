@@ -16,7 +16,7 @@ export const tools = [
     type: 'function' as const,
     function: {
       name: 'filter_nodes',
-      description: 'Filter pNodes based on various criteria like country, status, RAM usage, CPU usage, credits, storage, uptime, etc.',
+      description: 'Filter and find pNodes based on various criteria. USE THIS for: storage capacity queries (minStorageBytes), RAM/CPU usage, credits, uptime, country, status. This is the PRIMARY function for most node filtering questions. Returns list of matching nodes with their current data.',
       parameters: {
         type: 'object',
         properties: {
@@ -33,8 +33,8 @@ export const tools = [
           maxRamPercent: { type: 'number', description: 'Maximum RAM usage percentage (0-100)' },
           minCpuPercent: { type: 'number', description: 'Minimum CPU usage percentage (0-100)' },
           maxCpuPercent: { type: 'number', description: 'Maximum CPU usage percentage (0-100)' },
-          minCredits: { type: 'number', description: 'Minimum credits threshold' },
-          minStorageBytes: { type: 'number', description: 'Minimum storage capacity in bytes' },
+          minCredits: { type: 'number', description: 'Minimum total credits (current balance, not earned over time)' },
+          minStorageBytes: { type: 'number', description: 'Minimum storage capacity in bytes. For GB to bytes: multiply GB by 1073741824. Example: 500GB = 536870912000 bytes' },
           minUptimeDays: { type: 'number', description: 'Minimum uptime in days' },
           continent: {
             type: 'string',
@@ -49,12 +49,12 @@ export const tools = [
     type: 'function' as const,
     function: {
       name: 'get_node_details',
-      description: 'Get detailed information about a specific pNode by its public key or address',
+      description: 'Get ALL details about ONE specific pNode. Use when user asks about a SPECIFIC node by its pubkey or IP address. Returns: status, credits, storage, uptime, location, CPU, RAM, etc.',
       parameters: {
         type: 'object',
         properties: {
-          pubkey: { type: 'string', description: 'The public key of the pNode' },
-          address: { type: 'string', description: 'The IP address and port of the pNode (e.g., "192.168.1.1:9001")' }
+          pubkey: { type: 'string', description: 'The public key of the pNode (base58 string)' },
+          address: { type: 'string', description: 'The IP:port address (e.g., "192.168.1.1:9001")' }
         }
       }
     }
@@ -63,16 +63,16 @@ export const tools = [
     type: 'function' as const,
     function: {
       name: 'get_credits_change',
-      description: 'Get pNodes that earned credits over a specified time period',
+      description: 'Find nodes by HOW MUCH credits they EARNED over time (delta/change). Use ONLY for: "which nodes earned credits", "active earning nodes", "nodes that earned X credits in last hour". NOT for: storage, current credits, node counts.',
       parameters: {
         type: 'object',
         properties: {
-          minCreditsEarned: { type: 'number', description: 'Minimum credits earned threshold' },
-          maxCreditsEarned: { type: 'number', description: 'Maximum credits earned threshold (for "less than" queries)' },
+          minCreditsEarned: { type: 'number', description: 'Minimum credits EARNED (the change amount)' },
+          maxCreditsEarned: { type: 'number', description: 'Maximum credits EARNED (the change amount)' },
           timeRange: {
             type: 'string',
             enum: ['1h', '24h', '7d'],
-            description: 'Time range to check credit changes'
+            description: 'Time period to measure credit earning'
           }
         },
         required: ['timeRange']
@@ -83,7 +83,7 @@ export const tools = [
     type: 'function' as const,
     function: {
       name: 'get_network_stats',
-      description: 'Get overall network statistics including total nodes, online count, storage, country distribution, and total network health score.',
+      description: 'Get NETWORK-WIDE aggregate statistics. Use for: "how many total nodes", "total network storage", "overall health score", "country distribution". Returns: totalNodes, onlineNodes, totalStorage, countryBreakdown, healthScore.',
       parameters: {
         type: 'object',
         properties: {}
@@ -94,7 +94,7 @@ export const tools = [
     type: 'function' as const,
     function: {
       name: 'get_user_location',
-      description: 'Get the user\'s IP address and geographic location (city, country, coordinates)',
+      description: 'Get the CURRENT USER\'s location from their IP. Use for: "where am I", "my location", "nodes near me" (combine with find_closest_nodes).',
       parameters: {
         type: 'object',
         properties: {}
@@ -105,14 +105,11 @@ export const tools = [
     type: 'function' as const,
     function: {
       name: 'get_location_for_ip',
-      description: 'Get geographic location (city, country, coordinates) for a specific IP address',
+      description: 'Look up location for ANY IP address. Use for: "where is IP X located", "location of this address".',
       parameters: {
         type: 'object',
         properties: {
-          ip: {
-            type: 'string',
-            description: 'IP address to look up (e.g., "192.168.1.1")'
-          }
+          ip: { type: 'string', description: 'IP address to look up' }
         },
         required: ['ip']
       }
@@ -122,26 +119,14 @@ export const tools = [
     type: 'function' as const,
     function: {
       name: 'find_closest_nodes',
-      description: 'Find the closest pNodes to a specific location (by IP address or coordinates). Returns nodes sorted by distance.',
+      description: 'Find pNodes NEAREST to a location. Use for: "closest nodes to me", "nodes near IP X", "nodes near these coordinates". Returns nodes sorted by distance.',
       parameters: {
         type: 'object',
         properties: {
-          ip: {
-            type: 'string',
-            description: 'IP address to find closest nodes to (e.g., "192.168.1.1")'
-          },
-          lat: {
-            type: 'number',
-            description: 'Latitude coordinate (-90 to 90)'
-          },
-          lon: {
-            type: 'number',
-            description: 'Longitude coordinate (-180 to 180)'
-          },
-          limit: {
-            type: 'number',
-            description: 'Maximum number of closest nodes to return (default: 20)'
-          }
+          ip: { type: 'string', description: 'IP address to find closest nodes to' },
+          lat: { type: 'number', description: 'Latitude (-90 to 90)' },
+          lon: { type: 'number', description: 'Longitude (-180 to 180)' },
+          limit: { type: 'number', description: 'Max nodes to return (default: 20)' }
         }
       }
     }
@@ -150,19 +135,19 @@ export const tools = [
     type: 'function' as const,
     function: {
       name: 'compare_nodes',
-      description: 'Compare specific pNodes by their metrics (uptime, credits, storage, RAM, CPU, etc.). Provide pubkeys or addresses.',
+      description: 'Compare 2+ SPECIFIC pNodes side-by-side. Use for: "compare node A vs B", "which of these nodes is better". Provide pubkeys OR addresses.',
       parameters: {
         type: 'object',
         properties: {
           pubkeys: {
             type: 'array',
             items: { type: 'string' },
-            description: 'Array of pNode public keys to compare'
+            description: 'Array of pubkeys to compare'
           },
           addresses: {
             type: 'array',
             items: { type: 'string' },
-            description: 'Array of pNode addresses (IP:port) to compare'
+            description: 'Array of IP:port addresses to compare'
           }
         }
       }
@@ -172,14 +157,14 @@ export const tools = [
     type: 'function' as const,
     function: {
       name: 'compare_countries',
-      description: 'Compare countries by aggregate pNode statistics (total nodes, online count, average uptime, total storage, total credits, etc.)',
+      description: 'Compare 2+ COUNTRIES by their aggregate stats. Use for: "compare Nigeria vs France", "which country has more nodes". Provide country codes.',
       parameters: {
         type: 'object',
         properties: {
           countries: {
             type: 'array',
             items: { type: 'string' },
-            description: 'Array of country codes to compare (e.g., ["US", "FR", "DE"])'
+            description: 'Array of country codes (e.g., ["NG", "FR", "DE"])'
           }
         },
         required: ['countries']
@@ -190,14 +175,14 @@ export const tools = [
     type: 'function' as const,
     function: {
       name: 'get_node_history',
-      description: 'Get historical data for a specific node or the entire network over a time period. Returns snapshots with status, CPU, RAM, uptime, credits, etc. Use this to analyze performance over time.',
+      description: 'Get HISTORICAL data over TIME for a node or network. Use for: "how has node X performed", "network trends over 24h", "status changes". Returns time-series snapshots.',
       parameters: {
         type: 'object',
         properties: {
-          pubkey: { type: 'string', description: 'Optional: The public key of a specific pNode to get history for' },
-          address: { type: 'string', description: 'Optional: The IP address and port of a specific pNode' },
-          hours: { type: 'number', description: 'Number of hours to look back (default: 24)' },
-          days: { type: 'number', description: 'Number of days to look back (alternative to hours)' }
+          pubkey: { type: 'string', description: 'Pubkey for specific node history (omit for network-wide)' },
+          address: { type: 'string', description: 'IP:port for specific node history' },
+          hours: { type: 'number', description: 'Hours to look back (default: 24)' },
+          days: { type: 'number', description: 'Days to look back (use instead of hours)' }
         }
       }
     }
@@ -206,18 +191,12 @@ export const tools = [
     type: 'function' as const,
     function: {
       name: 'get_country_data',
-      description: 'Get aggregated statistics for a specific country/region including health scores, total nodes, online count, average CPU/RAM, total storage, credits, version distribution, cities, etc. Use this to get comprehensive country-level performance metrics.',
+      description: 'Get CURRENT stats for ONE country. Use for: "Nigeria stats", "how many nodes in US", "France health score". Returns: nodeCount, onlineCount, storage, credits, avgCPU, avgRAM, cities, healthScore.',
       parameters: {
         type: 'object',
         properties: {
-          country: {
-            type: 'string',
-            description: 'Country name (e.g., "Nigeria", "United States") or country code (e.g., "NG", "US")'
-          },
-          countryCode: {
-            type: 'string',
-            description: 'Optional: ISO 2-letter country code (e.g., "NG", "US") - helps with matching if provided'
-          }
+          country: { type: 'string', description: 'Country name or code (e.g., "Nigeria" or "NG")' },
+          countryCode: { type: 'string', description: 'Optional: ISO code for better matching' }
         },
         required: ['country']
       }
@@ -227,26 +206,14 @@ export const tools = [
     type: 'function' as const,
     function: {
       name: 'get_country_history',
-      description: 'Get historical aggregated data for a country/region over time. Returns data points with health trends, online count, total nodes, packet rates, credits, average CPU/RAM, etc. Use this to analyze country performance and earning trends over time.',
+      description: 'Get HISTORICAL trends for a country over time. Use for: "Nigeria performance last week", "US node count trend", "how has France health changed".',
       parameters: {
         type: 'object',
         properties: {
-          country: {
-            type: 'string',
-            description: 'Country name (e.g., "Nigeria", "United States") or country code (e.g., "NG", "US")'
-          },
-          countryCode: {
-            type: 'string',
-            description: 'Optional: ISO 2-letter country code (e.g., "NG", "US") - helps with matching if provided'
-          },
-          hours: {
-            type: 'number',
-            description: 'Number of hours to look back (default: 168 = 7 days)'
-          },
-          days: {
-            type: 'number',
-            description: 'Number of days to look back (alternative to hours, default: 7)'
-          }
+          country: { type: 'string', description: 'Country name or code' },
+          countryCode: { type: 'string', description: 'Optional: ISO code' },
+          hours: { type: 'number', description: 'Hours to look back (default: 24)' },
+          days: { type: 'number', description: 'Days to look back' }
         },
         required: ['country']
       }
@@ -1023,57 +990,59 @@ TERMINOLOGY:
 - Always refer to nodes as "pNode" or "pNodes" (not just "node" or "nodes")
 
 WHEN TO USE FUNCTIONS:
-All available functions and when to use them:
 
-1. filter_nodes - Filter pNodes by criteria (country, status, RAM, CPU, credits, storage, uptime, continent)
-   - Use for: Finding nodes matching specific criteria, filtering by location, resource usage, performance
-   - Parameters: country (code or comma-separated), status, minRamPercent, maxRamPercent, minCpuPercent, maxCpuPercent, minCredits, minStorageBytes, minUptimeDays, continent
+DECISION TABLE - Pick the RIGHT function:
 
-2. get_node_details - Get detailed info about a specific pNode
-   - Use for: Getting all metrics for one node by pubkey or address
-   - Parameters: pubkey OR address (at least one required)
+┌─────────────────────────────────────┬──────────────────────────────┐
+│ QUESTION TYPE                       │ USE THIS FUNCTION            │
+├─────────────────────────────────────┼──────────────────────────────┤
+│ "How many nodes have X storage?"    │ filter_nodes (minStorageBytes) │
+│ "Nodes with more than 500GB"        │ filter_nodes (500*1073741824)│
+│ "Nodes in Nigeria/US/France"        │ filter_nodes (country="NG")  │
+│ "Online/offline/syncing nodes"      │ filter_nodes (status)        │
+│ "Nodes with high CPU/RAM"           │ filter_nodes (min/maxCpu/Ram)│
+│ "Nodes with X credits (current)"    │ filter_nodes (minCredits)    │
+│ "Nodes with long uptime"            │ filter_nodes (minUptimeDays) │
+├─────────────────────────────────────┼──────────────────────────────┤
+│ "Nodes that EARNED credits"         │ get_credits_change (timeRange)│
+│ "Active earning nodes last hour"    │ get_credits_change (1h)      │
+├─────────────────────────────────────┼──────────────────────────────┤
+│ "Total nodes in network"            │ get_network_stats            │
+│ "Network health score"              │ get_network_stats            │
+│ "Total network storage"             │ get_network_stats            │
+│ "Country distribution"              │ get_network_stats            │
+├─────────────────────────────────────┼──────────────────────────────┤
+│ "Info about node X (pubkey/IP)"     │ get_node_details             │
+│ "What is node ABC123's status?"     │ get_node_details (pubkey)    │
+├─────────────────────────────────────┼──────────────────────────────┤
+│ "Node X performance over time"      │ get_node_history (pubkey)    │
+│ "Network trends last 24h"           │ get_node_history (no pubkey) │
+├─────────────────────────────────────┼──────────────────────────────┤
+│ "Nigeria/US/France stats"           │ get_country_data (country)   │
+│ "How many nodes in [country]?"      │ get_country_data             │
+│ "Country health score"              │ get_country_data             │
+├─────────────────────────────────────┼──────────────────────────────┤
+│ "Country performance over time"     │ get_country_history          │
+│ "[Country] trends last week"        │ get_country_history (days=7) │
+├─────────────────────────────────────┼──────────────────────────────┤
+│ "Compare Nigeria vs France"         │ compare_countries            │
+│ "Which country has more nodes?"     │ compare_countries            │
+├─────────────────────────────────────┼──────────────────────────────┤
+│ "Compare node A vs node B"          │ compare_nodes                │
+├─────────────────────────────────────┼──────────────────────────────┤
+│ "Nodes near me/my location"         │ get_user_location + find_closest_nodes │
+│ "Closest nodes to IP X"             │ find_closest_nodes (ip)      │
+│ "Where am I?"                       │ get_user_location            │
+│ "Where is IP X?"                    │ get_location_for_ip          │
+└─────────────────────────────────────┴──────────────────────────────┘
 
-3. get_network_stats - Get overall network statistics
-   - Use for: Total nodes, online count, storage totals, country distribution, network-wide metrics
-   - Parameters: None (returns aggregate network data)
+CRITICAL RULES:
+1. Storage questions → filter_nodes (minStorageBytes in BYTES: GB * 1073741824)
+2. Credit EARNING questions → get_credits_change (requires timeRange)
+3. Current credit BALANCE → filter_nodes (minCredits)
+4. NEVER use get_credits_change for storage, counts, or current balances
 
-4. get_credits_change - Find nodes that earned credits over time period
-   - Use for: Identifying active/earning nodes, credit trends, performance analysis
-   - Parameters: timeRange (required: '1h', '24h', or '7d'), minCreditsEarned, maxCreditsEarned
-
-5. get_user_location - Get user's IP and geographic location
-   - Use for: Finding user's location, determining closest nodes to user
-   - Parameters: None (uses request IP)
-
-6. get_location_for_ip - Get location for a specific IP address
-   - Use for: Looking up location of any IP address
-   - Parameters: ip (required)
-
-7. find_closest_nodes - Find nearest pNodes to a location
-   - Use for: Finding nodes near user, IP, or coordinates for latency optimization
-   - Parameters: ip OR (lat AND lon), optional limit (default: 20)
-
-8. compare_nodes - Compare specific pNodes side-by-side
-   - Use for: Comparing metrics of 2+ nodes (uptime, credits, storage, RAM, CPU, etc.)
-   - Parameters: pubkeys (array) OR addresses (array)
-
-9. compare_countries - Compare countries by aggregate statistics
-   - Use for: Comparing country-level metrics (total nodes, online %, avg uptime, storage, credits)
-   - Parameters: countries (array of country codes, required)
-
-10. get_node_history - Get historical data for a node or network
-    - Use for: Performance trends, status changes, resource usage over time, network-wide trends
-    - Parameters: pubkey (optional, for specific node), address (optional), hours (default: 24), days
-
-11. get_country_data - Get comprehensive country/region statistics
-    - Use for: Country-level aggregated stats (total nodes, online count, storage, credits, CPU/RAM averages, version distribution, cities)
-    - Parameters: country (required: name or code), countryCode (optional, helps matching)
-
-12. get_country_history - Get historical aggregated data for a country
-    - Use for: Country performance trends over time, activity changes, historical analysis
-    - Parameters: country (required: name or code), countryCode (optional), hours (default: 168), days (default: 7)
-
-Country codes: IN=India, US=United States, NG=Nigeria, FR=France, DE=Germany, GB=United Kingdom, CA=Canada, AU=Australia, BR=Brazil, etc.
+COUNTRY CODES: IN=India, US=United States, NG=Nigeria, FR=France, DE=Germany, GB=United Kingdom, CA=Canada, AU=Australia, BR=Brazil, JP=Japan, KR=Korea, CN=China, RU=Russia, ZA=South Africa, EG=Egypt, KE=Kenya, GH=Ghana
 
 COMBINING FUNCTIONS FOR COMPLEX QUESTIONS:
 You can combine multiple functions to answer complex questions. Examples:
@@ -1083,6 +1052,8 @@ Filtering & Finding:
 - "Find nodes with high CPU usage" → Use filter_nodes with minCpuPercent=80, then analyze results
 - "Nodes in Africa with low RAM usage" → Use filter_nodes with continent="africa" and maxRamPercent=50
 - "Online nodes in Nigeria" → Use filter_nodes with country="NG" and status="online"
+- "Nodes with more than 500GB storage" → Use filter_nodes with minStorageBytes=536870912000 (500*1073741824). DO NOT use get_credits_change for storage questions!
+- "Nodes with at least 1TB storage" → Use filter_nodes with minStorageBytes=1099511627776 (1024*1073741824)
 
 Node Details & History:
 - "How well has this node performed in past 5 hours" → Use get_node_history with hours=5, then analyze the snapshots (calculate averages, status changes, etc.)

@@ -24,37 +24,57 @@ import { aggregateCache } from '@/lib/server/aggregate-cache';
 const RENDER_API_URL = process.env.RENDER_API_URL || process.env.NEXT_PUBLIC_RENDER_API_URL;
 const API_SECRET = process.env.API_SECRET;
 
-// Helper: Fetch nodes with caching
+// Helper: Fetch nodes with caching and fallback
 async function fetchNodesWithCache(cacheKey: string = 'all_nodes'): Promise<any[]> {
-  // Check cache first
+  // Check fresh cache first
   const cached = aiCache.get<any[]>(cacheKey);
   if (cached) {
-    console.log(`[AI Query] Using cached nodes (${cached.length} nodes)`);
+    console.log(`[AI Query] ✅ Using cached nodes (${cached.length} nodes)`);
     return cached;
   }
 
-  // Fetch from API with reduced timeout (3s since we have cache fallback)
-  const nodesResponse = await fetch(`${RENDER_API_URL}/api/pnodes`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
-    },
-    cache: 'no-store',
-    signal: AbortSignal.timeout(3000), // Reduced from 5s
-  });
+  // Check for stale cache (used as fallback if API times out)
+  const staleCache = aiCache.get<any[]>(`${cacheKey}_stale`);
 
-  if (!nodesResponse.ok) {
-    throw new Error(`Failed to fetch nodes: ${nodesResponse.status}`);
+  try {
+    // Use longer timeout when cache is cold (first request), shorter when we have stale fallback
+    const timeout = staleCache ? 5000 : 10000; // 10s cold, 5s with fallback
+    console.log(`[AI Query] Fetching nodes with ${timeout}ms timeout...`);
+
+    const nodesResponse = await fetch(`${RENDER_API_URL}/api/pnodes`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
+      },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(timeout),
+    });
+
+    if (!nodesResponse.ok) {
+      throw new Error(`API returned ${nodesResponse.status}`);
+    }
+
+    const nodesData = await nodesResponse.json();
+    const nodes = nodesData.nodes || [];
+
+    // Cache for 60 seconds (fresh), and keep stale copy for 5 minutes
+    aiCache.set(cacheKey, nodes, 60000);
+    aiCache.set(`${cacheKey}_stale`, nodes, 300000); // 5 min stale cache
+    console.log(`[AI Query] ✅ Fetched and cached ${nodes.length} nodes`);
+
+    return nodes;
+  } catch (error: any) {
+    console.error(`[AI Query] ❌ Error fetching nodes:`, error.message);
+
+    // Fallback to stale cache if available
+    if (staleCache) {
+      console.log(`[AI Query] ⚠️  Using stale cache (${staleCache.length} nodes) due to timeout`);
+      return staleCache;
+    }
+
+    // No cache available, throw the error
+    throw error;
   }
-
-  const nodesData = await nodesResponse.json();
-  const nodes = nodesData.nodes || [];
-
-  // Cache for 60 seconds
-  aiCache.set(cacheKey, nodes, 60000);
-  console.log(`[AI Query] Fetched and cached ${nodes.length} nodes`);
-
-  return nodes;
 }
 
 // Helper: Project fields (GraphQL-style field selection)

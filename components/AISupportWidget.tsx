@@ -429,7 +429,7 @@ export default function AISupportWidget() {
                       {message.role === 'assistant' && message.isStreaming ? (
                         <TypewriterText
                           text={message.content}
-                          speed={15}
+                          speed={40}
                           onComplete={() => {
                             // Mark as complete when typewriter finishes
                             setMessages(prev => prev.map(m =>
