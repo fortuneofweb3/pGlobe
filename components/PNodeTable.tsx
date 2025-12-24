@@ -671,7 +671,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           } else if (status === 'syncing') {
                             return (
                               <span
-                                className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-blue-500 animate-pulse shadow-[0_0_6px_rgba(59,130,246,0.5)]"
+                                className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-orange-500 animate-pulse shadow-[0_0_6px_rgba(249,115,22,0.5)]"
                                 title="Syncing"
                               />
                             );

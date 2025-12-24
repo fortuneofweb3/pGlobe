@@ -1,7 +1,0 @@
-{
-  "tasks": {
-    "deploy": "deno deploy --prod"
-  },
-  "imports": {}
-}
-

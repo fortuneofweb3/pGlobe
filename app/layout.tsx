@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import "./globals.css";
 import { NodesProvider } from "@/lib/context/NodesContext";
-import { UserRegionProvider } from "@/lib/contexts/UserRegionContext";
+import { UserRegionProvider } from "@/lib/context/UserRegionContext";
 import AISupportWidget from "@/components/AISupportWidget";
 import ProgressBar from "@/components/ProgressBar";
 
