@@ -16,31 +16,27 @@ export const tools = [
     type: 'function' as const,
     function: {
       name: 'filter_nodes',
-      description: 'Filter and find pNodes based on various criteria. USE THIS for: storage capacity queries (minStorageBytes), RAM/CPU usage, credits, uptime, country, status. This is the PRIMARY function for most node filtering questions. Returns list of matching nodes with their current data.',
+      description: 'Filter and find pNodes. USE THIS for storage, uptime, credits, status, country queries. Specify ONLY the fields you need to reduce payload.',
       parameters: {
         type: 'object',
         properties: {
-          country: {
-            type: 'string',
-            description: 'Country code(s) to filter by. Can be single code like "NG" or comma-separated like "NG,FR,DE"'
+          country: { type: 'string', description: 'Country code(s). Single: "NG" or comma-separated: "NG,FR,DE"' },
+          status: { type: 'string', enum: ['online', 'offline', 'syncing'], description: 'Filter by status' },
+          minRamPercent: { type: 'number', description: 'Min RAM % (0-100)' },
+          maxRamPercent: { type: 'number', description: 'Max RAM % (0-100)' },
+          minCpuPercent: { type: 'number', description: 'Min CPU % (0-100)' },
+          maxCpuPercent: { type: 'number', description: 'Max CPU % (0-100)' },
+          minCredits: { type: 'number', description: 'Min credits' },
+          minStorageBytes: { type: 'number', description: 'Min storage BYTES. 1GB=1073741824' },
+          minUptimeSeconds: { type: 'number', description: 'Min uptime SECONDS. 1h=3600, 2h=7200' },
+          maxUptimeSeconds: { type: 'number', description: 'Max uptime SECONDS. For "less than" queries' },
+          continent: { type: 'string', enum: ['africa', 'europe', 'asia', 'north_america', 'south_america', 'oceania'] },
+          fields: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Fields to return. Options: pubkey, status, uptimeSeconds, credits, storageBytes, cpuPercent, ramPercent, country. Only request what you NEED!'
           },
-          status: {
-            type: 'string',
-            enum: ['online', 'offline', 'syncing'],
-            description: 'Filter by node status'
-          },
-          minRamPercent: { type: 'number', description: 'Minimum RAM usage percentage (0-100)' },
-          maxRamPercent: { type: 'number', description: 'Maximum RAM usage percentage (0-100)' },
-          minCpuPercent: { type: 'number', description: 'Minimum CPU usage percentage (0-100)' },
-          maxCpuPercent: { type: 'number', description: 'Maximum CPU usage percentage (0-100)' },
-          minCredits: { type: 'number', description: 'Minimum total credits (current balance, not earned over time)' },
-          minStorageBytes: { type: 'number', description: 'Minimum storage capacity in bytes. For GB to bytes: multiply GB by 1073741824. Example: 500GB = 536870912000 bytes' },
-          minUptimeDays: { type: 'number', description: 'Minimum uptime in days' },
-          continent: {
-            type: 'string',
-            enum: ['africa', 'europe', 'asia', 'north_america', 'south_america', 'oceania'],
-            description: 'Filter by continent'
-          }
+          countOnly: { type: 'boolean', description: 'Set true to return ONLY the count, no node data. Best for percentage calculations.' }
         }
       }
     }
@@ -283,19 +279,27 @@ export async function executeFunction(
         if (args.maxCpuPercent !== undefined) filters.maxCpuPercent = args.maxCpuPercent;
         if (args.minCredits !== undefined) filters.minCredits = args.minCredits;
         if (args.minStorageBytes !== undefined) filters.minStorageBytes = args.minStorageBytes;
-        if (args.minUptimeDays !== undefined) filters.minUptimeDays = args.minUptimeDays;
-
+        if (args.minUptimeSeconds !== undefined) filters.minUptimeSeconds = args.minUptimeSeconds;
+        if (args.maxUptimeSeconds !== undefined) filters.maxUptimeSeconds = args.maxUptimeSeconds;
 
         const response = await fetch(`${baseUrl}/api/ai/query`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ queryType: 'nodes', filters }),
-          signal: AbortSignal.timeout(5000), // Fast timeout since query endpoint uses cache
+          body: JSON.stringify({
+            queryType: 'nodes',
+            filters,
+            fields: args.fields, // Pass selective fields
+          }),
+          signal: AbortSignal.timeout(5000),
         });
 
         if (response.ok) {
           const data = await response.json();
-          return formatNodesResult(data.nodes || [], name);
+          // If countOnly, just return the count for efficient calculations
+          if (args.countOnly) {
+            return { totalCount: data.count || (data.nodes?.length ?? 0) };
+          }
+          return formatNodesResult(data.nodes || [], name, args.fields);
         }
         return { error: 'Failed to fetch nodes' };
       }
@@ -342,14 +346,12 @@ export async function executeFunction(
           }
 
           return {
-            count: nodes.length,
+            totalCount: nodes.length,
             timeRange: args.timeRange || '1h',
-            nodes: nodes.slice(0, 50).map((n: any) => ({
+            nodes: nodes.map((n: any) => ({
               pubkey: n.pubkey,
               address: n.address,
               creditsEarned: n.creditsEarned,
-              startCredits: n.startCredits,
-              endCredits: n.endCredits
             }))
           };
         }
@@ -826,26 +828,37 @@ export async function executeFunction(
   }
 }
 
-export function formatNodesResult(nodes: any[], functionName: string): any {
-  const formatted = nodes.slice(0, 100).map((n: any) => ({
-    pubkey: n.p || n.pubkey,
-    address: n.a || n.address,
-    status: n.s || n.status,
-    uptimeSeconds: n.us || 0,
-    uptimeDays: n.u || Math.floor((n.us || 0) / 86400),
-    credits: n.cr || n.credits || 0,
-    storageBytes: n.sc || n.storageCapacity || 0,
-    cpuPercent: n.cpu,
-    ramPercent: n.rp,
-    country: n.c || 'Unknown',
-    city: n.cy || '',
-    createdAt: n.ca || n.createdAt || null
-  }));
+export function formatNodesResult(nodes: any[], functionName: string, requestedFields?: string[]): any {
+  // Build field mapping (data field -> output field)
+  const allFields: Record<string, (n: any) => any> = {
+    pubkey: (n) => n.p || n.pubkey,
+    address: (n) => n.a || n.address,
+    status: (n) => n.s || n.status,
+    uptimeSeconds: (n) => n.us || n.uptime || 0,
+    credits: (n) => n.cr || n.credits || 0,
+    storageBytes: (n) => n.sc || n.storageCapacity || 0,
+    cpuPercent: (n) => n.cpu ?? null,
+    ramPercent: (n) => n.rp ?? null,
+    country: (n) => n.c || 'Unknown',
+  };
+
+  // Select which fields to include
+  const fieldsToUse = requestedFields && requestedFields.length > 0
+    ? requestedFields.filter(f => f in allFields)
+    : Object.keys(allFields); // All fields if none specified
+
+  // Map nodes with only requested fields
+  const formatted = nodes.map((n: any) => {
+    const obj: any = {};
+    for (const field of fieldsToUse) {
+      obj[field] = allFields[field](n);
+    }
+    return obj;
+  });
 
   return {
-    count: nodes.length,
+    totalCount: nodes.length,
     nodes: formatted,
-    hasMore: nodes.length > 100
   };
 }
 
@@ -1002,7 +1015,10 @@ DECISION TABLE - Pick the RIGHT function:
 │ "Online/offline/syncing nodes"      │ filter_nodes (status)        │
 │ "Nodes with high CPU/RAM"           │ filter_nodes (min/maxCpu/Ram)│
 │ "Nodes with X credits (current)"    │ filter_nodes (minCredits)    │
-│ "Nodes with long uptime"            │ filter_nodes (minUptimeDays) │
+│ "Nodes with long uptime"            │ filter_nodes (minUptimeSeconds) │
+│ "Nodes with >2h uptime"             │ filter_nodes (minUptimeSeconds=7200) │
+│ "Nodes with <2h uptime"             │ filter_nodes (maxUptimeSeconds=7200) │
+│ "% of nodes with X uptime"          │ filter_nodes TWICE (with/without threshold), then calculate │
 ├─────────────────────────────────────┼──────────────────────────────┤
 │ "Nodes that EARNED credits"         │ get_credits_change (timeRange)│
 │ "Active earning nodes last hour"    │ get_credits_change (1h)      │
@@ -1041,6 +1057,8 @@ CRITICAL RULES:
 2. Credit EARNING questions → get_credits_change (requires timeRange)
 3. Current credit BALANCE → filter_nodes (minCredits)
 4. NEVER use get_credits_change for storage, counts, or current balances
+5. Uptime in SECONDS: 1min=60, 1h=3600, 2h=7200, 1d=86400, 7d=604800
+6. For "% with X uptime": get total count, then filter with threshold, calculate ratio
 
 COUNTRY CODES: IN=India, US=United States, NG=Nigeria, FR=France, DE=Germany, GB=United Kingdom, CA=Canada, AU=Australia, BR=Brazil, JP=Japan, KR=Korea, CN=China, RU=Russia, ZA=South Africa, EG=Egypt, KE=Kenya, GH=Ghana
 

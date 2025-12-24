@@ -580,8 +580,9 @@ export async function POST(request: Request) {
         nodes = nodes.filter((n: any) => (n.credits || 0) >= filters.minCredits);
       }
 
-      if (filters.minStorage !== undefined) {
-        nodes = nodes.filter((n: any) => (n.storageCapacity || 0) >= filters.minStorage);
+      if (filters.minStorage !== undefined || filters.minStorageBytes !== undefined) {
+        const minBytes = filters.minStorageBytes ?? filters.minStorage;
+        nodes = nodes.filter((n: any) => (n.storageCapacity || 0) >= minBytes);
       }
 
       if (filters.maxCpuPercent !== undefined) {
@@ -602,6 +603,15 @@ export async function POST(request: Request) {
 
       if (filters.minUptime !== undefined) {
         nodes = nodes.filter((n: any) => (n.uptime || 0) >= filters.minUptime);
+      }
+
+      // Uptime in seconds (more precise)
+      if (filters.minUptimeSeconds !== undefined) {
+        nodes = nodes.filter((n: any) => (n.uptime || 0) >= filters.minUptimeSeconds);
+      }
+
+      if (filters.maxUptimeSeconds !== undefined) {
+        nodes = nodes.filter((n: any) => (n.uptime || 0) <= filters.maxUptimeSeconds);
       }
 
       if (filters.minPeerCount !== undefined) {
