@@ -2,6 +2,12 @@
  * AI Query Endpoint - Returns filtered node data, individual nodes, or historical data
  * Used by AI to get specific data without overwhelming the context
  * 
+ * OPTIMIZATIONS:
+ * - Request-level caching (60s for nodes, 5min for aggregates)
+ * - Server-side filtering before formatting
+ * - Reduced timeouts (3s with cache)
+ * - Pre-computed aggregates
+ * 
  * Query types:
  * - "nodes": Filter nodes by various criteria
  * - "node": Get a single node by pubkey/address
@@ -12,13 +18,61 @@
 
 import { NextResponse } from 'next/server';
 import { calculateNetworkHealth } from '@/lib/utils/network-health';
+import { aiCache } from '@/lib/server/ai-cache';
+import { aggregateCache } from '@/lib/server/aggregate-cache';
 
 const RENDER_API_URL = process.env.RENDER_API_URL || process.env.NEXT_PUBLIC_RENDER_API_URL;
 const API_SECRET = process.env.API_SECRET;
 
+// Helper: Fetch nodes with caching
+async function fetchNodesWithCache(cacheKey: string = 'all_nodes'): Promise<any[]> {
+  // Check cache first
+  const cached = aiCache.get<any[]>(cacheKey);
+  if (cached) {
+    console.log(`[AI Query] Using cached nodes (${cached.length} nodes)`);
+    return cached;
+  }
+
+  // Fetch from API with reduced timeout (3s since we have cache fallback)
+  const nodesResponse = await fetch(`${RENDER_API_URL}/api/pnodes`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
+    },
+    cache: 'no-store',
+    signal: AbortSignal.timeout(3000), // Reduced from 5s
+  });
+
+  if (!nodesResponse.ok) {
+    throw new Error(`Failed to fetch nodes: ${nodesResponse.status}`);
+  }
+
+  const nodesData = await nodesResponse.json();
+  const nodes = nodesData.nodes || [];
+
+  // Cache for 60 seconds
+  aiCache.set(cacheKey, nodes, 60000);
+  console.log(`[AI Query] Fetched and cached ${nodes.length} nodes`);
+
+  return nodes;
+}
+
+// Helper: Project fields (GraphQL-style field selection)
+function projectFields(obj: any, fields?: string[]): any {
+  if (!fields || fields.length === 0) return obj;
+
+  const projected: any = {};
+  for (const field of fields) {
+    if (field in obj) {
+      projected[field] = obj[field];
+    }
+  }
+  return projected;
+}
+
 export async function POST(request: Request) {
   try {
-    const { queryType, filters, nodeId, pubkey, address, startTime, endTime, country, countryCode } = await request.json();
+    const { queryType, filters, nodeId, pubkey, address, startTime, endTime, country, countryCode, fields } = await request.json();
 
     if (!RENDER_API_URL) {
       return NextResponse.json(
@@ -38,24 +92,8 @@ export async function POST(request: Request) {
         );
       }
 
-      const nodesResponse = await fetch(`${RENDER_API_URL}/api/pnodes`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
-        },
-        cache: 'no-store',
-        signal: AbortSignal.timeout(5000),
-      });
-
-      if (!nodesResponse.ok) {
-        return NextResponse.json(
-          { error: 'Failed to fetch nodes', node: null },
-          { status: 500 }
-        );
-      }
-
-      const nodesData = await nodesResponse.json();
-      const nodes = nodesData.nodes || [];
+      // Use cached nodes
+      const nodes = await fetchNodesWithCache();
 
       // Find node by pubkey or address
       const node = nodes.find((n: any) =>
@@ -180,25 +218,8 @@ export async function POST(request: Request) {
       }
 
       try {
-        // Fetch all nodes
-        const nodesResponse = await fetch(`${RENDER_API_URL}/api/pnodes`, {
-          headers: {
-            'Content-Type': 'application/json',
-            ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
-          },
-          cache: 'no-store',
-          signal: AbortSignal.timeout(5000),
-        });
-
-        if (!nodesResponse.ok) {
-          return NextResponse.json(
-            { error: 'Failed to fetch nodes', data: null },
-            { status: 500 }
-          );
-        }
-
-        const nodesData = await nodesResponse.json();
-        const allNodes = nodesData.nodes || [];
+        // Use cached nodes
+        const allNodes = await fetchNodesWithCache();
 
         // Filter nodes by country
         const countryNodes = allNodes.filter((n: any) => {
@@ -212,7 +233,50 @@ export async function POST(request: Request) {
             nodeCountryCode === target.toUpperCase();
         });
 
-        // Calculate aggregated stats
+        if (countryNodes.length === 0) {
+          return NextResponse.json(
+            { error: 'No nodes found for this country', data: null },
+            { status: 404 }
+          );
+        }
+
+        // Try to get from aggregate cache first
+        const cachedStats = aggregateCache.getCountryStats(
+          targetCountry,
+          targetCountryCode || countryNodes[0]?.locationData?.countryCode || '',
+          countryNodes
+        );
+
+        if (cachedStats) {
+          console.log(`[AI Query] Using cached country stats for ${targetCountry}`);
+          return NextResponse.json({
+            country: cachedStats.country,
+            countryCode: cachedStats.countryCode,
+            stats: {
+              totalNodes: cachedStats.totalNodes,
+              onlineNodes: cachedStats.onlineNodes,
+              offlineNodes: cachedStats.offlineNodes,
+              syncingNodes: cachedStats.syncingNodes,
+              totalStorage: cachedStats.totalStorage,
+              usedStorage: cachedStats.usedStorage,
+              storageUsagePercent: cachedStats.totalStorage > 0
+                ? (cachedStats.usedStorage / cachedStats.totalStorage) * 100
+                : 0,
+              totalCredits: cachedStats.totalCredits,
+              avgCPU: cachedStats.avgCPU,
+              avgRAM: cachedStats.avgRAM,
+              totalPacketsReceived: cachedStats.totalPacketsReceived,
+              totalPacketsSent: cachedStats.totalPacketsSent,
+              totalActiveStreams: cachedStats.totalActiveStreams,
+              versionDistribution: cachedStats.versionDistribution,
+              cityCount: cachedStats.cityCount,
+              cities: cachedStats.cities,
+              healthScore: cachedStats.healthScore,
+            },
+          });
+        }
+
+        // Fallback: compute stats (this will also cache them)
         const totalNodes = countryNodes.length;
         const onlineNodes = countryNodes.filter((n: any) => n.status === 'online').length;
         const offlineNodes = countryNodes.filter((n: any) => n.status === 'offline' || !n.status).length;
@@ -220,7 +284,6 @@ export async function POST(request: Request) {
 
         const totalStorage = countryNodes.reduce((sum: number, n: any) => sum + (n.storageCapacity || 0), 0);
         const usedStorage = countryNodes.reduce((sum: number, n: any) => sum + (n.storageUsed || 0), 0);
-
         const totalCredits = countryNodes.reduce((sum: number, n: any) => sum + (n.credits || 0), 0);
 
         const cpuValues = countryNodes
@@ -455,27 +518,11 @@ export async function POST(request: Request) {
     }
 
     // Default: filter nodes query
-    // Fetch all nodes
-    const nodesResponse = await fetch(`${RENDER_API_URL}/api/pnodes`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
-      },
-      cache: 'no-store',
-      signal: AbortSignal.timeout(5000),
-    });
+    // Use cached nodes
+    const allNodes = await fetchNodesWithCache();
+    let nodes = allNodes;
 
-    if (!nodesResponse.ok) {
-      return NextResponse.json(
-        { error: 'Failed to fetch nodes', nodes: [] },
-        { status: 500 }
-      );
-    }
-
-    const nodesData = await nodesResponse.json();
-    let nodes = nodesData.nodes || [];
-
-    // Apply filters
+    // Apply filters BEFORE formatting to reduce processing
     if (filters) {
       if (filters.country) {
         // Support both single country code and array of country codes
@@ -579,7 +626,7 @@ export async function POST(request: Request) {
       const ramTotalBytes = n.ramTotal || 0;
       const ramPercent = ramTotalBytes > 0 ? ((ramUsedBytes / ramTotalBytes) * 100) : null;
 
-      return {
+      const fullNode = {
         a: n.address || '',
         p: (n.pubkey || n.publicKey || n.id || '').toString(), // full pubkey
         v: n.version || 'unknown',
@@ -607,6 +654,9 @@ export async function POST(request: Request) {
         do: n.dataOperationsHandled || 0,
         ca: n.createdAt || null,
       };
+
+      // Apply field selection if specified (GraphQL-style)
+      return projectFields(fullNode, fields);
     });
 
     return NextResponse.json({

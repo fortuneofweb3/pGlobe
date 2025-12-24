@@ -318,10 +318,12 @@ export async function executeFunction(
         if (args.minStorageBytes !== undefined) filters.minStorageBytes = args.minStorageBytes;
         if (args.minUptimeDays !== undefined) filters.minUptimeDays = args.minUptimeDays;
 
+
         const response = await fetch(`${baseUrl}/api/ai/query`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ queryType: 'nodes', filters }),
+          signal: AbortSignal.timeout(5000), // Fast timeout since query endpoint uses cache
         });
 
         if (response.ok) {
@@ -340,6 +342,7 @@ export async function executeFunction(
             pubkey: args.pubkey,
             address: args.address
           }),
+          signal: AbortSignal.timeout(3000), // Fast timeout since cached
         });
 
         if (response.ok) {
@@ -391,6 +394,7 @@ export async function executeFunction(
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ queryType: 'nodes', filters: {} }),
+          signal: AbortSignal.timeout(5000), // Cached response should be fast
         });
 
         if (response.ok) {
@@ -825,8 +829,8 @@ export async function executeFunction(
         } else if (args.hours) {
           startTime = endTime - (args.hours * 60 * 60 * 1000);
         } else {
-          // Default to 7 days
-          startTime = endTime - (7 * 24 * 60 * 60 * 1000);
+          // Default to 24 hours (changed from 7 days for faster queries)
+          startTime = endTime - (24 * 60 * 60 * 1000);
         }
 
         const response = await fetch(`${baseUrl}/api/ai/query`, {

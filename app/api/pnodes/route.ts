@@ -28,16 +28,16 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const networkId = searchParams.get('network');
     const refresh = searchParams.get('refresh') === 'true';
-    
+
     console.log('[VercelProxy] Proxying pnodes request to Render...');
-              
+
     // Build query string
     const queryParams = new URLSearchParams();
     if (networkId) queryParams.set('network', networkId);
     if (refresh) queryParams.set('refresh', 'true');
-    
+
     const url = `${RENDER_API_URL}/api/pnodes${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-    
+
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -58,7 +58,7 @@ export async function GET(request: Request) {
         },
         { status: response.status }
       );
-        }
+    }
 
     console.log(`[VercelProxy] ✅ Returning ${data.nodes?.length || 0} nodes from Render`);
 
@@ -72,25 +72,27 @@ export async function GET(request: Request) {
         currentNetwork: data.currentNetwork,
       },
       {
-      headers: {
-        // Cache for 1 minute, allow stale content for 2 minutes while revalidating
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
-      },
+        headers: {
+          // More aggressive caching: 2min cache, 5min stale-while-revalidate
+          // This allows instant responses while revalidating in the background
+          'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300, max-age=60',
+          'CDN-Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
+        },
       }
     );
   } catch (error: any) {
     const errorMessage = error?.message || 'Failed to fetch nodes';
     const errorCode = error?.code || 'UNKNOWN';
-    
+
     console.error('[VercelProxy] ❌ Failed to proxy to Render:', {
       error: errorMessage,
       code: errorCode,
       url: RENDER_API_URL,
-      hint: errorCode === 'UND_ERR_SOCKET' 
+      hint: errorCode === 'UND_ERR_SOCKET'
         ? 'Connection closed. Is the Render API server running on port 3001? Run: npm run dev:api'
         : 'Check RENDER_API_URL in .env.local and ensure the API server is running',
     });
-    
+
     return NextResponse.json(
       {
         error: errorMessage,
