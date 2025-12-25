@@ -4,34 +4,50 @@ import React from 'react';
 import Header from '@/components/Header';
 import ActivityLogList from '@/components/ActivityLogList';
 import { useNodes } from '@/lib/context/NodesContext';
+import { Activity } from 'lucide-react';
 
 export default function ActivityLogsPage() {
-    const { nodes, lastUpdate, loading, refreshNodes } = useNodes();
+    const { nodes, lastUpdate, loading, refreshNodes, availableNetworks, currentNetwork, setSelectedNetwork } = useNodes();
 
     return (
-        <main className="min-h-screen bg-black flex flex-col">
+        <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
             <Header
                 activePage="activity"
                 nodeCount={nodes.length}
                 lastUpdate={lastUpdate}
                 loading={loading}
-                onRefresh={refreshNodes}
+                onRefresh={() => refreshNodes()}
+                networks={availableNetworks}
+                currentNetwork={currentNetwork}
+                onNetworkChange={(networkId) => {
+                    setSelectedNetwork(networkId);
+                }}
+                showNetworkSelector={false}
             />
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <div className="max-w-4xl mx-auto px-4 py-8">
-                    <div className="mb-8">
-                        <h1 className="text-3xl font-bold text-zinc-100" style={{ fontFamily: "'Exo 2', sans-serif" }}>
-                            Network Activity Logs
-                        </h1>
-                        <p className="text-zinc-500 mt-2">
-                            Real-time feed of node status changes and credit earnings across the Xandeum network.
-                        </p>
-                    </div>
+            <main className="flex-1 overflow-y-auto">
+                <div className="w-full px-3 sm:px-6 pt-3 sm:pt-6 pb-6">
+                    <div className="max-w-7xl mx-auto">
+                        {/* Page Header */}
+                        <div className="mb-4 sm:mb-6">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                                <div className="flex-1">
+                                    <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
+                                        <Activity className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
+                                        Live Network Feed
+                                    </h1>
+                                    <p className="text-foreground/60 text-sm sm:text-base">
+                                        Real-time monitoring of network events, status changes, and performance updates
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
 
-                    <ActivityLogList limit={100} showFilters={true} />
+                        {/* Activity List */}
+                        <ActivityLogList limit={100} showFilters={true} />
+                    </div>
                 </div>
-            </div>
-        </main>
+            </main>
+        </div>
     );
 }

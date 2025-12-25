@@ -469,7 +469,7 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
       pubkey,
       address: nodeAddress,
       type: 'new_node' as const,
-      message: `New node discovered: ${pubkey.slice(0, 8)}... (${location})`,
+      message: `${nodeAddress || pubkey.slice(0, 8) + '...'} discovered (${location})`,
       countryCode,
       location,
       data: { status: newNode.status }
@@ -481,17 +481,17 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
   // 2. Status Change
   if (oldNode && oldNode.status !== newNode.status) {
     let type: any = 'status_change';
-    let message = `Node ${pubkey.slice(0, 8)}... changed status from ${oldNode.status} to ${newNode.status}`;
+    let message = `${nodeAddress || pubkey.slice(0, 8) + '...'} changed status to ${newNode.status}`;
 
     if (newNode.status === 'online') {
       type = 'node_online';
-      message = `Node ${pubkey.slice(0, 8)}... came online (${location})`;
+      message = `${nodeAddress || pubkey.slice(0, 8) + '...'} came online (${location})`;
     } else if (newNode.status === 'offline') {
       type = 'node_offline';
-      message = `Node ${pubkey.slice(0, 8)}... went offline`;
+      message = `${nodeAddress || pubkey.slice(0, 8) + '...'} went offline`;
     } else if (newNode.status === 'syncing') {
       type = 'node_syncing';
-      message = `Node ${pubkey.slice(0, 8)}... is now syncing`;
+      message = `${nodeAddress || pubkey.slice(0, 8) + '...'} is now syncing`;
     }
 
     const log = {
@@ -515,7 +515,7 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
       pubkey,
       address: nodeAddress,
       type: 'credits_earned' as const,
-      message: `Node ${pubkey.slice(0, 8)}... earned ${earned.toFixed(2)} credits`,
+      message: `${nodeAddress || pubkey.slice(0, 8) + '...'} earned ${earned.toFixed(2)} credits`,
       countryCode,
       location,
       data: { earned, total: newNode.credits }
@@ -538,7 +538,7 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
       pubkey,
       address: nodeAddress,
       type: 'packets_earned' as const,
-      message: `Node ${pubkey.slice(0, 8)}... processed ${rxEarned + txEarned} packets`,
+      message: `${nodeAddress || pubkey.slice(0, 8) + '...'} processed ${rxEarned + txEarned} packets`,
       countryCode,
       location,
       data: { rxEarned, txEarned, totalRx: newRx, totalTx: newTx }
@@ -555,7 +555,7 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
       pubkey,
       address: nodeAddress,
       type: 'streams_active' as const,
-      message: `Node ${pubkey.slice(0, 8)}... active streams increased by ${increased} (Total: ${newNode.activeStreams})`,
+      message: `${nodeAddress || pubkey.slice(0, 8) + '...'} active streams increased by ${increased} (Total: ${newNode.activeStreams})`,
       countryCode,
       location,
       data: { increased, total: newNode.activeStreams }
