@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import io from 'socket.io-client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, Zap, TrendingUp } from 'lucide-react';
+import { Activity, Zap, TrendingUp, Pause, Play } from 'lucide-react';
 
 interface NodeMetrics {
     pubkey: string;
@@ -45,6 +45,7 @@ export default function NodeRaceVisualization() {
     // Always start fresh - no localStorage persistence for period-based racing
     const [nodeMetrics, setNodeMetrics] = useState<Record<string, NodeMetrics>>({});
     const [connected, setConnected] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
 
     // Calculate activity score for each node
     const calculateScore = (node: NodeMetrics): number => {
@@ -95,9 +96,12 @@ export default function NodeRaceVisualization() {
                 isVisibleRef.current = false;
                 bufferRef.current = [];
                 processingRef.current = false;
+                setNodeMetrics({}); // Clear all metrics on hide
             } else {
-                // Tab is visible again
+                // Tab is visible again - fresh start
                 isVisibleRef.current = true;
+                bufferRef.current = [];
+                processingRef.current = false;
             }
         };
 
@@ -106,8 +110,8 @@ export default function NodeRaceVisualization() {
     }, []);
 
     const processBuffer = React.useCallback(() => {
-        // Don't process if tab is hidden
-        if (!isVisibleRef.current) {
+        // Don't process if tab is hidden or paused
+        if (!isVisibleRef.current || isPaused) {
             bufferRef.current = [];
             return;
         }
@@ -212,20 +216,30 @@ export default function NodeRaceVisualization() {
             processBuffer();
         });
 
-        // Periodic cleanup of stale nodes
+        // Periodic cleanup - only keep top 20 nodes by score to prevent memory buildup
         const cleanupInterval = setInterval(() => {
-            const now = Date.now();
             setNodeMetrics((prev) => {
+                const now = Date.now();
+                const entries = Object.entries(prev);
+
+                // Filter by recency and sort by score
+                const scored = entries
+                    .filter(([_, node]) => now - node.lastUpdate < 60000)
+                    .map(([key, node]) => ({
+                        key,
+                        node,
+                        score: ((node.activeStreams || 0) * 100) + ((node.packetsReceived || 0) + (node.packetsSent || 0)) * 0.01
+                    }))
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 20); // Only keep top 20
+
                 const cleaned: Record<string, NodeMetrics> = {};
-                Object.entries(prev).forEach(([key, node]) => {
-                    // Keep if updated in last 60 seconds
-                    if (now - node.lastUpdate < 60000) {
-                        cleaned[key] = node;
-                    }
+                scored.forEach(({ key, node }) => {
+                    cleaned[key] = node;
                 });
                 return cleaned;
             });
-        }, 10000);
+        }, 5000); // Run every 5 seconds
 
         return () => {
             socket.disconnect();
@@ -260,9 +274,16 @@ export default function NodeRaceVisualization() {
                         Live Node Activity Race
                     </h2>
                     <div className="flex items-center gap-2 bg-muted/20 px-2 py-0.5 rounded-full border border-border/40">
-                        <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)] animate-pulse' : 'bg-muted-foreground/30'}`} />
-                        <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-tight">{connected ? 'Live' : 'Offline'}</span>
+                        <div className={`w-1.5 h-1.5 rounded-full ${connected && !isPaused ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)] animate-pulse' : isPaused ? 'bg-yellow-500' : 'bg-muted-foreground/30'}`} />
+                        <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-tight">{isPaused ? 'Paused' : connected ? 'Live' : 'Offline'}</span>
                     </div>
+                    <button
+                        onClick={() => setIsPaused(!isPaused)}
+                        className={`p-1.5 rounded-lg border transition-all ${isPaused ? 'bg-[#F0A741]/20 border-[#F0A741]/50 text-[#F0A741]' : 'bg-muted/20 border-border/40 text-foreground/50 hover:text-foreground hover:bg-muted/30'}`}
+                        title={isPaused ? 'Resume' : 'Pause'}
+                    >
+                        {isPaused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
+                    </button>
                 </div>
                 <div className="text-xs text-foreground/40">
                     Top {rankedNodes.length} nodes
@@ -388,9 +409,6 @@ export default function NodeRaceVisualization() {
                 )}
             </div>
 
-            <div className="text-[10px] text-foreground/30 text-center flex-shrink-0">
-                Score = (Streams × 100) + (Credits × 10) + (Packets × 0.01) • Updates in real-time
-            </div>
         </div>
     );
 }

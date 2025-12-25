@@ -18,12 +18,8 @@ import * as http from 'http';
 // CONFIGURATION
 // ============================================================================
 
-const PROXY_RPC_ENDPOINTS = [
-  'https://rpc1.pchednode.com/rpc',
-  'https://rpc2.pchednode.com/rpc',
-  'https://rpc3.pchednode.com/rpc',
-  'https://rpc4.pchednode.com/rpc',
-];
+// HTTPS proxy endpoints removed - they were consistently failing and slowing down sync
+const PROXY_RPC_ENDPOINTS: string[] = [];
 
 const DIRECT_PRPC_ENDPOINTS = [
   '173.212.203.145:6000',

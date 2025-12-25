@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
 import { ActivityLog } from '@/lib/server/mongodb-activity';
 import { formatDistanceToNow } from 'date-fns';
-import { Activity, Zap, CheckCircle2, XCircle, RefreshCw, MapPin, Globe, Filter, ChevronDown } from 'lucide-react';
+import { Activity, Zap, CheckCircle2, XCircle, RefreshCw, MapPin, Globe, Filter, ChevronDown, Pause, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ActivityLogListProps {
@@ -48,6 +48,8 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
     const [hasMore, setHasMore] = useState(true);
     const [connected, setConnected] = useState(false);
     const [typeFilter, setTypeFilter] = useState('');
+    const [isPaused, setIsPaused] = useState(false);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
     const fetchLogs = async (skip: number = 0, append: boolean = false) => {
@@ -93,13 +95,17 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.hidden) {
-                // Tab is hidden - pause processing and clear buffer to prevent buildup
+                // Tab is hidden - stop processing and trim logs
                 isVisibleRef.current = false;
                 bufferRef.current = [];
                 processingRef.current = false;
+                // Keep only last 20 logs to prevent memory buildup
+                setLogs(prev => prev.slice(0, 20));
             } else {
-                // Tab is visible again - ready for new events
+                // Tab is visible again
                 isVisibleRef.current = true;
+                bufferRef.current = [];
+                processingRef.current = false;
             }
         };
 
@@ -108,8 +114,8 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
     }, []);
 
     const processBuffer = React.useCallback(() => {
-        // Don't process if tab is hidden
-        if (!isVisibleRef.current) {
+        // Don't process if tab is hidden or paused
+        if (!isVisibleRef.current || isPaused) {
             bufferRef.current = []; // Clear accumulated events
             return;
         }
@@ -260,9 +266,16 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                         Live Activity Feed
                     </h2>
                     <div className="flex items-center gap-2 bg-muted/20 px-2 py-0.5 rounded-full border border-border/40">
-                        <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)] animate-pulse' : 'bg-muted-foreground/30'}`} />
-                        <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-tight">{connected ? 'Live' : 'Offline'}</span>
+                        <div className={`w-1.5 h-1.5 rounded-full ${connected && !isPaused ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)] animate-pulse' : isPaused ? 'bg-yellow-500' : 'bg-muted-foreground/30'}`} />
+                        <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-tight">{isPaused ? 'Paused' : connected ? 'Live' : 'Offline'}</span>
                     </div>
+                    <button
+                        onClick={() => setIsPaused(!isPaused)}
+                        className={`p-1.5 rounded-lg border transition-all ${isPaused ? 'bg-[#F0A741]/20 border-[#F0A741]/50 text-[#F0A741]' : 'bg-muted/20 border-border/40 text-foreground/50 hover:text-foreground hover:bg-muted/30'}`}
+                        title={isPaused ? 'Resume' : 'Pause'}
+                    >
+                        {isPaused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
+                    </button>
                 </div>
                 <div className="relative">
                     <button
@@ -375,27 +388,33 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                 )}
             </div>
 
-            {/* Load More Button */}
+            {/* Infinite scroll sentinel */}
             {!loading && hasMore && logs.length > 0 && (
-                <button
-                    onClick={() => fetchLogs(logs.length, true)}
-                    disabled={loadingMore}
-                    className="w-full py-3 bg-zinc-900/50 hover:bg-zinc-900 border border-zinc-800/50 hover:border-[#F0A741]/50 rounded-lg text-sm text-zinc-400 hover:text-zinc-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                <div
+                    ref={(el) => {
+                        if (!el) return;
+                        const observer = new IntersectionObserver(
+                            (entries) => {
+                                if (entries[0].isIntersecting && !loadingMore && hasMore) {
+                                    fetchLogs(logs.length, true);
+                                }
+                            },
+                            { threshold: 0.1 }
+                        );
+                        observer.observe(el);
+                        return () => observer.disconnect();
+                    }}
+                    className="w-full py-4 flex items-center justify-center"
                 >
-                    {loadingMore ? (
-                        <>
+                    {loadingMore && (
+                        <div className="flex items-center gap-2 text-foreground/40 text-xs">
                             <div className="w-4 h-4 border-2 border-[#F0A741]/30 border-t-[#F0A741] rounded-full animate-spin" />
-                            Loading...
-                        </>
-                    ) : (
-                        'Load More'
+                            Loading more...
+                        </div>
                     )}
-                </button>
+                </div>
             )}
 
-            <div className="text-[10px] text-foreground/30 text-center flex-shrink-0">
-                Real-time network events • Updated via Socket.io
-            </div>
         </div>
     );
 }
