@@ -97,11 +97,11 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.hidden) {
-                // Tab is hidden - CLEAR EVERYTHING to prevent lag
+                // Tab is hidden - pause processing to prevent lag, keep existing logs
                 isVisibleRef.current = false;
                 bufferRef.current = [];
                 processingRef.current = false;
-                setLogs([]); // Clear all logs
+                // Do not clear logs to preserve history
             } else {
                 // Tab is visible again
                 isVisibleRef.current = true;

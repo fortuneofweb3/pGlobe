@@ -367,7 +367,13 @@ async function pollAndEmitActivity(io: SocketIOServer) {
 
             // Check for packet changes
             const packetDiff = (currentRx + currentTx) - (prev.packetsReceived + prev.packetsSent);
-            if (packetDiff > 0) {
+
+            // SANITY CHECK: Ignore massive impossible jumps (likely 0 -> Total correction due to RPC recovery)
+            // 1,000,000 packets in 5 seconds = 200,000 TPS, which is impossible for a single node here.
+            // If this happens, we just update the state silently.
+            if (packetDiff > 1000000) {
+                console.log(`[Realtime] ⚠️ Massive packet jump detected for ${address}: +${packetDiff.toLocaleString()}. Treating as state correction.`);
+            } else if (packetDiff > 0) {
                 const activityLog = {
                     type: 'packets_earned' as const,
                     pubkey,

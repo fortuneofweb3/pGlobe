@@ -306,7 +306,7 @@ export default function NodeRaceVisualization() {
                         Live Node Activity Race
                         <div className="group relative ml-1 cursor-help">
                             <div className="w-3.5 h-3.5 rounded-full border border-zinc-500 text-zinc-500 flex items-center justify-center text-[9px] font-bold">?</div>
-                            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-48 bg-black/90 text-white text-[10px] p-2 rounded border border-white/20 z-50 pointer-events-none">
+                            <div className="absolute left-0 top-full mt-2 hidden group-hover:block w-48 bg-black/95 text-white text-[10px] p-2 rounded border border-white/20 z-[100] shadow-xl pointer-events-none">
                                 Score = (Active Streams × 10) + (Total Packets × 0.01)
                             </div>
                         </div>
@@ -384,7 +384,7 @@ export default function NodeRaceVisualization() {
                                                 />
 
                                                 {/* Node info overlay */}
-                                                <div className="relative z-10 h-full flex items-center justify-between px-4 group/bar">
+                                                <div className="relative z-10 h-full flex items-center justify-between px-4 group">
                                                     <div className="flex items-center gap-3">
                                                         <span className="text-sm font-mono font-bold text-foreground/90 drop-shadow-md">
                                                             {getNodeLabel(node)}
@@ -404,8 +404,8 @@ export default function NodeRaceVisualization() {
                                                     </div>
 
                                                     {/* Hover Tooltip */}
-                                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none z-50">
-                                                        <div className="bg-black/95 backdrop-blur-sm border border-white/20 rounded-lg px-3 py-2 shadow-xl min-w-[200px]">
+                                                    <div className="absolute right-0 top-full mt-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100]">
+                                                        <div className="bg-black/95 backdrop-blur-sm border border-white/20 rounded-lg px-3 py-2 shadow-xl min-w-[180px]">
                                                             <div className="text-[10px] space-y-1">
                                                                 <div className="flex justify-between gap-4 text-cyan-400">
                                                                     <span>Active Streams:</span>
