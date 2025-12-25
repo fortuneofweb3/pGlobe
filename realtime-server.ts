@@ -28,7 +28,7 @@ dotenv.config({ path: '.env' });
 // ============================================================================
 
 const PORT = process.env.REALTIME_PORT || process.env.PORT || 3002;
-const POLL_INTERVAL_MS = 10000; // 10 seconds
+const POLL_INTERVAL_MS = 5000; // 5 seconds
 const REQUEST_TIMEOUT_MS = 30000; // 30 seconds (match sync-nodes.ts)
 
 const PROXY_RPC_ENDPOINTS = [
@@ -192,6 +192,26 @@ async function fetchCredits(): Promise<Map<string, number>> {
     return creditsMap;
 }
 
+// Fetch detailed stats for a specific node
+async function fetchNodeStats(address: string): Promise<{ packets_received?: number, packets_sent?: number, active_streams?: number } | null> {
+    const ip = address.split(':')[0];
+    if (!ip) return null;
+
+    const portsToTry = [6000, 9000];
+
+    for (const port of portsToTry) {
+        const url = `http://${ip}:${port}/rpc`;
+        const payload = { jsonrpc: '2.0', method: 'get-stats', id: 1, params: [] };
+
+        const result = await httpPost(url, payload, 3000); // Shorter timeout
+        if (result?.result) {
+            return result.result;
+        }
+    }
+
+    return null;
+}
+
 // ============================================================================
 // ACTIVITY DETECTION
 // ============================================================================
@@ -248,6 +268,45 @@ async function pollAndEmitActivity(io: SocketIOServer) {
         let emittedCount = 0;
         const connectedClients = io.sockets.sockets.size;
 
+        // For nodes with credit changes, fetch detailed stats in parallel (limited batches)
+        const nodesToEnrich: RawPod[] = [];
+
+        for (const pod of pods) {
+            const pubkey = pod.pubkey || pod.publicKey || '';
+            if (!pubkey || pubkey.length < 32) continue;
+
+            const currentCredits = creditsMap.get(pubkey) || pod.credits || pod.balance || 0;
+            const prev = previousNodeStates.get(pubkey);
+
+            // Enrich nodes that have credit activity (new or changed credits)
+            if (!prev || currentCredits !== prev.credits) {
+                nodesToEnrich.push(pod);
+            }
+        }
+
+        // Fetch stats for active nodes in parallel (batch of 20)
+        const BATCH_SIZE = 20;
+        const enrichedStats = new Map<string, { packets_received?: number, packets_sent?: number, active_streams?: number }>();
+
+        for (let i = 0; i < nodesToEnrich.length; i += BATCH_SIZE) {
+            const batch = nodesToEnrich.slice(i, i + BATCH_SIZE);
+            const results = await Promise.allSettled(
+                batch.map(pod => fetchNodeStats(pod.address || ''))
+            );
+
+            for (let j = 0; j < results.length; j++) {
+                const result = results[j];
+                const pod = batch[j];
+                const pubkey = pod.pubkey || pod.publicKey || '';
+
+                if (result.status === 'fulfilled' && result.value && pubkey) {
+                    enrichedStats.set(pubkey, result.value);
+                }
+            }
+        }
+
+        console.log(`[Realtime] 📊 Enriched ${enrichedStats.size}/${nodesToEnrich.length} active nodes with stats`);
+
         for (const pod of pods) {
             const pubkey = pod.pubkey || pod.publicKey || '';
             if (!pubkey || pubkey.length < 32) continue;
@@ -257,9 +316,11 @@ async function pollAndEmitActivity(io: SocketIOServer) {
                 ? `${pod.city}, ${pod.country}`
                 : pod.country || pod.location || undefined;
 
-            const currentRx = pod.packets_received || 0;
-            const currentTx = pod.packets_sent || 0;
-            const currentStreams = pod.active_streams || 0;
+            // Use enriched stats if available, otherwise use gossip data (which is often 0)
+            const stats = enrichedStats.get(pubkey);
+            const currentRx = stats?.packets_received || pod.packets_received || 0;
+            const currentTx = stats?.packets_sent || pod.packets_sent || 0;
+            const currentStreams = stats?.active_streams || pod.active_streams || 0;
             const currentCredits = creditsMap.get(pubkey) || pod.credits || pod.balance || 0;
 
             const prev = previousNodeStates.get(pubkey);
