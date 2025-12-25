@@ -14,6 +14,7 @@ import { ArrowLeft, MapPin, Server, TrendingUp, Activity, HardDrive, Award, Cloc
 import AnimatedNumber from '@/components/AnimatedNumber';
 import PNodeTable from '@/components/PNodeTable';
 import { PNode } from '@/lib/types/pnode';
+import ActivityLogList from '@/components/ActivityLogList';
 import { TableSkeleton, CardSkeleton, ChartSkeleton } from '@/components/Skeletons';
 import ResourceUtilization from '@/components/analytics/ResourceUtilization';
 import { scaleTime, scaleLinear } from '@visx/scale';
@@ -2112,6 +2113,10 @@ function CountryDetailContent() {
                   )}
                 </div>
               )}
+
+              <div className="mt-8">
+                <ActivityLogList countryCode={countryName} limit={20} />
+              </div>
             </div>
           </div>
         </div>

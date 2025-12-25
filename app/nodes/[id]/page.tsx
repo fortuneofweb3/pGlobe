@@ -34,6 +34,7 @@ const NodeMap = dynamic(
   { ssr: false, loading: () => <div className="h-full w-full bg-muted/20 rounded-lg animate-pulse" /> }
 );
 import StatsCard from '@/components/StatsCard';
+import ActivityLogList from '@/components/ActivityLogList';
 
 // Helper function to calculate center offset to position node on right side (desktop) or center (mobile)
 function calculateOffsetCenter(nodeLat: number, nodeLon: number, zoom: number): [number, number] {
@@ -2426,6 +2427,10 @@ function NodeDetailContent() {
                 </p>
               </div>
             )}
+
+            <div className="mt-8">
+              <ActivityLogList pubkey={node.pubkey || node.publicKey} limit={20} />
+            </div>
           </div>
         </div>
       </main>

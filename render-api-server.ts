@@ -27,6 +27,10 @@ import { PNode } from './lib/types/pnode';
 import { createRegionHistoryIndexes, getRegionHistory as getOptimizedRegionHistory, clearAllRegionCache, getRegionCacheStats } from './lib/server/mongodb-region-history';
 
 const app = express();
+const server = require('http').createServer(app);
+import { initSocketServer } from './lib/server/socket-server';
+initSocketServer(server);
+
 const PORT = process.env.PORT || 3001;
 const API_SECRET = process.env.API_SECRET; // Secret for Vercel to authenticate
 
@@ -307,6 +311,25 @@ app.get('/api/nodes/:id', authenticate, async (req, res) => {
       error: 'Failed to fetch node',
       message: error?.message || 'Unknown error',
     });
+  }
+});
+
+/**
+ * GET /api/activity-logs
+ * Returns recent activity logs
+ */
+import { getActivityLogs } from './lib/server/mongodb-activity';
+app.get('/api/activity-logs', authenticate, async (req, res) => {
+  try {
+    const pubkey = req.query.pubkey as string;
+    const countryCode = req.query.countryCode as string;
+    const limit = parseInt(req.query.limit as string) || 50;
+
+    const logs = await getActivityLogs({ pubkey, countryCode, limit });
+    res.json({ logs });
+  } catch (error: any) {
+    console.error('[RenderAPI] ❌ Failed to get activity logs:', error);
+    res.status(500).json({ error: 'Failed to fetch activity logs' });
   }
 });
 
@@ -1191,25 +1214,13 @@ async function startServer() {
     startBackgroundRefresh();
     console.log('[RenderAPI] ✅ Background refresh started (runs every 1 minute)');
 
-    // Step 3: Start Express server
-    app.listen(PORT, () => {
-      console.log(`[RenderAPI] 🚀 API server running on port ${PORT}`);
+    // Step 4: Start Express/Socket.io server
+    server.listen(PORT, () => {
+      console.log(`[RenderAPI] 🚀 Server running on port ${PORT}`);
       console.log(`[RenderAPI] Background refresh active - data updates every minute`);
-    });
 
-    // Graceful shutdown
-    process.on('SIGTERM', async () => {
-      console.log('[RenderAPI] SIGTERM received, shutting down gracefully...');
-      const { stopBackgroundRefresh } = await import('./lib/server/background-refresh');
-      stopBackgroundRefresh();
-      process.exit(0);
-    });
-
-    process.on('SIGINT', async () => {
-      console.log('[RenderAPI] SIGINT received, shutting down gracefully...');
-      const { stopBackgroundRefresh } = await import('./lib/server/background-refresh');
-      stopBackgroundRefresh();
-      process.exit(0);
+      // Secondary index creation (async)
+      import('./lib/server/mongodb-activity').then(m => m.createActivityIndexes()).catch(console.error);
     });
 
   } catch (error: any) {
@@ -1217,6 +1228,21 @@ async function startServer() {
     console.error(error.stack);
     process.exit(1);
   }
+
+  // Graceful shutdown
+  process.on('SIGTERM', async () => {
+    console.log('[RenderAPI] SIGTERM received, shutting down gracefully...');
+    const { stopBackgroundRefresh } = await import('./lib/server/background-refresh');
+    stopBackgroundRefresh();
+    process.exit(0);
+  });
+
+  process.on('SIGINT', async () => {
+    console.log('[RenderAPI] SIGINT received, shutting down gracefully...');
+    const { stopBackgroundRefresh } = await import('./lib/server/background-refresh');
+    stopBackgroundRefresh();
+    process.exit(0);
+  });
 }
 
 // Start the server

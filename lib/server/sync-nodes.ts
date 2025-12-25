@@ -451,6 +451,116 @@ export async function saveNodes(nodes: PNode[]): Promise<void> {
 }
 
 // ============================================================================
+// STEP 8: DETECT AND LOG ACTIVITY
+// ============================================================================
+
+async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) {
+  const { storeActivityLog } = await import('./mongodb-activity');
+  const { emitActivity } = await import('./socket-server');
+
+  const pubkey = newNode.pubkey || newNode.publicKey || '';
+  const countryCode = newNode.locationData?.countryCode || '??';
+  const location = newNode.location || 'Unknown';
+
+  // 1. New Node Detection
+  if (!oldNode) {
+    const log = {
+      pubkey,
+      type: 'new_node' as const,
+      message: `New node discovered: ${pubkey.slice(0, 8)}... (${location})`,
+      countryCode,
+      location,
+      data: { status: newNode.status }
+    };
+    await storeActivityLog(log);
+    emitActivity({ ...log, timestamp: new Date() });
+  }
+
+  // 2. Status Change
+  if (oldNode && oldNode.status !== newNode.status) {
+    let type: any = 'status_change';
+    let message = `Node ${pubkey.slice(0, 8)}... changed status from ${oldNode.status} to ${newNode.status}`;
+
+    if (newNode.status === 'online') {
+      type = 'node_online';
+      message = `Node ${pubkey.slice(0, 8)}... came online (${location})`;
+    } else if (newNode.status === 'offline') {
+      type = 'node_offline';
+      message = `Node ${pubkey.slice(0, 8)}... went offline`;
+    } else if (newNode.status === 'syncing') {
+      type = 'node_syncing';
+      message = `Node ${pubkey.slice(0, 8)}... is now syncing`;
+    }
+
+    const log = {
+      pubkey,
+      type,
+      message,
+      countryCode,
+      location,
+      data: { oldStatus: oldNode.status, newStatus: newNode.status }
+    };
+
+    await storeActivityLog(log);
+    emitActivity({ ...log, timestamp: new Date() });
+  }
+
+  // 3. Credits Earned
+  if (oldNode && newNode.credits !== undefined && oldNode.credits !== undefined && newNode.credits > oldNode.credits) {
+    const earned = newNode.credits - oldNode.credits;
+    const log = {
+      pubkey,
+      type: 'credits_earned' as const,
+      message: `Node ${pubkey.slice(0, 8)}... earned ${earned.toFixed(2)} credits`,
+      countryCode,
+      location,
+      data: { earned, total: newNode.credits }
+    };
+
+    await storeActivityLog(log);
+    emitActivity({ ...log, timestamp: new Date() });
+  }
+
+  // 4. Packets Earned
+  const newRx = newNode.packetsReceived || 0;
+  const oldRx = oldNode?.packetsReceived || 0;
+  const newTx = newNode.packetsSent || 0;
+  const oldTx = oldNode?.packetsSent || 0;
+
+  if (oldNode && (newRx > oldRx || newTx > oldTx)) {
+    const rxEarned = newRx - oldRx;
+    const txEarned = newTx - oldTx;
+    const log = {
+      pubkey,
+      type: 'packets_earned' as const,
+      message: `Node ${pubkey.slice(0, 8)}... processed ${rxEarned + txEarned} packets`,
+      countryCode,
+      location,
+      data: { rxEarned, txEarned, totalRx: newRx, totalTx: newTx }
+    };
+
+    await storeActivityLog(log);
+    emitActivity({ ...log, timestamp: new Date() });
+  }
+
+  // 5. Active Streams
+  if (oldNode && newNode.activeStreams !== undefined && oldNode.activeStreams !== undefined && newNode.activeStreams > oldNode.activeStreams) {
+    const increased = newNode.activeStreams - oldNode.activeStreams;
+    const log = {
+      pubkey,
+      type: 'streams_active' as const,
+      message: `Node ${pubkey.slice(0, 8)}... active streams increased by ${increased} (Total: ${newNode.activeStreams})`,
+      countryCode,
+      location,
+      data: { increased, total: newNode.activeStreams }
+    };
+
+    await storeActivityLog(log);
+    emitActivity({ ...log, timestamp: new Date() });
+  }
+}
+
+// ============================================================================
 // MAIN SYNC FUNCTION
 // ============================================================================
 
@@ -492,7 +602,17 @@ export async function syncNodes(): Promise<{ success: boolean; count: number; er
     // Step 7: Deduplicate
     const dedupedNodes = deduplicateNodes(nodesMap);
 
-    // Step 8: Save to database
+    // Step 8: Detect and Log Activity
+    console.log(`[Sync] Detecting activity for ${dedupedNodes.length} nodes...`);
+    for (const node of dedupedNodes) {
+      const pubkey = node.pubkey || node.publicKey;
+      if (pubkey) {
+        const oldNode = existingNodesMap.get(pubkey);
+        await detectAndLogActivity(node, oldNode);
+      }
+    }
+
+    // Step 9: Save to database
     await saveNodes(dedupedNodes);
 
     // Step 9: Merge with ALL DB nodes for complete snapshot
