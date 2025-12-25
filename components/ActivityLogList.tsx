@@ -95,12 +95,11 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.hidden) {
-                // Tab is hidden - stop processing and trim logs
+                // Tab is hidden - CLEAR EVERYTHING to prevent lag
                 isVisibleRef.current = false;
                 bufferRef.current = [];
                 processingRef.current = false;
-                // Keep only last 20 logs to prevent memory buildup
-                setLogs(prev => prev.slice(0, 20));
+                setLogs([]); // Clear all logs
             } else {
                 // Tab is visible again
                 isVisibleRef.current = true;
@@ -140,7 +139,8 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                 });
 
                 if (isDuplicate) return prev;
-                return [logToAdd, ...prev].slice(0, limit);
+                // Hard cap at 20 logs - old ones removed as new come in
+                return [logToAdd, ...prev].slice(0, 20);
             });
 
             // Calculate delay based on buffer size - spread logs over ~10 seconds
