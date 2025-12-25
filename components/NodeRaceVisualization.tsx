@@ -248,6 +248,14 @@ export default function NodeRaceVisualization() {
         };
     }, [processBuffer]);
 
+    // Clear buffer immediately when pausing
+    useEffect(() => {
+        if (isPaused) {
+            bufferRef.current = [];
+            processingRef.current = false;
+        }
+    }, [isPaused]);
+
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'online': return 'bg-green-500/60';
@@ -304,107 +312,84 @@ export default function NodeRaceVisualization() {
                     </div>
                 ) : (
                     <div className="space-y-2 relative flex-1 overflow-y-auto">
-                        <AnimatePresence mode="popLayout">
-                            {rankedNodes.map((node, index) => {
-                                const barWidth = (node.score / maxScore) * 100;
-                                const isPodium = index < 3;
+                        {rankedNodes.map((node, index) => {
+                            const barWidth = (node.score / maxScore) * 100;
+                            const isPodium = index < 3;
 
-                                return (
-                                    <motion.div
-                                        key={node.pubkey}
-                                        layout
-                                        initial={{ opacity: 0, x: -50 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: 50, scale: 0.8 }}
-                                        transition={{
-                                            layout: { type: 'spring', stiffness: 350, damping: 30 },
-                                            opacity: { duration: 0.3 },
-                                            x: { duration: 0.3 },
-                                        }}
-                                        className="relative"
-                                    >
-                                        <div className="flex items-center gap-3 group">
-                                            {/* Rank Badge */}
-                                            <motion.div
-                                                layout
-                                                className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs border ${isPodium
-                                                    ? 'bg-[#F0A741]/20 border-[#F0A741]/40 text-[#F0A741]'
-                                                    : 'bg-muted/40 border-border/40 text-foreground/60'
+                            return (
+                                <div
+                                    key={node.pubkey}
+                                    className="relative transition-all duration-300"
+                                >
+                                    <div className="flex items-center gap-3 group">
+                                        {/* Rank Badge */}
+                                        <div
+                                            className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs border transition-colors duration-300 ${isPodium
+                                                ? 'bg-[#F0A741]/20 border-[#F0A741]/40 text-[#F0A741]'
+                                                : 'bg-muted/40 border-border/40 text-foreground/60'
+                                                }`}
+                                        >
+                                            #{node.rank}
+                                        </div>
+
+                                        {/* Racing Bar */}
+                                        <div className="flex-1 relative h-12 rounded-lg overflow-hidden bg-muted/20 border border-border/30">
+                                            {/* Animated bar - simple CSS transition */}
+                                            <div
+                                                className={`absolute inset-y-0 left-0 transition-all duration-500 ease-out ${getStatusColor(node.status)} ${isPodium ? 'shadow-[0_0_20px_rgba(240,167,65,0.2)]' : ''
                                                     }`}
-                                            >
-                                                #{node.rank}
-                                            </motion.div>
+                                                style={{ width: `${barWidth}%` }}
+                                            />
 
-                                            {/* Racing Bar */}
-                                            <div className="flex-1 relative h-12 rounded-lg overflow-hidden bg-muted/20 border border-border/30">
-                                                {/* Animated bar */}
-                                                <motion.div
-                                                    className={`absolute inset-y-0 left-0 ${getStatusColor(node.status)} ${isPodium ? 'shadow-[0_0_20px_rgba(240,167,65,0.2)]' : ''
-                                                        }`}
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${barWidth}%` }}
-                                                    transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                                                />
-
-                                                {/* Top glow for leader */}
-                                                {index === 0 && (
-                                                    <motion.div
-                                                        className="absolute inset-0 bg-gradient-to-r from-[#F0A741]/10 to-transparent"
-                                                        animate={{ opacity: [0.3, 0.6, 0.3] }}
-                                                        transition={{ duration: 2, repeat: Infinity }}
-                                                    />
-                                                )}
-
-                                                {/* Node info overlay */}
-                                                <div className="relative z-10 h-full flex items-center justify-between px-4 group/bar">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-sm font-mono font-bold text-foreground/90 drop-shadow-md">
-                                                            {getNodeLabel(node)}
-                                                        </span>
-                                                        <div className="flex items-center gap-2 text-xs">
-                                                            {node.activeStreams !== undefined && node.activeStreams > 0 && (
-                                                                <span className="flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded border border-white/10">
-                                                                    <Activity className="w-3 h-3 text-cyan-400" />
-                                                                    <span className="text-cyan-400 font-semibold">{node.activeStreams}</span>
-                                                                </span>
-                                                            )}
-                                                        </div>
+                                            {/* Node info overlay */}
+                                            <div className="relative z-10 h-full flex items-center justify-between px-4 group/bar">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-sm font-mono font-bold text-foreground/90 drop-shadow-md">
+                                                        {getNodeLabel(node)}
+                                                    </span>
+                                                    <div className="flex items-center gap-2 text-xs">
+                                                        {node.activeStreams !== undefined && node.activeStreams > 0 && (
+                                                            <span className="flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded border border-white/10">
+                                                                <Activity className="w-3 h-3 text-cyan-400" />
+                                                                <span className="text-cyan-400 font-semibold">{node.activeStreams}</span>
+                                                            </span>
+                                                        )}
                                                     </div>
+                                                </div>
 
-                                                    <div className="text-xs font-bold text-foreground/70 drop-shadow-md">
-                                                        {node.score.toFixed(0)} pts
-                                                    </div>
+                                                <div className="text-xs font-bold text-foreground/70 drop-shadow-md">
+                                                    {node.score.toFixed(0)} pts
+                                                </div>
 
-                                                    {/* Hover Tooltip */}
-                                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none z-50">
-                                                        <div className="bg-black/95 backdrop-blur-sm border border-white/20 rounded-lg px-3 py-2 shadow-xl min-w-[200px]">
-                                                            <div className="text-[10px] space-y-1">
-                                                                <div className="flex justify-between gap-4 text-cyan-400">
-                                                                    <span>Active Streams:</span>
-                                                                    <span className="font-bold">{node.activeStreams || 0}</span>
-                                                                </div>
-                                                                <div className="flex justify-between gap-4 text-emerald-400">
-                                                                    <span>Packets:</span>
-                                                                    <span className="font-bold">{((node.packetsReceived || 0) + (node.packetsSent || 0)).toLocaleString()}</span>
-                                                                </div>
-                                                                <div className="flex justify-between gap-4 text-[#F0A741]">
-                                                                    <span>Credits:</span>
-                                                                    <span className="font-bold">{(node.credits || 0).toFixed(2)}</span>
-                                                                </div>
-                                                                <div className="border-t border-white/10 mt-1 pt-1 flex justify-between gap-4 text-white/70">
-                                                                    <span>Total Score:</span>
-                                                                    <span className="font-bold">{node.score.toFixed(0)}</span>
-                                                                </div>
+                                                {/* Hover Tooltip */}
+                                                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none z-50">
+                                                    <div className="bg-black/95 backdrop-blur-sm border border-white/20 rounded-lg px-3 py-2 shadow-xl min-w-[200px]">
+                                                        <div className="text-[10px] space-y-1">
+                                                            <div className="flex justify-between gap-4 text-cyan-400">
+                                                                <span>Active Streams:</span>
+                                                                <span className="font-bold">{node.activeStreams || 0}</span>
+                                                            </div>
+                                                            <div className="flex justify-between gap-4 text-emerald-400">
+                                                                <span>Packets:</span>
+                                                                <span className="font-bold">{((node.packetsReceived || 0) + (node.packetsSent || 0)).toLocaleString()}</span>
+                                                            </div>
+                                                            <div className="flex justify-between gap-4 text-[#F0A741]">
+                                                                <span>Credits:</span>
+                                                                <span className="font-bold">{(node.credits || 0).toFixed(2)}</span>
+                                                            </div>
+                                                            <div className="border-t border-white/10 mt-1 pt-1 flex justify-between gap-4 text-white/70">
+                                                                <span>Total Score:</span>
+                                                                <span className="font-bold">{node.score.toFixed(0)}</span>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </motion.div>
-                                );
-                            })}
-                        </AnimatePresence>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>

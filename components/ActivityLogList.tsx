@@ -214,6 +214,14 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         };
     }, [pubkey, countryCode, limit, typeFilter, processBuffer]);
 
+    // Clear buffer immediately when pausing
+    useEffect(() => {
+        if (isPaused) {
+            bufferRef.current = [];
+            processingRef.current = false;
+        }
+    }, [isPaused]);
+
     const getIcon = (type: string) => {
         const iconClass = "w-3.5 h-3.5";
         switch (type) {
