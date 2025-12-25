@@ -1,15 +1,33 @@
+#!/usr/bin/env ts-node
 /**
- * Real-time Activity Detector
+ * Realtime Activity WebSocket Server
  * 
- * Uses the same gossip endpoints as sync-nodes.ts to fetch node stats every 10 seconds.
- * Compares with previous state and emits Socket.io events for changes.
+ * Standalone server that polls gossip endpoints every 10 seconds
+ * and broadcasts activity events to connected clients.
+ * 
+ * Deploy this as a separate Render service.
+ * 
+ * Usage: npm run start:realtime
  */
 
+import express from 'express';
 import http from 'http';
 import https from 'https';
-import { emitActivity } from './socket-server';
+import { Server as SocketIOServer } from 'socket.io';
+import dotenv from 'dotenv';
 
-// Same endpoints as sync-nodes.ts
+// Load environment variables
+dotenv.config({ path: '.env.local' });
+dotenv.config({ path: '.env' });
+
+// ============================================================================
+// CONFIGURATION
+// ============================================================================
+
+const PORT = process.env.REALTIME_PORT || process.env.PORT || 3002;
+const POLL_INTERVAL_MS = 10000; // 10 seconds
+const REQUEST_TIMEOUT_MS = 8000;
+
 const PROXY_RPC_ENDPOINTS = [
     'https://rpc1.pchednode.com/rpc',
     'https://rpc2.pchednode.com/rpc',
@@ -19,40 +37,42 @@ const PROXY_RPC_ENDPOINTS = [
 
 const POD_CREDITS_API = 'https://podcredits.xandeum.network/api/pods-credits';
 
-// In-memory cache of previous node states
-const previousNodeStates: Map<string, {
-    packetsReceived: number;
-    packetsSent: number;
-    activeStreams: number;
-    credits: number;
-    status: string;
-}> = new Map();
-
-let isPolling = false;
-let pollInterval: NodeJS.Timeout | null = null;
-
-const POLL_INTERVAL_MS = 10000; // 10 seconds
-const REQUEST_TIMEOUT_MS = 8000; // 8 second timeout
+// ============================================================================
+// TYPES
+// ============================================================================
 
 interface RawPod {
     address?: string;
     pubkey?: string;
     publicKey?: string;
-    version?: string;
-    last_seen_timestamp?: number;
     packets_received?: number;
     packets_sent?: number;
     active_streams?: number;
     credits?: number;
     balance?: number;
-    location?: string;
     city?: string;
     country?: string;
+    location?: string;
 }
 
-/**
- * HTTP POST request helper
- */
+interface PreviousState {
+    packetsReceived: number;
+    packetsSent: number;
+    activeStreams: number;
+    credits: number;
+}
+
+// ============================================================================
+// STATE
+// ============================================================================
+
+const previousNodeStates = new Map<string, PreviousState>();
+let isPolling = false;
+
+// ============================================================================
+// HTTP HELPERS
+// ============================================================================
+
 function httpPost(url: string, data: object, timeoutMs: number): Promise<any | null> {
     return new Promise((resolve) => {
         try {
@@ -95,16 +115,16 @@ function httpPost(url: string, data: object, timeoutMs: number): Promise<any | n
     });
 }
 
-/**
- * Fetch pods from a gossip endpoint
- */
+// ============================================================================
+// DATA FETCHING
+// ============================================================================
+
 async function fetchPodsFromEndpoint(endpoint: string): Promise<RawPod[]> {
-    // Try get-pods-with-stats first (v0.7.0+), fallback to get-pods
-    let payload = { jsonrpc: '2.0', method: 'get-pods-with-stats', id: 1, params: [] };
+    // Try get-pods-with-stats first, fallback to get-pods
+    let payload: any = { jsonrpc: '2.0', method: 'get-pods-with-stats', id: 1, params: [] };
     let response = await httpPost(endpoint, payload, REQUEST_TIMEOUT_MS);
 
     if (!response?.result) {
-        // Fallback to get-pods
         payload = { jsonrpc: '2.0', method: 'get-pods', id: 1, params: [] };
         response = await httpPost(endpoint, payload, REQUEST_TIMEOUT_MS);
     }
@@ -112,15 +132,9 @@ async function fetchPodsFromEndpoint(endpoint: string): Promise<RawPod[]> {
     if (!response?.result) return [];
 
     const result = response.result;
-    const pods: RawPod[] = Array.isArray(result) ? result
-        : result.pods || result.nodes || [];
-
-    return pods;
+    return Array.isArray(result) ? result : result.pods || result.nodes || [];
 }
 
-/**
- * Fetch credits from the pod credits API
- */
 async function fetchCredits(): Promise<Map<string, number>> {
     const creditsMap = new Map<string, number>();
 
@@ -140,34 +154,25 @@ async function fetchCredits(): Promise<Map<string, number>> {
             }
         }
     } catch {
-        // Silent fail - credits are optional
+        // Silent fail
     }
 
     return creditsMap;
 }
 
-/**
- * Check for activity changes by querying gossip
- */
-async function checkForActivityChanges() {
+// ============================================================================
+// ACTIVITY DETECTION
+// ============================================================================
+
+async function pollAndEmitActivity(io: SocketIOServer) {
     if (isPolling) return;
-
-    // Skip if sync is running to avoid competing for endpoints
-    const { isSyncActive } = await import('./sync-state');
-    if (isSyncActive()) {
-        console.log('[RealtimeActivity] ⏸️  Skipping - sync in progress');
-        return;
-    }
-
     isPolling = true;
 
     const startTime = Date.now();
 
     try {
-        // Pick a random endpoint for load balancing
+        // Pick a random endpoint
         const endpoint = PROXY_RPC_ENDPOINTS[Math.floor(Math.random() * PROXY_RPC_ENDPOINTS.length)];
-
-        console.log(`[RealtimeActivity] 📊 Fetching pods and credits...`);
 
         // Fetch pods and credits in parallel
         const [pods, creditsMap] = await Promise.all([
@@ -176,13 +181,13 @@ async function checkForActivityChanges() {
         ]);
 
         if (pods.length === 0) {
-            console.log(`[RealtimeActivity] ⚠️  No pods returned from endpoint`);
-            isPolling = false;
+            console.log('[Realtime] ⚠️  No pods returned');
             return;
         }
 
         const now = new Date();
         let emittedCount = 0;
+        const connectedClients = io.sockets.sockets.size;
 
         for (const pod of pods) {
             const pubkey = pod.pubkey || pod.publicKey || '';
@@ -196,7 +201,6 @@ async function checkForActivityChanges() {
             const currentRx = pod.packets_received || 0;
             const currentTx = pod.packets_sent || 0;
             const currentStreams = pod.active_streams || 0;
-            // Get credits from credits API (more accurate than pod data)
             const currentCredits = creditsMap.get(pubkey) || pod.credits || pod.balance || 0;
 
             const prev = previousNodeStates.get(pubkey);
@@ -208,7 +212,6 @@ async function checkForActivityChanges() {
                     packetsSent: currentTx,
                     activeStreams: currentStreams,
                     credits: currentCredits,
-                    status: 'online',
                 });
                 continue;
             }
@@ -216,7 +219,7 @@ async function checkForActivityChanges() {
             // Check for packet changes
             const packetDiff = (currentRx + currentTx) - (prev.packetsReceived + prev.packetsSent);
             if (packetDiff > 0) {
-                emitActivity({
+                io.emit('activity', {
                     type: 'packets_earned',
                     pubkey,
                     address,
@@ -236,7 +239,7 @@ async function checkForActivityChanges() {
             // Check for credit changes
             const creditDiff = currentCredits - prev.credits;
             if (creditDiff > 0) {
-                emitActivity({
+                io.emit('activity', {
                     type: 'credits_earned',
                     pubkey,
                     address,
@@ -253,7 +256,7 @@ async function checkForActivityChanges() {
 
             // Check for stream changes
             if (currentStreams !== prev.activeStreams) {
-                emitActivity({
+                io.emit('activity', {
                     type: 'streams_active',
                     pubkey,
                     address,
@@ -274,53 +277,65 @@ async function checkForActivityChanges() {
                 packetsSent: currentTx,
                 activeStreams: currentStreams,
                 credits: currentCredits,
-                status: 'online',
             });
         }
 
         const elapsed = Date.now() - startTime;
-        console.log(`[RealtimeActivity] 📈 Stats: ${pods.length} pods, ${emittedCount} events in ${elapsed}ms`);
+        console.log(`[Realtime] 📈 ${pods.length} pods, ${emittedCount} events → ${connectedClients} clients (${elapsed}ms)`);
 
     } catch (error: any) {
-        console.error('[RealtimeActivity] ❌ Error:', error?.message);
+        console.error('[Realtime] ❌ Error:', error?.message);
     } finally {
         isPolling = false;
     }
 }
 
-/**
- * Start the real-time activity poller
- */
-export function startRealtimeActivityPoller() {
-    if (pollInterval) {
-        console.log('[RealtimeActivity] ⚠️  Poller already running');
-        return;
-    }
+// ============================================================================
+// SERVER
+// ============================================================================
 
-    console.log(`[RealtimeActivity] 🚀 Starting real-time poller (every ${POLL_INTERVAL_MS / 1000}s, using gossip endpoints)`);
+const app = express();
+const server = http.createServer(app);
 
-    // First check after 5 seconds
-    setTimeout(checkForActivityChanges, 5000);
+const io = new SocketIOServer(server, {
+    cors: {
+        origin: '*',
+        methods: ['GET', 'POST'],
+    },
+    transports: ['websocket', 'polling'],
+});
 
-    // Start periodic polling
-    pollInterval = setInterval(checkForActivityChanges, POLL_INTERVAL_MS);
-}
+// Health check endpoint
+app.get('/', (req, res) => {
+    res.json({
+        status: 'ok',
+        service: 'realtime-activity',
+        clients: io.sockets.sockets.size,
+        cachedNodes: previousNodeStates.size,
+    });
+});
 
-/**
- * Stop the poller
- */
-export function stopRealtimeActivityPoller() {
-    if (pollInterval) {
-        clearInterval(pollInterval);
-        pollInterval = null;
-        console.log('[RealtimeActivity] 🛑 Stopped');
-    }
-}
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok' });
+});
 
-/**
- * Clear cached states
- */
-export function clearActivityCache() {
-    previousNodeStates.clear();
-    console.log('[RealtimeActivity] 🗑️  Cleared cache');
-}
+// Socket.io connection handling
+io.on('connection', (socket) => {
+    console.log(`[Socket] 🔌 Client connected: ${socket.id}`);
+
+    socket.on('disconnect', () => {
+        console.log(`[Socket] 🔌 Client disconnected: ${socket.id}`);
+    });
+});
+
+// Start server
+server.listen(PORT, () => {
+    console.log(`[Realtime] 🚀 Server running on port ${PORT}`);
+    console.log(`[Realtime] 📡 Polling every ${POLL_INTERVAL_MS / 1000}s`);
+
+    // Start polling after 3 seconds
+    setTimeout(() => pollAndEmitActivity(io), 3000);
+
+    // Poll every 10 seconds
+    setInterval(() => pollAndEmitActivity(io), POLL_INTERVAL_MS);
+});

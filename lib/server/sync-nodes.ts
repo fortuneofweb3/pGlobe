@@ -572,12 +572,16 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
 // ============================================================================
 
 export async function syncNodes(): Promise<{ success: boolean; count: number; error?: string }> {
+  const { setSyncRunning } = await import('./sync-state');
   const startTime = Date.now();
+
+  setSyncRunning(true);
 
   try {
     // Step 1: Fetch all nodes from gossip
     const nodesMap = await fetchAllNodes();
     if (nodesMap.size === 0) {
+      setSyncRunning(false);
       return { success: false, count: 0, error: 'No nodes fetched from gossip' };
     }
 
@@ -670,5 +674,7 @@ export async function syncNodes(): Promise<{ success: boolean; count: number; er
     const duration = Date.now() - startTime;
     console.error(`[Sync] ❌ Failed after ${Math.round(duration / 1000)}s:`, error.message);
     return { success: false, count: 0, error: error.message };
+  } finally {
+    setSyncRunning(false);
   }
 }

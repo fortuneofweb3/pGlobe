@@ -29,9 +29,8 @@ import { createRegionHistoryIndexes, getRegionHistory as getOptimizedRegionHisto
 const app = express();
 const server = require('http').createServer(app);
 import { initSocketServer } from './lib/server/socket-server';
-import { startRealtimeActivityPoller } from './lib/server/realtime-activity';
+// Realtime activity polling is now handled by a separate server (realtime-server.ts)
 initSocketServer(server);
-startRealtimeActivityPoller(); // Poll gossip every 10s for real-time updates
 
 const PORT = process.env.PORT || 3001;
 const API_SECRET = process.env.API_SECRET; // Secret for Vercel to authenticate

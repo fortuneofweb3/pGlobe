@@ -23,19 +23,22 @@ interface RacingNode extends NodeMetrics {
 }
 
 const RENDER_API_URL = process.env.NEXT_PUBLIC_RENDER_API_URL || 'https://pglobe.onrender.com';
+const REALTIME_SERVER_URL = process.env.NEXT_PUBLIC_REALTIME_SERVER_URL || '';
 const MAX_NODES_DISPLAYED = 12;
 const SCORE_DECAY_MS = 30000; // 30 seconds
 const STORAGE_KEY = 'xandeum_node_race_metrics';
 
-// Use local server if running on localhost
+// Use realtime server if configured, otherwise fall back to API server
 const getSocketUrl = () => {
     if (typeof window !== 'undefined') {
         const hostname = window.location.hostname;
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
-            return `http://${hostname}:${window.location.port || 3000}`;
+            // Check if local realtime server is running on port 3002
+            return `http://${hostname}:3002`;
         }
     }
-    return RENDER_API_URL;
+    // Use dedicated realtime server if configured
+    return REALTIME_SERVER_URL || RENDER_API_URL;
 };
 
 export default function NodeRaceVisualization() {
