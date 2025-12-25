@@ -118,6 +118,8 @@ export default function NodeRaceVisualization() {
 
         // Listen for activity events and update metrics
         socket.on('activity', (log: any) => {
+            console.log('[Racing] 📥 Received event:', log.type, log.pubkey?.substring(0, 8), log.data);
+
             setNodeMetrics((prev) => {
                 const existing = prev[log.pubkey] || {
                     pubkey: log.pubkey,
@@ -154,6 +156,7 @@ export default function NodeRaceVisualization() {
                     updated.credits = (updated.credits || 0) + log.data.earned;
                 }
 
+                console.log('[Racing] ✅ Updated metrics for', log.pubkey?.substring(0, 8), updated);
                 return { ...prev, [log.pubkey]: updated };
             });
         });
