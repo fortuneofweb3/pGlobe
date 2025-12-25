@@ -19,6 +19,7 @@ const ACTIVITY_TYPES = [
     { value: 'new_node', label: 'New Nodes' },
     { value: 'node_online', label: 'Online' },
     { value: 'node_offline', label: 'Offline' },
+    { value: 'node_status', label: 'Status Updates' },
     { value: 'credits_earned', label: 'Credits' },
     { value: 'packets_earned', label: 'Packets' },
     { value: 'streams_active', label: 'Streams' },
@@ -155,6 +156,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
             case 'new_node': return <CheckCircle2 className={`${iconClass} text-green-400`} />;
             case 'node_online': return <CheckCircle2 className={`${iconClass} text-green-400`} />;
             case 'node_offline': return <XCircle className={`${iconClass} text-red-400`} />;
+            case 'node_status': return <Activity className={`${iconClass} text-blue-400`} />;
             case 'streams_active': return <Zap className={`${iconClass} text-cyan-400`} />;
             case 'packets_earned': return <Activity className={`${iconClass} text-emerald-400`} />;
             case 'credits_earned': return <Activity className={`${iconClass} text-[#F0A741]`} />;

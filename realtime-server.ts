@@ -23,6 +23,15 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 dotenv.config({ path: '.env' });
 
+// Handle unhandled rejections to prevent server crashes
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[Realtime] ⚠️ Unhandled Rejection:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+    console.error('[Realtime] ⚠️ Uncaught Exception:', error);
+});
+
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
@@ -86,6 +95,7 @@ interface PreviousState {
 
 const previousNodeStates = new Map<string, PreviousState>();
 let isPolling = false;
+let lastPollTime = Date.now();
 
 // ============================================================================
 // HTTP HELPERS
@@ -217,8 +227,15 @@ async function fetchNodeStats(address: string): Promise<{ packets_received?: num
 // ============================================================================
 
 async function pollAndEmitActivity(io: SocketIOServer) {
+    // Safety: if isPolling has been stuck for over 60 seconds, force reset
+    if (isPolling && (Date.now() - lastPollTime > 60000)) {
+        console.warn('[Realtime] ⚠️ Polling was stuck, forcing reset');
+        isPolling = false;
+    }
+
     if (isPolling) return;
     isPolling = true;
+    lastPollTime = Date.now();
 
     const startTime = Date.now();
 
@@ -268,24 +285,15 @@ async function pollAndEmitActivity(io: SocketIOServer) {
         let emittedCount = 0;
         const connectedClients = io.sockets.sockets.size;
 
-        // For nodes with credit changes, fetch detailed stats in parallel (limited batches)
-        const nodesToEnrich: RawPod[] = [];
-
-        for (const pod of pods) {
+        // Fetch detailed stats for ALL pods to detect packet/stream changes
+        // (gossip data often lacks this info, we need get-stats from each node)
+        const nodesToEnrich: RawPod[] = pods.filter(pod => {
             const pubkey = pod.pubkey || pod.publicKey || '';
-            if (!pubkey || pubkey.length < 32) continue;
+            return pubkey && pubkey.length >= 32 && pod.address;
+        });
 
-            const currentCredits = creditsMap.get(pubkey) || pod.credits || pod.balance || 0;
-            const prev = previousNodeStates.get(pubkey);
-
-            // Enrich nodes that have credit activity (new or changed credits)
-            if (!prev || currentCredits !== prev.credits) {
-                nodesToEnrich.push(pod);
-            }
-        }
-
-        // Fetch stats for active nodes in parallel (batch of 20)
-        const BATCH_SIZE = 20;
+        // Fetch stats for all nodes in parallel (batch of 50 for speed)
+        const BATCH_SIZE = 50;
         const enrichedStats = new Map<string, { packets_received?: number, packets_sent?: number, active_streams?: number }>();
 
         for (let i = 0; i < nodesToEnrich.length; i += BATCH_SIZE) {
@@ -307,6 +315,9 @@ async function pollAndEmitActivity(io: SocketIOServer) {
 
         console.log(`[Realtime] 📊 Enriched ${enrichedStats.size}/${nodesToEnrich.length} active nodes with stats`);
 
+        // Collect all online nodes for status updates
+        const onlineNodes: Array<{ pubkey: string; address: string; location?: string; streams: number; packets: number; credits: number }> = [];
+
         for (const pod of pods) {
             const pubkey = pod.pubkey || pod.publicKey || '';
             if (!pubkey || pubkey.length < 32) continue;
@@ -325,24 +336,33 @@ async function pollAndEmitActivity(io: SocketIOServer) {
 
             const prev = previousNodeStates.get(pubkey);
 
+            // Track online nodes for status updates
+            onlineNodes.push({
+                pubkey,
+                address,
+                location,
+                streams: currentStreams,
+                packets: currentRx + currentTx,
+                credits: currentCredits,
+            });
+
             // First time - emit initial state and store
             if (!prev) {
-                // Emit initial stream state for racing visualization
-                if (currentStreams > 0) {
-                    const activityLog = {
-                        type: 'streams_active' as const,
-                        pubkey,
-                        address,
-                        location,
-                        message: `${address} has ${currentStreams} active streams`,
-                        data: {
-                            total: currentStreams,
-                            previous: 0,
-                        },
-                    };
-                    io.emit('activity', { ...activityLog, timestamp: now });
-                    emittedCount++;
-                }
+                // Emit new node event
+                const newNodeLog = {
+                    type: 'node_online' as const,
+                    pubkey,
+                    address,
+                    location,
+                    message: `${address} is online${location ? ` (${location})` : ''}`,
+                    data: {
+                        streams: currentStreams,
+                        packets: currentRx + currentTx,
+                        credits: currentCredits,
+                    },
+                };
+                io.emit('activity', { ...newNodeLog, timestamp: now });
+                emittedCount++;
 
                 previousNodeStates.set(pubkey, {
                     packetsReceived: currentRx,
@@ -417,6 +437,33 @@ async function pollAndEmitActivity(io: SocketIOServer) {
             });
         }
 
+        // === CONTINUOUS STATUS UPDATES ===
+        // If no change-based events were emitted, emit status updates for random active nodes
+        // This ensures the activity feed always has fresh data every poll cycle
+        if (emittedCount === 0 && onlineNodes.length > 0) {
+            // Pick up to 5 random active nodes to show status
+            const shuffled = onlineNodes.sort(() => Math.random() - 0.5);
+            const toEmit = shuffled.slice(0, Math.min(5, shuffled.length));
+
+            for (const node of toEmit) {
+                const statusLog = {
+                    type: 'node_status' as const,
+                    pubkey: node.pubkey,
+                    address: node.address,
+                    location: node.location,
+                    message: `${node.address} active${node.streams > 0 ? ` • ${node.streams} streams` : ''}${node.credits > 0 ? ` • ${node.credits.toFixed(1)} credits` : ''}`,
+                    data: {
+                        streams: node.streams,
+                        packets: node.packets,
+                        credits: node.credits,
+                        status: 'online',
+                    },
+                };
+                io.emit('activity', { ...statusLog, timestamp: now });
+                emittedCount++;
+            }
+        }
+
         const elapsed = Date.now() - startTime;
         console.log(`[Realtime] 📈 ${pods.length} pods, ${emittedCount} events → ${connectedClients} clients (${elapsed}ms)`);
 
@@ -473,6 +520,6 @@ server.listen(PORT, () => {
     // Start polling after 3 seconds
     setTimeout(() => pollAndEmitActivity(io), 3000);
 
-    // Poll every 10 seconds
+    // Poll every 5 seconds
     setInterval(() => pollAndEmitActivity(io), POLL_INTERVAL_MS);
 });

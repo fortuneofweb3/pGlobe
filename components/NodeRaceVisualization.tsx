@@ -143,10 +143,24 @@ export default function NodeRaceVisualization() {
                 // Update based on activity type
                 if (log.type === 'new_node' || log.type === 'node_online') {
                     updated.status = 'online';
+                    // Also update metrics if available in data
+                    if (log.data?.streams !== undefined) updated.activeStreams = log.data.streams;
+                    if (log.data?.packets !== undefined) {
+                        updated.packetsReceived = log.data.packets;
+                    }
+                    if (log.data?.credits !== undefined) updated.credits = log.data.credits;
                 } else if (log.type === 'node_offline') {
                     updated.status = 'offline';
                 } else if (log.type === 'node_syncing') {
                     updated.status = 'syncing';
+                } else if (log.type === 'node_status') {
+                    // Status broadcast - update all metrics with current values
+                    updated.status = 'online';
+                    if (log.data?.streams !== undefined) updated.activeStreams = log.data.streams;
+                    if (log.data?.packets !== undefined) {
+                        updated.packetsReceived = log.data.packets;
+                    }
+                    if (log.data?.credits !== undefined) updated.credits = log.data.credits;
                 } else if (log.type === 'streams_active' && log.data?.total !== undefined) {
                     updated.activeStreams = log.data.total;
                 } else if (log.type === 'packets_earned') {
