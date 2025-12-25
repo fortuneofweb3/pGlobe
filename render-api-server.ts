@@ -325,8 +325,9 @@ app.get('/api/activity-logs', authenticate, async (req, res) => {
     const pubkey = req.query.pubkey as string;
     const countryCode = req.query.countryCode as string;
     const limit = parseInt(req.query.limit as string) || 50;
+    const skip = parseInt(req.query.skip as string) || 0;
 
-    const logs = await getActivityLogs({ pubkey, countryCode, limit });
+    const logs = await getActivityLogs({ pubkey, countryCode, limit, skip });
     res.json({ logs });
   } catch (error: any) {
     console.error('[RenderAPI] ❌ Failed to get activity logs:', error);

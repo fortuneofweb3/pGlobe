@@ -14,12 +14,14 @@ export async function GET(request: Request) {
         const countryCode = searchParams.get('countryCode');
         const type = searchParams.get('type');
         const limit = searchParams.get('limit') || '50';
+        const skip = searchParams.get('skip') || '0';
 
         const queryParams = new URLSearchParams();
         if (pubkey) queryParams.set('pubkey', pubkey);
         if (countryCode) queryParams.set('countryCode', countryCode);
         if (type) queryParams.set('type', type);
         queryParams.set('limit', limit);
+        queryParams.set('skip', skip);
 
         const url = `${RENDER_API_URL}/api/activity-logs?${queryParams.toString()}`;
 

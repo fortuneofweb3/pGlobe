@@ -45,6 +45,7 @@ export async function getActivityLogs(options: {
     address?: string,
     countryCode?: string,
     limit?: number,
+    skip?: number,
     type?: ActivityType
 } = {}): Promise<ActivityLog[]> {
     try {
@@ -59,6 +60,7 @@ export async function getActivityLogs(options: {
         return await collection
             .find(query)
             .sort({ timestamp: -1 })
+            .skip(options.skip || 0)
             .limit(options.limit || 50)
             .toArray();
     } catch (error: any) {

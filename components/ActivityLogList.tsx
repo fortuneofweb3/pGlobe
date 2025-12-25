@@ -43,33 +43,48 @@ const getSocketUrl = () => {
 export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: ActivityLogListProps) {
     const [logs, setLogs] = useState<ActivityLog[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
     const [connected, setConnected] = useState(false);
     const [typeFilter, setTypeFilter] = useState('');
     const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
-    useEffect(() => {
-        // 1. Fetch initial logs
-        const fetchLogs = async () => {
+    const fetchLogs = async (skip: number = 0, append: boolean = false) => {
+        if (append) {
+            setLoadingMore(true);
+        } else {
             setLoading(true);
-            try {
-                const query = new URLSearchParams();
-                if (pubkey) query.set('pubkey', pubkey);
-                if (countryCode) query.set('countryCode', countryCode);
-                if (typeFilter) query.set('type', typeFilter);
-                query.set('limit', limit.toString());
+        }
 
-                const response = await fetch(`/api/activity-logs?${query.toString()}`);
-                const data = await response.json();
-                if (data.logs) {
+        try {
+            const query = new URLSearchParams();
+            if (pubkey) query.set('pubkey', pubkey);
+            if (countryCode) query.set('countryCode', countryCode);
+            if (typeFilter) query.set('type', typeFilter);
+            query.set('limit', limit.toString());
+            query.set('skip', skip.toString());
+
+            const response = await fetch(`/api/activity-logs?${query.toString()}`);
+            const data = await response.json();
+
+            if (data.logs) {
+                if (append) {
+                    setLogs(prev => [...prev, ...data.logs]);
+                } else {
                     setLogs(data.logs);
                 }
-            } catch (error) {
-                console.error('Failed to fetch logs:', error);
-            } finally {
-                setLoading(false);
+                setHasMore(data.logs.length === limit);
             }
-        };
+        } catch (error) {
+            console.error('Failed to fetch logs:', error);
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
+        }
+    };
 
+    useEffect(() => {
+        // 1. Fetch initial logs (history)
         fetchLogs();
 
         // 2. Setup Socket.io for real-time updates
@@ -296,6 +311,24 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                     </div>
                 )}
             </div>
+
+            {/* Load More Button */}
+            {!loading && hasMore && logs.length > 0 && (
+                <button
+                    onClick={() => fetchLogs(logs.length, true)}
+                    disabled={loadingMore}
+                    className="w-full py-3 bg-zinc-900/50 hover:bg-zinc-900 border border-zinc-800/50 hover:border-[#F0A741]/50 rounded-lg text-sm text-zinc-400 hover:text-zinc-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                    {loadingMore ? (
+                        <>
+                            <div className="w-4 h-4 border-2 border-[#F0A741]/30 border-t-[#F0A741] rounded-full animate-spin" />
+                            Loading...
+                        </>
+                    ) : (
+                        'Load More'
+                    )}
+                </button>
+            )}
 
             <div className="text-[10px] text-foreground/30 text-center flex-shrink-0">
                 Real-time network events • Updated via Socket.io
