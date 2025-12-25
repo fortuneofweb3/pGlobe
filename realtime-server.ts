@@ -202,24 +202,17 @@ async function fetchCredits(): Promise<Map<string, number>> {
     return creditsMap;
 }
 
-// Fetch detailed stats for a specific node
+// Fetch detailed stats for a specific node (fast, single port)
 async function fetchNodeStats(address: string): Promise<{ packets_received?: number, packets_sent?: number, active_streams?: number } | null> {
     const ip = address.split(':')[0];
     if (!ip) return null;
 
-    const portsToTry = [6000, 9000];
+    // Only try port 6000 with short timeout for speed
+    const url = `http://${ip}:6000/rpc`;
+    const payload = { jsonrpc: '2.0', method: 'get-stats', id: 1, params: [] };
 
-    for (const port of portsToTry) {
-        const url = `http://${ip}:${port}/rpc`;
-        const payload = { jsonrpc: '2.0', method: 'get-stats', id: 1, params: [] };
-
-        const result = await httpPost(url, payload, 3000); // Shorter timeout
-        if (result?.result) {
-            return result.result;
-        }
-    }
-
-    return null;
+    const result = await httpPost(url, payload, 1500); // 1.5 second timeout
+    return result?.result || null;
 }
 
 // ============================================================================
@@ -285,35 +278,32 @@ async function pollAndEmitActivity(io: SocketIOServer) {
         let emittedCount = 0;
         const connectedClients = io.sockets.sockets.size;
 
-        // Fetch detailed stats for ALL pods to detect packet/stream changes
-        // (gossip data often lacks this info, we need get-stats from each node)
+        // Get all valid pods with addresses for enrichment
         const nodesToEnrich: RawPod[] = pods.filter(pod => {
             const pubkey = pod.pubkey || pod.publicKey || '';
             return pubkey && pubkey.length >= 32 && pod.address;
         });
 
-        // Fetch stats for all nodes in parallel (batch of 50 for speed)
-        const BATCH_SIZE = 50;
+        // Fetch stats for ALL nodes in ONE parallel batch
+        // With 1.5s timeout and true parallelism, this should complete in ~2 seconds
         const enrichedStats = new Map<string, { packets_received?: number, packets_sent?: number, active_streams?: number }>();
 
-        for (let i = 0; i < nodesToEnrich.length; i += BATCH_SIZE) {
-            const batch = nodesToEnrich.slice(i, i + BATCH_SIZE);
-            const results = await Promise.allSettled(
-                batch.map(pod => fetchNodeStats(pod.address || ''))
-            );
+        const enrichStart = Date.now();
+        const enrichResults = await Promise.allSettled(
+            nodesToEnrich.map(pod => fetchNodeStats(pod.address || ''))
+        );
 
-            for (let j = 0; j < results.length; j++) {
-                const result = results[j];
-                const pod = batch[j];
-                const pubkey = pod.pubkey || pod.publicKey || '';
+        for (let j = 0; j < enrichResults.length; j++) {
+            const result = enrichResults[j];
+            const pod = nodesToEnrich[j];
+            const pubkey = pod.pubkey || pod.publicKey || '';
 
-                if (result.status === 'fulfilled' && result.value && pubkey) {
-                    enrichedStats.set(pubkey, result.value);
-                }
+            if (result.status === 'fulfilled' && result.value && pubkey) {
+                enrichedStats.set(pubkey, result.value);
             }
         }
 
-        console.log(`[Realtime] 📊 Enriched ${enrichedStats.size}/${nodesToEnrich.length} active nodes with stats`);
+        console.log(`[Realtime] 📊 Enriched ${enrichedStats.size}/${nodesToEnrich.length} nodes in ${Date.now() - enrichStart}ms`);
 
         // Collect all online nodes for status updates
         const onlineNodes: Array<{ pubkey: string; address: string; location?: string; streams: number; packets: number; credits: number }> = [];
