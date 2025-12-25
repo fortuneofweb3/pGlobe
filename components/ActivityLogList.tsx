@@ -136,7 +136,11 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         });
 
         socket.on('connect', () => {
+            console.log('[ActivityLogs] Connected - clearing buffer for fresh start');
             setConnected(true);
+            // Clear buffer on (re)connect to prevent stale events
+            bufferRef.current = [];
+            processingRef.current = false;
         });
 
         socket.on('connect_error', () => {
@@ -144,7 +148,11 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         });
 
         socket.on('disconnect', () => {
+            console.log('[ActivityLogs] Disconnected - clearing buffer');
             setConnected(false);
+            // Clear buffer on disconnect
+            bufferRef.current = [];
+            processingRef.current = false;
         });
 
         socket.on('activity', (newLog: ActivityLog) => {
