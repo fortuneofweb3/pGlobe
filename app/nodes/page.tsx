@@ -46,15 +46,12 @@ function NodesPageContent() {
     }
 
     if (statusFilter !== 'all') {
-      if (statusFilter === 'offline') {
-        filtered = filtered.filter((node) =>
-          node.status === 'offline' ||
-          node.status === 'syncing' ||
-          !node.status
-        );
-      } else {
-        filtered = filtered.filter((node) => node.status === statusFilter);
-      }
+      filtered = filtered.filter((node) => {
+        if (statusFilter === 'offline') {
+          return node.status === 'offline' || !node.status;
+        }
+        return node.status === statusFilter;
+      });
     }
 
     if (versionFilter !== 'all') {
@@ -140,7 +137,8 @@ function NodesPageContent() {
     return {
       all: nodes.length,
       online: nodes.filter(n => n.status === 'online').length,
-      offline: nodes.filter(n => n.status === 'offline' || n.status === 'syncing' || !n.status).length,
+      syncing: nodes.filter(n => n.status === 'syncing').length,
+      offline: nodes.filter(n => n.status === 'offline' || !n.status).length,
     };
   }, [nodes]);
 
@@ -382,7 +380,7 @@ function NodesPageContent() {
 
               <StatsCard
                 title="Syncing"
-                value={nodes.filter(n => n.status === 'syncing').length}
+                value={statusCounts.syncing}
                 icon={<Activity className="w-4 h-4" />}
                 color="blue"
               />
@@ -468,6 +466,7 @@ function NodesPageContent() {
                       >
                         <option value="all">All ({statusCounts.all})</option>
                         <option value="online">Online ({statusCounts.online})</option>
+                        <option value="syncing">Syncing ({statusCounts.syncing})</option>
                         <option value="offline">Offline ({statusCounts.offline})</option>
                       </select>
                     </div>
@@ -590,8 +589,8 @@ function NodesPageContent() {
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
                       className={`flex items-center gap-1 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${currentPage === 1
-                          ? 'border-border/40 text-foreground/30 cursor-not-allowed'
-                          : 'border-border/60 text-foreground/80 hover:border-[#F0A741]/50 hover:text-[#F0A741]'
+                        ? 'border-border/40 text-foreground/30 cursor-not-allowed'
+                        : 'border-border/60 text-foreground/80 hover:border-[#F0A741]/50 hover:text-[#F0A741]'
                         }`}
                     >
                       <ChevronLeft className="w-4 h-4" />
@@ -625,8 +624,8 @@ function NodesPageContent() {
                               key={page}
                               onClick={() => setCurrentPage(page)}
                               className={`min-w-[36px] h-9 px-2 rounded-lg text-sm font-medium transition-all ${currentPage === page
-                                  ? 'bg-[#F0A741] text-black'
-                                  : 'text-foreground/60 hover:bg-muted hover:text-foreground'
+                                ? 'bg-[#F0A741] text-black'
+                                : 'text-foreground/60 hover:bg-muted hover:text-foreground'
                                 }`}
                             >
                               {page}
@@ -640,8 +639,8 @@ function NodesPageContent() {
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
                       className={`flex items-center gap-1 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${currentPage === totalPages
-                          ? 'border-border/40 text-foreground/30 cursor-not-allowed'
-                          : 'border-border/60 text-foreground/80 hover:border-[#F0A741]/50 hover:text-[#F0A741]'
+                        ? 'border-border/40 text-foreground/30 cursor-not-allowed'
+                        : 'border-border/60 text-foreground/80 hover:border-[#F0A741]/50 hover:text-[#F0A741]'
                         }`}
                     >
                       <span className="hidden sm:inline">Next</span>
