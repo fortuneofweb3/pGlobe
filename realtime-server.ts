@@ -155,7 +155,11 @@ async function fetchPodsFromEndpoint(endpoint: string): Promise<RawPod[]> {
 
         const result = response.result;
         const pods = Array.isArray(result) ? result : result.pods || result.nodes || [];
-        console.log(`[Realtime] ✅ ${endpoint} returned ${pods.length} pods`);
+
+        // Log stream stats for debugging
+        const withStreams = pods.filter((p: RawPod) => (p.active_streams || 0) > 0).length;
+        console.log(`[Realtime] ✅ ${endpoint} returned ${pods.length} pods, ${withStreams} with active streams`);
+
         return pods;
     } catch (error: any) {
         console.error(`[Realtime] ❌ Error fetching from ${endpoint}:`, error.message);
