@@ -17,6 +17,8 @@ const PROXY_RPC_ENDPOINTS = [
     'https://rpc4.pchednode.com/rpc',
 ];
 
+const POD_CREDITS_API = 'https://podcredits.xandeum.network/api/pods-credits';
+
 // In-memory cache of previous node states
 const previousNodeStates: Map<string, {
     packetsReceived: number;
@@ -97,8 +99,15 @@ function httpPost(url: string, data: object, timeoutMs: number): Promise<any | n
  * Fetch pods from a gossip endpoint
  */
 async function fetchPodsFromEndpoint(endpoint: string): Promise<RawPod[]> {
-    const payload = { jsonrpc: '2.0', method: 'get-pods-with-stats', id: 1, params: [] };
-    const response = await httpPost(endpoint, payload, REQUEST_TIMEOUT_MS);
+    // Try get-pods-with-stats first (v0.7.0+), fallback to get-pods
+    let payload = { jsonrpc: '2.0', method: 'get-pods-with-stats', id: 1, params: [] };
+    let response = await httpPost(endpoint, payload, REQUEST_TIMEOUT_MS);
+
+    if (!response?.result) {
+        // Fallback to get-pods
+        payload = { jsonrpc: '2.0', method: 'get-pods', id: 1, params: [] };
+        response = await httpPost(endpoint, payload, REQUEST_TIMEOUT_MS);
+    }
 
     if (!response?.result) return [];
 
@@ -107,6 +116,34 @@ async function fetchPodsFromEndpoint(endpoint: string): Promise<RawPod[]> {
         : result.pods || result.nodes || [];
 
     return pods;
+}
+
+/**
+ * Fetch credits from the pod credits API
+ */
+async function fetchCredits(): Promise<Map<string, number>> {
+    const creditsMap = new Map<string, number>();
+
+    try {
+        const response = await fetch(POD_CREDITS_API, {
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+        });
+
+        if (!response.ok) return creditsMap;
+
+        const data = await response.json();
+        if (data.status !== 'success' || !data.pods_credits) return creditsMap;
+
+        for (const pod of data.pods_credits) {
+            if (pod.pod_id && typeof pod.credits === 'number') {
+                creditsMap.set(pod.pod_id, pod.credits);
+            }
+        }
+    } catch {
+        // Silent fail - credits are optional
+    }
+
+    return creditsMap;
 }
 
 /**
@@ -122,9 +159,13 @@ async function checkForActivityChanges() {
         // Pick a random endpoint for load balancing
         const endpoint = PROXY_RPC_ENDPOINTS[Math.floor(Math.random() * PROXY_RPC_ENDPOINTS.length)];
 
-        console.log(`[RealtimeActivity] 📊 Fetching from ${endpoint}...`);
+        console.log(`[RealtimeActivity] 📊 Fetching pods and credits...`);
 
-        const pods = await fetchPodsFromEndpoint(endpoint);
+        // Fetch pods and credits in parallel
+        const [pods, creditsMap] = await Promise.all([
+            fetchPodsFromEndpoint(endpoint),
+            fetchCredits()
+        ]);
 
         if (pods.length === 0) {
             console.log(`[RealtimeActivity] ⚠️  No pods returned from endpoint`);
@@ -147,7 +188,8 @@ async function checkForActivityChanges() {
             const currentRx = pod.packets_received || 0;
             const currentTx = pod.packets_sent || 0;
             const currentStreams = pod.active_streams || 0;
-            const currentCredits = pod.credits || pod.balance || 0;
+            // Get credits from credits API (more accurate than pod data)
+            const currentCredits = creditsMap.get(pubkey) || pod.credits || pod.balance || 0;
 
             const prev = previousNodeStates.get(pubkey);
 
