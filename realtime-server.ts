@@ -30,13 +30,28 @@ import { storeActivityLog } from './lib/server/mongodb-activity';
 
 const PORT = process.env.REALTIME_PORT || process.env.PORT || 3002;
 const POLL_INTERVAL_MS = 10000; // 10 seconds
-const REQUEST_TIMEOUT_MS = 8000;
+const REQUEST_TIMEOUT_MS = 30000; // 30 seconds (match sync-nodes.ts)
 
 const PROXY_RPC_ENDPOINTS = [
     'https://rpc1.pchednode.com/rpc',
     'https://rpc2.pchednode.com/rpc',
     'https://rpc3.pchednode.com/rpc',
     'https://rpc4.pchednode.com/rpc',
+];
+
+// Direct PRPC endpoints (same as sync-nodes.ts)
+const DIRECT_PRPC_ENDPOINTS = [
+    '173.212.203.145:6000',
+    '173.212.220.65:6000',
+    '161.97.97.41:6000',
+    '192.190.136.36:6000',
+    '192.190.136.37:6000',
+    '192.190.136.38:6000',
+    '192.190.136.28:6000',
+    '192.190.136.29:6000',
+    '207.244.255.1:6000',
+    '173.249.59.66:6000',
+    '173.249.54.191:6000',
 ];
 
 const POD_CREDITS_API = 'https://podcredits.xandeum.network/api/pods-credits';
@@ -175,19 +190,46 @@ async function pollAndEmitActivity(io: SocketIOServer) {
     const startTime = Date.now();
 
     try {
-        // Pick a random endpoint
-        const endpoint = PROXY_RPC_ENDPOINTS[Math.floor(Math.random() * PROXY_RPC_ENDPOINTS.length)];
+        // Query ALL endpoints in parallel (same as sync-nodes.ts)
+        const allEndpoints = [
+            ...PROXY_RPC_ENDPOINTS,
+            ...DIRECT_PRPC_ENDPOINTS.map(e => `http://${e}/rpc`)
+        ];
 
-        // Fetch pods and credits in parallel
-        const [pods, creditsMap] = await Promise.all([
-            fetchPodsFromEndpoint(endpoint),
-            fetchCredits()
-        ]);
+        console.log(`[Realtime] 📊 Querying ${allEndpoints.length} endpoints...`);
+
+        // Fetch from all endpoints in parallel
+        const results = await Promise.allSettled(
+            allEndpoints.map(ep => fetchPodsFromEndpoint(ep))
+        );
+
+        // Merge all pods (dedupe by pubkey)
+        const podsMap = new Map<string, RawPod>();
+        let successfulEndpoints = 0;
+
+        for (const result of results) {
+            if (result.status === 'fulfilled' && result.value.length > 0) {
+                successfulEndpoints++;
+                for (const pod of result.value) {
+                    const pubkey = pod.pubkey || pod.publicKey || '';
+                    if (pubkey && !podsMap.has(pubkey)) {
+                        podsMap.set(pubkey, pod);
+                    }
+                }
+            }
+        }
+
+        const pods = Array.from(podsMap.values());
+
+        // Also fetch credits
+        const creditsMap = await fetchCredits();
 
         if (pods.length === 0) {
-            console.log('[Realtime] ⚠️  No pods returned');
+            console.log(`[Realtime] ⚠️  No pods returned from ${allEndpoints.length} endpoints (${successfulEndpoints} successful)`);
             return;
         }
+
+        console.log(`[Realtime] ✅ Got ${pods.length} pods from ${successfulEndpoints}/${allEndpoints.length} endpoints`);
 
         const now = new Date();
         let emittedCount = 0;
