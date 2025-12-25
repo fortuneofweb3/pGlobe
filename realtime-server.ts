@@ -4,7 +4,9 @@
  * 
  * Standalone server that polls gossip endpoints every 10 seconds
  * and broadcasts activity events to connected clients.
- * Also stores events to MongoDB for historical persistence.
+ * 
+ * MongoDB storage is handled by the main sync server to avoid
+ * overwhelming the connection with burst writes.
  * 
  * Deploy this as a separate Render service.
  * 
@@ -20,9 +22,6 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config({ path: '.env.local' });
 dotenv.config({ path: '.env' });
-
-// Import MongoDB activity storage
-import { storeActivityLog } from './lib/server/mongodb-activity';
 
 // ============================================================================
 // CONFIGURATION
@@ -289,7 +288,6 @@ async function pollAndEmitActivity(io: SocketIOServer) {
                     },
                 };
                 io.emit('activity', { ...activityLog, timestamp: now });
-                storeActivityLog(activityLog); // Persist to MongoDB
                 emittedCount++;
             }
 
@@ -308,7 +306,6 @@ async function pollAndEmitActivity(io: SocketIOServer) {
                     },
                 };
                 io.emit('activity', { ...activityLog, timestamp: now });
-                storeActivityLog(activityLog); // Persist to MongoDB
                 emittedCount++;
             }
 
@@ -326,7 +323,6 @@ async function pollAndEmitActivity(io: SocketIOServer) {
                     },
                 };
                 io.emit('activity', { ...activityLog, timestamp: now });
-                storeActivityLog(activityLog); // Persist to MongoDB
                 emittedCount++;
             }
 
