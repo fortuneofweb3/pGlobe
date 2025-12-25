@@ -139,19 +139,29 @@ function httpPost(url: string, data: object, timeoutMs: number): Promise<any | n
 // ============================================================================
 
 async function fetchPodsFromEndpoint(endpoint: string): Promise<RawPod[]> {
-    // Try get-pods-with-stats first, fallback to get-pods
-    let payload: any = { jsonrpc: '2.0', method: 'get-pods-with-stats', id: 1, params: [] };
-    let response = await httpPost(endpoint, payload, REQUEST_TIMEOUT_MS);
+    try {
+        // Try get-pods-with-stats first, fallback to get-pods
+        let payload: any = { jsonrpc: '2.0', method: 'get-pods-with-stats', id: 1, params: [] };
+        let response = await httpPost(endpoint, payload, REQUEST_TIMEOUT_MS);
 
-    if (!response?.result) {
-        payload = { jsonrpc: '2.0', method: 'get-pods', id: 1, params: [] };
-        response = await httpPost(endpoint, payload, REQUEST_TIMEOUT_MS);
+        if (!response?.result) {
+            payload = { jsonrpc: '2.0', method: 'get-pods', id: 1, params: [] };
+            response = await httpPost(endpoint, payload, REQUEST_TIMEOUT_MS);
+        }
+
+        if (!response?.result) {
+            console.log(`[Realtime] ❌ No result from ${endpoint} - response:`, JSON.stringify(response).slice(0, 200));
+            return [];
+        }
+
+        const result = response.result;
+        const pods = Array.isArray(result) ? result : result.pods || result.nodes || [];
+        console.log(`[Realtime] ✅ ${endpoint} returned ${pods.length} pods`);
+        return pods;
+    } catch (error: any) {
+        console.error(`[Realtime] ❌ Error fetching from ${endpoint}:`, error.message);
+        return [];
     }
-
-    if (!response?.result) return [];
-
-    const result = response.result;
-    return Array.isArray(result) ? result : result.pods || result.nodes || [];
 }
 
 async function fetchCredits(): Promise<Map<string, number>> {
