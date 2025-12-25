@@ -4,8 +4,9 @@ import React, { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 import { ActivityLog } from '@/lib/server/mongodb-activity';
 import { formatDistanceToNow } from 'date-fns';
-import { Activity, Zap, CheckCircle2, XCircle, RefreshCw, MapPin, PlusCircle, HardDrive, Layers, Filter } from 'lucide-react';
+import { Activity, Zap, CheckCircle2, XCircle, RefreshCw, MapPin, PlusCircle, HardDrive, Layers, Filter, Globe } from 'lucide-react';
 import { clsx } from 'clsx';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface ActivityLogListProps {
     pubkey?: string;
@@ -24,7 +25,7 @@ const ACTIVITY_TYPES = [
     { value: 'streams_active', label: 'Stream Changes' },
 ];
 
-const RENDER_API_URL = process.env.NEXT_PUBLIC_RENDER_API_URL || 'http://localhost:3001';
+const RENDER_API_URL = process.env.NEXT_PUBLIC_RENDER_API_URL || 'https://pglobe.onrender.com';
 
 export default function ActivityLogList({ pubkey, countryCode, limit = 50, showFilters = false }: ActivityLogListProps) {
     const [logs, setLogs] = useState<ActivityLog[]>([]);
@@ -58,10 +59,20 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50, showF
         fetchLogs();
 
         // 2. Setup Socket.io for real-time updates
-        const socket = io(RENDER_API_URL);
+        const socket = io(RENDER_API_URL, {
+            transports: ['websocket', 'polling'],
+            reconnectionAttempts: 5,
+            timeout: 10000,
+        });
 
         socket.on('connect', () => {
             setConnected(true);
+            console.log('[Socket] Connected successfully');
+        });
+
+        socket.on('connect_error', (err: Error) => {
+            console.warn('[Socket] Connection error:', err.message);
+            setConnected(false);
         });
 
         socket.on('disconnect', () => {
@@ -74,9 +85,9 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50, showF
             if (countryCode && newLog.countryCode !== countryCode) return;
             if (typeFilter && newLog.type !== typeFilter) return;
 
-            setLogs((prev) => {
+            setLogs((prev: ActivityLog[]) => {
                 // Prevent duplicates if re-fetched recently
-                if (prev.some(l => l._id === newLog._id)) return prev;
+                if (prev.some((l: ActivityLog) => l._id === newLog._id || (l.timestamp === newLog.timestamp && l.pubkey === newLog.pubkey && l.type === newLog.type))) return prev;
                 return [newLog, ...prev].slice(0, limit);
             });
         });
@@ -103,12 +114,13 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50, showF
         <div className="w-full space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-2">
                 <div className="flex items-center gap-3">
-                    <h3 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">
-                        {pubkey ? 'Node Activity' : countryCode ? `Activity in ${countryCode}` : 'Live Activity'}
+                    <h3 className="text-sm font-medium text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                        <Activity className="w-4 h-4" />
+                        {pubkey ? 'Node Activity' : countryCode ? `Activity in ${countryCode}` : 'Live Network Feed'}
                     </h3>
-                    <div className="flex items-center gap-2">
-                        <div className={clsx("w-2 h-2 rounded-full", connected ? "bg-green-500 animate-pulse" : "bg-zinc-600")} />
-                        <span className="text-[10px] text-zinc-500 uppercase tracking-tight">{connected ? 'Live' : 'Offline'}</span>
+                    <div className="flex items-center gap-2 bg-zinc-900/80 px-2 py-1 rounded-full border border-zinc-800">
+                        <div className={clsx("w-1.5 h-1.5 rounded-full", connected ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse" : "bg-zinc-600")} />
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">{connected ? 'Live' : 'Offline'}</span>
                     </div>
                 </div>
 
@@ -119,7 +131,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50, showF
                             <select
                                 value={typeFilter}
                                 onChange={(e) => setTypeFilter(e.target.value)}
-                                className="pl-9 pr-8 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-300 focus:outline-none focus:border-zinc-700 appearance-none cursor-pointer"
+                                className="pl-9 pr-8 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-300 focus:outline-none focus:border-zinc-700 appearance-none cursor-pointer transition-all hover:bg-zinc-800/50"
                             >
                                 {ACTIVITY_TYPES.map(t => (
                                     <option key={t.value} value={t.value}>{t.label}</option>
@@ -131,54 +143,95 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50, showF
                 )}
             </div>
 
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden backdrop-blur-sm min-h-[200px] flex flex-col">
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden backdrop-blur-md min-h-[300px] flex flex-col shadow-2xl relative">
+                {/* Subtle glow effect */}
+                <div className="absolute inset-0 bg-blue-500/5 pointer-events-none" />
+
                 {loading && logs.length === 0 ? (
                     <div className="flex-1 flex items-center justify-center p-12">
-                        <RefreshCw className="w-6 h-6 animate-spin text-zinc-700" />
+                        <div className="relative">
+                            <RefreshCw className="w-8 h-8 animate-spin text-blue-500 opacity-20" />
+                            <RefreshCw className="w-8 h-8 animate-spin text-blue-400 absolute inset-0 blur-sm" />
+                        </div>
                     </div>
                 ) : logs.length === 0 ? (
                     <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
-                        <Activity className="w-8 h-8 text-zinc-800 mb-3" />
-                        <p className="text-zinc-500 text-sm">No activity logs found matching your criteria.</p>
+                        <Activity className="w-12 h-12 text-zinc-800 mb-4 animate-pulse" />
+                        <p className="text-zinc-500 text-sm font-medium">No system activity detected.</p>
+                        <p className="text-zinc-600 text-xs mt-1">Waiting for incoming events...</p>
                     </div>
                 ) : (
-                    <div className="divide-y divide-zinc-800/50">
-                        {logs.map((log, idx) => (
-                            <div key={log._id || idx} className="p-4 hover:bg-white/[0.02] transition-colors group">
-                                <div className="flex items-start gap-4">
-                                    <div className="mt-0.5 p-2 rounded-lg bg-zinc-800/50 group-hover:bg-zinc-800 transition-colors">
-                                        {getIcon(log.type)}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between gap-4">
-                                            <p className="text-sm text-zinc-200 font-medium leading-relaxed">
-                                                {log.message}
-                                            </p>
-                                            <span className="text-[10px] text-zinc-500 whitespace-nowrap font-medium uppercase tracking-tighter">
-                                                {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
-                                            </span>
+                    <div className="divide-y divide-zinc-800/30 overflow-y-auto max-h-[600px] scrollbar-hide">
+                        <AnimatePresence initial={false} mode="popLayout">
+                            {logs.map((log) => (
+                                <motion.div
+                                    key={log._id || `${log.timestamp}-${log.pubkey}-${log.type}`}
+                                    initial={{ opacity: 0, x: -20, height: 0 }}
+                                    animate={{ opacity: 1, x: 0, height: 'auto' }}
+                                    exit={{ opacity: 0, x: 20, height: 0 }}
+                                    transition={{
+                                        type: "spring",
+                                        stiffness: 300,
+                                        damping: 30,
+                                        opacity: { duration: 0.2 }
+                                    }}
+                                    className="p-4 hover:bg-white/[0.03] transition-colors group relative overflow-hidden"
+                                >
+                                    {/* Scanline effect for new items */}
+                                    {Date.now() - new Date(log.timestamp).getTime() < 5000 && (
+                                        <div className="absolute inset-x-0 top-0 h-[1px] bg-blue-500/50 blur-[1px] animate-[scanline_2s_ease-out_infinite]" />
+                                    )}
+
+                                    <div className="flex items-start gap-4">
+                                        <div className="mt-0.5 p-2 rounded-lg bg-zinc-800/50 border border-zinc-700/50 group-hover:border-zinc-600 transition-all shadow-inner">
+                                            {getIcon(log.type)}
                                         </div>
-                                        <div className="flex items-center gap-4 mt-1.5">
-                                            {!pubkey && (
-                                                <div className="flex items-center gap-1.5 min-w-0">
-                                                    <div className="w-1 h-1 rounded-full bg-zinc-700" />
-                                                    <span className="text-[10px] font-mono text-zinc-500 truncate max-w-[140px] hover:text-zinc-400 cursor-default">
-                                                        {log.pubkey}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between gap-4">
+                                                <p className="text-sm text-zinc-100 font-semibold leading-relaxed tracking-tight">
+                                                    {log.message}
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] text-zinc-500 whitespace-nowrap font-bold uppercase tracking-widest bg-zinc-800 px-1.5 py-0.5 rounded">
+                                                        {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
                                                     </span>
                                                 </div>
-                                            )}
-                                            <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-medium">
-                                                <MapPin className="w-3 h-3 text-zinc-600" />
-                                                <span className="truncate">{log.location}</span>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2">
+                                                <div className="flex items-center gap-1.5 min-w-0 bg-black/20 px-2 py-0.5 rounded border border-zinc-800/50">
+                                                    <Globe className="w-3 h-3 text-zinc-500" />
+                                                    <span className="text-[10px] font-mono text-zinc-400 truncate max-w-[180px] hover:text-blue-400 cursor-pointer transition-colors" title={log.address || log.pubkey}>
+                                                        {log.address || log.pubkey}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 font-bold uppercase tracking-wider italic">
+                                                    <MapPin className="w-3 h-3 text-zinc-600" />
+                                                    <span>{log.location}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        ))}
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
                     </div>
                 )}
             </div>
+
+            <style jsx global>{`
+                @keyframes scanline {
+                    0% { transform: translateY(0); opacity: 0; }
+                    50% { opacity: 1; }
+                    100% { transform: translateY(80px); opacity: 0; }
+                }
+                .scrollbar-hide::-webkit-scrollbar {
+                    display: none;
+                }
+                .scrollbar-hide {
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
+                }
+            `}</style>
         </div>
     );
 }

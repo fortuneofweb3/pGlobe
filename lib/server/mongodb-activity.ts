@@ -15,6 +15,7 @@ export interface ActivityLog {
     _id?: string;
     timestamp: Date;
     pubkey: string;
+    address?: string;
     type: ActivityType;
     message: string;
     data?: any;
@@ -41,6 +42,7 @@ export async function storeActivityLog(log: Omit<ActivityLog, 'timestamp'>): Pro
 
 export async function getActivityLogs(options: {
     pubkey?: string,
+    address?: string,
     countryCode?: string,
     limit?: number,
     type?: ActivityType
@@ -50,6 +52,7 @@ export async function getActivityLogs(options: {
         const query: any = {};
 
         if (options.pubkey) query.pubkey = options.pubkey;
+        if (options.address) query.address = options.address;
         if (options.countryCode) query.countryCode = options.countryCode;
         if (options.type) query.type = options.type;
 

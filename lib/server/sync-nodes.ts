@@ -459,6 +459,7 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
   const { emitActivity } = await import('./socket-server');
 
   const pubkey = newNode.pubkey || newNode.publicKey || '';
+  const nodeAddress = newNode.address || '';
   const countryCode = newNode.locationData?.countryCode || '??';
   const location = newNode.location || 'Unknown';
 
@@ -466,6 +467,7 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
   if (!oldNode) {
     const log = {
       pubkey,
+      address: nodeAddress,
       type: 'new_node' as const,
       message: `New node discovered: ${pubkey.slice(0, 8)}... (${location})`,
       countryCode,
@@ -494,6 +496,7 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
 
     const log = {
       pubkey,
+      address: nodeAddress,
       type,
       message,
       countryCode,
@@ -510,6 +513,7 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
     const earned = newNode.credits - oldNode.credits;
     const log = {
       pubkey,
+      address: nodeAddress,
       type: 'credits_earned' as const,
       message: `Node ${pubkey.slice(0, 8)}... earned ${earned.toFixed(2)} credits`,
       countryCode,
@@ -532,6 +536,7 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
     const txEarned = newTx - oldTx;
     const log = {
       pubkey,
+      address: nodeAddress,
       type: 'packets_earned' as const,
       message: `Node ${pubkey.slice(0, 8)}... processed ${rxEarned + txEarned} packets`,
       countryCode,
@@ -548,6 +553,7 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
     const increased = newNode.activeStreams - oldNode.activeStreams;
     const log = {
       pubkey,
+      address: nodeAddress,
       type: 'streams_active' as const,
       message: `Node ${pubkey.slice(0, 8)}... active streams increased by ${increased} (Total: ${newNode.activeStreams})`,
       countryCode,
