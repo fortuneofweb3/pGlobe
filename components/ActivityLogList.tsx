@@ -384,36 +384,38 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                                 </motion.div>
                             ))}
                         </AnimatePresence>
+
+                        {/* Infinite scroll sentinel - only when paused */}
+                        {isPaused && hasMore && logs.length > 0 && (
+                            <div
+                                ref={(el) => {
+                                    if (!el) return;
+                                    const observer = new IntersectionObserver(
+                                        (entries) => {
+                                            if (entries[0].isIntersecting && !loadingMore && hasMore && isPaused) {
+                                                fetchLogs(logs.length, true);
+                                            }
+                                        },
+                                        { threshold: 0.1 }
+                                    );
+                                    observer.observe(el);
+                                    return () => observer.disconnect();
+                                }}
+                                className="w-full py-4 flex items-center justify-center"
+                            >
+                                {loadingMore ? (
+                                    <div className="flex items-center gap-2 text-foreground/40 text-xs">
+                                        <div className="w-4 h-4 border-2 border-[#F0A741]/30 border-t-[#F0A741] rounded-full animate-spin" />
+                                        Loading more...
+                                    </div>
+                                ) : (
+                                    <div className="text-foreground/20 text-xs">Scroll for more</div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
-
-            {/* Infinite scroll sentinel */}
-            {!loading && hasMore && logs.length > 0 && (
-                <div
-                    ref={(el) => {
-                        if (!el) return;
-                        const observer = new IntersectionObserver(
-                            (entries) => {
-                                if (entries[0].isIntersecting && !loadingMore && hasMore) {
-                                    fetchLogs(logs.length, true);
-                                }
-                            },
-                            { threshold: 0.1 }
-                        );
-                        observer.observe(el);
-                        return () => observer.disconnect();
-                    }}
-                    className="w-full py-4 flex items-center justify-center"
-                >
-                    {loadingMore && (
-                        <div className="flex items-center gap-2 text-foreground/40 text-xs">
-                            <div className="w-4 h-4 border-2 border-[#F0A741]/30 border-t-[#F0A741] rounded-full animate-spin" />
-                            Loading more...
-                        </div>
-                    )}
-                </div>
-            )}
 
         </div>
     );
