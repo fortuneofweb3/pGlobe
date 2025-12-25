@@ -260,8 +260,25 @@ async function pollAndEmitActivity(io: SocketIOServer) {
 
             const prev = previousNodeStates.get(pubkey);
 
-            // First time - just store state
+            // First time - emit initial state and store
             if (!prev) {
+                // Emit initial stream state for racing visualization
+                if (currentStreams > 0) {
+                    const activityLog = {
+                        type: 'streams_active' as const,
+                        pubkey,
+                        address,
+                        location,
+                        message: `${address} has ${currentStreams} active streams`,
+                        data: {
+                            total: currentStreams,
+                            previous: 0,
+                        },
+                    };
+                    io.emit('activity', { ...activityLog, timestamp: now });
+                    emittedCount++;
+                }
+
                 previousNodeStates.set(pubkey, {
                     packetsReceived: currentRx,
                     packetsSent: currentTx,
