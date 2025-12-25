@@ -137,9 +137,11 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                 return;
             }
 
-            // Dynamic Buffer Logic:
-            // Goal: Process ~70% of buffer in 5 seconds to keep up.
-            // Formula: TimePerItem = 5000 / (Buffer * 0.7)
+            // Safety Valve: If too much data (>60), drop oldest 50% to catch up
+            if (bufferRef.current.length > 60) {
+                bufferRef.current = bufferRef.current.slice(-Math.floor(bufferRef.current.length * 0.5));
+            }
+
             const logToAdd = bufferRef.current.shift()!;
 
             setLogs((prev: ActivityLog[]) => {
@@ -155,16 +157,17 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
             });
 
             // Calculate delay based on buffer size with randomization
-            // Base delay = 3500ms total window / (70% of buffer)
+            // Goal: Process ~90% of buffer in 7 seconds
+            // Formula: TimePerItem = 7000 / (Buffer * 0.9)
             const bufferSize = Math.max(bufferRef.current.length + 1, 1);
-            const baseDelay = 3500 / (bufferSize * 0.7);
+            const baseDelay = 7000 / (bufferSize * 0.9);
 
             // Add randomness (0.6x to 1.4x)
             const jitter = 0.6 + Math.random() * 0.8;
             let delay = baseDelay * jitter;
 
-            // Clamp: Never slower than 1s, never faster than 20ms
-            delay = Math.min(1000, Math.max(20, delay));
+            // Clamp: Never slower than 800ms (keep decent speed), never faster than 20ms
+            delay = Math.min(800, Math.max(20, delay));
 
             setTimeout(processOne, delay);
         };

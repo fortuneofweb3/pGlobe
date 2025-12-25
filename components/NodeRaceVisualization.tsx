@@ -134,6 +134,11 @@ export default function NodeRaceVisualization() {
                 return;
             }
 
+            // Safety Valve: If too much data (>60), drop oldest 50% to catch up
+            if (bufferRef.current.length > 60) {
+                bufferRef.current = bufferRef.current.slice(-Math.floor(bufferRef.current.length * 0.5));
+            }
+
             const log = bufferRef.current.shift()!;
 
             setNodeMetrics((prev) => {
@@ -180,17 +185,17 @@ export default function NodeRaceVisualization() {
             });
 
             // Dynamic Buffer Logic with Randomization
-            // Goal: Process ~70% of buffer in 5 seconds
+            // Goal: Process ~90% of buffer in 7 seconds
             const bufferSize = Math.max(bufferRef.current.length + 1, 1);
-            // 3500ms / (buffer * 0.7) = avg time per item
-            const baseDelay = 3500 / (bufferSize * 0.7);
+            // 7000ms / (buffer * 0.9) = avg time per item
+            const baseDelay = 7000 / (bufferSize * 0.9);
 
             // Randomize (0.5x to 1.5x) to feel organic
             const jitter = 0.5 + Math.random();
             let delay = baseDelay * jitter;
 
-            // Clamp: 20ms (fast catchup) to 1000ms (slow idle)
-            delay = Math.min(1000, Math.max(20, delay));
+            // Clamp: 20ms (fast catchup) to 800ms (keep active)
+            delay = Math.min(800, Math.max(20, delay));
 
             setTimeout(processOne, delay);
         };
