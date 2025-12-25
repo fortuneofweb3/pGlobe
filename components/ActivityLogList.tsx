@@ -92,13 +92,34 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         });
 
         socket.on('activity', (newLog: ActivityLog) => {
+            console.log('[ActivityLogs] 📥 Received event:', newLog.type, newLog.message);
+
+            // Filter by pubkey/country if specified
             if (pubkey && newLog.pubkey !== pubkey) return;
             if (countryCode && newLog.countryCode !== countryCode) return;
             if (typeFilter && newLog.type !== typeFilter) return;
 
+            // Add unique ID if not present (Socket.io events don't have MongoDB _id)
+            const logWithId = {
+                ...newLog,
+                _id: newLog._id || `${newLog.pubkey}-${newLog.type}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                timestamp: newLog.timestamp || new Date().toISOString(),
+            };
+
             setLogs((prev: ActivityLog[]) => {
-                if (prev.some((l: ActivityLog) => l._id === newLog._id || (l.timestamp === newLog.timestamp && l.pubkey === newLog.pubkey && l.type === newLog.type))) return prev;
-                return [newLog, ...prev].slice(0, limit);
+                // Check for duplicates by matching pubkey, type, and message within last 5 seconds
+                const isDuplicate = prev.some((l: ActivityLog) => {
+                    const timeDiff = Math.abs(new Date(l.timestamp).getTime() - new Date(logWithId.timestamp).getTime());
+                    return l.pubkey === logWithId.pubkey && l.type === logWithId.type && l.message === logWithId.message && timeDiff < 5000;
+                });
+
+                if (isDuplicate) {
+                    console.log('[ActivityLogs] ⏭️ Skipping duplicate');
+                    return prev;
+                }
+
+                console.log('[ActivityLogs] ✅ Adding new event to logs');
+                return [logWithId, ...prev].slice(0, limit);
             });
         });
 

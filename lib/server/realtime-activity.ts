@@ -76,8 +76,10 @@ function fetchNodeStats(address: string): Promise<any> {
 /**
  * Process a batch of nodes and emit activity events
  */
-async function processBatch(nodes: any[], now: Date): Promise<number> {
+async function processBatch(nodes: any[], now: Date): Promise<{ emitted: number; success: number; failed: number }> {
     let emittedCount = 0;
+    let successCount = 0;
+    let failedCount = 0;
 
     const statsPromises = nodes.map(async (node) => {
         const pubkey = node.pubkey || node.publicKey || '';
@@ -85,7 +87,11 @@ async function processBatch(nodes: any[], now: Date): Promise<number> {
         if (!address) return null;
 
         const stats = await fetchNodeStats(address);
-        if (!stats) return null;
+        if (!stats) {
+            failedCount++;
+            return null;
+        }
+        successCount++;
 
         const location = node.locationData?.city
             ? `${node.locationData.city}, ${node.locationData.country}`
@@ -161,7 +167,7 @@ async function processBatch(nodes: any[], now: Date): Promise<number> {
         });
     }
 
-    return emittedCount;
+    return { emitted: emittedCount, success: successCount, failed: failedCount };
 }
 
 /**
@@ -182,18 +188,20 @@ async function checkAllNodesForActivity() {
         console.log(`[RealtimeActivity] 📊 Checking ${onlineNodes.length} online nodes...`);
 
         let totalEmitted = 0;
+        let totalSuccess = 0;
+        let totalFailed = 0;
 
         // Process in batches to avoid overwhelming network
         for (let i = 0; i < onlineNodes.length; i += BATCH_SIZE) {
             const batch = onlineNodes.slice(i, i + BATCH_SIZE);
-            const emitted = await processBatch(batch, now);
-            totalEmitted += emitted;
+            const result = await processBatch(batch, now);
+            totalEmitted += result.emitted;
+            totalSuccess += result.success;
+            totalFailed += result.failed;
         }
 
         const elapsed = Date.now() - startTime;
-        if (totalEmitted > 0) {
-            console.log(`[RealtimeActivity] ✅ Emitted ${totalEmitted} events from ${onlineNodes.length} nodes in ${elapsed}ms`);
-        }
+        console.log(`[RealtimeActivity] 📈 Stats: ${totalSuccess} success, ${totalFailed} failed, ${totalEmitted} events in ${elapsed}ms`);
     } catch (error: any) {
         console.error('[RealtimeActivity] ❌ Error:', error?.message);
     } finally {
