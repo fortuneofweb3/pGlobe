@@ -429,6 +429,31 @@ async function pollAndEmitActivity(io: SocketIOServer) {
             });
         }
 
+        // === OFFLINE DETECTION ===
+        // Check for nodes that were online previously but are missing from the current poll
+        const currentPubkeys = new Set(pods.map(p => p.pubkey || p.publicKey));
+        for (const [pubkey, prevState] of previousNodeStates) {
+            if (!currentPubkeys.has(pubkey)) {
+                // Node has gone offline
+                const offlineLog = {
+                    type: 'node_offline' as const,
+                    pubkey,
+                    message: `${pubkey.substring(0, 8)}... went offline`,
+                    timestamp: now,
+                    data: {
+                        lastStreams: prevState.activeStreams,
+                        lastPackets: prevState.packetsReceived + prevState.packetsSent,
+                    }
+                };
+                io.emit('activity', offlineLog);
+                emittedCount++;
+
+                // Remove from tracked states
+                previousNodeStates.delete(pubkey);
+                console.log(`[Realtime] 🔴 Node offline: ${pubkey.substring(0, 8)}...`);
+            }
+        }
+
         // === CONTINUOUS STATUS UPDATES ===
         // If no change-based events were emitted, emit status updates for random active nodes
         // This ensures the activity feed always has fresh data every poll cycle

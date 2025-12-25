@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import io from 'socket.io-client';
 import { ActivityLog } from '@/lib/server/mongodb-activity';
 import { formatDistanceToNow } from 'date-fns';
@@ -152,8 +153,9 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                 });
 
                 if (isDuplicate) return prev;
-                // Hard cap at 20 logs - old ones removed as new come in
-                return [logToAdd, ...prev].slice(0, 20);
+                if (isDuplicate) return prev;
+                // Keep 100 logs in memory so filtering works
+                return [logToAdd, ...prev].slice(0, 100);
             });
 
             // Calculate delay based on buffer size with randomization
@@ -213,10 +215,12 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
             // Skip streams_active events - they're only for racing visualization
             if (newLog.type === 'streams_active') return;
 
-            // Filter by pubkey/country if specified
+            // Filter by pubkey/country if specified (server-side filters remain strict)
             if (pubkey && newLog.pubkey !== pubkey) return;
             if (countryCode && newLog.countryCode !== countryCode) return;
-            if (typeFilter && newLog.type !== typeFilter) return;
+
+            // Client-side type filtering is done at RENDER time now
+            // We store ALL logs so switching filters works instantly
 
             // Add unique ID if not present
             const logWithId = {
@@ -362,57 +366,60 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                 ) : (
                     <div className="space-y-2 relative flex-1 overflow-y-auto">
                         <AnimatePresence mode="popLayout">
-                            {logs.map((log, index) => (
-                                <motion.div
-                                    key={log._id || `${log.timestamp}-${log.pubkey}-${log.type}`}
-                                    layout
-                                    initial={{ opacity: 0, y: -20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.95 }}
-                                    transition={{
-                                        type: "spring",
-                                        stiffness: 400,
-                                        damping: 35,
-                                    }}
-                                    className="p-4 bg-muted/5 hover:bg-white/[0.02] border border-border/20 rounded-lg transition-all group/item relative"
-                                >
-                                    <div className="flex items-start gap-4">
-                                        {/* Icon */}
-                                        <div className="mt-1 p-2 rounded-lg bg-zinc-900/80 border border-zinc-800/80 group-hover/item:border-[#F0A741]/30 transition-all">
-                                            {getIcon(log.type)}
-                                        </div>
-
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center justify-between gap-4 mb-2">
-                                                <p className="text-sm text-zinc-200 font-semibold leading-relaxed">
-                                                    {log.message}
-                                                </p>
-                                                <span className="text-[9px] text-zinc-500 whitespace-nowrap font-bold uppercase tracking-wider bg-zinc-900/50 px-2 py-0.5 rounded border border-zinc-800/50">
-                                                    {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
-                                                </span>
+                            {/* Filter logs at render time */}
+                            {
+                                logs.filter(log => !typeFilter || log.type === typeFilter).slice(0, 50).map((log, index) => (
+                                    <motion.div
+                                        key={log._id || `${log.timestamp}-${log.pubkey}-${log.type}`}
+                                        layout
+                                        initial={{ opacity: 0, y: -20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        transition={{
+                                            type: "spring",
+                                            stiffness: 400,
+                                            damping: 35,
+                                        }}
+                                        className="p-4 bg-muted/5 hover:bg-white/[0.02] border border-border/20 rounded-lg transition-all group/item relative"
+                                    >
+                                        <div className="flex items-start gap-4">
+                                            {/* Icon */}
+                                            <div className="mt-1 p-2 rounded-lg bg-zinc-900/80 border border-zinc-800/80 group-hover/item:border-[#F0A741]/30 transition-all">
+                                                {getIcon(log.type)}
                                             </div>
 
-                                            <div className="flex flex-wrap items-center gap-3 text-xs">
-                                                <div className="flex items-center gap-1.5 bg-black/40 px-2 py-1 rounded border border-zinc-800/80">
-                                                    <Globe className="w-3 h-3 text-zinc-500" />
-                                                    <span className="font-mono text-zinc-400 truncate max-w-[180px]">
-                                                        {log.pubkey}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between gap-4 mb-2">
+                                                    <p className="text-sm text-zinc-200 font-semibold leading-relaxed">
+                                                        {log.message}
+                                                    </p>
+                                                    <span className="text-[9px] text-zinc-500 whitespace-nowrap font-bold uppercase tracking-wider bg-zinc-900/50 px-2 py-0.5 rounded border border-zinc-800/50">
+                                                        {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
                                                     </span>
                                                 </div>
 
-                                                {log.location && (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <MapPin className="w-3 h-3 text-zinc-600" />
-                                                        <span className="text-zinc-500 font-semibold">{log.location}</span>
+                                                <div className="flex flex-wrap items-center gap-3 text-xs">
+                                                    <div className="flex items-center gap-1.5 bg-black/40 px-2 py-1 rounded border border-zinc-800/80">
+                                                        <Globe className="w-3 h-3 text-zinc-500" />
+                                                        <span className="font-mono text-zinc-400 truncate max-w-[180px]">
+                                                            {log.pubkey}
+                                                        </span>
                                                     </div>
-                                                )}
-                                            </div>
 
-                                            {renderIntensityBar(log)}
+                                                    {log.location && (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <MapPin className="w-3 h-3 text-zinc-600" />
+                                                            <span className="text-zinc-500 font-semibold">{log.location}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {renderIntensityBar(log)}
+                                            </div>
                                         </div>
-                                    </div>
-                                </motion.div>
-                            ))}
+                                    </motion.div>
+                                ))
+                            }
                         </AnimatePresence>
 
                         {/* Infinite scroll sentinel - only when paused */}
@@ -444,9 +451,10 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                             </div>
                         )}
                     </div>
-                )}
-            </div>
+                )
+                }
+            </div >
 
-        </div>
+        </div >
     );
 }

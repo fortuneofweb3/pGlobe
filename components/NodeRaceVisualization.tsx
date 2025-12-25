@@ -59,8 +59,8 @@ export default function NodeRaceVisualization() {
         const timeSinceUpdate = Date.now() - node.lastUpdate;
         const decayFactor = Math.max(0, 1 - (timeSinceUpdate / SCORE_DECAY_MS));
 
-        // Weight: streams are more important than packets
-        const rawScore = (streams * 100) + (packets * 0.01);
+        // Weight: streams are more important than packets, but not overwhelmingly so (1 stream = 1000 packets)
+        const rawScore = (streams * 10) + (packets * 0.01);
         return rawScore * decayFactor;
     };
 
@@ -252,7 +252,7 @@ export default function NodeRaceVisualization() {
                     .map(([key, node]) => ({
                         key,
                         node,
-                        score: ((node.activeStreams || 0) * 100) + ((node.packetsReceived || 0) + (node.packetsSent || 0)) * 0.01
+                        score: ((node.activeStreams || 0) * 10) + ((node.packetsReceived || 0) + (node.packetsSent || 0)) * 0.01
                     }))
                     .sort((a, b) => b.score - a.score)
                     .slice(0, 20); // Only keep top 20
@@ -304,6 +304,12 @@ export default function NodeRaceVisualization() {
                     <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
                         <TrendingUp className="w-4 h-4 text-[#F0A741]" />
                         Live Node Activity Race
+                        <div className="group relative ml-1 cursor-help">
+                            <div className="w-3.5 h-3.5 rounded-full border border-zinc-500 text-zinc-500 flex items-center justify-center text-[9px] font-bold">?</div>
+                            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-48 bg-black/90 text-white text-[10px] p-2 rounded border border-white/20 z-50 pointer-events-none">
+                                Score = (Active Streams × 10) + (Total Packets × 0.01)
+                            </div>
+                        </div>
                     </h2>
                     <div className="flex items-center gap-2 bg-muted/20 px-2 py-0.5 rounded-full border border-border/40">
                         <div className={`w-1.5 h-1.5 rounded-full ${connected && !isPaused ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)] animate-pulse' : isPaused ? 'bg-yellow-500' : 'bg-muted-foreground/30'}`} />
