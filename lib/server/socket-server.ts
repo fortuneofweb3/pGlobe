@@ -29,6 +29,10 @@ export function getSocketIO(): SocketServer | null {
 
 export function emitActivity(activity: any) {
     if (io) {
+        const connectedClients = io.sockets.sockets.size;
+        console.log(`[Socket] 📡 Emitting activity event to ${connectedClients} clients: ${activity.type} - ${activity.message}`);
         io.emit('activity', activity);
+    } else {
+        console.warn('[Socket] ⚠️  Cannot emit activity - Socket.io not initialized');
     }
 }
