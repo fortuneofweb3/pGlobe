@@ -38,13 +38,15 @@ process.on('uncaughtException', (error) => {
 
 const PORT = process.env.REALTIME_PORT || process.env.PORT || 3002;
 const POLL_INTERVAL_MS = 5000; // 5 seconds
-const REQUEST_TIMEOUT_MS = 30000; // 30 seconds (match sync-nodes.ts)
+const REQUEST_TIMEOUT_MS = 5000; // 5 seconds (fast timeouts for realtime)
 
-const PROXY_RPC_ENDPOINTS = [
-    'https://rpc1.pchednode.com/rpc',
-    'https://rpc2.pchednode.com/rpc',
-    'https://rpc3.pchednode.com/rpc',
-    'https://rpc4.pchednode.com/rpc',
+// Direct PRPC endpoints only (HTTPS proxies were consistently failing)
+const PROXY_RPC_ENDPOINTS: string[] = [
+    // Removed - these were timing out and adding 30+ seconds to each poll:
+    // 'https://rpc1.pchednode.com/rpc',
+    // 'https://rpc2.pchednode.com/rpc',
+    // 'https://rpc3.pchednode.com/rpc',
+    // 'https://rpc4.pchednode.com/rpc',
 ];
 
 // Direct PRPC endpoints (same as sync-nodes.ts)
