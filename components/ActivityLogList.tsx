@@ -49,6 +49,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
     const [connected, setConnected] = useState(false);
     const [typeFilter, setTypeFilter] = useState('');
     const [isPaused, setIsPaused] = useState(false);
+    const isPausedRef = useRef(isPaused);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
@@ -112,9 +113,16 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, []);
 
+    // Keep ref in sync with state
+    useEffect(() => {
+        isPausedRef.current = isPaused;
+    }, [isPaused]);
+
+
+
     const processBuffer = React.useCallback(() => {
         // Don't process if tab is hidden or paused
-        if (!isVisibleRef.current || isPaused) {
+        if (!isVisibleRef.current || isPausedRef.current) {
             bufferRef.current = []; // Clear accumulated events
             return;
         }
@@ -143,9 +151,23 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                 return [logToAdd, ...prev].slice(0, 20);
             });
 
-            // Calculate delay based on buffer size - spread logs over ~10 seconds
-            // If 50 logs in buffer, show one every 200ms. If 10 logs, show one every 1000ms
-            const delay = Math.max(150, Math.min(1000, 10000 / Math.max(bufferRef.current.length + 1, 10)));
+            // Calculate delay based on buffer size - dynamic catch-up
+            // If buffer is large (>50), process very fast (10ms)
+            // If buffer is moderate (>10), process fast (50ms)
+            // Otherwise maintain smooth pace (150-500ms)
+            const bufferSize = bufferRef.current.length;
+            let delay = 200;
+
+            if (bufferSize > 50) {
+                delay = 10;
+            } else if (bufferSize > 20) {
+                delay = 50;
+            } else if (bufferSize > 5) {
+                delay = 100;
+            } else {
+                // Smooth mode
+                delay = Math.max(150, Math.min(1000, 10000 / Math.max(bufferSize + 1, 10)));
+            }
 
             setTimeout(processOne, delay);
         };
@@ -204,6 +226,11 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
             };
 
             // Add to buffer for staggered display
+            // Cap buffer size to prevent memory leaks during high traffic
+            if (bufferRef.current.length > 100) {
+                // Drop oldest events if buffer gets too full
+                bufferRef.current = bufferRef.current.slice(-100);
+            }
             bufferRef.current.push(logWithId);
             processBuffer();
         });
