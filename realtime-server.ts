@@ -4,6 +4,7 @@
  * 
  * Standalone server that polls gossip endpoints every 10 seconds
  * and broadcasts activity events to connected clients.
+ * Also stores events to MongoDB for historical persistence.
  * 
  * Deploy this as a separate Render service.
  * 
@@ -19,6 +20,9 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config({ path: '.env.local' });
 dotenv.config({ path: '.env' });
+
+// Import MongoDB activity storage
+import { storeActivityLog } from './lib/server/mongodb-activity';
 
 // ============================================================================
 // CONFIGURATION
@@ -219,8 +223,8 @@ async function pollAndEmitActivity(io: SocketIOServer) {
             // Check for packet changes
             const packetDiff = (currentRx + currentTx) - (prev.packetsReceived + prev.packetsSent);
             if (packetDiff > 0) {
-                io.emit('activity', {
-                    type: 'packets_earned',
+                const activityLog = {
+                    type: 'packets_earned' as const,
                     pubkey,
                     address,
                     location,
@@ -231,16 +235,17 @@ async function pollAndEmitActivity(io: SocketIOServer) {
                         totalRx: currentRx,
                         totalTx: currentTx,
                     },
-                    timestamp: now,
-                });
+                };
+                io.emit('activity', { ...activityLog, timestamp: now });
+                storeActivityLog(activityLog); // Persist to MongoDB
                 emittedCount++;
             }
 
             // Check for credit changes
             const creditDiff = currentCredits - prev.credits;
             if (creditDiff > 0) {
-                io.emit('activity', {
-                    type: 'credits_earned',
+                const activityLog = {
+                    type: 'credits_earned' as const,
                     pubkey,
                     address,
                     location,
@@ -249,15 +254,16 @@ async function pollAndEmitActivity(io: SocketIOServer) {
                         earned: creditDiff,
                         total: currentCredits,
                     },
-                    timestamp: now,
-                });
+                };
+                io.emit('activity', { ...activityLog, timestamp: now });
+                storeActivityLog(activityLog); // Persist to MongoDB
                 emittedCount++;
             }
 
             // Check for stream changes
             if (currentStreams !== prev.activeStreams) {
-                io.emit('activity', {
-                    type: 'streams_active',
+                const activityLog = {
+                    type: 'streams_active' as const,
                     pubkey,
                     address,
                     location,
@@ -266,8 +272,9 @@ async function pollAndEmitActivity(io: SocketIOServer) {
                         total: currentStreams,
                         previous: prev.activeStreams,
                     },
-                    timestamp: now,
-                });
+                };
+                io.emit('activity', { ...activityLog, timestamp: now });
+                storeActivityLog(activityLog); // Persist to MongoDB
                 emittedCount++;
             }
 
