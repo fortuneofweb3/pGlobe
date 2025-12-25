@@ -112,6 +112,9 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         socket.on('activity', (newLog: ActivityLog) => {
             console.log('[ActivityLogs] 📥 Received event:', newLog.type, newLog.message);
 
+            // Skip streams_active events - they're only for racing visualization
+            if (newLog.type === 'streams_active') return;
+
             // Filter by pubkey/country if specified
             if (pubkey && newLog.pubkey !== pubkey) return;
             if (countryCode && newLog.countryCode !== countryCode) return;
