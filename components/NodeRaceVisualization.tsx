@@ -179,18 +179,18 @@ export default function NodeRaceVisualization() {
                 return { ...prev, [log.pubkey]: updated };
             });
 
-            // Spread events over ~10 seconds for smooth racing feel
-            // Dynamic speedup if buffer grows
-            const bufferSize = bufferRef.current.length;
-            let delay = 200;
+            // Dynamic Buffer Logic with Randomization
+            // Goal: Process ~70% of buffer in 5 seconds
+            const bufferSize = Math.max(bufferRef.current.length + 1, 1);
+            // 3500ms / (buffer * 0.7) = avg time per item
+            const baseDelay = 3500 / (bufferSize * 0.7);
 
-            if (bufferSize > 50) {
-                delay = 10; // Catch up fast
-            } else if (bufferSize > 20) {
-                delay = 50;
-            } else {
-                delay = Math.max(100, Math.min(500, 10000 / Math.max(bufferSize + 1, 20)));
-            }
+            // Randomize (0.5x to 1.5x) to feel organic
+            const jitter = 0.5 + Math.random();
+            let delay = baseDelay * jitter;
+
+            // Clamp: 20ms (fast catchup) to 1000ms (slow idle)
+            delay = Math.min(1000, Math.max(20, delay));
 
             setTimeout(processOne, delay);
         };
@@ -231,10 +231,6 @@ export default function NodeRaceVisualization() {
         // Listen for activity events and buffer them
         socket.on('activity', (log: any) => {
             // Add to buffer for staggered processing
-            // Cap buffer size to prevent memory leaks
-            if (bufferRef.current.length > 100) {
-                bufferRef.current = bufferRef.current.slice(-100);
-            }
             bufferRef.current.push(log);
             processBuffer();
         });

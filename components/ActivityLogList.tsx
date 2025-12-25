@@ -137,6 +137,9 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                 return;
             }
 
+            // Dynamic Buffer Logic:
+            // Goal: Process ~70% of buffer in 5 seconds to keep up.
+            // Formula: TimePerItem = 5000 / (Buffer * 0.7)
             const logToAdd = bufferRef.current.shift()!;
 
             setLogs((prev: ActivityLog[]) => {
@@ -151,23 +154,17 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                 return [logToAdd, ...prev].slice(0, 20);
             });
 
-            // Calculate delay based on buffer size - dynamic catch-up
-            // If buffer is large (>50), process very fast (10ms)
-            // If buffer is moderate (>10), process fast (50ms)
-            // Otherwise maintain smooth pace (150-500ms)
-            const bufferSize = bufferRef.current.length;
-            let delay = 200;
+            // Calculate delay based on buffer size with randomization
+            // Base delay = 3500ms total window / (70% of buffer)
+            const bufferSize = Math.max(bufferRef.current.length + 1, 1);
+            const baseDelay = 3500 / (bufferSize * 0.7);
 
-            if (bufferSize > 50) {
-                delay = 10;
-            } else if (bufferSize > 20) {
-                delay = 50;
-            } else if (bufferSize > 5) {
-                delay = 100;
-            } else {
-                // Smooth mode
-                delay = Math.max(150, Math.min(1000, 10000 / Math.max(bufferSize + 1, 10)));
-            }
+            // Add randomness (0.6x to 1.4x)
+            const jitter = 0.6 + Math.random() * 0.8;
+            let delay = baseDelay * jitter;
+
+            // Clamp: Never slower than 1s, never faster than 20ms
+            delay = Math.min(1000, Math.max(20, delay));
 
             setTimeout(processOne, delay);
         };
@@ -226,11 +223,6 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
             };
 
             // Add to buffer for staggered display
-            // Cap buffer size to prevent memory leaks during high traffic
-            if (bufferRef.current.length > 100) {
-                // Drop oldest events if buffer gets too full
-                bufferRef.current = bufferRef.current.slice(-100);
-            }
             bufferRef.current.push(logWithId);
             processBuffer();
         });
