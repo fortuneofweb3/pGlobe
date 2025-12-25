@@ -31,7 +31,7 @@ const server = require('http').createServer(app);
 import { initSocketServer } from './lib/server/socket-server';
 import { startRealtimeActivityPoller } from './lib/server/realtime-activity';
 initSocketServer(server);
-startRealtimeActivityPoller(); // Start 5-second activity polling for real-time updates
+startRealtimeActivityPoller(); // Poll gossip every 10s for real-time updates
 
 const PORT = process.env.PORT || 3001;
 const API_SECRET = process.env.API_SECRET; // Secret for Vercel to authenticate
