@@ -42,20 +42,8 @@ const getSocketUrl = () => {
 };
 
 export default function NodeRaceVisualization() {
-    const [nodeMetrics, setNodeMetrics] = useState<Record<string, NodeMetrics>>(() => {
-        // Load from localStorage on mount
-        if (typeof window !== 'undefined') {
-            try {
-                const stored = localStorage.getItem(STORAGE_KEY);
-                if (stored) {
-                    return JSON.parse(stored);
-                }
-            } catch (e) {
-                console.warn('Failed to load racing metrics from localStorage:', e);
-            }
-        }
-        return {};
-    });
+    // Always start fresh - no localStorage persistence for period-based racing
+    const [nodeMetrics, setNodeMetrics] = useState<Record<string, NodeMetrics>>({});
     const [connected, setConnected] = useState(false);
 
     // Calculate activity score for each node
@@ -94,31 +82,21 @@ export default function NodeRaceVisualization() {
 
     const maxScore = rankedNodes[0]?.score || 1;
 
-    useEffect(() => {
-        const socketUrl = getSocketUrl();
-        console.log('[Racing] Connecting to Socket.io at:', socketUrl);
+    // Buffer for staggered updates - makes racing feel smooth and continuous
+    const bufferRef = React.useRef<any[]>([]);
+    const processingRef = React.useRef(false);
 
-        const socket = io(socketUrl, {
-            transports: ['websocket', 'polling'],
-            reconnectionAttempts: 10,
-            timeout: 20000,
-        });
+    const processBuffer = React.useCallback(() => {
+        if (processingRef.current || bufferRef.current.length === 0) return;
+        processingRef.current = true;
 
-        socket.on('connect', () => {
-            setConnected(true);
-        });
+        const processOne = () => {
+            if (bufferRef.current.length === 0) {
+                processingRef.current = false;
+                return;
+            }
 
-        socket.on('connect_error', () => {
-            setConnected(false);
-        });
-
-        socket.on('disconnect', () => {
-            setConnected(false);
-        });
-
-        // Listen for activity events and update metrics
-        socket.on('activity', (log: any) => {
-            console.log('[Racing] 📥 Received event:', log.type, log.pubkey?.substring(0, 8), log.data);
+            const log = bufferRef.current.shift()!;
 
             setNodeMetrics((prev) => {
                 const existing = prev[log.pubkey] || {
@@ -143,24 +121,14 @@ export default function NodeRaceVisualization() {
                 // Update based on activity type
                 if (log.type === 'new_node' || log.type === 'node_online') {
                     updated.status = 'online';
-                    // Also update metrics if available in data
                     if (log.data?.streams !== undefined) updated.activeStreams = log.data.streams;
-                    if (log.data?.packets !== undefined) {
-                        updated.packetsReceived = log.data.packets;
-                    }
-                    if (log.data?.credits !== undefined) updated.credits = log.data.credits;
                 } else if (log.type === 'node_offline') {
                     updated.status = 'offline';
                 } else if (log.type === 'node_syncing') {
                     updated.status = 'syncing';
                 } else if (log.type === 'node_status') {
-                    // Status broadcast - update all metrics with current values
                     updated.status = 'online';
                     if (log.data?.streams !== undefined) updated.activeStreams = log.data.streams;
-                    if (log.data?.packets !== undefined) {
-                        updated.packetsReceived = log.data.packets;
-                    }
-                    if (log.data?.credits !== undefined) updated.credits = log.data.credits;
                 } else if (log.type === 'streams_active' && log.data?.total !== undefined) {
                     updated.activeStreams = log.data.total;
                 } else if (log.type === 'packets_earned') {
@@ -170,9 +138,52 @@ export default function NodeRaceVisualization() {
                     updated.credits = (updated.credits || 0) + log.data.earned;
                 }
 
-                console.log('[Racing] ✅ Updated metrics for', log.pubkey?.substring(0, 8), updated);
                 return { ...prev, [log.pubkey]: updated };
             });
+
+            // Spread events over ~10 seconds for smooth racing feel
+            const delay = Math.max(100, Math.min(500, 10000 / Math.max(bufferRef.current.length + 1, 20)));
+            setTimeout(processOne, delay);
+        };
+
+        processOne();
+    }, []);
+
+    useEffect(() => {
+        const socketUrl = getSocketUrl();
+        console.log('[Racing] Connecting to Socket.io at:', socketUrl);
+
+        const socket = io(socketUrl, {
+            transports: ['websocket', 'polling'],
+            reconnectionAttempts: 10,
+            timeout: 20000,
+        });
+
+        socket.on('connect', () => {
+            console.log('[Racing] Connected - resetting metrics for fresh start');
+            setConnected(true);
+            // Reset all state when (re)connecting to prevent stale data mixing
+            bufferRef.current = [];
+            processingRef.current = false;
+            setNodeMetrics({}); // Start fresh
+        });
+
+        socket.on('connect_error', () => {
+            setConnected(false);
+        });
+
+        socket.on('disconnect', () => {
+            console.log('[Racing] Disconnected - clearing buffer');
+            setConnected(false);
+            bufferRef.current = [];
+            processingRef.current = false;
+        });
+
+        // Listen for activity events and buffer them
+        socket.on('activity', (log: any) => {
+            // Add to buffer for staggered processing
+            bufferRef.current.push(log);
+            processBuffer();
         });
 
         // Periodic cleanup of stale nodes
@@ -193,8 +204,9 @@ export default function NodeRaceVisualization() {
         return () => {
             socket.disconnect();
             clearInterval(cleanupInterval);
+            bufferRef.current = [];
         };
-    }, []);
+    }, [processBuffer]);
 
     const getStatusColor = (status: string) => {
         switch (status) {
