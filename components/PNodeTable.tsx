@@ -642,10 +642,20 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           }
                         }
                       }}
-                      className={`bg-card/30 hover:bg-muted/40 cursor-pointer transition-all duration-300 hover:shadow-md hover:translate-x-1 border-b border-border/40 ${duplicate ? 'bg-warning/10 border-l-2 border-warning' : ''
-                        } ${isTrynet ? 'bg-orange-500/10' : ''}`}
+                      className={`
+                        group relative
+                        bg-white/[0.01] hover:bg-white/[0.04] 
+                        transition-all duration-300 ease-out
+                        cursor-pointer border-b border-white/[0.03]
+                        hover:translate-x-0.5 hover:shadow-[0_0_20px_rgba(240,167,65,0.05)]
+                        ${duplicate ? 'bg-orange-500/[0.05]' : ''} 
+                        ${isTrynet ? 'bg-orange-500/[0.02]' : ''}
+                      `}
                     >
-                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
+                      <td className="px-3 sm:px-5 py-5 whitespace-nowrap relative">
+                        {/* Interactive Accent Bar */}
+                        <div className="absolute left-0 inset-y-0 w-0.5 bg-[#F0A741] opacity-0 group-hover:opacity-100 transition-opacity" />
+
                         <a
                           href={`/?node=${encodeURIComponent(node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '')}`}
                           onClick={(e) => {
@@ -653,12 +663,12 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                             const nodeIdentifier = node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '';
                             router.push(`/?node=${encodeURIComponent(nodeIdentifier)}`);
                           }}
-                          className="text-sm font-mono text-primary font-medium hover:underline transition-colors cursor-pointer no-underline"
+                          className="text-sm font-mono text-[#F0A741] font-bold hover:brightness-110 transition-all cursor-pointer no-underline"
                         >
                           {formatNodeId(node.id, node.address)}
                         </a>
                       </td>
-                      <td className="px-2 sm:px-3 py-4 whitespace-nowrap text-center bg-card/20">
+                      <td className="px-2 sm:px-3 py-5 whitespace-nowrap text-center">
                         {(() => {
                           const status = node.status;
                           if (status === 'online') {
@@ -700,7 +710,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           )}
                         </div>
                       </td>
-                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap text-center bg-card/20">
+                      <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-center">
                         {(() => {
                           const balance = balances[node.id] !== undefined ? balances[node.id] : node.balance;
                           const isRegistered = balance !== undefined && balance !== null && balance > 0;
@@ -729,7 +739,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           renderEmptyCell()
                         )}
                       </td>
-                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap text-center bg-card/20">
+                      <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-center">
                         {(() => {
                           const isPublic = node.isPublic === true;
                           const isPrivate = node.isPublic === false;
@@ -758,12 +768,12 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           return <span className="text-xs text-foreground/40">—</span>;
                         })()}
                       </td>
-                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
+                      <td className="px-3 sm:px-5 py-5 whitespace-nowrap">
                         <span className="text-xs sm:text-sm text-foreground/80">
                           {formatUptime(node.uptime) || renderEmptyCell()}
                         </span>
                       </td>
-                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
+                      <td className="px-3 sm:px-5 py-5 whitespace-nowrap">
                         {(() => {
                           const capacity = node.storageCapacity;
                           const hasCapacity = capacity !== undefined && capacity !== null;
@@ -778,7 +788,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           return renderEmptyCell();
                         })()}
                       </td>
-                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
+                      <td className="px-3 sm:px-5 py-5 whitespace-nowrap">
                         {(() => {
                           const ramUsed = node.ramUsed;
                           const ramTotal = node.ramTotal;
@@ -796,7 +806,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           return renderEmptyCell();
                         })()}
                       </td>
-                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
+                      <td className="px-3 sm:px-5 py-5 whitespace-nowrap">
                         {(() => {
                           if (!node.location) return renderEmptyCell();
 
@@ -825,7 +835,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           );
                         })()}
                       </td>
-                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap text-right bg-card/20">
+                      <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-right">
                         {(() => {
                           // Don't show latency for nodes not seen in gossip (offline)
                           if (node.seenInGossip === false) {
@@ -863,7 +873,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                             : renderEmptyCell()}
                         </span>
                       </td>
-                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap text-right bg-card/20">
+                      <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-right">
                         {(() => {
                           const balance = balances[node.id] !== undefined ? balances[node.id] : node.balance;
                           const isFetching = fetchingBalances.has(node.id);
@@ -888,7 +898,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           return renderEmptyCell();
                         })()}
                       </td>
-                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap text-right bg-card/20">
+                      <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-right">
                         {node.credits !== undefined && node.credits !== null ? (
                           <span className="text-xs sm:text-sm font-mono text-foreground/80">
                             {node.credits.toLocaleString()}
@@ -897,7 +907,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           renderEmptyCell()
                         )}
                       </td>
-                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
+                      <td className="px-3 sm:px-5 py-5 whitespace-nowrap">
                         {node.packetsReceived !== undefined && node.packetsReceived !== null ? (
                           <span className="text-xs sm:text-sm font-mono text-foreground/80">
                             {node.packetsReceived.toLocaleString()}
@@ -906,7 +916,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           renderEmptyCell()
                         )}
                       </td>
-                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
+                      <td className="px-3 sm:px-5 py-5 whitespace-nowrap">
                         {node.packetsSent !== undefined && node.packetsSent !== null ? (
                           <span className="text-xs sm:text-sm font-mono text-foreground/80">
                             {node.packetsSent.toLocaleString()}
@@ -915,7 +925,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           renderEmptyCell()
                         )}
                       </td>
-                      <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
+                      <td className="px-3 sm:px-5 py-5 whitespace-nowrap">
                         {node.version ? (
                           <VersionTooltip version={node.version} abbreviated={abbreviateVersion(node.version)} />
                         ) : (

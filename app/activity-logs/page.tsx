@@ -3,6 +3,7 @@
 import React from 'react';
 import Header from '@/components/Header';
 import ActivityLogList from '@/components/ActivityLogList';
+import NodeRaceVisualization from '@/components/NodeRaceVisualization';
 import { useNodes } from '@/lib/context/NodesContext';
 import { Activity } from 'lucide-react';
 
@@ -25,8 +26,8 @@ export default function ActivityLogsPage() {
                 showNetworkSelector={false}
             />
 
-            <main className="flex-1 overflow-y-auto">
-                <div className="w-full px-3 sm:px-6 pt-3 sm:pt-6 pb-6">
+            <main className="flex-1 overflow-hidden flex flex-col">
+                <div className="w-full px-3 sm:px-6 pt-3 sm:pt-6 flex-shrink-0">
                     <div className="max-w-7xl mx-auto">
                         {/* Page Header */}
                         <div className="mb-4 sm:mb-6">
@@ -42,9 +43,23 @@ export default function ActivityLogsPage() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        {/* Activity List */}
-                        <ActivityLogList limit={100} showFilters={true} />
+                {/* Side by Side Layout on Desktop - Equal Heights, No Main Scroll */}
+                <div className="flex-1 px-3 sm:px-6 pb-6 overflow-hidden">
+                    <div className="max-w-7xl mx-auto h-full">
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 h-full">
+                            {/* Racing Visualization - Full Height, No Scroll */}
+                            <div className="h-full overflow-hidden">
+                                <NodeRaceVisualization />
+                            </div>
+
+                            {/* Activity List - Full Height, No Scroll */}
+                            <div className="h-full overflow-hidden">
+                                <ActivityLogList limit={50} showFilters={true} />
+                            </div>
+                        </div>
                     </div>
                 </div>
             </main>

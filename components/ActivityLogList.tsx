@@ -4,8 +4,7 @@ import React, { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 import { ActivityLog } from '@/lib/server/mongodb-activity';
 import { formatDistanceToNow } from 'date-fns';
-import { Activity, Zap, CheckCircle2, XCircle, RefreshCw, MapPin, PlusCircle, HardDrive, Layers, Filter, Globe, ChevronDown } from 'lucide-react';
-import { clsx } from 'clsx';
+import { Activity, Zap, CheckCircle2, XCircle, RefreshCw, MapPin, Globe, Filter, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ActivityLogListProps {
@@ -18,20 +17,32 @@ interface ActivityLogListProps {
 const ACTIVITY_TYPES = [
     { value: '', label: 'All Activities' },
     { value: 'new_node', label: 'New Nodes' },
-    { value: 'node_online', label: 'Nodes Online' },
-    { value: 'node_offline', label: 'Nodes Offline' },
-    { value: 'credits_earned', label: 'Credits Earned' },
-    { value: 'packets_earned', label: 'Packets Earned' },
-    { value: 'streams_active', label: 'Stream Changes' },
+    { value: 'node_online', label: 'Online' },
+    { value: 'node_offline', label: 'Offline' },
+    { value: 'credits_earned', label: 'Credits' },
+    { value: 'packets_earned', label: 'Packets' },
+    { value: 'streams_active', label: 'Streams' },
 ];
 
 const RENDER_API_URL = process.env.NEXT_PUBLIC_RENDER_API_URL || 'https://pglobe.onrender.com';
 
-export default function ActivityLogList({ pubkey, countryCode, limit = 50, showFilters = false }: ActivityLogListProps) {
+// Use local server if running on localhost
+const getSocketUrl = () => {
+    if (typeof window !== 'undefined') {
+        const hostname = window.location.hostname;
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            return `http://${hostname}:${window.location.port || 3000}`;
+        }
+    }
+    return RENDER_API_URL;
+};
+
+export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: ActivityLogListProps) {
     const [logs, setLogs] = useState<ActivityLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [connected, setConnected] = useState(false);
     const [typeFilter, setTypeFilter] = useState('');
+    const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
     useEffect(() => {
         // 1. Fetch initial logs
@@ -59,7 +70,10 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50, showF
         fetchLogs();
 
         // 2. Setup Socket.io for real-time updates
-        const socket = io(RENDER_API_URL, {
+        const socketUrl = getSocketUrl();
+        console.log('[ActivityLogs] Connecting to Socket.io at:', socketUrl);
+
+        const socket = io(socketUrl, {
             transports: ['websocket', 'polling'],
             reconnectionAttempts: 10,
             timeout: 20000,
@@ -94,110 +108,162 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50, showF
     }, [pubkey, countryCode, limit, typeFilter]);
 
     const getIcon = (type: string) => {
+        const iconClass = "w-3.5 h-3.5";
         switch (type) {
-            case 'node_online': return <CheckCircle2 className="w-4 h-4 text-green-500" />;
-            case 'node_offline': return <XCircle className="w-4 h-4 text-red-500" />;
-            case 'credits_earned': return <Zap className="w-4 h-4 text-[#F0A741]" />;
-            case 'node_syncing': return <RefreshCw className="w-4 h-4 text-blue-500" />;
-            case 'new_node': return <PlusCircle className="w-4 h-4 text-purple-500" />;
-            case 'packets_earned': return <HardDrive className="w-4 h-4 text-emerald-500" />;
-            case 'streams_active': return <Layers className="w-4 h-4 text-cyan-500" />;
-            default: return <Activity className="w-4 h-4 text-foreground/40" />;
+            case 'new_node': return <CheckCircle2 className={`${iconClass} text-green-400`} />;
+            case 'node_online': return <CheckCircle2 className={`${iconClass} text-green-400`} />;
+            case 'node_offline': return <XCircle className={`${iconClass} text-red-400`} />;
+            case 'streams_active': return <Zap className={`${iconClass} text-cyan-400`} />;
+            case 'packets_earned': return <Activity className={`${iconClass} text-emerald-400`} />;
+            case 'credits_earned': return <Activity className={`${iconClass} text-[#F0A741]`} />;
+            default: return <Activity className={`${iconClass} text-foreground/60`} />;
         }
     };
 
+    const renderIntensityBar = (log: ActivityLog) => {
+        if (log.type === 'packets_earned' && log.data?.rxEarned !== undefined) {
+            const total = (log.data.rxEarned || 0) + (log.data.txEarned || 0);
+            const width = Math.min(100, (total / 5000) * 100);
+            return (
+                <div className="mt-2 w-full max-w-[200px] h-1 bg-muted/20 rounded-full overflow-hidden">
+                    <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${width}%` }}
+                        className="h-full bg-emerald-500/40 shadow-[0_0_8px_rgba(16,185,129,0.3)]"
+                    />
+                </div>
+            );
+        }
+        if (log.type === 'credits_earned' && log.data?.earned !== undefined) {
+            const width = Math.min(100, (log.data.earned / 50) * 100);
+            return (
+                <div className="mt-2 w-full max-w-[200px] h-1 bg-muted/20 rounded-full overflow-hidden">
+                    <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${width}%` }}
+                        className="h-full bg-[#F0A741]/40 shadow-[0_0_8px_rgba(240,167,65,0.3)]"
+                    />
+                </div>
+            );
+        }
+        return null;
+    };
+
     return (
-        <div className="w-full space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="w-full h-full flex flex-col gap-4">
+            <div className="flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-3">
                     <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-foreground/40" />
-                        {pubkey ? 'Recent Activity' : 'Live Timeline'}
+                        <Activity className="w-4 h-4 text-[#F0A741]" />
+                        Live Activity Feed
                     </h2>
                     <div className="flex items-center gap-2 bg-muted/20 px-2 py-0.5 rounded-full border border-border/40">
-                        <div className={clsx("w-1.5 h-1.5 rounded-full", connected ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)] animate-pulse" : "bg-muted-foreground/30")} />
+                        <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)] animate-pulse' : 'bg-muted-foreground/30'}`} />
                         <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-tight">{connected ? 'Live' : 'Offline'}</span>
                     </div>
                 </div>
+                <div className="relative">
+                    <button
+                        onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-muted/20 hover:bg-muted/30 border border-border/40 rounded-lg transition-all text-xs font-semibold text-foreground/70 hover:text-foreground"
+                    >
+                        <Filter className="w-3.5 h-3.5" />
+                        <span>{ACTIVITY_TYPES.find(t => t.value === typeFilter)?.label || 'All Activities'}</span>
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
+                    </button>
 
-                {showFilters && (
-                    <div className="flex items-center gap-2">
-                        <div className="relative group">
-                            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
-                                <Filter className="w-3.5 h-3.5 text-foreground/40" />
-                            </div>
-                            <select
-                                value={typeFilter}
-                                onChange={(e) => setTypeFilter(e.target.value)}
-                                className="pl-8 pr-9 py-1.5 bg-muted/40 border border-border/40 rounded-lg text-xs font-semibold text-foreground/70 focus:outline-none focus:border-[#F0A741]/50 appearance-none cursor-pointer transition-all hover:bg-muted/60"
-                            >
-                                {ACTIVITY_TYPES.map(t => (
-                                    <option key={t.value} value={t.value}>{t.label}</option>
-                                ))}
-                            </select>
-                            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
-                                <ChevronDown className="w-3.5 h-3.5 text-foreground/30" />
-                            </div>
+                    {showFilterDropdown && (
+                        <div className="absolute top-full mt-2 right-0 z-50 bg-card border border-border/40 rounded-lg shadow-xl min-w-[160px] overflow-hidden">
+                            {ACTIVITY_TYPES.map((type) => (
+                                <button
+                                    key={type.value}
+                                    onClick={() => {
+                                        setTypeFilter(type.value);
+                                        setShowFilterDropdown(false);
+                                    }}
+                                    className={`w-full px-4 py-2 text-left text-xs transition-colors ${typeFilter === type.value
+                                        ? 'bg-[#F0A741]/10 text-[#F0A741] font-bold'
+                                        : 'hover:bg-muted/20 text-foreground/70 hover:text-foreground'
+                                        }`}
+                                >
+                                    {type.label}
+                                </button>
+                            ))}
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
-            <div className="card overflow-hidden min-h-[400px] flex flex-col p-0">
+            <div className="card p-6 space-y-3 flex-1 relative overflow-hidden flex flex-col">
+                {/* Background gradient */}
+                <div className="absolute inset-0 bg-gradient-to-br from-[#F0A741]/[0.02] via-transparent to-transparent pointer-events-none" />
+
                 {loading && logs.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center p-20 gap-4">
-                        <RefreshCw className="w-8 h-8 animate-spin text-[#F0A741] opacity-20" />
-                        <p className="text-xs font-medium text-foreground/30 animate-pulse">Establishing data streams...</p>
+                    <div className="flex flex-col items-center justify-center h-[450px] gap-4">
+                        <RefreshCw className="w-12 h-12 text-foreground/10 animate-spin" />
+                        <div className="text-center space-y-1">
+                            <p className="text-foreground/40 text-sm font-semibold">Loading Activity</p>
+                            <p className="text-foreground/20 text-xs">Fetching network events...</p>
+                        </div>
                     </div>
                 ) : logs.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center p-20 text-center gap-4">
+                    <div className="flex flex-col items-center justify-center h-[450px] gap-4">
                         <Activity className="w-12 h-12 text-foreground/10" />
-                        <div className="space-y-1">
-                            <p className="text-foreground/40 text-sm font-semibold">No Activity Detected</p>
-                            <p className="text-foreground/20 text-xs">Waiting for events from the network...</p>
+                        <div className="text-center space-y-1">
+                            <p className="text-foreground/40 text-sm font-semibold">No Activity Yet</p>
+                            <p className="text-foreground/20 text-xs">Waiting for network events...</p>
                         </div>
                     </div>
                 ) : (
-                    <div className="divide-y divide-border/20 overflow-y-auto max-h-[700px] custom-scrollbar">
-                        <AnimatePresence initial={false} mode="popLayout">
-                            {logs.map((log) => (
+                    <div className="space-y-2 relative flex-1 overflow-y-auto">
+                        <AnimatePresence mode="popLayout">
+                            {logs.map((log, index) => (
                                 <motion.div
                                     key={log._id || `${log.timestamp}-${log.pubkey}-${log.type}`}
-                                    initial={{ opacity: 0, y: -5 }}
+                                    layout
+                                    initial={{ opacity: 0, y: -20 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.98 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="p-4 sm:p-5 hover:bg-muted/5 transition-colors group relative"
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    transition={{
+                                        type: "spring",
+                                        stiffness: 400,
+                                        damping: 35,
+                                    }}
+                                    className="p-4 bg-muted/5 hover:bg-white/[0.02] border border-border/20 rounded-lg transition-all group/item relative"
                                 >
-                                    <div className="flex items-start gap-4 sm:gap-5">
-                                        <div className="mt-1 p-2 rounded-lg bg-muted/20 border border-border/40 group-hover:border-border/60 transition-colors">
+                                    <div className="flex items-start gap-4">
+                                        {/* Icon */}
+                                        <div className="mt-1 p-2 rounded-lg bg-zinc-900/80 border border-zinc-800/80 group-hover/item:border-[#F0A741]/30 transition-all">
                                             {getIcon(log.type)}
                                         </div>
+
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between gap-4 mb-2">
-                                                <p className="text-sm font-semibold text-foreground/90 leading-relaxed">
+                                                <p className="text-sm text-zinc-200 font-semibold leading-relaxed">
                                                     {log.message}
                                                 </p>
-                                                <span className="text-[10px] text-foreground/40 whitespace-nowrap font-medium bg-muted/40 px-2 py-1 rounded border border-border/40">
+                                                <span className="text-[9px] text-zinc-500 whitespace-nowrap font-bold uppercase tracking-wider bg-zinc-900/50 px-2 py-0.5 rounded border border-zinc-800/50">
                                                     {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
                                                 </span>
                                             </div>
 
-                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                                                <div className="flex items-center gap-1.5 min-w-0 bg-muted/20 px-2 py-0.5 rounded border border-border/20 hover:border-border/60 transition-colors cursor-pointer" title={log.pubkey}>
-                                                    <Globe className="w-3 h-3 text-foreground/30" />
-                                                    <span className="text-[10px] font-mono font-medium text-foreground/50">
-                                                        {log.pubkey.slice(0, 8)}...{log.pubkey.slice(-4)}
+                                            <div className="flex flex-wrap items-center gap-3 text-xs">
+                                                <div className="flex items-center gap-1.5 bg-black/40 px-2 py-1 rounded border border-zinc-800/80">
+                                                    <Globe className="w-3 h-3 text-zinc-500" />
+                                                    <span className="font-mono text-zinc-400 truncate max-w-[180px]">
+                                                        {log.pubkey}
                                                     </span>
                                                 </div>
 
                                                 {log.location && (
                                                     <div className="flex items-center gap-1.5">
-                                                        <MapPin className="w-3 h-3 text-foreground/20" />
-                                                        <span className="text-[10px] text-foreground/40 font-semibold italic">{log.location}</span>
+                                                        <MapPin className="w-3 h-3 text-zinc-600" />
+                                                        <span className="text-zinc-500 font-semibold">{log.location}</span>
                                                     </div>
                                                 )}
                                             </div>
+
+                                            {renderIntensityBar(log)}
                                         </div>
                                     </div>
                                 </motion.div>
@@ -205,6 +271,10 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50, showF
                         </AnimatePresence>
                     </div>
                 )}
+            </div>
+
+            <div className="text-[10px] text-foreground/30 text-center flex-shrink-0">
+                Real-time network events • Updated via Socket.io
             </div>
         </div>
     );
