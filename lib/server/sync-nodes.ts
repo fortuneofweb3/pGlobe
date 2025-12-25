@@ -456,7 +456,8 @@ export async function saveNodes(nodes: PNode[]): Promise<void> {
 
 async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) {
   const { storeActivityLog } = await import('./mongodb-activity');
-  const { emitActivity } = await import('./socket-server');
+  // Note: Real-time Socket.io emission is handled by realtime-activity.ts poller
+  // This function only stores logs to MongoDB for historical persistence
 
   const pubkey = newNode.pubkey || newNode.publicKey || '';
   const nodeAddress = newNode.address || '';
@@ -475,7 +476,6 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
       data: { status: newNode.status }
     };
     await storeActivityLog(log);
-    emitActivity({ ...log, timestamp: new Date() });
   }
 
   // 2. Status Change
@@ -505,7 +505,6 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
     };
 
     await storeActivityLog(log);
-    emitActivity({ ...log, timestamp: new Date() });
   }
 
   // 3. Credits Earned
@@ -522,7 +521,6 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
     };
 
     await storeActivityLog(log);
-    emitActivity({ ...log, timestamp: new Date() });
   }
 
   // 4. Packets Earned
@@ -545,7 +543,6 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
     };
 
     await storeActivityLog(log);
-    emitActivity({ ...log, timestamp: new Date() });
   }
 
   // 5. Active Streams
@@ -562,7 +559,6 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
     };
 
     await storeActivityLog(log);
-    emitActivity({ ...log, timestamp: new Date() });
   }
 }
 
