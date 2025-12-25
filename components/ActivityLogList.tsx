@@ -87,14 +87,40 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
     // Buffer for staggered display - makes logs appear gradually instead of all at once
     const bufferRef = React.useRef<ActivityLog[]>([]);
     const processingRef = React.useRef(false);
+    const isVisibleRef = React.useRef(true);
+
+    // Handle page visibility changes to prevent lag
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                // Tab is hidden - pause processing and clear buffer to prevent buildup
+                isVisibleRef.current = false;
+                bufferRef.current = [];
+                processingRef.current = false;
+            } else {
+                // Tab is visible again - ready for new events
+                isVisibleRef.current = true;
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, []);
 
     const processBuffer = React.useCallback(() => {
+        // Don't process if tab is hidden
+        if (!isVisibleRef.current) {
+            bufferRef.current = []; // Clear accumulated events
+            return;
+        }
         if (processingRef.current || bufferRef.current.length === 0) return;
         processingRef.current = true;
 
         const processOne = () => {
-            if (bufferRef.current.length === 0) {
+            // Stop if tab became hidden or no more items
+            if (!isVisibleRef.current || bufferRef.current.length === 0) {
                 processingRef.current = false;
+                bufferRef.current = []; // Clear any remaining
                 return;
             }
 

@@ -85,14 +85,40 @@ export default function NodeRaceVisualization() {
     // Buffer for staggered updates - makes racing feel smooth and continuous
     const bufferRef = React.useRef<any[]>([]);
     const processingRef = React.useRef(false);
+    const isVisibleRef = React.useRef(true);
+
+    // Handle page visibility changes to prevent lag
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                // Tab is hidden - stop processing and clear to prevent buildup
+                isVisibleRef.current = false;
+                bufferRef.current = [];
+                processingRef.current = false;
+            } else {
+                // Tab is visible again
+                isVisibleRef.current = true;
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, []);
 
     const processBuffer = React.useCallback(() => {
+        // Don't process if tab is hidden
+        if (!isVisibleRef.current) {
+            bufferRef.current = [];
+            return;
+        }
         if (processingRef.current || bufferRef.current.length === 0) return;
         processingRef.current = true;
 
         const processOne = () => {
-            if (bufferRef.current.length === 0) {
+            // Stop if tab hidden or no items
+            if (!isVisibleRef.current || bufferRef.current.length === 0) {
                 processingRef.current = false;
+                bufferRef.current = [];
                 return;
             }
 
