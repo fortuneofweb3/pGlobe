@@ -228,7 +228,7 @@ function NodesPageContent() {
               </div>
 
               {/* Table Skeleton */}
-              <TableSkeleton rows={10} columns={7} className="w-full" />
+              <TableSkeleton rows={10} />
             </div>
           </div>
         </main>
@@ -445,7 +445,7 @@ function NodesPageContent() {
                 )}
 
                 {isLoading ? (
-                  <TableSkeleton rows={10} columns={7} />
+                  <TableSkeleton rows={10} />
                 ) : (
                   <PNodeTable
                     nodes={paginatedNodes}

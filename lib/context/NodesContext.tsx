@@ -27,7 +27,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   const [availableNetworks, setAvailableNetworks] = useState<NetworkConfig[]>([]);
   const [currentNetwork, setCurrentNetwork] = useState<NetworkConfig | null>(null);
   const [podCredits, setPodCredits] = useState<Record<string, number>>({});
-  
+
   // Request deduplication - prevent multiple simultaneous requests
   const fetchingRef = useRef(false);
   const fetchPromiseRef = useRef<Promise<void> | null>(null);
@@ -41,7 +41,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       if (!cached) return null;
       const parsed = JSON.parse(cached);
       if (!parsed?.nodes) return null;
-      
+
       // Validate cache age - invalidate if older than 5 minutes
       if (parsed.lastUpdate) {
         const cacheAge = Date.now() - new Date(parsed.lastUpdate).getTime();
@@ -52,7 +52,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
           return null;
         }
       }
-      
+
       return parsed as {
         nodes: PNode[];
         lastUpdate?: string;
@@ -99,7 +99,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     fetchingRef.current = true;
     // DON'T set loading to true during refresh - keep showing existing data
     console.log('[NodesContext] 🔄 Manual refresh triggered - Starting fetch...');
-    
+
     // Trigger background refresh on Render to update DB (fire-and-forget)
     // This ensures DB is always fresh when user manually refreshes
     const triggerBackgroundRefresh = () => {
@@ -116,10 +116,10 @@ export function NodesProvider({ children }: { children: ReactNode }) {
           console.warn('[NodesContext] ⚠️  Failed to trigger background refresh:', err);
         });
     };
-    
+
     // Trigger in background (don't wait for it)
     triggerBackgroundRefresh();
-    
+
     const fetchPromise = (async () => {
       try {
         const params = new URLSearchParams();
@@ -135,22 +135,23 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         try {
           const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
           const timeoutId = controller ? setTimeout(() => controller.abort(), 30000) : null; // 30 second timeout for slower connections
-          
+
           console.log('[NodesContext] Making fetch request...');
           response = await fetch(url, {
             ...(controller ? { signal: controller.signal } : {}),
             cache: 'no-store', // Always get fresh data
           });
-          
+
           if (timeoutId) clearTimeout(timeoutId);
           console.log('[NodesContext] Fetch response status:', response.status);
-        } catch (err: any) {
-          if (err?.name === 'AbortError') {
+        } catch (err) {
+          const error = err as Error;
+          if (error?.name === 'AbortError') {
             throw new Error('Request timeout - data fetch took too long');
           }
-          throw err;
+          throw error;
         }
-        
+
         const data = await response.json();
         console.log('[NodesContext] Received data, nodes count:', data.nodes?.length || 0);
 
@@ -181,7 +182,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
               availableNetworks: data.networks,
               currentNetwork: data.currentNetwork,
             });
-            
+
             console.log('[NodesContext] ✅ Updated to', data.nodes.length, 'nodes, cached');
           } else {
             console.warn('[NodesContext] Received empty nodes array, keeping existing', nodes.length, 'nodes');
@@ -197,7 +198,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'An error occurred';
         console.error('[NodesContext] Fetch error:', errorMsg, err);
-        
+
         // On refresh error, keep existing data and just log the error
         // Don't fallback to cache - we already have current nodes displayed
         console.warn('[NodesContext] Refresh failed, keeping existing nodes:', nodes.length);
@@ -210,10 +211,10 @@ export function NodesProvider({ children }: { children: ReactNode }) {
 
     fetchPromiseRef.current = fetchPromise;
     return fetchPromise;
-  }, [selectedNetwork, loadCache, saveCache, nodes.length]);
+  }, [selectedNetwork, loadCache, saveCache]); // nodes.length removed as it's not needed for the fetch itself
 
   const hasInitializedRef = useRef(false);
-  
+
   // Initial fetch - load from cache instantly, then fetch in background
   // Only run once on mount, not on every page switch
   useEffect(() => {
@@ -357,7 +358,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     } else {
       console.log('[NodesContext] Skipping background refresh (last refresh was', Math.floor((now - parseInt(lastRefreshTime)) / 1000), 'seconds ago)');
     }
-  }, []);
+  }, [loadCache, nodes.length, refreshNodes]);
 
   // Passive polling: Fetch fresh data from MongoDB every 2 minutes
   // Reduced frequency to minimize flickering and improve performance
@@ -379,7 +380,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       console.log('[NodesContext] Stopping passive polling');
       clearInterval(interval);
     };
-  }, [refreshNodes]); // Removed nodes.length dependency to prevent interval resets
+  }, [nodes.length, refreshNodes]);
 
   // Refresh when network changes
   useEffect(() => {
@@ -420,25 +421,25 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       // No credits data yet, return nodes as-is
       return nodes;
     }
-    
+
     return nodes.map(node => {
       // Try multiple ways to match the pod_id
       // The pod_id from API is a Solana public key (base58)
       const pubkey = node.pubkey || node.publicKey || '';
-      
+
       // Direct match
       let credits = podCredits[pubkey];
-      
+
       // If no match, try case-insensitive (though Solana keys are case-sensitive)
       if (!credits && pubkey) {
-        const matchingKey = Object.keys(podCredits).find(key => 
+        const matchingKey = Object.keys(podCredits).find(key =>
           key.toLowerCase() === pubkey.toLowerCase()
         );
         if (matchingKey) {
           credits = podCredits[matchingKey];
         }
       }
-      
+
       // Fallback to existing credits if no match found
       return {
         ...node,

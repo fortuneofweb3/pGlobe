@@ -1290,7 +1290,7 @@ function CountryDetailContent() {
               {/* Table skeleton */}
               <div className="card p-4 mb-4">
                 <div className="h-6 w-32 bg-muted/30 rounded animate-pulse mb-4" />
-                <TableSkeleton rows={5} columns={7} />
+                <TableSkeleton rows={5} />
               </div>
             </div>
           </div>
@@ -2095,7 +2095,7 @@ function CountryDetailContent() {
                     </div>
                   </div>
                   {loading ? (
-                    <TableSkeleton rows={10} columns={7} />
+                    <TableSkeleton rows={10} />
                   ) : (
                     <PNodeTable
                       nodes={filteredAndSortedNodes}

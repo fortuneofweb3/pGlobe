@@ -275,7 +275,7 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="card">
-                  <ChartSkeleton height={300} className="w-full" />
+                  <ChartSkeleton height={300} />
                 </div>
               ))}
             </div>

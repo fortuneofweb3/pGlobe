@@ -1,9 +1,10 @@
-import { Collection, Db } from 'mongodb';
+import { Collection } from 'mongodb';
 import { getDb } from './mongodb-nodes';
 
 export type ActivityType =
     | 'status_change'
     | 'credits_earned'
+    | 'credits_lost'
     | 'node_online'
     | 'node_offline'
     | 'node_syncing'
@@ -18,7 +19,7 @@ export interface ActivityLog {
     address?: string;
     type: ActivityType;
     message: string;
-    data?: any;
+    data?: unknown;
     location?: string;
     countryCode?: string;
 }
@@ -35,7 +36,8 @@ export async function storeActivityLog(log: Omit<ActivityLog, 'timestamp'>): Pro
             ...log,
             timestamp: new Date(),
         });
-    } catch (error: any) {
+    } catch (err) {
+        const error = err as Error;
         console.error('[Activity] ❌ Failed to store activity log:', error.message);
     }
 }
@@ -50,7 +52,7 @@ export async function getActivityLogs(options: {
 } = {}): Promise<ActivityLog[]> {
     try {
         const collection = await getActivityCollection();
-        const query: any = {};
+        const query: import('mongodb').Filter<ActivityLog> = {};
 
         if (options.pubkey) query.pubkey = options.pubkey;
         if (options.address) query.address = options.address;
@@ -63,7 +65,8 @@ export async function getActivityLogs(options: {
             .skip(options.skip || 0)
             .limit(options.limit || 50)
             .toArray();
-    } catch (error: any) {
+    } catch (err) {
+        const error = err as Error;
         console.error('[Activity] ❌ Failed to fetch activity logs:', error.message);
         return [];
     }
@@ -76,7 +79,8 @@ export async function createActivityIndexes(): Promise<void> {
         await collection.createIndex({ pubkey: 1, timestamp: -1 });
         await collection.createIndex({ countryCode: 1, timestamp: -1 });
         console.log('[Activity] ✅ Created indexes for activity_logs');
-    } catch (error: any) {
+    } catch (err) {
+        const error = err as Error;
         console.error('[Activity] ❌ Failed to create activity indexes:', error.message);
     }
 }

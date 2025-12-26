@@ -53,7 +53,7 @@ interface RawPod {
 /**
  * HTTP POST request helper
  */
-function httpPost(url: string, data: object, timeoutMs: number): Promise<any | null> {
+function httpPost(url: string, data: object, timeoutMs: number): Promise<Record<string, unknown> | null> {
     return new Promise((resolve) => {
         try {
             const urlObj = new URL(url);
@@ -111,9 +111,15 @@ async function fetchPodsFromEndpoint(endpoint: string): Promise<RawPod[]> {
 
     if (!response?.result) return [];
 
+    let pods: RawPod[] = [];
     const result = response.result;
-    const pods: RawPod[] = Array.isArray(result) ? result
-        : result.pods || result.nodes || [];
+
+    if (Array.isArray(result)) {
+        pods = result as unknown as RawPod[];
+    } else if (typeof result === 'object' && result !== null) {
+        const resObj = result as { pods?: RawPod[]; nodes?: RawPod[] };
+        pods = resObj.pods || resObj.nodes || [];
+    }
 
     return pods;
 }
@@ -213,18 +219,23 @@ async function checkForActivityChanges() {
                 continue;
             }
 
-            // Check for packet changes
-            const packetDiff = (currentRx + currentTx) - (prev.packetsReceived + prev.packetsSent);
-            if (packetDiff > 0) {
+            // Check for packet changes (received and sent separately)
+            const rxDiff = currentRx - prev.packetsReceived;
+            const txDiff = currentTx - prev.packetsSent;
+            if (rxDiff > 0 || txDiff > 0) {
+                const parts: string[] = [];
+                if (rxDiff > 0) parts.push(`received ${rxDiff.toLocaleString()}`);
+                if (txDiff > 0) parts.push(`sent ${txDiff.toLocaleString()}`);
+
                 emitActivity({
                     type: 'packets_earned',
                     pubkey,
                     address,
                     location,
-                    message: `${address} processed ${packetDiff.toLocaleString()} packets`,
+                    message: `${address} ${parts.join(' / ')} packets`,
                     data: {
-                        rxEarned: currentRx - prev.packetsReceived,
-                        txEarned: currentTx - prev.packetsSent,
+                        rxEarned: rxDiff > 0 ? rxDiff : 0,
+                        txEarned: txDiff > 0 ? txDiff : 0,
                         totalRx: currentRx,
                         totalTx: currentTx,
                     },
@@ -233,7 +244,7 @@ async function checkForActivityChanges() {
                 emittedCount++;
             }
 
-            // Check for credit changes
+            // Check for credit changes (earned and lost)
             const creditDiff = currentCredits - prev.credits;
             if (creditDiff > 0) {
                 emitActivity({
@@ -244,6 +255,22 @@ async function checkForActivityChanges() {
                     message: `${address} earned ${creditDiff.toFixed(2)} credits`,
                     data: {
                         earned: creditDiff,
+                        total: currentCredits,
+                    },
+                    timestamp: now,
+                });
+                emittedCount++;
+            } else if (creditDiff < 0) {
+                // Track credits lost (negative change)
+                const creditsLost = Math.abs(creditDiff);
+                emitActivity({
+                    type: 'credits_lost',
+                    pubkey,
+                    address,
+                    location,
+                    message: `${address} lost ${creditsLost.toFixed(2)} credits`,
+                    data: {
+                        lost: creditsLost,
                         total: currentCredits,
                     },
                     timestamp: now,
@@ -281,7 +308,8 @@ async function checkForActivityChanges() {
         const elapsed = Date.now() - startTime;
         console.log(`[RealtimeActivity] 📈 Stats: ${pods.length} pods, ${emittedCount} events in ${elapsed}ms`);
 
-    } catch (error: any) {
+    } catch (err) {
+        const error = err as Error;
         console.error('[RealtimeActivity] ❌ Error:', error?.message);
     } finally {
         isPolling = false;

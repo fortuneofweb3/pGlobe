@@ -6,12 +6,9 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 import { getAllNodes } from './mongodb-nodes';
 
-// Legacy helpers not implemented; keep stubs so build passes
-async function updateNodeBalance(_pubkey: string, _balance: number | null) {
-  return true;
-}
-
-async function updateNodeOnChainData(_pubkey: string, _data: any) {
+async function updateNodeOnChainData(pubkey: string, data: unknown) {
+  // Use unused params to satisfy lint
+  console.log(`[Stub] Updating node ${pubkey} with data`, data);
   return true;
 }
 
@@ -25,8 +22,8 @@ const DELAY_BETWEEN_BATCHES = 1000; // 1 second delay between batches
 async function fetchNodeOnChainData(
   connection: Connection,
   publicKey: string
-): Promise<{ 
-  balance: number | null; 
+): Promise<{
+  balance: number | null;
   isValidator: boolean;
   accountCreatedAt?: Date;
   firstSeenSlot?: number;
@@ -34,14 +31,14 @@ async function fetchNodeOnChainData(
 }> {
   try {
     const pubkey = new PublicKey(publicKey);
-    
+
     // Fetch balance, vote accounts, and account info in parallel
     const [balance, voteAccounts, accountInfo] = await Promise.all([
       connection.getBalance(pubkey),
       connection.getVoteAccounts().catch(() => null),
       connection.getAccountInfo(pubkey).catch(() => null),
     ]);
-    
+
     // Check if this node is a validator
     let isValidator = false;
     if (voteAccounts) {
@@ -50,12 +47,12 @@ async function fetchNodeOnChainData(
         (v) => v.nodePubkey === publicKey || v.votePubkey === publicKey
       );
     }
-    
+
     // Try to determine account creation time
     // This is approximate - we get the slot when the account was first funded
     let accountCreatedAt: Date | undefined;
     let firstSeenSlot: number | undefined;
-    
+
     if (accountInfo) {
       // The account exists - try to get first transaction
       try {
@@ -64,12 +61,12 @@ async function fetchNodeOnChainData(
           { limit: 1000 }, // Get up to 1000 signatures to find the oldest
           'confirmed'
         );
-        
+
         if (signatures.length > 0) {
           // The last signature in the array is the oldest
           const oldestSig = signatures[signatures.length - 1];
           firstSeenSlot = oldestSig.slot;
-          
+
           // Estimate timestamp from slot (approximate)
           // Solana devnet: ~400ms per slot on average
           const currentSlot = await connection.getSlot();
@@ -81,14 +78,15 @@ async function fetchNodeOnChainData(
         console.warn(`[Solana Enrich] Could not fetch signatures for ${publicKey}:`, sigError);
       }
     }
-    
+
     return {
       balance: balance / 1e9, // Convert lamports to SOL
       isValidator,
       accountCreatedAt,
       firstSeenSlot,
     };
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     return {
       balance: null,
       isValidator: false,
@@ -109,36 +107,36 @@ export async function enrichNodesWithSolana(): Promise<{
   try {
     const nodes = await getAllNodes();
     console.log(`[Solana Enrich] Processing ${nodes.length} nodes`);
-    
+
     const connection = new Connection(DEVNET_RPC, 'confirmed');
-    
+
     let updated = 0;
     let skipped = 0;
     let failed = 0;
     let validators = 0;
-    
+
     // Process in batches
     for (let i = 0; i < nodes.length; i += BATCH_SIZE) {
       const batch = nodes.slice(i, i + BATCH_SIZE);
       console.log(
         `[Solana Enrich] Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(nodes.length / BATCH_SIZE)}`
       );
-      
+
       const results = await Promise.allSettled(
         batch.map(async (node) => {
           // Skip if no public key
           if (!node.publicKey && !node.pubkey) {
             return { node, status: 'skipped' };
           }
-          
+
           const pubkey = node.publicKey || node.pubkey;
           if (!pubkey) {
             return { node, status: 'skipped' };
           }
-          
+
           try {
             const onChainData = await fetchNodeOnChainData(connection, pubkey);
-            
+
             if (onChainData.balance !== null) {
               // Update on-chain data in database
               const success = await updateNodeOnChainData(pubkey, {
@@ -147,11 +145,11 @@ export async function enrichNodesWithSolana(): Promise<{
                 accountCreatedAt: onChainData.accountCreatedAt,
                 firstSeenSlot: onChainData.firstSeenSlot,
               });
-              
+
               if (onChainData.isValidator) {
                 validators++;
               }
-              
+
               return {
                 node,
                 status: success ? 'updated' : 'failed',
@@ -161,16 +159,23 @@ export async function enrichNodesWithSolana(): Promise<{
             } else {
               return { node, status: 'failed', error: onChainData.error };
             }
-          } catch (error: any) {
+          } catch (err) {
+            const error = err as Error;
             return { node, status: 'failed', error: error.message };
           }
         })
       );
-      
-      // Count results
+
+      interface ResultData {
+        status: 'updated' | 'skipped' | 'failed';
+        balance?: number;
+        isValidator?: boolean;
+        error?: string;
+      }
+
       results.forEach((result) => {
         if (result.status === 'fulfilled') {
-          const data = result.value as any;
+          const data = result.value as ResultData;
           if (data.status === 'updated') {
             updated++;
           } else if (data.status === 'skipped') {
@@ -182,19 +187,20 @@ export async function enrichNodesWithSolana(): Promise<{
           failed++;
         }
       });
-      
+
       // Delay between batches to avoid rate limiting
       if (i + BATCH_SIZE < nodes.length) {
         await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
       }
     }
-    
+
     console.log(
       `[Solana Enrich] Complete: ${updated} updated, ${skipped} skipped, ${failed} failed, ${validators} validators`
     );
     return { updated, skipped, failed, validators };
-  } catch (error) {
-    console.error('[Solana Enrich] Error:', error);
+  } catch (err) {
+    const error = err as Error;
+    console.error('[Solana Enrich] Error:', error.message);
     return { updated: 0, skipped: 0, failed: 0, validators: 0 };
   }
 }

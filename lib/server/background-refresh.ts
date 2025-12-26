@@ -13,11 +13,11 @@ let syncNodesFn: (() => Promise<{ success: boolean; count: number; error?: strin
 
 async function getSyncNodes() {
   if (!syncNodesFn) {
-    const module = await import('./sync-nodes');
-    if (typeof module.syncNodes !== 'function') {
+    const mod = await import('./sync-nodes');
+    if (typeof mod.syncNodes !== 'function') {
       throw new Error('syncNodes export is not a function');
     }
-    syncNodesFn = module.syncNodes;
+    syncNodesFn = mod.syncNodes;
   }
   return syncNodesFn;
 }
@@ -48,7 +48,7 @@ export async function performRefresh(): Promise<void> {
   if (isRunning) {
     const timeSinceStart = Date.now() - lastRefreshStart;
     consecutiveSkips++;
-    
+
     if (timeSinceStart > MAX_REFRESH_TIME_MS || consecutiveSkips >= MAX_CONSECUTIVE_SKIPS) {
       console.error(`[BackgroundRefresh] ❌ Force resetting stuck refresh (${Math.round(timeSinceStart / 1000)}s)`);
       isRunning = false;
@@ -62,7 +62,7 @@ export async function performRefresh(): Promise<void> {
   consecutiveSkips = 0;
   isRunning = true;
   lastRefreshStart = Date.now();
-  
+
   console.log(`[BackgroundRefresh] 🔄 Starting refresh at ${new Date().toISOString()}`);
 
   try {
@@ -71,13 +71,14 @@ export async function performRefresh(): Promise<void> {
       throw new Error('syncNodes is not a function');
     }
     const result = await syncNodes();
-    
+
     if (result.success) {
       console.log(`[BackgroundRefresh] ✅ Synced ${result.count} nodes`);
     } else {
       console.error(`[BackgroundRefresh] ⚠️ Sync failed: ${result.error}`);
     }
-  } catch (error: any) {
+  } catch (err: unknown) {
+    const error = err as Error;
     console.error(`[BackgroundRefresh] ❌ Error:`, error.message);
   } finally {
     isRunning = false;
@@ -110,22 +111,22 @@ export function startBackgroundRefresh(): void {
       isRunning = false;
     });
   }, 60 * 1000);
-  
+
   // Heartbeat for monitoring
   heartbeatInterval = setInterval(() => {
     const uptime = process.uptime();
-    const timeSinceComplete = lastRefreshComplete 
-      ? Math.floor((Date.now() - lastRefreshComplete) / 1000) 
+    const timeSinceComplete = lastRefreshComplete
+      ? Math.floor((Date.now() - lastRefreshComplete) / 1000)
       : 0;
     console.log(`[BackgroundRefresh] 💓 Up ${Math.floor(uptime / 60)}min, last sync ${timeSinceComplete}s ago`);
-    
+
     // Auto-recover if stuck
     if (lastRefreshComplete && timeSinceComplete > 10 * 60 && isRunning) {
       console.error('[BackgroundRefresh] ⚠️ Force resetting stuck state');
       isRunning = false;
     }
   }, 60 * 1000);
-  
+
   console.log('[BackgroundRefresh] ✅ Started');
 }
 

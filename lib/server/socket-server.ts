@@ -1,5 +1,6 @@
 import { Server as SocketServer } from 'socket.io';
 import { Server as HttpServer } from 'http';
+import { ActivityLog } from './mongodb-activity';
 
 let io: SocketServer | null = null;
 
@@ -27,7 +28,7 @@ export function getSocketIO(): SocketServer | null {
     return io;
 }
 
-export function emitActivity(activity: any) {
+export function emitActivity(activity: ActivityLog | (Omit<ActivityLog, 'timestamp'> & { timestamp: Date })) {
     if (io) {
         const connectedClients = io.sockets.sockets.size;
         console.log(`[Socket] 📡 Emitting activity event to ${connectedClients} clients: ${activity.type} - ${activity.message}`);

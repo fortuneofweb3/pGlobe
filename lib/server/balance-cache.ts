@@ -9,10 +9,16 @@ const DEVNET_RPC = 'https://api.devnet.xandeum.com:8899';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes (balances can change)
 const DEVNET_PROGRAM = new PublicKey('6Bzz3KPvzQruqBg2vtsvkuitd6Qb4iCcr5DViifCwLsL');
 
+interface ValidatorInfo {
+  votePubkey: string;
+  activatedStake: number;
+  commission: number;
+}
+
 interface BalanceData {
   balance: number; // in SOL
   isValidator: boolean;
-  validatorInfo?: any;
+  validatorInfo?: ValidatorInfo;
   isRegistered: boolean;
   managerPDA?: string;
 }
@@ -65,7 +71,7 @@ export async function fetchBalanceForPubkey(
 
     // Check if validator
     let isValidator = false;
-    let validatorInfo: any = undefined;
+    let validatorInfo: ValidatorInfo | undefined = undefined;
 
     if (voteAccounts.status === 'fulfilled' && voteAccounts.value) {
       const allVoteAccounts = [...voteAccounts.value.current, ...voteAccounts.value.delinquent];
@@ -84,8 +90,8 @@ export async function fetchBalanceForPubkey(
     }
 
     // Get manager PDA info
-    const managerData = managerPDAResult.status === 'fulfilled' 
-      ? managerPDAResult.value 
+    const managerData = managerPDAResult.status === 'fulfilled'
+      ? managerPDAResult.value
       : { managerPDA: undefined, exists: false };
 
     const balanceData: BalanceData = {
@@ -103,7 +109,8 @@ export async function fetchBalanceForPubkey(
     });
 
     return balanceData;
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     console.warn(`[Balance Cache] Failed to fetch balance for ${publicKey}:`, error.message);
     return null;
   }
@@ -212,10 +219,10 @@ export async function batchFetchBalances(
             isValidator: !!nodeVoteAccount,
             validatorInfo: nodeVoteAccount
               ? {
-                  votePubkey: nodeVoteAccount.votePubkey,
-                  activatedStake: Number(nodeVoteAccount.activatedStake || 0) / 1e9,
-                  commission: nodeVoteAccount.commission,
-                }
+                votePubkey: nodeVoteAccount.votePubkey,
+                activatedStake: Number(nodeVoteAccount.activatedStake || 0) / 1e9,
+                commission: nodeVoteAccount.commission,
+              }
               : undefined,
             isRegistered: managerData.exists,
             managerPDA: managerData.managerPDA,
@@ -228,7 +235,8 @@ export async function batchFetchBalances(
           });
 
           return { pk, balanceData };
-        } catch (error: any) {
+        } catch (err) {
+          const error = err as Error;
           console.warn(`[Balance Cache] Failed for ${pk}:`, error.message);
           return { pk, balanceData: null };
         }
@@ -253,7 +261,8 @@ export async function batchFetchBalances(
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     console.error('[Balance Cache] Batch fetch error:', error.message);
   }
 

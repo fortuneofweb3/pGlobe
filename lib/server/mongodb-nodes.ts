@@ -5,7 +5,8 @@
  * Deduplication is handled upstream in sync-nodes.ts.
  */
 
-import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
+import { MongoClient, Db, Collection, AnyBulkWriteOperation, ObjectId } from 'mongodb';
+import { PublicKey } from '@solana/web3.js';
 import { PNode } from '../types/pnode';
 
 // ============================================================================
@@ -13,7 +14,6 @@ import { PNode } from '../types/pnode';
 // ============================================================================
 
 let client: MongoClient | null = null;
-let db: Db | null = null;
 
 function getMongoUri(): string | undefined {
   return process.env.MONGODB_URI;
@@ -37,7 +37,8 @@ async function getClient(retries: number = 3): Promise<MongoClient> {
         new Promise((_, reject) => setTimeout(() => reject(new Error('Ping timeout')), 2000))
       ]);
       return client;
-    } catch (error: any) {
+    } catch (err) {
+      const error = err as Error;
       console.log(`[MongoDB] Connection lost, reconnecting... (${error?.message || 'ping failed'})`);
       try {
         await client.close();
@@ -45,11 +46,10 @@ async function getClient(retries: number = 3): Promise<MongoClient> {
         // Ignore close errors
       }
       client = null;
-      db = null;
     }
   }
 
-  let lastError: any = null;
+  let lastError: unknown = null;
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const uri = getMongoUri();
@@ -82,7 +82,8 @@ async function getClient(retries: number = 3): Promise<MongoClient> {
 
       console.log(`[MongoDB] ✅ Connected to ${getDbName()}`);
       return client;
-    } catch (error: any) {
+    } catch (err) {
+      const error = err as Error;
       lastError = error;
       if (attempt < retries) {
         const delay = 1000 * attempt;
@@ -99,7 +100,6 @@ async function getClient(retries: number = 3): Promise<MongoClient> {
       }
       if (client) { try { await client.close(); } catch { } }
       client = null;
-      db = null;
     }
   }
 
@@ -177,7 +177,6 @@ export function isValidPubkey(pubkey: string | null | undefined): boolean {
   if (/^\d+\.\d+\.\d+\.\d+/.test(trimmed)) return false;
 
   try {
-    const { PublicKey } = require('@solana/web3.js');
     new PublicKey(trimmed);
     return true;
   } catch {
@@ -305,7 +304,7 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
 
     // Collect all pubkeys from incoming nodes
     const incomingPubkeys = new Set<string>();
-    const operations: any[] = [];
+    const operations: AnyBulkWriteOperation[] = [];
 
     for (const node of nodes) {
       const pubkey = node.pubkey || node.publicKey;
@@ -315,8 +314,8 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
       const doc = nodeToDocument(node);
 
       // Build update: overwrite stats, preserve balance/location if not in new data
-      const setFields: any = { updatedAt: now };
-      const setOnInsert: any = { _id: pubkey, createdAt: now };
+      const setFields: Record<string, unknown> = { updatedAt: now };
+      const setOnInsert: Record<string, unknown> = { _id: pubkey, createdAt: now };
 
       // Stats fields - always overwrite (fresh from gossip)
       const statsFields = [
@@ -328,7 +327,7 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
       ];
 
       for (const field of statsFields) {
-        const value = (doc as any)[field];
+        const value = (doc as unknown as Record<string, unknown>)[field];
         if (value !== undefined) {
           setFields[field] = value;
         }
@@ -339,7 +338,7 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
         'location', 'locationLat', 'locationLon', 'locationCity', 'locationCountry', 'locationCountryCode'];
 
       for (const field of preservedFields) {
-        const value = (doc as any)[field];
+        const value = (doc as unknown as Record<string, unknown>)[field];
         if (value !== undefined && value !== null) {
           setFields[field] = value;
         }
@@ -347,7 +346,7 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
 
       operations.push({
         updateOne: {
-          filter: { _id: pubkey },
+          filter: { _id: pubkey as unknown as ObjectId },
           update: { $set: setFields, $setOnInsert: setOnInsert },
           upsert: true,
         },
@@ -360,7 +359,7 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
 
       // Mark nodes NOT in this sync as offline
       const markOfflineResult = await collection.updateMany(
-        { _id: { $nin: Array.from(incomingPubkeys) as any } },
+        { _id: { $nin: Array.from(incomingPubkeys) as unknown as ObjectId[] } },
         { $set: { seenInGossip: false, status: 'offline', updatedAt: now } }
       );
 
@@ -368,11 +367,11 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
         console.log(`[MongoDB] 📍 Marked ${markOfflineResult.modifiedCount} nodes as offline`);
       }
     }
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     console.error('[MongoDB] Error upserting nodes:', error.message);
     if (error.message?.includes('Topology') || error.message?.includes('connection')) {
       client = null;
-      db = null;
     }
     throw error;
   }
@@ -382,8 +381,8 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
  * Get all nodes
  */
 export async function getAllNodes(): Promise<PNode[]> {
-  let retries = 3;
-  let lastError: any = null;
+  const retries = 3;
+  let lastError: unknown = null;
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
@@ -403,7 +402,7 @@ export async function getAllNodes(): Promise<PNode[]> {
         if (totalCount > 101) {
           console.warn(`[MongoDB] ⚠️  Database has ${totalCount} nodes but query returned only 101 - retrying with explicit batch handling...`);
           // Retry with explicit batch handling
-          const allDocs: any[] = [];
+          const allDocs: unknown[] = [];
           const batchCursor = collection.find({}).sort({ updatedAt: -1 }).batchSize(1000);
           for await (const doc of batchCursor) {
             allDocs.push(doc);
@@ -421,9 +420,10 @@ export async function getAllNodes(): Promise<PNode[]> {
 
       console.log(`[MongoDB] ✅ Retrieved ${docs.length} nodes`);
       return docs.map(doc => documentToNode(doc as unknown as NodeDocument));
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as Error;
       lastError = error;
-      const errorMsg = error?.message || String(error);
+      const errorMsg = error?.message || String(err);
       console.error(`[MongoDB] Error fetching nodes (attempt ${attempt}/${retries}):`, errorMsg);
 
       // Reset connection on connection errors
@@ -432,7 +432,6 @@ export async function getAllNodes(): Promise<PNode[]> {
         errorMsg.includes('session') ||
         errorMsg.includes('pool')) {
         client = null;
-        db = null;
       }
 
       if (attempt < retries) {
@@ -444,7 +443,7 @@ export async function getAllNodes(): Promise<PNode[]> {
   }
 
   // If all retries failed, return empty array
-  console.error(`[MongoDB] ❌ All ${retries} attempts failed. Last error:`, lastError?.message || lastError);
+  console.error(`[MongoDB] ❌ All ${retries} attempts failed. Last error:`, (lastError as Error)?.message || lastError);
   return [];
 }
 
@@ -455,9 +454,10 @@ export async function getNodeByPubkey(pubkey: string): Promise<PNode | null> {
   try {
     await getClient();
     const collection = await getNodesCollection();
-    const doc = await collection.findOne({ _id: pubkey as any });
+    const doc = await collection.findOne({ _id: pubkey as unknown as ObjectId });
     return doc ? documentToNode(doc as unknown as NodeDocument) : null;
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     console.error('[MongoDB] Error fetching node:', error.message);
     return null;
   }
@@ -481,7 +481,8 @@ export async function cleanupInvalidNodes(): Promise<number> {
     const result = await collection.deleteMany({ _id: { $in: invalidIds } });
     console.log(`[MongoDB] 🧹 Cleaned up ${result.deletedCount} invalid nodes`);
     return result.deletedCount || 0;
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     console.error('[MongoDB] Error cleaning up:', error.message);
     return 0;
   }
@@ -499,7 +500,8 @@ export async function createIndexes(): Promise<void> {
     await collection.createIndex({ status: 1 });
     await collection.createIndex({ updatedAt: -1 });
     console.log('[MongoDB] ✅ Created indexes');
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     console.error('[MongoDB] Error creating indexes:', error.message);
   }
 }

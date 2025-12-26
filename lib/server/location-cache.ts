@@ -11,6 +11,17 @@ interface LocationData {
   countryCode?: string;
 }
 
+interface IpApiResponse {
+  status: string;
+  lat: number;
+  lon: number;
+  city: string;
+  country: string;
+  countryCode: string;
+  query: string;
+  message?: string;
+}
+
 interface CacheEntry {
   data: LocationData;
   timestamp: number;
@@ -102,7 +113,8 @@ export async function fetchLocationForIP(ip: string): Promise<LocationData | nul
     }
 
     return null;
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     console.error(`[Location Cache] Error fetching ${ip}:`, error.message);
     return null;
   }
@@ -195,31 +207,33 @@ export async function batchFetchLocations(
       }
 
       let successCount = 0;
-      data.forEach((result: any) => {
-        if (result.status === 'success') {
+      data.forEach((result: unknown) => {
+        const res = result as IpApiResponse;
+        if (res.status === 'success') {
           const locationData: LocationData = {
-            lat: result.lat,
-            lon: result.lon,
-            city: result.city,
-            country: result.country,
-            countryCode: result.countryCode,
+            lat: res.lat,
+            lon: res.lon,
+            city: res.city,
+            country: res.country,
+            countryCode: res.countryCode,
           };
 
           // Cache the result
-          locationCache.set(result.query, {
+          locationCache.set(res.query, {
             data: locationData,
             timestamp: Date.now(),
           });
 
-          results.set(result.query, locationData);
+          results.set(res.query, locationData);
           successCount++;
         } else {
-          console.warn(`[Location Cache] ❌ ${result.query}: ${result.message || 'failed'}`);
+          console.warn(`[Location Cache] ❌ ${res.query}: ${res.message || 'failed'}`);
         }
       });
 
       console.log(`[Location Cache] Batch ${batchNumber}/${batches.length}: ${successCount}/${batch.length} succeeded, total: ${results.size}/${validIPs.length}`);
-    } catch (error: any) {
+    } catch (err) {
+      const error = err as Error;
       console.error(`[Location Cache] Batch ${batchNumber} error:`, error.message);
     }
 

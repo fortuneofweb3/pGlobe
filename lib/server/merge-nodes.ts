@@ -65,9 +65,9 @@ export function mergeOnChainData(nodes: PNode[], onChainNodes: PNode[]): PNode[]
         balance: onChain.balance ?? node.balance,
         isValidator: onChain.isValidator ?? node.isValidator,
         isRegistered: onChain.isRegistered ?? node.isRegistered,
-        registryPDA: (onChain as any).registryPDA ?? (node as any).registryPDA,
-        managerPDA: (onChain as any).managerPDA ?? (node as any).managerPDA,
-        validatorInfo: (onChain as any).validatorInfo ?? (node as any).validatorInfo,
+        registryPDA: onChain.registryPDA ?? node.registryPDA,
+        managerPDA: onChain.managerPDA ?? node.managerPDA,
+        validatorInfo: onChain.validatorInfo ?? node.validatorInfo,
       };
     }
 

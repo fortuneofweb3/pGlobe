@@ -63,6 +63,8 @@ export interface PNode {
   creditsResetMonth?: string; // YYYY-MM format to track which month these credits are for (e.g., "2025-01")
   isRegistered?: boolean; // Is node registered on-chain? (balance > 0)
   managerPDA?: string; // Manager PDA address (from on-chain)
+  registryPDA?: string; // Registry PDA address (from on-chain)
+  validatorInfo?: unknown; // Validator info (from on-chain)
 
   // On-chain account tracking (from Solana blockchain)
   accountCreatedAt?: Date; // When the Solana account was created (approximate, from first transaction)
@@ -70,13 +72,31 @@ export interface PNode {
 
   // Gossip tracking
   seenInGossip?: boolean; // true if node was returned by gossip in the last cycle, false if not (offline)
+  onChainError?: string; // Error from Solana on-chain data enrichment
 
   createdAt?: Date | string; // When the node was first discovered/added to our database
 
   // Error tracking
   _statsError?: string;
-  _explanation?: any;
-  [key: string]: any; // Allow additional fields
+  _explanation?: unknown;
+
+  // Legacy shorthand properties (used in historical data and memory-optimized records)
+  s?: string; // status
+  sc?: number; // storageCapacity
+  cr?: number; // credits
+  us?: number; // uptime
+  c?: string; // country
+  v?: string; // version
+  p?: string; // pubkey
+  cy?: string; // city
+  rt?: number; // ramTotal
+  ru?: number; // ramUsed
+  pr?: number; // packetsReceived
+  ps?: number; // packetsSent
+  as?: number; // activeStreams
+  cpu?: number; // cpuPercent
+
+  [key: string]: unknown; // Allow additional fields safely
 }
 
 export interface PNodeGossipResponse {

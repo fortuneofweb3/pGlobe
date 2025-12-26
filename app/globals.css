@@ -806,3 +806,45 @@ body {
 .stagger-children>*:nth-child(n+13) {
   animation: fadeIn 0.4s ease-out 0.65s forwards;
 }
+
+/* Fast fade-in for activity logs - optimized for 60fps */
+@keyframes fadeInFast {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-fast {
+  animation: fadeInFast 0.15s ease-out forwards;
+  will-change: opacity, transform;
+}
+
+/* Reduce animations for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .animate-fade-in-fast,
+  .animate-fade-in,
+  .animate-slide-in-left,
+  .animate-slide-in-right,
+  .animate-slide-in-top,
+  .animate-slide-in-bottom,
+  .animate-scale-in {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

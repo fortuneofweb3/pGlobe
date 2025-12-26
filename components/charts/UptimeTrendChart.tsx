@@ -28,12 +28,11 @@ const formatDate = timeFormat('%b %d');
 
 export default function UptimeTrendChart({ nodes, historicalData }: UptimeTrendChartProps) {
   const { tooltipData, tooltipLeft, tooltipTop, tooltipOpen, showTooltip, hideTooltip } = useTooltip<DataPoint>();
-  const svgRef = useRef<SVGSVGElement>(null);
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // Animation refs and state
   const uptimePathGroupRef = useRef<SVGGElement | null>(null);
   const onlinePathGroupRef = useRef<SVGGElement | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [showCircle, setShowCircle] = useState(false);
   const lastAnimatedKeyRef = useRef<string>('');
   const lastDataKeyRef = useRef<string>('');
@@ -57,7 +56,7 @@ export default function UptimeTrendChart({ nodes, historicalData }: UptimeTrendC
         ? nodesWithUptime.reduce((sum, n) => sum + (n.uptimePercent || 0), 0) / nodesWithUptime.length
         : 0;
       const onlineCount = nodes.filter((n) => n.status === 'online').length;
-      
+
       return [
         {
           timestamp: Date.now(),
@@ -139,7 +138,7 @@ export default function UptimeTrendChart({ nodes, historicalData }: UptimeTrendC
 
     requestAnimationFrame(setupAnimation);
 
-    function startAnimation(group: SVGGElement, path: SVGPathElement, type: string) {
+    function startAnimation(group: SVGGElement, path: SVGPathElement, _type: string) {
       // Remove hidden class to show the path
       group.classList.remove('line-initial-hidden');
 
@@ -221,7 +220,7 @@ function ChartContent({
   tooltipLeft?: number;
   tooltipTop?: number;
   tooltipOpen: boolean;
-  showTooltip: (args: any) => void;
+  showTooltip: (args: { tooltipData: DataPoint; tooltipLeft: number; tooltipTop: number }) => void;
   hideTooltip: () => void;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -276,7 +275,7 @@ function ChartContent({
       const length = path.getTotalLength();
       if (length === 0) {
         // Path not ready, retry once more
-            requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
           const retryPath = pathGroupRef.current?.querySelector('path');
           if (retryPath) {
             const retryLength = retryPath.getTotalLength();
@@ -331,11 +330,11 @@ function ChartContent({
 
   // Responsive margins - smaller on mobile for better chart size
   const isMobile = width < 640;
-  const margin = { 
-    top: 20, 
-    right: isMobile ? 20 : 80, 
-    left: isMobile ? 40 : 60, 
-    bottom: 40 
+  const margin = {
+    top: 20,
+    right: isMobile ? 20 : 80,
+    left: isMobile ? 40 : 60,
+    bottom: 40
   };
   const xMax = width - margin.left - margin.right;
   const yMax = height - margin.top - margin.bottom;
@@ -406,7 +405,8 @@ function ChartContent({
 
     const x = coords.x - margin.left;
     const x0 = xScale.invert(x);
-    const x0Time = x0 instanceof Date ? x0.getTime() : Number(x0);
+    // x0Time is used for debugging but not currently needed
+    // const x0Time = x0 instanceof Date ? x0.getTime() : Number(x0);
 
     // Find closest data point
     let closestIndex = 0;
@@ -483,12 +483,12 @@ function ChartContent({
           {/* Highlighted lines - show if we have data, even if loading new data */}
           {highlightedData.length > 0 && (
             <g ref={pathGroupRef} key={`lines-${dataKey || 'loading'}`} className="line-initial-hidden">
-          <LinePath
+              <LinePath
                 data={highlightedData}
-            x={(d) => xScale(d.timestamp)}
-            y={(d) => yScaleUptime(d.uptime)}
-            stroke="#F0A741"
-            strokeWidth={2.5}
+                x={(d) => xScale(d.timestamp)}
+                y={(d) => yScaleUptime(d.uptime)}
+                stroke="#F0A741"
+                strokeWidth={2.5}
                 strokeOpacity={1}
                 curve={curveMonotoneX}
               />
@@ -499,8 +499,8 @@ function ChartContent({
                 stroke="#3F8277"
                 strokeWidth={2.5}
                 strokeOpacity={1}
-            curve={curveMonotoneX}
-          />
+                curve={curveMonotoneX}
+              />
             </g>
           )}
 
@@ -516,15 +516,15 @@ function ChartContent({
                 strokeOpacity={0.25}
                 curve={curveMonotoneX}
               />
-          <LinePath
+              <LinePath
                 data={dimmedData}
-            x={(d) => xScale(d.timestamp)}
-            y={(d) => yScaleOnline(d.online)}
-            stroke="#3F8277"
-            strokeWidth={2.5}
+                x={(d) => xScale(d.timestamp)}
+                y={(d) => yScaleOnline(d.online)}
+                stroke="#3F8277"
+                strokeWidth={2.5}
                 strokeOpacity={0.25}
-            curve={curveMonotoneX}
-          />
+                curve={curveMonotoneX}
+              />
             </>
           )}
 
@@ -535,7 +535,7 @@ function ChartContent({
             tickFormat={(d) => {
               const date = d as Date;
               // If data spans multiple days, show date; otherwise show time
-              const timeSpan = chartData.length > 0 
+              const timeSpan = chartData.length > 0
                 ? Math.max(...chartData.map(d => d.timestamp)) - Math.min(...chartData.map(d => d.timestamp))
                 : 0;
               return timeSpan > 86400000 ? formatDate(date) : formatTime(date);
@@ -596,22 +596,22 @@ function ChartContent({
               />
               {showCircle && (
                 <>
-              <circle
-                cx={xScale(tooltipData.timestamp)}
-                cy={yScaleUptime(tooltipData.uptime)}
-                r={5}
-                fill="#F0A741"
-                stroke="#000"
-                strokeWidth={2}
-              />
-              <circle
-                cx={xScale(tooltipData.timestamp)}
-                cy={yScaleOnline(tooltipData.online)}
-                r={5}
-                fill="#3F8277"
-                stroke="#000"
-                strokeWidth={2}
-              />
+                  <circle
+                    cx={xScale(tooltipData.timestamp)}
+                    cy={yScaleUptime(tooltipData.uptime)}
+                    r={5}
+                    fill="#F0A741"
+                    stroke="#000"
+                    strokeWidth={2}
+                  />
+                  <circle
+                    cx={xScale(tooltipData.timestamp)}
+                    cy={yScaleOnline(tooltipData.online)}
+                    r={5}
+                    fill="#3F8277"
+                    stroke="#000"
+                    strokeWidth={2}
+                  />
                 </>
               )}
             </g>

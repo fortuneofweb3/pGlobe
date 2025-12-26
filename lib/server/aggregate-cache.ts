@@ -53,7 +53,7 @@ class AggregateCache {
     /**
      * Compute network stats from nodes
      */
-    computeNetworkStats(nodes: any[]): NetworkStats {
+    computeNetworkStats(nodes: PNode[]): NetworkStats {
         const onlineNodes = nodes.filter(n => (n.status || n.s) === 'online').length;
         const syncingNodes = nodes.filter(n => (n.status || n.s) === 'syncing').length;
         const offlineNodes = nodes.filter(n => (n.status || n.s) === 'offline').length;
@@ -106,7 +106,7 @@ class AggregateCache {
     /**
      * Compute country stats from nodes
      */
-    computeCountryStats(country: string, countryCode: string, nodes: any[]): CountryStats {
+    computeCountryStats(country: string, countryCode: string, nodes: PNode[]): CountryStats {
         const totalNodes = nodes.length;
         const onlineNodes = nodes.filter(n => (n.status || n.s) === 'online').length;
         const offlineNodes = nodes.filter(n => (n.status || n.s) === 'offline' || !(n.status || n.s)).length;
@@ -150,7 +150,7 @@ class AggregateCache {
         const cities = new Set<string>();
         nodes.forEach(n => {
             const city = n.locationData?.city || n.cy;
-            if (city) cities.add(city);
+            if (city) cities.add(city as string);
         });
 
         const healthScore = calculateNetworkHealth(nodes.map(n => ({
@@ -189,7 +189,7 @@ class AggregateCache {
     /**
      * Get cached network stats or compute if stale
      */
-    getNetworkStats(nodes?: any[]): NetworkStats | null {
+    getNetworkStats(nodes?: PNode[]): NetworkStats | null {
         const now = Date.now();
 
         // Return cached if fresh
@@ -209,7 +209,7 @@ class AggregateCache {
     /**
      * Get cached country stats or compute if stale
      */
-    getCountryStats(country: string, countryCode: string, nodes?: any[]): CountryStats | null {
+    getCountryStats(country: string, countryCode: string, nodes?: PNode[]): CountryStats | null {
         const cacheKey = `${country.toLowerCase()}_${countryCode}`;
         const cached = this.countryStatsCache.get(cacheKey);
         const now = Date.now();

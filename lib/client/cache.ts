@@ -8,7 +8,7 @@ interface CacheEntry<T> {
 }
 
 class ClientCache {
-  private cache = new Map<string, CacheEntry<any>>();
+  private cache = new Map<string, CacheEntry<unknown>>();
   private readonly DEFAULT_TTL = 2 * 60 * 1000; // 2 minutes - longer TTL for faster navigation
 
   get<T>(key: string, networkId?: string): T | null {

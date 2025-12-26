@@ -12,6 +12,7 @@
  */
 
 import { PNode } from '@/lib/types/pnode';
+import { ActivityType } from './mongodb-activity';
 import * as http from 'http';
 
 // ============================================================================
@@ -36,13 +37,12 @@ const DIRECT_PRPC_ENDPOINTS = [
 ];
 
 const POD_CREDITS_API = 'https://podcredits.xandeum.network/api/pods-credits';
-const DEVNET_RPC = 'https://api.devnet.xandeum.com:8899';
 
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
 
-function httpPost(url: string, data: object, timeoutMs: number = 5000): Promise<any | null> {
+function httpPost(url: string, data: object, timeoutMs: number = 5000): Promise<unknown | null> {
   return new Promise((resolve) => {
     try {
       const urlObj = new URL(url);
@@ -62,9 +62,9 @@ function httpPost(url: string, data: object, timeoutMs: number = 5000): Promise<
         timeout: timeoutMs,
       };
 
-      const req = httpModule.request(options, (res: any) => {
+      const req = httpModule.request(options, (res: http.IncomingMessage) => {
         let responseData = '';
-        res.on('data', (chunk: any) => responseData += chunk.toString());
+        res.on('data', (chunk: Buffer | string) => responseData += chunk.toString());
         res.on('end', () => {
           try {
             resolve(JSON.parse(responseData));
@@ -92,6 +92,7 @@ function isValidPubkey(pubkey: string | null | undefined): boolean {
   if (/^\d+\.\d+\.\d+\.\d+/.test(trimmed)) return false;
 
   try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { PublicKey } = require('@solana/web3.js');
     new PublicKey(trimmed);
     return true;
@@ -115,9 +116,9 @@ function calculateStatus(lastSeenTimestamp: number | undefined): 'online' | 'off
 // STEP 1: FETCH NODES FROM GOSSIP
 // ============================================================================
 
-async function callPRPC(url: string, method: string, timeout: number = 10000): Promise<any | null> {
+async function callPRPC(url: string, method: string, timeout: number = 10000): Promise<unknown | null> {
   const payload = { jsonrpc: '2.0', method, id: 1, params: [] };
-  const response = await httpPost(url, payload, timeout);
+  const response = await httpPost(url, payload, timeout) as Record<string, unknown>;
   return response?.result || null;
 }
 
@@ -137,7 +138,7 @@ interface RawPod {
   peer_count?: number;
 }
 
-function rawPodToNode(pod: RawPod, index: number): PNode | null {
+function rawPodToNode(pod: RawPod): PNode | null {
   const pubkey = pod.pubkey || pod.publicKey || '';
   if (!isValidPubkey(pubkey)) return null;
 
@@ -178,10 +179,16 @@ async function fetchNodesFromEndpoint(endpoint: string): Promise<PNode[]> {
   if (!result) return [];
 
   // Extract pods array from response
-  const pods: RawPod[] = Array.isArray(result) ? result
-    : result.pods || result.nodes || result.result?.pods || [];
+  let pods: RawPod[] = [];
 
-  return pods.map((pod, i) => rawPodToNode(pod, i)).filter((n): n is PNode => n !== null);
+  if (Array.isArray(result)) {
+    pods = result as unknown as RawPod[];
+  } else if (typeof result === 'object' && result !== null) {
+    const resultObj = result as { pods?: RawPod[]; nodes?: RawPod[]; result?: { pods?: RawPod[] } };
+    pods = resultObj.pods || resultObj.nodes || resultObj.result?.pods || [];
+  }
+
+  return pods.map((pod) => rawPodToNode(pod)).filter((n): n is PNode => n !== null);
 }
 
 export async function fetchAllNodes(): Promise<Map<string, PNode>> {
@@ -193,14 +200,12 @@ export async function fetchAllNodes(): Promise<Map<string, PNode>> {
   const allEndpoints = [...PROXY_RPC_ENDPOINTS, ...DIRECT_PRPC_ENDPOINTS.map(e => `http://${e}/rpc`)];
   const results = await Promise.allSettled(allEndpoints.map(ep => fetchNodesFromEndpoint(ep)));
 
-  let totalFetched = 0;
   for (const result of results) {
     if (result.status === 'fulfilled') {
       for (const node of result.value) {
         const key = node.pubkey || node.publicKey;
         if (key && !nodesMap.has(key)) {
           nodesMap.set(key, node);
-          totalFetched++;
         }
       }
     }
@@ -343,7 +348,8 @@ export async function enrichWithCredits(nodesMap: Map<string, PNode>): Promise<v
     }
 
     console.log(`[Sync] Added credits for ${count} nodes`);
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     console.warn(`[Sync] Failed to fetch credits: ${error.message}`);
   }
 }
@@ -439,7 +445,7 @@ export function deduplicateNodes(nodesMap: Map<string, PNode>): PNode[] {
 // ============================================================================
 
 export async function saveNodes(nodes: PNode[]): Promise<void> {
-  const { upsertNodes, getAllNodes: getExistingNodes } = await import('./mongodb-nodes');
+  const { upsertNodes } = await import('./mongodb-nodes');
 
   console.log(`[Sync] Saving ${nodes.length} nodes to database...`);
   await upsertNodes(nodes);
@@ -477,7 +483,7 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
 
   // 2. Status Change
   if (oldNode && oldNode.status !== newNode.status) {
-    let type: any = 'status_change';
+    let type: ActivityType = 'status_change';
     let message = `${nodeAddress || pubkey.slice(0, 8) + '...'} changed status to ${newNode.status}`;
 
     if (newNode.status === 'online') {
@@ -591,10 +597,10 @@ export async function syncNodes(): Promise<{ success: boolean; count: number; er
     await enrichWithCredits(nodesMap);
 
     // Step 5: Get existing nodes for balance check
-    const { getAllNodes: getExistingNodes } = await import('./mongodb-nodes');
-    let existingNodesMap = new Map<string, PNode>();
+    const { getAllNodes: getExistingNodesFromDB } = await import('./mongodb-nodes');
+    const existingNodesMap = new Map<string, PNode>();
     try {
-      const existing = await getExistingNodes();
+      const existing = await getExistingNodesFromDB();
       existing.forEach(n => {
         const key = n.pubkey || n.publicKey;
         if (key) existingNodesMap.set(key, n);
@@ -653,7 +659,8 @@ export async function syncNodes(): Promise<{ success: boolean; count: number; er
       console.log(`[Sync] Storing historical snapshot for ${completeNodes.length} nodes (${seenPubkeys.size} online, ${offlineCount} offline)...`);
       await storeHistoricalSnapshot(completeNodes);
       console.log('[Sync] ✅ Historical snapshot stored successfully');
-    } catch (e: any) {
+    } catch (err) {
+      const e = err as Error;
       console.error('[Sync] ❌ Failed to store historical snapshot:', {
         error: e?.message,
         stack: e?.stack,
@@ -666,7 +673,8 @@ export async function syncNodes(): Promise<{ success: boolean; count: number; er
     console.log(`[Sync] ✅ Complete: ${dedupedNodes.length} nodes in ${Math.round(duration / 1000)}s`);
 
     return { success: true, count: dedupedNodes.length };
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     const duration = Date.now() - startTime;
     console.error(`[Sync] ❌ Failed after ${Math.round(duration / 1000)}s:`, error.message);
     return { success: false, count: 0, error: error.message };

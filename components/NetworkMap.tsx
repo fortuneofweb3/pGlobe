@@ -50,7 +50,7 @@ export default function NetworkMap({ nodes }: NetworkMapProps) {
   useEffect(() => {
     setIsClient(true);
     setMapLoaded(true);
-    
+
     // Load Leaflet CSS
     if (!document.head.querySelector('link[href*="leaflet"]')) {
       const link = document.createElement('link');
@@ -86,10 +86,10 @@ export default function NetworkMap({ nodes }: NetworkMapProps) {
   // Calculate center point (average of all node locations)
   const center = useMemo((): [number, number] => {
     if (nodesWithLocation.length === 0) return [20, 0]; // Default center
-    
+
     const avgLat = nodesWithLocation.reduce((sum, node) => sum + (node.locationData?.lat || 0), 0) / nodesWithLocation.length;
     const avgLon = nodesWithLocation.reduce((sum, node) => sum + (node.locationData?.lon || 0), 0) / nodesWithLocation.length;
-    
+
     return [avgLat, avgLon];
   }, [nodesWithLocation]);
 
@@ -126,7 +126,7 @@ export default function NetworkMap({ nodes }: NetworkMapProps) {
         </div>
       </div>
 
-        <div className="relative">
+      <div className="relative">
         <div
           style={{ height: '400px', width: '100%', borderRadius: '0.5rem', overflow: 'hidden' }}
           className="border border-border rounded-xl"
@@ -180,7 +180,6 @@ export default function NetworkMap({ nodes }: NetworkMapProps) {
                             <div><strong>Location:</strong> {node.locationData.city}, {node.locationData.country}</div>
                           )}
                           {node.uptime && <div><strong>Uptime:</strong> {node.uptime.toFixed(2)}%</div>}
-                          {node.reputation && <div><strong>Reputation:</strong> {node.reputation}</div>}
                         </div>
                       </div>
                     </Popup>

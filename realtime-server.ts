@@ -111,7 +111,7 @@ let lastPollTime = Date.now();
 // HTTP HELPERS
 // ============================================================================
 
-function httpPost(url: string, data: object, timeoutMs: number): Promise<any | null> {
+function httpPost(url: string, data: object, timeoutMs: number): Promise<Record<string, unknown> | null> {
     return new Promise((resolve) => {
         try {
             const urlObj = new URL(url);
@@ -162,7 +162,7 @@ function httpPost(url: string, data: object, timeoutMs: number): Promise<any | n
 async function fetchPodsFromEndpoint(endpoint: string): Promise<RawPod[]> {
     try {
         // Try get-pods-with-stats first, fallback to get-pods
-        let payload: any = { jsonrpc: '2.0', method: 'get-pods-with-stats', id: 1, params: [] };
+        let payload: Record<string, unknown> = { jsonrpc: '2.0', method: 'get-pods-with-stats', id: 1, params: [] };
         let response = await httpPost(endpoint, payload, REQUEST_TIMEOUT_MS);
 
         if (!response?.result) {
@@ -175,7 +175,7 @@ async function fetchPodsFromEndpoint(endpoint: string): Promise<RawPod[]> {
             return [];
         }
 
-        const result = response.result;
+        const result = response.result as Record<string, any>;
         const pods = Array.isArray(result) ? result : result.pods || result.nodes || [];
 
         // Log stream stats for debugging
@@ -183,7 +183,8 @@ async function fetchPodsFromEndpoint(endpoint: string): Promise<RawPod[]> {
         console.log(`[Realtime] ✅ ${endpoint} returned ${pods.length} pods, ${withStreams} with active streams`);
 
         return pods;
-    } catch (error: any) {
+    } catch (err) {
+        const error = err as Error;
         console.error(`[Realtime] ❌ Error fetching from ${endpoint}:`, error.message);
         return [];
     }
@@ -224,7 +225,7 @@ async function fetchNodeStats(address: string): Promise<{ packets_received?: num
     const payload = { jsonrpc: '2.0', method: 'get-stats', id: 1, params: [] };
 
     const result = await httpPost(url, payload, 1500); // 1.5 second timeout
-    return result?.result || null;
+    return result?.result as Record<string, number> | null;
 }
 
 // ============================================================================
@@ -533,7 +534,8 @@ async function pollAndEmitActivity(io: SocketIOServer) {
         const elapsed = Date.now() - startTime;
         console.log(`[Realtime] 📈 ${pods.length} pods, ${emittedCount} events → ${connectedClients} clients (${elapsed}ms)`);
 
-    } catch (error: any) {
+    } catch (err) {
+        const error = err as Error;
         console.error('[Realtime] ❌ Error:', error?.message);
     } finally {
         isPolling = false;
@@ -551,7 +553,7 @@ const app = express();
 // ============================================================================
 
 // Register health check endpoints FIRST before any other middleware or routes
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
     res.json({
         status: 'ok',
         service: 'realtime-activity',
@@ -561,7 +563,7 @@ app.get('/', (req, res) => {
     });
 });
 
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -575,19 +577,6 @@ const io = new SocketIOServer(server, {
     transports: ['websocket', 'polling'],
 });
 
-// Health check endpoint
-app.get('/', (req, res) => {
-    res.json({
-        status: 'ok',
-        service: 'realtime-activity',
-        clients: io.sockets.sockets.size,
-        cachedNodes: previousNodeStates.size,
-    });
-});
-
-app.get('/health', (req, res) => {
-    res.json({ status: 'ok' });
-});
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

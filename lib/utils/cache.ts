@@ -14,8 +14,6 @@ import { PNode } from '../types/pnode';
 // ============================================================================
 
 const CACHE_PREFIX = 'pglobe-';
-const NODES_CACHE_KEY = `${CACHE_PREFIX}nodes`;
-const STATS_CACHE_KEY = `${CACHE_PREFIX}stats`;
 const CACHE_VERSION = 2;
 
 // TTL values
@@ -50,7 +48,7 @@ interface NetworkStats {
 // ============================================================================
 
 class PersistentCache {
-  private memoryCache: Map<string, CacheEntry<any>> = new Map();
+  private memoryCache: Map<string, CacheEntry<unknown>> = new Map();
   private isClient: boolean;
 
   constructor() {
@@ -72,7 +70,7 @@ class PersistentCache {
         const value = localStorage.getItem(key);
         if (value) {
           try {
-            const entry = JSON.parse(value) as CacheEntry<any>;
+            const entry = JSON.parse(value) as CacheEntry<unknown>;
             if (entry.version === CACHE_VERSION) {
               this.memoryCache.set(key, entry);
             }
@@ -91,9 +89,9 @@ class PersistentCache {
   /**
    * Save entry to both memory and localStorage
    */
-  private saveToStorage(key: string, entry: CacheEntry<any>): void {
+  private saveToStorage(key: string, entry: CacheEntry<unknown>): void {
     this.memoryCache.set(key, entry);
-    
+
     if (!this.isClient) return;
 
     try {
@@ -112,7 +110,7 @@ class PersistentCache {
     if (!this.isClient) return;
 
     const entries: Array<{ key: string; timestamp: number }> = [];
-    
+
     for (const [key, entry] of this.memoryCache.entries()) {
       entries.push({ key, timestamp: entry.timestamp });
     }
@@ -145,7 +143,7 @@ class PersistentCache {
 
     const age = Date.now() - entry.timestamp;
     const ttl = key.includes('stats') ? STATS_CACHE_TTL : NODES_CACHE_TTL;
-    
+
     const isFresh = age < ttl;
     const isStale = age >= ttl && age < STALE_WHILE_REVALIDATE;
 
@@ -231,7 +229,7 @@ class PersistentCache {
     const networks = new Set<string>();
     let oldest = Date.now();
 
-    for (const [_, entry] of this.memoryCache.entries()) {
+    for (const entry of this.memoryCache.values()) {
       networks.add(entry.network);
       if (entry.timestamp < oldest) {
         oldest = entry.timestamp;
@@ -260,7 +258,7 @@ interface SimpleCache {
  * Keeps data persistent across page reloads
  */
 class ClientCache implements SimpleCache {
-  private memory: Map<string, { data: any; timestamp: number }> = new Map();
+  private memory: Map<string, { data: unknown; timestamp: number }> = new Map();
   private readonly TTL = 5 * 60 * 1000; // 5 minutes
 
   constructor() {
@@ -276,10 +274,10 @@ class ClientCache implements SimpleCache {
       if (stored) {
         const parsed = JSON.parse(stored);
         const now = Date.now();
-        
+
         // Only load non-expired entries
         for (const [key, value] of Object.entries(parsed)) {
-          const entry = value as { data: any; timestamp: number };
+          const entry = value as { data: unknown; timestamp: number };
           // Use longer TTL for storage (1 hour) - will serve stale while revalidating
           if (now - entry.timestamp < 60 * 60 * 1000) {
             this.memory.set(key, entry);
@@ -294,9 +292,9 @@ class ClientCache implements SimpleCache {
 
   private saveToStorage(): void {
     if (typeof window === 'undefined') return;
-    
+
     try {
-      const obj: Record<string, any> = {};
+      const obj: Record<string, unknown> = {};
       for (const [key, value] of this.memory.entries()) {
         obj[key] = value;
       }
@@ -309,9 +307,9 @@ class ClientCache implements SimpleCache {
   get<T>(key: string, network: string = 'default'): T | null {
     const fullKey = `${key}-${network}`;
     const entry = this.memory.get(fullKey);
-    
+
     if (!entry) return null;
-    
+
     // Always return data if exists (stale-while-revalidate pattern)
     // The caller should check freshness if needed
     return entry.data as T;
@@ -323,9 +321,9 @@ class ClientCache implements SimpleCache {
   isFresh(key: string, network: string = 'default'): boolean {
     const fullKey = `${key}-${network}`;
     const entry = this.memory.get(fullKey);
-    
+
     if (!entry) return false;
-    
+
     return Date.now() - entry.timestamp < this.TTL;
   }
 

@@ -27,37 +27,40 @@ export default function ActivityLogsPage() {
             />
 
             <main className="flex-1 overflow-hidden flex flex-col">
+                {/* Page Header - responsive */}
                 <div className="w-full px-3 sm:px-6 pt-3 sm:pt-6 flex-shrink-0">
                     <div className="max-w-7xl mx-auto">
-                        {/* Page Header */}
-                        <div className="mb-4 sm:mb-6">
-                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
-                                <div className="flex-1">
-                                    <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
-                                        <Activity className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
-                                        Live Network Feed
-                                    </h1>
-                                    <p className="text-foreground/60 text-sm sm:text-base">
-                                        Real-time monitoring of network events, status changes, and performance updates
-                                    </p>
-                                </div>
-                            </div>
+                        <div className="mb-3 sm:mb-6">
+                            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3">
+                                <Activity className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-[#F0A741]" />
+                                <span className="hidden sm:inline">Live Network Feed</span>
+                                <span className="sm:hidden">Live Feed</span>
+                            </h1>
+                            <p className="text-foreground/60 text-xs sm:text-sm lg:text-base line-clamp-1 sm:line-clamp-none">
+                                <span className="hidden sm:inline">Real-time monitoring of network events, status changes, and performance updates</span>
+                                <span className="sm:hidden">Real-time network monitoring</span>
+                            </p>
                         </div>
                     </div>
                 </div>
 
-                {/* Side by Side Layout on Desktop - Equal Heights, No Main Scroll */}
-                <div className="flex-1 px-3 sm:px-6 pb-6 overflow-hidden">
+                {/* Main content - stacked on mobile, side by side on xl */}
+                <div className="flex-1 px-3 sm:px-6 pb-4 sm:pb-6 overflow-hidden">
                     <div className="max-w-7xl mx-auto h-full">
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 h-full">
-                            {/* Racing Visualization - Full Height, No Scroll */}
-                            <div className="h-full overflow-hidden">
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-6 h-full">
+                            {/* Racing Visualization - hidden on mobile by default, or shown first */}
+                            <div className="hidden xl:block h-full overflow-hidden">
                                 <NodeRaceVisualization />
                             </div>
 
-                            {/* Activity List - Full Height, No Scroll */}
-                            <div className="h-full overflow-hidden">
+                            {/* Activity List - Full Height, scrollable */}
+                            <div className="h-full overflow-hidden min-h-[400px] xl:min-h-0">
                                 <ActivityLogList limit={50} showFilters={true} />
+                            </div>
+
+                            {/* Racing Visualization - shown at bottom on mobile */}
+                            <div className="xl:hidden h-[350px] overflow-hidden">
+                                <NodeRaceVisualization />
                             </div>
                         </div>
                     </div>

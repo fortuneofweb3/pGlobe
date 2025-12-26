@@ -191,7 +191,7 @@ export default function AISupportWidget() {
 
       eventSource.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
+          const data = JSON.parse(event.data) as Record<string, any>;
 
           if (data.status) {
             // Status update (thinking, querying, etc.)
@@ -311,7 +311,8 @@ export default function AISupportWidget() {
         };
         setMessages((prev) => [...prev, assistantMessage]);
       }
-    } catch (error: any) {
+    } catch (err) {
+      const error = err as Error;
       console.error('[AI Widget] Error:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),

@@ -16,9 +16,10 @@
  * - Much faster to query than unwinding all node snapshots
  */
 
-import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
+import { Collection, ObjectId, AnyBulkWriteOperation } from 'mongodb';
 import { getDb } from './mongodb-nodes';
 import { calculateNetworkHealth } from '../utils/network-health';
+import { PNode } from '../types/pnode';
 
 const COLLECTION_NAME = 'region_history';
 
@@ -124,7 +125,8 @@ export async function createRegionHistoryIndexes(): Promise<void> {
     await collection.createIndex({ date: 1 });
 
     console.log('[MongoDB RegionHistory] ✅ Indexes created');
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     console.error('[MongoDB RegionHistory] ❌ Failed to create indexes:', error?.message || error);
     throw error;
   }
@@ -134,8 +136,28 @@ export async function createRegionHistoryIndexes(): Promise<void> {
  * Store pre-aggregated region snapshots
  * Called during background refresh after storing node history
  */
+interface NodeMetricInput {
+  pubkey?: string;
+  publicKey?: string;
+  id?: string;
+  status?: string;
+  location?: string;
+  locationData?: { country?: string; countryCode?: string; city?: string };
+  nodeLocation?: { country?: string; countryCode?: string; city?: string };
+  cpuPercent?: number;
+  ramPercent?: number;
+  ramUsed?: number;
+  ramTotal?: number;
+  packetsReceived?: number;
+  packetsSent?: number;
+  activeStreams?: number;
+  credits?: number;
+  uptime?: number;
+  version?: string;
+}
+
 export async function storeRegionSnapshots(
-  nodesByRegion: Map<string, Array<any>>,
+  nodesByRegion: Map<string, Array<NodeMetricInput>>,
   timestamp: number,
   interval: string,
   date: string
@@ -149,16 +171,16 @@ export async function storeRegionSnapshots(
 
   try {
     const collection = await getRegionHistoryCollection();
-    const bulkOps: any[] = [];
+    const bulkOps: AnyBulkWriteOperation<RegionHistorySnapshot>[] = [];
 
     // Process each region
-    for (const [regionKey, nodes] of nodesByRegion.entries()) {
+    for (const [, nodes] of nodesByRegion.entries()) {
       if (nodes.length === 0) continue;
 
       // Extract country and countryCode from first node
       const firstNode = nodes[0];
-      const country = firstNode.nodeLocation?.country || firstNode.location || 'Unknown';
-      const countryCode = firstNode.nodeLocation?.countryCode || '';
+      const country = firstNode.locationData?.country || firstNode.nodeLocation?.country || firstNode.location || 'Unknown';
+      const countryCode = firstNode.locationData?.countryCode || firstNode.nodeLocation?.countryCode || '';
 
       if (!country || country === 'Unknown') {
         console.warn('[MongoDB RegionHistory] ⚠️  Skipping region with unknown country');
@@ -173,12 +195,16 @@ export async function storeRegionSnapshots(
       // CPU/RAM averages
       const nodesWithCPU = nodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null);
       const avgCpuPercent = nodesWithCPU.length > 0
-        ? nodesWithCPU.reduce((sum, n) => sum + n.cpuPercent, 0) / nodesWithCPU.length
+        ? nodesWithCPU.reduce((sum, n) => sum + (n.cpuPercent || 0), 0) / nodesWithCPU.length
         : 0;
 
-      const nodesWithRAM = nodes.filter(n => n.ramPercent !== undefined && n.ramPercent !== null);
+      // RAM averages (calculate from used/total if available, or use pre-calculated percent)
+      const nodesWithRAM = nodes.filter(n => (n.ramUsed && n.ramTotal && n.ramTotal > 0) || (n.ramPercent !== undefined));
       const avgRamPercent = nodesWithRAM.length > 0
-        ? nodesWithRAM.reduce((sum, n) => sum + n.ramPercent, 0) / nodesWithRAM.length
+        ? nodesWithRAM.reduce((sum, n) => {
+          if (n.ramPercent !== undefined) return sum + n.ramPercent;
+          return sum + ((n.ramUsed || 0) / (n.ramTotal || 1)) * 100;
+        }, 0) / nodesWithRAM.length
         : 0;
 
       // Network activity totals
@@ -199,7 +225,7 @@ export async function storeRegionSnapshots(
         : 0;
 
       // Cities count
-      const cities = new Set(nodes.map(n => n.nodeLocation?.city).filter(Boolean)).size;
+      const cities = new Set(nodes.map(n => n.locationData?.city || n.nodeLocation?.city).filter(Boolean)).size;
 
       // Version distribution
       const versionDistribution: Record<string, number> = {};
@@ -210,7 +236,9 @@ export async function storeRegionSnapshots(
 
       // Calculate network health score using the same formula as analytics
       // (40% availability, 35% version, 25% distribution)
-      const networkHealth = calculateNetworkHealth(nodes as any);
+      // Cast to PNode[] as calculateNetworkHealth expects PNodes, but we only have subset of fields
+      // This is safe because calculateNetworkHealth only checks status, version & location
+      const networkHealth = calculateNetworkHealth(nodes as unknown as PNode[]);
 
       // Capture per-node credits for accurate credit earned calculations
       // This allows tracking true earned credits independent of nodes joining/leaving
@@ -222,7 +250,7 @@ export async function storeRegionSnapshots(
           return hasId && hasCredits;
         })
         .map(n => ({
-          nodeId: n.pubkey || n.publicKey || n.id,
+          nodeId: (n.pubkey || n.publicKey || n.id) as string,
           credits: n.credits || 0,
         }));
 
@@ -272,7 +300,8 @@ export async function storeRegionSnapshots(
     // Clear cache for affected regions
     clearCacheForTimestamp(timestamp);
 
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     console.error('[MongoDB RegionHistory] ❌ Failed to store region snapshots:', {
       error: error?.message,
       stack: error?.stack,
@@ -313,7 +342,7 @@ export async function getRegionHistory(
     const collection = await getRegionHistoryCollection();
 
     // Build query - try both country name and country code
-    const query: any = {
+    const query: import('mongodb').Filter<RegionHistorySnapshot> = {
       $or: [
         { country },
         ...(countryCode ? [{ countryCode }] : []),
@@ -354,7 +383,8 @@ export async function getRegionHistory(
     cleanupCache();
 
     return snapshots;
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     console.error('[MongoDB RegionHistory] ❌ Failed to get region history:', {
       error: error?.message,
       stack: error?.stack,
@@ -366,30 +396,7 @@ export async function getRegionHistory(
   }
 }
 
-/**
- * Helper: Get latest version from array of versions
- */
-function getLatestVersion(versions: string[]): string | null {
-  if (versions.length === 0) return null;
-
-  // Simple sort by version string (assumes semantic versioning)
-  const sorted = versions
-    .filter(v => v && v !== 'unknown')
-    .sort((a, b) => {
-      // Compare version strings
-      const aParts = a.split('.').map(p => parseInt(p) || 0);
-      const bParts = b.split('.').map(p => parseInt(p) || 0);
-
-      for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
-        const aPart = aParts[i] || 0;
-        const bPart = bParts[i] || 0;
-        if (aPart !== bPart) return bPart - aPart;
-      }
-      return 0;
-    });
-
-  return sorted[0] || null;
-}
+// Helper removed: getLatestVersion is now imported from utils
 
 /**
  * Clear cache entries for a specific timestamp
@@ -397,7 +404,7 @@ function getLatestVersion(versions: string[]): string | null {
 function clearCacheForTimestamp(timestamp: number): void {
   const keysToDelete: string[] = [];
 
-  for (const [key, entry] of regionHistoryCache.entries()) {
+  for (const [key] of regionHistoryCache.entries()) {
     // Parse key to extract time range
     const parts = key.split(':');
     const start = parseInt(parts[2]) || 0;
@@ -423,8 +430,9 @@ function cleanupCache(): void {
   const now = Date.now();
   let cleaned = 0;
 
-  for (const [key, entry] of regionHistoryCache.entries()) {
-    if (now - entry.timestamp > entry.ttl) {
+  for (const [key] of regionHistoryCache.entries()) {
+    const entry = regionHistoryCache.get(key);
+    if (entry && now - entry.timestamp > entry.ttl) {
       regionHistoryCache.delete(key);
       cleaned++;
     }

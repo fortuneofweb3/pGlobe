@@ -64,25 +64,25 @@ export default function NetworkHealthChart({ nodes }: NetworkHealthChartProps) {
     const total = (statusCounts.online || 0) + (statusCounts.offline || 0) + (statusCounts.syncing || 0);
 
     return [
-      { 
-        name: 'Online', 
-        value: statusCounts.online || 0, 
+      {
+        name: 'Online',
+        value: statusCounts.online || 0,
         color: COLORS.online,
         online: statusCounts.online || 0,
         offline: statusCounts.offline || 0,
         syncing: statusCounts.syncing || 0,
       },
-      { 
-        name: 'Syncing', 
-        value: statusCounts.syncing || 0, 
+      {
+        name: 'Syncing',
+        value: statusCounts.syncing || 0,
         color: COLORS.syncing,
         online: statusCounts.online || 0,
         offline: statusCounts.offline || 0,
         syncing: statusCounts.syncing || 0,
       },
-      { 
-        name: 'Offline', 
-        value: statusCounts.offline || 0, 
+      {
+        name: 'Offline',
+        value: statusCounts.offline || 0,
         color: COLORS.offline,
         online: statusCounts.online || 0,
         offline: statusCounts.offline || 0,
@@ -91,9 +91,47 @@ export default function NetworkHealthChart({ nodes }: NetworkHealthChartProps) {
     ].filter((item) => item.value > 0);
   }, [nodes]);
 
-  const total = data.reduce((sum, item) => sum + item.value, 0);
+  // Calculate total for percentage display
+  const totalNodes = data.reduce((sum, item) => sum + item.value, 0);
 
-  if (total === 0) {
+  // Refs must be declared before any early returns (React Rules of Hooks)
+  const svgRef = useRef<SVGSVGElement>(null);
+  const hasAnimatedRef = useRef(false);
+
+  // Animate bars on mount and when data changes
+  useEffect(() => {
+    if (!svgRef.current || data.length === 0) return;
+
+    hasAnimatedRef.current = false;
+
+    const timer = setTimeout(() => {
+      if (!svgRef.current || hasAnimatedRef.current) return;
+
+      const bars = svgRef.current.querySelectorAll('rect[fill]');
+
+      bars.forEach((barEl: Element, index) => {
+        const rect = barEl as SVGRectElement;
+        const originalWidth = parseFloat(rect.getAttribute('width') || '0');
+
+        if (originalWidth > 0) {
+          // Start from 0 width
+          rect.setAttribute('width', '0');
+          rect.style.transition = `width 1s ease-out ${index * 0.1}s`;
+
+          requestAnimationFrame(() => {
+            rect.setAttribute('width', String(originalWidth));
+          });
+        }
+      });
+
+      hasAnimatedRef.current = true;
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [data.length]);
+
+  // Early return for empty data - AFTER all hooks are declared
+  if (totalNodes === 0) {
     return (
       <div className="flex items-center justify-center h-[300px] text-foreground/50">
         <p className="text-sm">No data available</p>
@@ -101,41 +139,6 @@ export default function NetworkHealthChart({ nodes }: NetworkHealthChartProps) {
     );
   }
 
-  const svgRef = useRef<SVGSVGElement>(null);
-  const hasAnimatedRef = useRef(false);
-
-  // Animate bars on mount and when data changes
-  useEffect(() => {
-    if (!svgRef.current || data.length === 0) return;
-    
-    hasAnimatedRef.current = false;
-    
-    const timer = setTimeout(() => {
-      if (!svgRef.current || hasAnimatedRef.current) return;
-      
-      const bars = svgRef.current.querySelectorAll('rect[fill]');
-      
-      bars.forEach((barEl: Element, index) => {
-        const rect = barEl as SVGRectElement;
-        const originalWidth = parseFloat(rect.getAttribute('width') || '0');
-        
-        if (originalWidth > 0) {
-          // Start from 0 width
-          rect.setAttribute('width', '0');
-          rect.style.transition = `width 1s ease-out ${index * 0.1}s`;
-          
-          requestAnimationFrame(() => {
-            rect.setAttribute('width', String(originalWidth));
-          });
-        }
-      });
-      
-      hasAnimatedRef.current = true;
-    }, 50);
-
-    return () => clearTimeout(timer);
-  }, [data.length]);
-  
   return (
     <div className="h-full flex flex-col">
       <div className="flex-1" style={{ width: '100%', minHeight: 150, position: 'relative' }}>
@@ -145,11 +148,11 @@ export default function NetworkHealthChart({ nodes }: NetworkHealthChartProps) {
             const chartHeight = Math.max(150, parentHeight);
             // Responsive margins - smaller on mobile for better chart size
             const isMobile = width < 640;
-            const margin = { 
-              top: 5, 
-              right: isMobile ? 10 : 30, 
-              left: isMobile ? 50 : 80, 
-              bottom: 5 
+            const margin = {
+              top: 5,
+              right: isMobile ? 10 : 30,
+              left: isMobile ? 50 : 80,
+              bottom: 5
             };
             const innerWidth = width - margin.left - margin.right;
             const innerHeight = chartHeight - margin.top - margin.bottom;
@@ -168,77 +171,77 @@ export default function NetworkHealthChart({ nodes }: NetworkHealthChartProps) {
 
             return (
               <>
-              <svg ref={svgRef} width={width} height={chartHeight}>
-                <Group left={margin.left} top={margin.top}>
-                  {data.map((d) => {
-                    const barHeight = yScale.bandwidth();
-                    const barWidth = xScale(d.value);
-                    const y = yScale(d.name) || 0;
+                <svg ref={svgRef} width={width} height={chartHeight}>
+                  <Group left={margin.left} top={margin.top}>
+                    {data.map((d) => {
+                      const barHeight = yScale.bandwidth();
+                      const barWidth = xScale(d.value);
+                      const y = yScale(d.name) || 0;
 
-                    return (
-                      <Bar
-                        key={d.name}
-                        x={0}
-                        y={y}
-                        width={barWidth}
-                        height={barHeight}
-                        fill={d.color}
-                        rx={4}
-                        onMouseMove={(event) => {
+                      return (
+                        <Bar
+                          key={d.name}
+                          x={0}
+                          y={y}
+                          width={barWidth}
+                          height={barHeight}
+                          fill={d.color}
+                          rx={4}
+                          onMouseMove={(event) => {
                             const coords = localPoint(event);
-                          if (coords) {
-                            showTooltip({
-                              tooltipLeft: coords.x,
-                              tooltipTop: coords.y,
-                              tooltipData: d,
-                            });
-                          }
-                        }}
-                        onMouseLeave={() => hideTooltip()}
-                      />
-                    );
-                  })}
-                </Group>
-                <AxisLeft
-                  left={margin.left}
-                  scale={yScale}
-                  tickFormat={(d) => d}
-                  tickLabelProps={() => ({
-                    fill: '#E5E7EB',
-                    fontSize: 13,
-                    fontWeight: 500,
-                    textAnchor: 'end',
-                    dy: '0.33em',
-                    dx: -10,
-                  })}
-                />
-                <AxisBottom
-                  top={innerHeight + margin.top}
-                  left={margin.left}
-                  scale={xScale}
-                  tickFormat={(d) => String(d)}
-                  tickLabelProps={() => ({
-                    fill: '#9CA3AF',
-                    fontSize: 12,
-                    textAnchor: 'middle',
-                  })}
-                />
-              </svg>
-      {tooltipOpen && tooltipData && (
-        <TooltipWithBounds
-          top={tooltipTop}
-          left={tooltipLeft}
-          style={{
-            ...defaultStyles,
-            backgroundColor: 'transparent',
-            border: 'none',
-            padding: 0,
+                            if (coords) {
+                              showTooltip({
+                                tooltipLeft: coords.x,
+                                tooltipTop: coords.y,
+                                tooltipData: d,
+                              });
+                            }
+                          }}
+                          onMouseLeave={() => hideTooltip()}
+                        />
+                      );
+                    })}
+                  </Group>
+                  <AxisLeft
+                    left={margin.left}
+                    scale={yScale}
+                    tickFormat={(d) => d}
+                    tickLabelProps={() => ({
+                      fill: '#E5E7EB',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      textAnchor: 'end',
+                      dy: '0.33em',
+                      dx: -10,
+                    })}
+                  />
+                  <AxisBottom
+                    top={innerHeight + margin.top}
+                    left={margin.left}
+                    scale={xScale}
+                    tickFormat={(d) => String(d)}
+                    tickLabelProps={() => ({
+                      fill: '#9CA3AF',
+                      fontSize: 12,
+                      textAnchor: 'middle',
+                    })}
+                  />
+                </svg>
+                {tooltipOpen && tooltipData && (
+                  <TooltipWithBounds
+                    top={tooltipTop}
+                    left={tooltipLeft}
+                    style={{
+                      ...defaultStyles,
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      padding: 0,
                       pointerEvents: 'none',
-          }}
-        >
-          <CustomTooltip tooltipData={tooltipData} />
-        </TooltipWithBounds>
-      )}
+                    }}
+                  >
+                    <CustomTooltip tooltipData={tooltipData} />
+                  </TooltipWithBounds>
+                )}
               </>
             );
           }}

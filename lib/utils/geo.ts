@@ -30,7 +30,7 @@ function loadGeoCache(): GeoCache {
   if (typeof window === 'undefined') {
     return { version: GEO_CACHE_VERSION, entries: {} };
   }
-  
+
   try {
     const cached = localStorage.getItem(GEO_CACHE_KEY);
     if (cached) {
@@ -40,7 +40,7 @@ function loadGeoCache(): GeoCache {
         const now = Date.now();
         const cleanedEntries: Record<string, GeoCacheEntry> = {};
         let cleaned = 0;
-        
+
         for (const [ip, entry] of Object.entries(parsed.entries)) {
           if (now - entry.timestamp < GEO_CACHE_TTL) {
             cleanedEntries[ip] = entry;
@@ -48,18 +48,18 @@ function loadGeoCache(): GeoCache {
             cleaned++;
           }
         }
-        
+
         if (cleaned > 0) {
           console.debug(`[GeoCache] Cleaned ${cleaned} expired entries`);
         }
-        
+
         return { version: GEO_CACHE_VERSION, entries: cleanedEntries };
       }
     }
   } catch (e) {
     console.warn('[GeoCache] Failed to load cache:', e);
   }
-  
+
   return { version: GEO_CACHE_VERSION, entries: {} };
 }
 
@@ -68,7 +68,7 @@ function loadGeoCache(): GeoCache {
  */
 function saveGeoCache(cache: GeoCache): void {
   if (typeof window === 'undefined') return;
-  
+
   try {
     localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache));
   } catch (e) {
@@ -82,11 +82,11 @@ function saveGeoCache(cache: GeoCache): void {
 function getCachedGeo(ip: string): PNode['locationData'] | null {
   const cache = loadGeoCache();
   const entry = cache.entries[ip];
-  
+
   if (entry && Date.now() - entry.timestamp < GEO_CACHE_TTL) {
     return entry.data;
   }
-  
+
   return null;
 }
 
@@ -108,11 +108,11 @@ function setCachedGeo(ip: string, data: PNode['locationData']): void {
 function batchSetCachedGeo(entries: Array<{ ip: string; data: PNode['locationData'] }>): void {
   const cache = loadGeoCache();
   const now = Date.now();
-  
+
   for (const { ip, data } of entries) {
     cache.entries[ip] = { data, timestamp: now };
   }
-  
+
   saveGeoCache(cache);
   console.debug(`[GeoCache] Cached ${entries.length} new entries. Total: ${Object.keys(cache.entries).length}`);
 }
@@ -128,12 +128,12 @@ export function extractIP(address: string): string | null {
   if (!address) return null;
   const parts = address.split(':');
   const ip = parts[0] || null;
-  
+
   // Validate it's an IP, not a hostname
   if (ip && /^\d+\.\d+\.\d+\.\d+$/.test(ip)) {
     return ip;
   }
-  
+
   return null;
 }
 
@@ -152,17 +152,17 @@ export async function fetchGeoLocation(ip: string): Promise<PNode['locationData'
 
   try {
     const response = await fetch(`/api/geo?ip=${encodeURIComponent(ip)}`);
-    
+
     // Handle rate limiting - throw error so caller can handle it
     if (response.status === 429) {
       throw new Error('RATE_LIMIT_429');
     }
-    
+
     if (!response.ok) {
       console.warn(`Geo API returned ${response.status} for ${ip}`);
       return null;
     }
-    
+
     const data = await response.json();
     if (data.error) {
       console.warn(`Geo API error for ${ip}:`, data.error);
@@ -181,7 +181,8 @@ export async function fetchGeoLocation(ip: string): Promise<PNode['locationData'
     setCachedGeo(ip, locationData);
 
     return locationData;
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     // Re-throw rate limit errors
     if (error?.message === 'RATE_LIMIT_429') {
       throw error;
@@ -205,7 +206,7 @@ export async function enrichNodesWithGeo(nodes: PNode[]): Promise<PNode[]> {
   // First pass: check cache and identify what needs fetching
   for (const node of nodes) {
     if (node.locationData) continue; // Already has location data
-    
+
     const ip = extractIP(node.address);
     if (!ip) continue;
 
@@ -241,7 +242,7 @@ export async function enrichNodesWithGeo(nodes: PNode[]): Promise<PNode[]> {
 
     for (let i = 0; i < uniqueIps.length; i += BATCH_SIZE) {
       const ipBatch = uniqueIps.slice(i, i + BATCH_SIZE);
-      
+
       try {
         const response = await fetch('/api/geo', {
           method: 'POST',
@@ -319,7 +320,7 @@ export async function enrichNodesWithGeo(nodes: PNode[]): Promise<PNode[]> {
 export function getGeoCacheStats(): { count: number; oldestDays: number } {
   const cache = loadGeoCache();
   const entries = Object.values(cache.entries);
-  
+
   if (entries.length === 0) {
     return { count: 0, oldestDays: 0 };
   }

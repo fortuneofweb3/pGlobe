@@ -4,7 +4,6 @@ import { memo, useMemo, useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { startProgress } from '@/lib/nprogress';
 import { PNode } from '@/lib/types/pnode';
-import { formatStorageBytes } from '@/lib/utils/storage';
 import { WORLD_MAP_PATHS } from '@/lib/data/world-map-paths';
 import { createPortal } from 'react-dom';
 import { ChevronUp, ChevronDown, Info } from 'lucide-react';
@@ -130,7 +129,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [mobileInfoOpen, setMobileInfoOpen] = useState(false);
-  
+
   // Pan and zoom state for mobile
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -152,8 +151,9 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
   }, []);
 
   // Aggregate nodes by country (filter out invalid nodes)
-  // First, create a map of normalized country names from map paths for case-insensitive matching
-  const mapCountryNames = useMemo(() => {
+  // Build a set of normalized country names from map paths for case-insensitive matching
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _mapCountryNames = useMemo(() => {
     const names = new Set<string>();
     WORLD_MAP_PATHS.forEach(({ name }) => {
       names.add(name.toLowerCase());
@@ -165,14 +165,14 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
   const findMapCountryName = (nodeCountry: string): string | null => {
     const normalized = normalizeCountryName(nodeCountry);
     const lowerNormalized = normalized.toLowerCase();
-    
+
     // Check if normalized name exists in map paths (case-insensitive)
     for (const mapPath of WORLD_MAP_PATHS) {
       if (mapPath.name.toLowerCase() === lowerNormalized) {
         return mapPath.name; // Return the exact map path name
       }
     }
-    
+
     return null;
   };
 
@@ -182,7 +182,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
       const normalized = normalizeCountryName(rawCountry);
       // Find the exact map path country name (case-insensitive match)
       const mapCountryName = findMapCountryName(normalized) || normalized;
-      
+
       if (!acc[mapCountryName]) {
         acc[mapCountryName] = {
           name: mapCountryName,
@@ -199,20 +199,20 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
         acc[mapCountryName].onlineCount += 1;
       }
       if (node.latency && node.latency > 0) {
-        (acc[mapCountryName] as any).latencies.push(node.latency);
+        (acc[mapCountryName] as CountryData & { latencies: number[] }).latencies.push(node.latency);
       }
       return acc;
     }, {} as Record<string, CountryData & { latencies: number[] }>);
 
   // Calculate average latency for each country
   Object.keys(countryData).forEach((country) => {
-    const data = countryData[country] as any;
+    const data = countryData[country] as CountryData & { latencies: number[] };
     if (data.latencies.length > 0) {
       data.avgLatency = Math.round(
         data.latencies.reduce((sum: number, lat: number) => sum + lat, 0) / data.latencies.length
       );
     }
-    delete data.latencies;
+    delete (data as Partial<CountryData & { latencies: number[] }>).latencies;
   });
 
   // Get max node count for color scaling
@@ -263,7 +263,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
     const padding = 0.01;
     const paddingX = width * padding;
     const paddingY = height * padding;
-    
+
     // Return viewBox with padding to fit all lands exactly
     return `${minX - paddingX} ${minY - paddingY} ${width + paddingX * 2} ${height + paddingY * 2}`;
   }, []);
@@ -295,7 +295,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
 
     const width = maxX - minX;
     const height = maxY - minY;
-    
+
     // Zoom in more for mobile (reduce viewBox by 50% = 2x zoom)
     const zoomFactor = 0.5;
     const centerX = (minX + maxX) / 2;
@@ -346,7 +346,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
   const handleTouchMove = (e: React.TouchEvent<SVGSVGElement>) => {
     if (!isMobile) return;
     e.preventDefault();
-    
+
     if (e.touches.length === 1 && isDragging) {
       const touch = e.touches[0];
       setPan({ x: touch.clientX - dragStart.x, y: touch.clientY - dragStart.y });
@@ -357,7 +357,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
         touch2.clientX - touch1.clientX,
         touch2.clientY - touch1.clientY
       );
-      
+
       if (lastTouchDistanceRef.current !== null) {
         const scale = distance / lastTouchDistanceRef.current;
         setZoom(prev => Math.max(0.5, Math.min(3, prev * scale)));
@@ -376,18 +376,18 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
   const lightenColor = (hex: string, percent: number): string => {
     // Remove # if present
     hex = hex.replace('#', '');
-    
+
     // Parse RGB
     const num = parseInt(hex, 16);
     const r = (num >> 16) & 255;
     const g = (num >> 8) & 255;
     const b = num & 255;
-    
+
     // Lighten each component
     const newR = Math.min(255, Math.round(r + (255 - r) * percent));
     const newG = Math.min(255, Math.round(g + (255 - g) * percent));
     const newB = Math.min(255, Math.round(b + (255 - b) * percent));
-    
+
     // Convert back to hex
     return `#${((1 << 24) + (newR << 16) + (newG << 8) + newB).toString(16).slice(1)}`;
   };
@@ -420,7 +420,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
     if (tooltipTimeoutRef.current) {
       clearTimeout(tooltipTimeoutRef.current);
     }
-    
+
     // Show tooltip at mouse position
     setTooltip({
       text: tooltipText,
@@ -462,13 +462,13 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
     // Create a unique key based on nodes to reset animation when data changes significantly
     const nodesKey = `${nodes.length}-${Object.keys(countryData).length}`;
     const hasAnimatedKey = `animated-${nodesKey}`;
-    
+
     // Check if we've already animated this data set
-    if (hasAnimatedRef.current && (svgRef.current as any).dataset.animatedKey === hasAnimatedKey) {
+    if (hasAnimatedRef.current && (svgRef.current as unknown as { dataset: DOMStringMap }).dataset.animatedKey === hasAnimatedKey) {
       return;
     }
 
-    let cleanupTimers: NodeJS.Timeout[] = [];
+    const cleanupTimers: NodeJS.Timeout[] = [];
 
     // Wait for paths to render, then animate
     const timer = setTimeout(() => {
@@ -476,7 +476,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
 
       // Find all country path elements
       const paths = svgRef.current.querySelectorAll('path[d]');
-      
+
       if (paths.length === 0) return;
 
       paths.forEach((pathEl: Element, index) => {
@@ -485,19 +485,19 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
           // Step 1: Animate border drawing
           const pathLength = svgPath.getTotalLength();
           if (pathLength > 0) {
-            // Store original fill for later
-            const originalFill = svgPath.getAttribute('fill') || '';
-            
+            // Store original fill for later (currently unused but may be needed for hover reset)
+            // const originalFill = svgPath.getAttribute('fill') || '';
+
             // Set initial stroke state for drawing animation
             svgPath.style.strokeDasharray = `${pathLength}`;
             svgPath.style.strokeDashoffset = `${pathLength}`;
-            
+
             // Set initial fill opacity to 0 (will fade in after border)
             svgPath.style.fillOpacity = '0';
 
             // Stagger the border drawing animation for visual effect
             const borderDelay = index * 6; // 6ms delay between each country (faster stagger)
-            
+
             const borderTimer = setTimeout(() => {
               // Animate border drawing
               svgPath.style.transition = 'stroke-dashoffset 0.9s ease-out';
@@ -507,7 +507,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
               const fillTimer = setTimeout(() => {
                 svgPath.style.transition = 'fill-opacity 0.7s ease-out';
                 svgPath.style.fillOpacity = '1';
-                
+
                 // Clean up stroke animation after fill animation completes
                 const cleanupTimer = setTimeout(() => {
                   svgPath.style.strokeDasharray = 'none';
@@ -515,13 +515,13 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
                   // Keep transitions for hover states
                   svgPath.style.transition = 'fill 0.15s ease';
                 }, 700);
-                
+
                 cleanupTimers.push(cleanupTimer);
               }, 900); // Start fill fade after border animation completes
-              
+
               cleanupTimers.push(fillTimer);
             }, borderDelay);
-            
+
             cleanupTimers.push(borderTimer);
           }
         } catch (e) {
@@ -532,7 +532,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
 
       // Mark as animated with current data key
       if (svgRef.current) {
-        (svgRef.current as any).dataset.animatedKey = hasAnimatedKey;
+        (svgRef.current as unknown as { dataset: DOMStringMap }).dataset.animatedKey = hasAnimatedKey;
         hasAnimatedRef.current = true;
       }
     }, 150);
@@ -542,7 +542,8 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
     return () => {
       cleanupTimers.forEach(t => clearTimeout(t));
     };
-  }, [nodes.length, Object.keys(countryData).join(',')]);
+    // Using a stable key for countryData changes instead of Object.keys().join() to avoid dependency issues
+  }, [nodes.length, countryData]);
 
   return (
     <div className="card overflow-hidden" style={{ padding: 0 }}>
@@ -554,10 +555,10 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
             viewBox={isMobile ? mobileViewBox : viewBox}
             className="w-full h-full"
             preserveAspectRatio="xMidYMid meet"
-            style={{ 
-              pointerEvents: 'auto', 
-              display: 'block', 
-              margin: 0, 
+            style={{
+              pointerEvents: 'auto',
+              display: 'block',
+              margin: 0,
               padding: 0,
               width: '100%',
               height: '100%',
@@ -579,11 +580,11 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
                 <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodOpacity="0.4" floodColor="#000000" />
               </filter>
             </defs>
-            
+
             {/* Country paths */}
-            <g 
-              style={{ 
-                margin: 0, 
+            <g
+              style={{
+                margin: 0,
                 padding: 0,
                 transform: isMobile ? `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` : 'none',
                 transformOrigin: 'center center',
@@ -610,7 +611,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
                     fill={fillColor}
                     stroke="#555555"
                     strokeWidth="0.5"
-                    style={{ 
+                    style={{
                       pointerEvents: 'auto',
                       transition: 'fill 0.15s ease, fill-opacity 0.7s ease-out',
                     }}
@@ -636,7 +637,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
               })}
             </g>
           </svg>
-          
+
           {/* Custom tooltip portal */}
           {tooltip && typeof document !== 'undefined' && createPortal(
             <div
@@ -673,11 +674,10 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
         </button>
 
         {/* Legend/Info - Right Column / Mobile Collapsible */}
-        <div className={`w-full lg:w-auto h-full border-t lg:border-t-0 lg:border-l border-border/60 flex flex-col gap-3 lg:gap-4 justify-between overflow-y-auto lg:overflow-hidden transition-all duration-300 ${
-          mobileInfoOpen 
-            ? 'max-h-[35vh] opacity-100 p-3 lg:p-5' 
+        <div className={`w-full lg:w-auto h-full border-t lg:border-t-0 lg:border-l border-border/60 flex flex-col gap-3 lg:gap-4 justify-between overflow-y-auto lg:overflow-hidden transition-all duration-300 ${mobileInfoOpen
+            ? 'max-h-[35vh] opacity-100 p-3 lg:p-5'
             : 'max-h-0 opacity-0 p-0 lg:max-h-full lg:opacity-100 lg:p-5'
-        }`}>
+          }`}>
           <div className="flex flex-col gap-2 lg:gap-4">
             {/* Header */}
             <div>
@@ -686,7 +686,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
                 {Object.keys(countryData).length} countries
               </p>
             </div>
-            
+
             {/* Stats */}
             <div className="grid grid-cols-2 gap-2 lg:gap-4">
               <div>
@@ -698,7 +698,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
                 <p className="text-xl lg:text-2xl font-bold text-foreground">{maxCount}</p>
               </div>
             </div>
-            
+
             {/* Color Scale */}
             <div>
               <p className="text-[10px] lg:text-xs font-medium text-foreground/70 mb-1 lg:mb-2">Node Density Scale</p>

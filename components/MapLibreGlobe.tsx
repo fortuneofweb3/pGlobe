@@ -7,7 +7,7 @@ import { Map as MapGL, Marker, Source, Layer, MapRef } from 'react-map-gl/maplib
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { PNode } from '@/lib/types/pnode';
-import { ZoomIn, ZoomOut, RotateCcw, Globe, ChevronLeft, ChevronRight, MapPin, Info, ArrowUp, ArrowDown } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Globe, ChevronLeft, ChevronRight, MapPin, Info } from 'lucide-react';
 import { getFlagForCountry } from '@/lib/utils/country-flags';
 
 interface MapLibreGlobeProps {
@@ -78,7 +78,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [activeScanConnector, setActiveScanConnector] = useState<string | null>(null); // Track which connector was clicked
 
-  const [viewState, setViewState] = useState<any>(null);
+  const [viewState, setViewState] = useState<Record<string, any> | null>(null);
   const [userHasInteracted, setUserHasInteracted] = useState(false);
   const [shouldAutoRotate, setShouldAutoRotate] = useState(autoRotate); // Track if auto-rotation should be active
   const [isUserDragging, setIsUserDragging] = useState(false); // Track if user is currently dragging
@@ -472,19 +472,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
   };
 
 
-  // Count nodes near a specific location (for zoom adjustment)
-  // Use a tighter threshold to detect truly clustered nodes
-  const countNearbyNodes = (lon: number, lat: number, threshold: number = 0.1) => {
-    return nodesWithLocation.filter(node => {
-      if (!node.locationData) return false;
-      // Calculate distance in degrees (simplified for small distances)
-      const distance = Math.sqrt(
-        Math.pow(node.locationData.lon - lon, 2) +
-        Math.pow(node.locationData.lat - lat, 2)
-      );
-      return distance < threshold;
-    }).length;
-  };
+
 
   // Calculate distance between two coordinates (in degrees)
   // Simple approximation for globe - good enough for duration calculation
@@ -674,10 +662,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
 
         // PRE-LOAD destination tiles before animation starts
         // This ensures the destination area is ready when we arrive
-        const destBounds = [
-          [targetLon - 0.5, targetLat - 0.5],
-          [targetLon + 0.5, targetLat + 0.5]
-        ];
+        // Pre-load destination area
 
         // Request tiles for destination at multiple zoom levels
         for (let z = Math.max(1, targetZoom - 3); z <= targetZoom + 1; z++) {
@@ -1519,9 +1504,9 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
           nodeClickHandledRef.current = true;
 
           // Stop event propagation to prevent map-level click handlers from firing
-          if (e.originalEvent) {
-            e.originalEvent.stopPropagation();
-            e.originalEvent.stopImmediatePropagation();
+          if ((e as any).originalEvent) {
+            (e as any).originalEvent.stopPropagation();
+            (e as any).originalEvent.stopImmediatePropagation();
           }
 
           if (e.features && e.features.length > 0) {
@@ -1570,9 +1555,9 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
           console.debug('Scan connector clicked!', e);
 
           // Stop event propagation to prevent map-level handler from firing
-          if (e.originalEvent) {
-            e.originalEvent.stopPropagation();
-            e.originalEvent.stopImmediatePropagation();
+          if ((e as any).originalEvent) {
+            (e as any).originalEvent.stopPropagation();
+            (e as any).originalEvent.stopImmediatePropagation();
           }
 
           if (e.features && e.features.length > 0) {

@@ -12,8 +12,8 @@ interface CacheEntry<T> {
 }
 
 class AICache {
-    private cache: Map<string, CacheEntry<any>> = new Map();
-    private aggregateCache: Map<string, CacheEntry<any>> = new Map();
+    private cache: Map<string, CacheEntry<unknown>> = new Map();
+    private aggregateCache: Map<string, CacheEntry<unknown>> = new Map();
 
     /**
      * Get cached data if valid
@@ -28,7 +28,7 @@ class AICache {
             return null;
         }
 
-        return entry.data;
+        return entry.data as T;
     }
 
     /**
@@ -55,7 +55,7 @@ class AICache {
             return null;
         }
 
-        return entry.data;
+        return entry.data as T;
     }
 
     /**

@@ -1,7 +1,7 @@
 'use client';
 
-
 import React, { useEffect, useState, useRef, useMemo } from 'react';
+import Link from 'next/link';
 import io from 'socket.io-client';
 import { ActivityLog } from '@/lib/server/mongodb-activity';
 import { formatDistanceToNow } from 'date-fns';
@@ -21,7 +21,8 @@ const ACTIVITY_TYPES = [
     { value: 'node_online', label: 'Online' },
     { value: 'node_offline', label: 'Offline' },
     { value: 'node_status', label: 'Status Updates' },
-    { value: 'credits_earned', label: 'Credits' },
+    { value: 'credits_earned', label: 'Credits Earned' },
+    { value: 'credits_lost', label: 'Credits Lost' },
     { value: 'packets_earned', label: 'Packets' },
     { value: 'streams_active', label: 'Streams' },
 ];
@@ -29,18 +30,138 @@ const ACTIVITY_TYPES = [
 const RENDER_API_URL = process.env.NEXT_PUBLIC_RENDER_API_URL || 'https://pglobe.onrender.com';
 const REALTIME_SERVER_URL = process.env.NEXT_PUBLIC_REALTIME_SERVER_URL || '';
 
-// Use realtime server if configured, otherwise fall back to API server
 const getSocketUrl = () => {
     if (typeof window !== 'undefined') {
         const hostname = window.location.hostname;
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
-            // Check if local realtime server is running on port 3002
             return `http://${hostname}:3002`;
         }
     }
-    // Use dedicated realtime server if configured
     return REALTIME_SERVER_URL || RENDER_API_URL;
 };
+
+// Smooth spring config for 60fps - fluid and natural
+const smoothSpring = {
+    type: "spring" as const,
+    stiffness: 200,
+    damping: 25,
+    mass: 1,
+};
+
+// Lighter spring for intensity bars
+const barSpring = {
+    type: "spring" as const,
+    stiffness: 150,
+    damping: 20,
+};
+
+// Log item component with optimized framer-motion
+function LogItem({ log }: { log: ActivityLog }) {
+    const getIcon = (type: string) => {
+        const iconClass = "w-3 h-3 sm:w-3.5 sm:h-3.5";
+        switch (type) {
+            case 'new_node': return <CheckCircle2 className={`${iconClass} text-green-400`} />;
+            case 'node_online': return <CheckCircle2 className={`${iconClass} text-green-400`} />;
+            case 'node_offline': return <XCircle className={`${iconClass} text-red-400`} />;
+            case 'node_status': return <Activity className={`${iconClass} text-blue-400`} />;
+            case 'streams_active': return <Zap className={`${iconClass} text-cyan-400`} />;
+            case 'packets_earned': return <Activity className={`${iconClass} text-emerald-400`} />;
+            case 'credits_earned': return <Activity className={`${iconClass} text-[#F0A741]`} />;
+            case 'credits_lost': return <XCircle className={`${iconClass} text-red-400`} />;
+            default: return <Activity className={`${iconClass} text-foreground/60`} />;
+        }
+    };
+
+    const renderIntensityBar = () => {
+        const data = log.data as any;
+        let width = 0;
+        let colorClass = '';
+
+        if (log.type === 'packets_earned' && data?.rxEarned !== undefined) {
+            const total = (data.rxEarned || 0) + (data.txEarned || 0);
+            width = Math.min(100, (total / 5000) * 100);
+            colorClass = 'bg-emerald-500/40';
+        } else if (log.type === 'credits_earned' && data?.earned !== undefined) {
+            width = Math.min(100, (data.earned / 50) * 100);
+            colorClass = 'bg-[#F0A741]/40';
+        } else if (log.type === 'credits_lost' && data?.lost !== undefined) {
+            width = Math.min(100, (data.lost / 50) * 100);
+            colorClass = 'bg-red-500/40';
+        }
+
+        if (width === 0) return null;
+
+        return (
+            <div className="mt-1.5 sm:mt-2 w-full max-w-[150px] sm:max-w-[200px] h-1 bg-muted/20 rounded-full overflow-hidden">
+                <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${width}%` }}
+                    transition={barSpring}
+                    className={`h-full ${colorClass}`}
+                    style={{ willChange: 'width' }}
+                />
+            </div>
+        );
+    };
+
+    const truncatedPubkey = useMemo(() => {
+        if (!log.pubkey) return '';
+        return `${log.pubkey.slice(0, 6)}...${log.pubkey.slice(-4)}`;
+    }, [log.pubkey]);
+
+    return (
+        <Link href={`/nodes/${log.pubkey}`} className="block group">
+            <motion.div
+                layout="position"
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4, transition: { duration: 0.15 } }}
+                transition={smoothSpring}
+                style={{ willChange: 'transform, opacity' }}
+                className="p-2.5 sm:p-4 bg-muted/5 hover:bg-white/[0.04] border border-border/20 hover:border-[#F0A741]/30 rounded-lg transition-colors duration-150"
+            >
+                <div className="flex items-start gap-2 sm:gap-4">
+                    {/* Icon */}
+                    <div className="mt-0.5 p-1.5 sm:p-2 rounded-lg bg-zinc-900/80 border border-zinc-800/80 flex-shrink-0">
+                        {getIcon(log.type)}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                        {/* Message and timestamp */}
+                        <div className="flex items-start justify-between gap-2 mb-1 sm:mb-2">
+                            <p className="text-xs sm:text-sm text-zinc-200 font-semibold leading-relaxed line-clamp-2">
+                                {log.message}
+                            </p>
+                            <span className="text-[8px] sm:text-[9px] text-zinc-500 whitespace-nowrap font-bold uppercase tracking-wider bg-zinc-900/50 px-1.5 sm:px-2 py-0.5 rounded border border-zinc-800/50 flex-shrink-0">
+                                {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
+                            </span>
+                        </div>
+
+                        {/* Meta info */}
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-[10px] sm:text-xs">
+                            <div className="flex items-center gap-1 bg-black/40 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-zinc-800/80">
+                                <Globe className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-zinc-500" />
+                                <span className="font-mono text-zinc-400 truncate">
+                                    <span className="sm:hidden">{truncatedPubkey}</span>
+                                    <span className="hidden sm:inline max-w-[180px] truncate">{log.pubkey}</span>
+                                </span>
+                            </div>
+
+                            {log.location && (
+                                <div className="flex items-center gap-1">
+                                    <MapPin className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-zinc-600" />
+                                    <span className="text-zinc-500 font-semibold truncate max-w-[80px] sm:max-w-none">{log.location}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {renderIntensityBar()}
+                    </div>
+                </div>
+            </motion.div>
+        </Link>
+    );
+}
 
 export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: ActivityLogListProps) {
     const [logs, setLogs] = useState<ActivityLog[]>([]);
@@ -51,7 +172,6 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
     const [typeFilter, setTypeFilter] = useState('');
     const [isPaused, setIsPaused] = useState(false);
     const isPausedRef = useRef(isPaused);
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
     const fetchLogs = async (skip: number = 0, append: boolean = false) => {
@@ -88,22 +208,17 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         }
     };
 
-    // Buffer for staggered display - makes logs appear gradually instead of all at once
-    const bufferRef = React.useRef<ActivityLog[]>([]);
-    const processingRef = React.useRef(false);
-    const isVisibleRef = React.useRef(true);
+    const bufferRef = useRef<ActivityLog[]>([]);
+    const processingRef = useRef(false);
+    const isVisibleRef = useRef(true);
 
-    // Handle page visibility changes to prevent lag
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.hidden) {
-                // Tab is hidden - pause processing to prevent lag, keep existing logs
                 isVisibleRef.current = false;
                 bufferRef.current = [];
                 processingRef.current = false;
-                // Do not clear logs to preserve history
             } else {
-                // Tab is visible again
                 isVisibleRef.current = true;
                 bufferRef.current = [];
                 processingRef.current = false;
@@ -114,74 +229,56 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, []);
 
-    // Keep ref in sync with state
     useEffect(() => {
         isPausedRef.current = isPaused;
     }, [isPaused]);
 
-
-
     const processBuffer = React.useCallback(() => {
-        // Don't process if tab is hidden or paused
         if (!isVisibleRef.current || isPausedRef.current) {
-            bufferRef.current = []; // Clear accumulated events
+            bufferRef.current = [];
             return;
         }
         if (processingRef.current || bufferRef.current.length === 0) return;
         processingRef.current = true;
 
         const processOne = () => {
-            // Stop if tab became hidden or no more items
             if (!isVisibleRef.current || bufferRef.current.length === 0) {
                 processingRef.current = false;
-                bufferRef.current = []; // Clear any remaining
+                bufferRef.current = [];
                 return;
             }
 
-            // Safety Valve: If too much data (>60), drop oldest 50% to catch up
             if (bufferRef.current.length > 60) {
-                bufferRef.current = bufferRef.current.slice(-Math.floor(bufferRef.current.length * 0.5));
+                bufferRef.current = bufferRef.current.slice(-30);
             }
 
             const logToAdd = bufferRef.current.shift()!;
 
             setLogs((prev: ActivityLog[]) => {
-                // Check for duplicates
                 const isDuplicate = prev.some((l: ActivityLog) => {
                     const timeDiff = Math.abs(new Date(l.timestamp).getTime() - new Date(logToAdd.timestamp).getTime());
                     return l.pubkey === logToAdd.pubkey && l.type === logToAdd.type && l.message === logToAdd.message && timeDiff < 5000;
                 });
 
                 if (isDuplicate) return prev;
-                if (isDuplicate) return prev;
-                // Keep 100 logs in memory so filtering works
                 return [logToAdd, ...prev].slice(0, 100);
             });
 
-            // Calculate delay based on buffer size with randomization
-            // Goal: Process ~90% of buffer in 7 seconds
-            // Formula: TimePerItem = 7000 / (Buffer * 0.9)
             const bufferSize = Math.max(bufferRef.current.length + 1, 1);
-            const baseDelay = 7000 / (bufferSize * 0.9);
-
-            // Add randomness (0.6x to 1.4x)
-            const jitter = 0.6 + Math.random() * 0.8;
+            const baseDelay = 5000 / (bufferSize * 0.9);
+            const jitter = 0.7 + Math.random() * 0.6;
             let delay = baseDelay * jitter;
-
-            // Clamp: Never slower than 800ms (keep decent speed), never faster than 20ms
-            delay = Math.min(800, Math.max(20, delay));
+            delay = Math.min(600, Math.max(30, delay));
 
             setTimeout(processOne, delay);
         };
 
         processOne();
-    }, [limit]);
+    }, []);
 
     useEffect(() => {
-        // 1. Fetch initial logs (history)
         fetchLogs();
 
-        // 2. Setup Socket.io for real-time updates
         const socketUrl = getSocketUrl();
         console.log('[ActivityLogs] Connecting to Socket.io at:', socketUrl);
 
@@ -192,55 +289,42 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         });
 
         socket.on('connect', () => {
-            console.log('[ActivityLogs] Connected - clearing buffer for fresh start');
+            console.log('[ActivityLogs] Connected');
             setConnected(true);
-            // Clear buffer on (re)connect to prevent stale events
             bufferRef.current = [];
             processingRef.current = false;
         });
 
-        socket.on('connect_error', () => {
-            setConnected(false);
-        });
-
+        socket.on('connect_error', () => setConnected(false));
         socket.on('disconnect', () => {
-            console.log('[ActivityLogs] Disconnected - clearing buffer');
+            console.log('[ActivityLogs] Disconnected');
             setConnected(false);
-            // Clear buffer on disconnect
             bufferRef.current = [];
             processingRef.current = false;
         });
 
         socket.on('activity', (newLog: ActivityLog) => {
-            // Skip streams_active events - they're only for racing visualization
             if (newLog.type === 'streams_active') return;
-
-            // Filter by pubkey/country if specified (server-side filters remain strict)
             if (pubkey && newLog.pubkey !== pubkey) return;
             if (countryCode && newLog.countryCode !== countryCode) return;
 
-            // Client-side type filtering is done at RENDER time now
-            // We store ALL logs so switching filters works instantly
-
-            // Add unique ID if not present
             const logWithId = {
                 ...newLog,
                 _id: newLog._id || `${newLog.pubkey}-${newLog.type}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
                 timestamp: newLog.timestamp || new Date().toISOString(),
             };
 
-            // Add to buffer for staggered display
             bufferRef.current.push(logWithId);
             processBuffer();
         });
 
         return () => {
             socket.disconnect();
-            bufferRef.current = []; // Clear buffer on unmount
+            bufferRef.current = [];
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pubkey, countryCode, limit, typeFilter, processBuffer]);
 
-    // Clear buffer immediately when pausing
     useEffect(() => {
         if (isPaused) {
             bufferRef.current = [];
@@ -248,81 +332,49 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         }
     }, [isPaused]);
 
-    const getIcon = (type: string) => {
-        const iconClass = "w-3.5 h-3.5";
-        switch (type) {
-            case 'new_node': return <CheckCircle2 className={`${iconClass} text-green-400`} />;
-            case 'node_online': return <CheckCircle2 className={`${iconClass} text-green-400`} />;
-            case 'node_offline': return <XCircle className={`${iconClass} text-red-400`} />;
-            case 'node_status': return <Activity className={`${iconClass} text-blue-400`} />;
-            case 'streams_active': return <Zap className={`${iconClass} text-cyan-400`} />;
-            case 'packets_earned': return <Activity className={`${iconClass} text-emerald-400`} />;
-            case 'credits_earned': return <Activity className={`${iconClass} text-[#F0A741]`} />;
-            default: return <Activity className={`${iconClass} text-foreground/60`} />;
-        }
-    };
-
-    const renderIntensityBar = (log: ActivityLog) => {
-        if (log.type === 'packets_earned' && log.data?.rxEarned !== undefined) {
-            const total = (log.data.rxEarned || 0) + (log.data.txEarned || 0);
-            const width = Math.min(100, (total / 5000) * 100);
-            return (
-                <div className="mt-2 w-full max-w-[200px] h-1 bg-muted/20 rounded-full overflow-hidden">
-                    <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${width}%` }}
-                        className="h-full bg-emerald-500/40 shadow-[0_0_8px_rgba(16,185,129,0.3)]"
-                    />
-                </div>
-            );
-        }
-        if (log.type === 'credits_earned' && log.data?.earned !== undefined) {
-            const width = Math.min(100, (log.data.earned / 50) * 100);
-            return (
-                <div className="mt-2 w-full max-w-[200px] h-1 bg-muted/20 rounded-full overflow-hidden">
-                    <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${width}%` }}
-                        className="h-full bg-[#F0A741]/40 shadow-[0_0_8px_rgba(240,167,65,0.3)]"
-                    />
-                </div>
-            );
-        }
-        return null;
-    };
+    const filteredLogs = useMemo(() => {
+        return logs.filter(log => !typeFilter || log.type === typeFilter).slice(0, 50);
+    }, [logs, typeFilter]);
 
     return (
-        <div className="w-full h-full flex flex-col gap-4">
-            <div className="flex items-center justify-between flex-shrink-0">
-                <div className="flex items-center gap-3">
-                    <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-[#F0A741]" />
-                        Live Activity Feed
+        <div className="w-full h-full flex flex-col gap-2 sm:gap-4">
+            {/* Header */}
+            <div className="flex items-center justify-between flex-shrink-0 flex-wrap gap-2">
+                <div className="flex items-center gap-2 sm:gap-3">
+                    <h2 className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-1.5 sm:gap-2">
+                        <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#F0A741]" />
+                        <span className="hidden xs:inline">Live Activity Feed</span>
+                        <span className="xs:hidden">Feed</span>
                     </h2>
-                    <div className="flex items-center gap-2 bg-muted/20 px-2 py-0.5 rounded-full border border-border/40">
-                        <div className={`w-1.5 h-1.5 rounded-full ${connected && !isPaused ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)] animate-pulse' : isPaused ? 'bg-yellow-500' : 'bg-muted-foreground/30'}`} />
-                        <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-tight">{isPaused ? 'Paused' : connected ? 'Live' : 'Offline'}</span>
+                    <div className="flex items-center gap-1.5 sm:gap-2 bg-muted/20 px-1.5 sm:px-2 py-0.5 rounded-full border border-border/40">
+                        <div className={`w-1.5 h-1.5 rounded-full ${connected && !isPaused ? 'bg-green-500 animate-pulse' : isPaused ? 'bg-yellow-500' : 'bg-muted-foreground/30'}`} />
+                        <span className="text-[9px] sm:text-[10px] font-bold text-foreground/40 uppercase tracking-tight">
+                            {isPaused ? 'Paused' : connected ? 'Live' : 'Offline'}
+                        </span>
                     </div>
                     <button
                         onClick={() => setIsPaused(!isPaused)}
-                        className={`p-1.5 rounded-lg border transition-all ${isPaused ? 'bg-[#F0A741]/20 border-[#F0A741]/50 text-[#F0A741]' : 'bg-muted/20 border-border/40 text-foreground/50 hover:text-foreground hover:bg-muted/30'}`}
+                        className={`p-1 sm:p-1.5 rounded-lg border transition-colors ${isPaused ? 'bg-[#F0A741]/20 border-[#F0A741]/50 text-[#F0A741]' : 'bg-muted/20 border-border/40 text-foreground/50 hover:text-foreground hover:bg-muted/30'}`}
                         title={isPaused ? 'Resume' : 'Pause'}
                     >
-                        {isPaused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
+                        {isPaused ? <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> : <Pause className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
                     </button>
                 </div>
+
+                {/* Filter dropdown */}
                 <div className="relative">
                     <button
                         onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-muted/20 hover:bg-muted/30 border border-border/40 rounded-lg transition-all text-xs font-semibold text-foreground/70 hover:text-foreground"
+                        className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-muted/20 hover:bg-muted/30 border border-border/40 rounded-lg transition-colors text-[10px] sm:text-xs font-semibold text-foreground/70 hover:text-foreground"
                     >
-                        <Filter className="w-3.5 h-3.5" />
-                        <span>{ACTIVITY_TYPES.find(t => t.value === typeFilter)?.label || 'All Activities'}</span>
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
+                        <Filter className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                        <span className="hidden sm:inline">{ACTIVITY_TYPES.find(t => t.value === typeFilter)?.label || 'All'}</span>
+                        <span className="sm:hidden">{typeFilter ? ACTIVITY_TYPES.find(t => t.value === typeFilter)?.label?.slice(0, 6) || 'All' : 'All'}</span>
+                        <ChevronDown className={`w-3 h-3 sm:w-3.5 sm:h-3.5 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
                     </button>
 
                     {showFilterDropdown && (
-                        <div className="absolute top-full mt-2 right-0 z-50 bg-card border border-border/40 rounded-lg shadow-xl min-w-[160px] overflow-hidden">
+                        <div className="absolute top-full mt-2 right-0 z-50 bg-card border border-border/40 rounded-lg shadow-xl min-w-[140px] sm:min-w-[160px] overflow-hidden">
                             {ACTIVITY_TYPES.map((type) => (
                                 <button
                                     key={type.value}
@@ -330,7 +382,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                                         setTypeFilter(type.value);
                                         setShowFilterDropdown(false);
                                     }}
-                                    className={`w-full px-4 py-2 text-left text-xs transition-colors ${typeFilter === type.value
+                                    className={`w-full px-3 sm:px-4 py-2 text-left text-[10px] sm:text-xs transition-colors ${typeFilter === type.value
                                         ? 'bg-[#F0A741]/10 text-[#F0A741] font-bold'
                                         : 'hover:bg-muted/20 text-foreground/70 hover:text-foreground'
                                         }`}
@@ -343,86 +395,37 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                 </div>
             </div>
 
-            <div className="card p-6 space-y-3 flex-1 relative overflow-hidden flex flex-col">
-                {/* Background gradient */}
+            {/* Log list */}
+            <div className="card p-3 sm:p-6 flex-1 relative overflow-hidden flex flex-col">
                 <div className="absolute inset-0 bg-gradient-to-br from-[#F0A741]/[0.02] via-transparent to-transparent pointer-events-none" />
 
                 {loading && logs.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-[450px] gap-4">
-                        <RefreshCw className="w-12 h-12 text-foreground/10 animate-spin" />
+                    <div className="flex flex-col items-center justify-center h-[300px] sm:h-[450px] gap-4">
+                        <RefreshCw className="w-8 h-8 sm:w-12 sm:h-12 text-foreground/10 animate-spin" />
                         <div className="text-center space-y-1">
-                            <p className="text-foreground/40 text-sm font-semibold">Loading Activity</p>
-                            <p className="text-foreground/20 text-xs">Fetching network events...</p>
+                            <p className="text-foreground/40 text-xs sm:text-sm font-semibold">Loading Activity</p>
+                            <p className="text-foreground/20 text-[10px] sm:text-xs">Fetching network events...</p>
                         </div>
                     </div>
                 ) : logs.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-[450px] gap-4">
-                        <Activity className="w-12 h-12 text-foreground/10" />
+                    <div className="flex flex-col items-center justify-center h-[300px] sm:h-[450px] gap-4">
+                        <Activity className="w-8 h-8 sm:w-12 sm:h-12 text-foreground/10" />
                         <div className="text-center space-y-1">
-                            <p className="text-foreground/40 text-sm font-semibold">No Activity Yet</p>
-                            <p className="text-foreground/20 text-xs">Waiting for network events...</p>
+                            <p className="text-foreground/40 text-xs sm:text-sm font-semibold">No Activity Yet</p>
+                            <p className="text-foreground/20 text-[10px] sm:text-xs">Waiting for network events...</p>
                         </div>
                     </div>
                 ) : (
-                    <div className="space-y-2 relative flex-1 overflow-y-auto">
+                    <div className="space-y-1.5 sm:space-y-2 relative flex-1 overflow-y-auto">
                         <AnimatePresence mode="popLayout">
-                            {/* Filter logs at render time */}
-                            {
-                                logs.filter(log => !typeFilter || log.type === typeFilter).slice(0, 50).map((log, index) => (
-                                    <motion.div
-                                        key={log._id || `${log.timestamp}-${log.pubkey}-${log.type}`}
-                                        layout
-                                        initial={{ opacity: 0, y: -20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.95 }}
-                                        transition={{
-                                            type: "spring",
-                                            stiffness: 400,
-                                            damping: 35,
-                                        }}
-                                        className="p-4 bg-muted/5 hover:bg-white/[0.02] border border-border/20 rounded-lg transition-all group/item relative"
-                                    >
-                                        <div className="flex items-start gap-4">
-                                            {/* Icon */}
-                                            <div className="mt-1 p-2 rounded-lg bg-zinc-900/80 border border-zinc-800/80 group-hover/item:border-[#F0A741]/30 transition-all">
-                                                {getIcon(log.type)}
-                                            </div>
-
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between gap-4 mb-2">
-                                                    <p className="text-sm text-zinc-200 font-semibold leading-relaxed">
-                                                        {log.message}
-                                                    </p>
-                                                    <span className="text-[9px] text-zinc-500 whitespace-nowrap font-bold uppercase tracking-wider bg-zinc-900/50 px-2 py-0.5 rounded border border-zinc-800/50">
-                                                        {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
-                                                    </span>
-                                                </div>
-
-                                                <div className="flex flex-wrap items-center gap-3 text-xs">
-                                                    <div className="flex items-center gap-1.5 bg-black/40 px-2 py-1 rounded border border-zinc-800/80">
-                                                        <Globe className="w-3 h-3 text-zinc-500" />
-                                                        <span className="font-mono text-zinc-400 truncate max-w-[180px]">
-                                                            {log.pubkey}
-                                                        </span>
-                                                    </div>
-
-                                                    {log.location && (
-                                                        <div className="flex items-center gap-1.5">
-                                                            <MapPin className="w-3 h-3 text-zinc-600" />
-                                                            <span className="text-zinc-500 font-semibold">{log.location}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {renderIntensityBar(log)}
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                ))
-                            }
+                            {filteredLogs.map((log) => (
+                                <LogItem
+                                    key={log._id || `${log.timestamp}-${log.pubkey}-${log.type}`}
+                                    log={log}
+                                />
+                            ))}
                         </AnimatePresence>
 
-                        {/* Infinite scroll sentinel - only when paused */}
                         {isPaused && hasMore && logs.length > 0 && (
                             <div
                                 ref={(el) => {
@@ -451,10 +454,8 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                             </div>
                         )}
                     </div>
-                )
-                }
-            </div >
-
-        </div >
+                )}
+            </div>
+        </div>
     );
 }

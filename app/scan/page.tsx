@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { PNode } from '@/lib/types/pnode';
 import dynamic from 'next/dynamic';
 
@@ -30,7 +30,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const R = 6371; // Radius of the Earth in kilometers
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
+  const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
@@ -38,16 +38,15 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 
-interface NodeWithDistance extends Omit<PNode, 'latency'> {
+interface NodeWithDistance extends PNode {
   distanceKm?: number;
   distanceMi?: number;
-  latency?: number | null;
 }
 
 export default function ScanPage() {
   // Use shared nodes data from context (fetched once, updated passively)
   const { nodes, loading, error, lastUpdate, selectedNetwork, setSelectedNetwork, availableNetworks, currentNetwork, refreshNodes } = useNodes();
-  
+
   const [nodesWithGeo, setNodesWithGeo] = useState<PNode[]>([]);
   const [geoEnriching, setGeoEnriching] = useState(false);
   const [scanIp, setScanIp] = useState('');
@@ -83,7 +82,7 @@ export default function ScanPage() {
       setNodesWithGeo([]);
       setGeoEnriching(false);
     }
-  }, [nodes.length]); // Only re-run when nodes count changes, not on every nodes array reference change
+  }, [nodes]); // Use complete nodes array as dependency for reliability
 
   // Get user's IP address
   const getUserIp = async () => {
@@ -112,31 +111,32 @@ export default function ScanPage() {
   const handleAutoDetect = async () => {
     setScanError(null);
     setScanning(true);
-    
+
     // Use setTimeout to ensure UI updates immediately
     setTimeout(async () => {
-    try {
-      const detectedIp = await getUserIp();
-      if (detectedIp) {
-        setUserIp(detectedIp);
-        setScanIp(detectedIp);
+      try {
+        const detectedIp = await getUserIp();
+        if (detectedIp) {
+          setUserIp(detectedIp);
+          setScanIp(detectedIp);
           // Small delay to ensure state update, then scan
           setTimeout(() => {
             handleScanWithIp(detectedIp, true);
           }, 10);
-      } else {
-        setScanError('Failed to detect your IP address');
+        } else {
+          setScanError('Failed to detect your IP address');
+          setScanning(false);
+        }
+      } catch (err) {
+        const error = err as Error;
+        setScanError(error.message || 'Failed to detect your IP address');
         setScanning(false);
       }
-    } catch (err: any) {
-      setScanError(err.message || 'Failed to detect your IP address');
-      setScanning(false);
-    }
     }, 0);
   };
 
   // Helper function to scan with a specific IP (used by auto-detect and manual scan)
-  const handleScanWithIp = async (ipToScan: string, isUserIp: boolean = false) => {
+  const handleScanWithIp = async (ipToScan: string, _isUserIp: boolean = false) => {
     if (!ipToScan.trim()) {
       setScanError('Please enter an IP address');
       setScanning(false);
@@ -146,9 +146,9 @@ export default function ScanPage() {
     // Update UI state immediately for responsive feel
     setScanning(true);
     setScanError(null);
-      setScanLocation(null);
-      setClosestNodes([]);
-    
+    setScanLocation(null);
+    setClosestNodes([]);
+
     // Use requestAnimationFrame to ensure UI updates before heavy work
     await new Promise(resolve => requestAnimationFrame(resolve));
 
@@ -156,21 +156,12 @@ export default function ScanPage() {
       // Fetch geolocation for the IP using the geo API (with timeout)
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
-      let geoResponse: Response;
-      try {
-        geoResponse = await fetch(`/api/geo?ip=${encodeURIComponent(ipToScan.trim())}`, {
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-      } catch (fetchErr: any) {
-        clearTimeout(timeoutId);
-        if (fetchErr.name === 'AbortError') {
-          throw new Error('Request timeout - geo service took too long to respond');
-        }
-        throw new Error(fetchErr.message || 'Failed to connect to geo service');
-      }
-      
+
+      const geoResponse = await fetch(`/api/geo?ip=${encodeURIComponent(ipToScan.trim())}`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
       if (!geoResponse.ok) {
         const errorData = await geoResponse.json().catch(() => ({}));
         throw new Error(errorData.error || `Failed to get location for IP (${geoResponse.status})`);
@@ -188,14 +179,13 @@ export default function ScanPage() {
         country: geoData.country,
       };
 
-
       setScanLocation(location);
 
       // Calculate distances to ALL nodes - batch calculation for efficiency
       // IMPORTANT: Use nodes directly from context to ensure we have ALL nodes (online, syncing, offline)
       // nodesWithGeo might be incomplete during enrichment, so prefer nodes from context
       const nodesToUse = nodes; // Always use all nodes from context, not just geo-enriched ones
-      
+
       // Batch calculate distances for ALL nodes with location data
       // NO status filtering - includes online, syncing, and offline nodes
       // Only requirement: must have valid lat/lon coordinates
@@ -203,10 +193,10 @@ export default function ScanPage() {
         .filter(node => {
           // Only filter by location data - NO status filtering
           // Include all nodes: online, syncing, and offline
-          const hasLocation = node.locationData?.lat != null && 
-                              node.locationData?.lon != null &&
-                              !isNaN(node.locationData.lat) &&
-                              !isNaN(node.locationData.lon);
+          const hasLocation = node.locationData?.lat != null &&
+            node.locationData?.lon != null &&
+            !isNaN(node.locationData.lat) &&
+            !isNaN(node.locationData.lon);
           return hasLocation;
         })
         .map(node => {
@@ -217,7 +207,7 @@ export default function ScanPage() {
             node.locationData!.lat,
             node.locationData!.lon
           );
-          
+
           return {
             ...node,
             distanceKm,
@@ -229,11 +219,12 @@ export default function ScanPage() {
       // Show top 20 closest nodes (for display and map connections)
       const top20Closest = nodesWithDistance.slice(0, 20);
       setClosestNodes(top20Closest);
-      
+
       // Scanning is complete - show results immediately
       setScanning(false);
-    } catch (err: any) {
-      setScanError(err.message || 'Failed to scan IP address');
+    } catch (err) {
+      const error = err as Error;
+      setScanError(error.message || 'Failed to scan IP address');
       setScanning(false);
     }
   };
@@ -247,15 +238,15 @@ export default function ScanPage() {
   if (isLoading && nodes.length === 0) {
     return (
       <div className="flex flex-col h-screen bg-background overflow-hidden">
-        <Header 
-          showNetworkSelector={false} 
+        <Header
+          showNetworkSelector={false}
           activePage="scan"
           nodeCount={0}
           lastUpdate={null}
           loading={true}
-          onRefresh={() => {}}
+          onRefresh={() => { }}
         />
-        
+
         <div className="flex-1 flex overflow-hidden relative">
           {/* Left Sidebar - Scan Controls */}
           <aside className="hidden md:block w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-hidden">
@@ -375,8 +366,8 @@ export default function ScanPage() {
 
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
-      <Header 
-        showNetworkSelector={false} 
+      <Header
+        showNetworkSelector={false}
         activePage="scan"
         nodeCount={nodes.length}
         lastUpdate={lastUpdate}
@@ -392,7 +383,7 @@ export default function ScanPage() {
           setSelectedNetwork(networkId);
         }}
       />
-      
+
       <div className="flex-1 flex overflow-hidden relative">
         {/* Mobile Sidebar Overlay */}
         {sidebarOpen && (
@@ -450,7 +441,7 @@ export default function ScanPage() {
                     className="px-3 py-2 bg-[#F0A741]/20 hover:bg-[#F0A741]/30 text-[#F0A741] rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 min-w-[70px] text-xs sm:text-sm"
                   >
                     {scanning ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <>
                         <Search className="w-3.5 h-3.5" />
@@ -507,7 +498,7 @@ export default function ScanPage() {
                 <div className="space-y-1.5 max-h-[calc(100vh-450px)] overflow-y-auto pr-1 scrollbar-thin">
                   {closestNodes.map((node, index) => (
                     <div
-                      key={node.id}
+                      key={String(node.id)}
                       className="p-2 bg-muted/30 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer"
                       onClick={() => {
                         // Navigate globe to this node
@@ -520,9 +511,9 @@ export default function ScanPage() {
                         </span>
                         <span className="text-xs font-semibold text-[#3F8277] whitespace-nowrap ml-2">
                           {node.distanceKm !== undefined
-                            ? `${node.distanceKm < 1 
-                                ? `${Math.round(node.distanceKm * 1000)}m`
-                                : `${node.distanceKm.toFixed(1)}km`}`
+                            ? `${node.distanceKm < 1
+                              ? `${Math.round(node.distanceKm * 1000)}m`
+                              : `${node.distanceKm.toFixed(1)}km`}`
                             : 'N/A'}
                         </span>
                       </div>
@@ -534,13 +525,12 @@ export default function ScanPage() {
                       )}
                       <div className="flex items-center gap-2 mt-2">
                         <span
-                          className={`text-xs px-2 py-0.5 rounded ${
-                            node.status === 'online'
-                              ? 'bg-green-500/20 text-green-400'
-                              : node.status === 'syncing'
+                          className={`text-xs px-2 py-0.5 rounded ${node.status === 'online'
+                            ? 'bg-green-500/20 text-green-400'
+                            : node.status === 'syncing'
                               ? 'bg-yellow-500/20 text-yellow-400'
                               : 'bg-red-500/20 text-red-400'
-                          }`}
+                            }`}
                         >
                           {node.status || 'offline'}
                         </span>
@@ -582,7 +572,7 @@ export default function ScanPage() {
               <Loader2 className="w-8 h-8 animate-spin text-foreground/40" />
             </div>
           ) : (
-            <MapLibreGlobe 
+            <MapLibreGlobe
               nodes={nodesWithGeo.length > 0 ? nodesWithGeo : nodes}
               centerLocation={scanLocation ? { lat: scanLocation.lat, lon: scanLocation.lon } : undefined}
               scanLocation={scanLocation || undefined}

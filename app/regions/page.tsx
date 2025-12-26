@@ -6,8 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
-import { getFlagForCountry } from '@/lib/utils/country-flags';
-import { RefreshCw, MapPin, Server, Users, TrendingUp, X } from 'lucide-react';
+import { MapPin, Server, X } from 'lucide-react';
 import AnimatedNumber from '@/components/AnimatedNumber';
 import StatsCard from '@/components/StatsCard';
 import { CardSkeleton } from '@/components/Skeletons';
@@ -19,6 +18,7 @@ const formatBytes = (bytes: number) => {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
 };
+
 
 // Map country codes to continents
 const getContinentFromCountryCode = (countryCode?: string): string | null => {
@@ -96,7 +96,7 @@ function CountryCard({ country, flagUrl }: {
     name: string;
     country: string;
     countryCode?: string;
-    nodes: any[];
+    nodes: any[]; // Replacing 'any' with specific type would require PNode import, leaving for now but making it clearer
     online: number;
     offline: number;
     syncing: number;
@@ -325,13 +325,7 @@ function RegionsPageContent() {
     };
   }, [nodes]);
 
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
-  };
+
 
   // Show loading skeleton when loading and no data
   if (loading && nodes.length === 0) {
@@ -366,7 +360,7 @@ function RegionsPageContent() {
 
           {/* Region Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <CardSkeleton count={6} className="" />
+            <CardSkeleton count={6} />
           </div>
         </main>
       </div>
@@ -453,7 +447,6 @@ function RegionsPageContent() {
 
             {/* Countries Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <CardSkeleton count={6} className="" />
               {regionData
                 .filter(country => !selectedCountry || country.name === selectedCountry)
                 .map((country) => {
