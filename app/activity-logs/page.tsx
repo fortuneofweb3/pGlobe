@@ -28,15 +28,15 @@ export default function ActivityLogsPage() {
 
             <main className="flex-1 overflow-hidden flex flex-col">
                 {/* Page Header - responsive */}
-                <div className="w-full px-3 sm:px-6 pt-3 sm:pt-6 flex-shrink-0">
+                <div className="w-full px-3 sm:px-6 pt-2 sm:pt-4 flex-shrink-0">
                     <div className="max-w-7xl mx-auto">
-                        <div className="mb-3 sm:mb-6">
-                            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3">
-                                <Activity className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-[#F0A741]" />
+                        <div className="mb-2 sm:mb-4">
+                            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold mb-0.5 sm:mb-1 flex items-center gap-2 sm:gap-3">
+                                <Activity className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-[#F0A741]" />
                                 <span className="hidden sm:inline">Live Network Feed</span>
                                 <span className="sm:hidden">Live Feed</span>
                             </h1>
-                            <p className="text-foreground/60 text-xs sm:text-sm lg:text-base line-clamp-1 sm:line-clamp-none">
+                            <p className="text-foreground/60 text-[10px] sm:text-xs lg:text-sm line-clamp-1 sm:line-clamp-none">
                                 <span className="hidden sm:inline">Real-time monitoring of network events, status changes, and performance updates</span>
                                 <span className="sm:hidden">Real-time network monitoring</span>
                             </p>

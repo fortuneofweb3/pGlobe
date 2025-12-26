@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { RefreshCw, Menu, X } from 'lucide-react';
+import { RefreshCw, Menu, X, Activity } from 'lucide-react';
 import NetworkSelector from './NetworkSelector';
 import NetToggle from './NetToggle';
 import { NetworkConfig } from '@/lib/server/network-config';
@@ -78,8 +78,8 @@ export default function Header({
                 href="/"
                 prefetch={true}
                 className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'overview'
-                    ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
-                    : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
+                  ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
+                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                   }`}
               >
                 Overview
@@ -88,8 +88,8 @@ export default function Header({
                 href="/nodes"
                 prefetch={true}
                 className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'nodes'
-                    ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
-                    : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
+                  ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
+                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                   }`}
               >
                 Nodes {nodeCount > 0 && `(${nodeCount})`}
@@ -98,8 +98,8 @@ export default function Header({
                 href="/analytics"
                 prefetch={true}
                 className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'analytics'
-                    ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
-                    : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
+                  ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
+                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                   }`}
               >
                 Analytics
@@ -108,8 +108,8 @@ export default function Header({
                 href="/regions"
                 prefetch={true}
                 className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'regions'
-                    ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
-                    : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
+                  ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
+                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                   }`}
               >
                 Regions
@@ -118,28 +118,18 @@ export default function Header({
                 href="/scan"
                 prefetch={true}
                 className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'scan'
-                    ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
-                    : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
+                  ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
+                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                   }`}
               >
                 Scan
               </Link>
               <Link
-                href="/activity-logs"
-                prefetch={true}
-                className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'activity'
-                    ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
-                    : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
-                  }`}
-              >
-                Activity
-              </Link>
-              <Link
                 href="/help"
                 prefetch={true}
                 className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'help'
-                    ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
-                    : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
+                  ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
+                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                   }`}
               >
                 Help
@@ -178,6 +168,24 @@ export default function Header({
               </button>
             )}
 
+            {/* Activity Button */}
+            <Link
+              href="/activity-logs"
+              className={`p-2 relative rounded-xl transition-all duration-300 hover:scale-110 active:scale-100 group ${activePage === 'activity'
+                  ? 'text-[#F0A741] bg-[#F0A741]/10'
+                  : 'text-foreground/80 hover:text-[#F0A741] hover:bg-[#F0A741]/10'
+                }`}
+              aria-label="View Activity"
+            >
+              <Activity className="w-5 h-5" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-green-500 rounded-full animate-pulse border border-black shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+
+              {/* Tooltip */}
+              <div className="absolute top-full mt-2 right-0 px-2 py-1 bg-black/90 border border-[#F0A741]/20 rounded text-[10px] text-[#F0A741] whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-300 z-[60]">
+                Live Activity
+              </div>
+            </Link>
+
             {/* Network Toggle (DevNet/MainNet) - Extreme Right */}
             <div className="hidden sm:block bg-black/90">
               <NetToggle currentNet={selectedNet} onNetChange={handleNetChange} />
@@ -213,8 +221,8 @@ export default function Header({
               prefetch={true}
               onClick={() => setMobileMenuOpen(false)}
               className={`block px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'overview'
-                  ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
-                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
+                ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
+                : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                 }`}
             >
               Overview
@@ -224,8 +232,8 @@ export default function Header({
               prefetch={true}
               onClick={() => setMobileMenuOpen(false)}
               className={`block px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'nodes'
-                  ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
-                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
+                ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
+                : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                 }`}
             >
               Nodes {nodeCount > 0 && `(${nodeCount})`}
@@ -235,8 +243,8 @@ export default function Header({
               prefetch={true}
               onClick={() => setMobileMenuOpen(false)}
               className={`block px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'analytics'
-                  ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
-                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
+                ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
+                : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                 }`}
             >
               Analytics
@@ -246,8 +254,8 @@ export default function Header({
               prefetch={true}
               onClick={() => setMobileMenuOpen(false)}
               className={`block px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'regions'
-                  ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
-                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
+                ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
+                : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                 }`}
             >
               Regions
@@ -257,30 +265,19 @@ export default function Header({
               prefetch={true}
               onClick={() => setMobileMenuOpen(false)}
               className={`block px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'scan'
-                  ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
-                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
+                ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
+                : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                 }`}
             >
               Scan
-            </Link>
-            <Link
-              href="/activity-logs"
-              prefetch={true}
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'activity'
-                  ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
-                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
-                }`}
-            >
-              Activity
             </Link>
             <Link
               href="/help"
               prefetch={true}
               onClick={() => setMobileMenuOpen(false)}
               className={`block px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'help'
-                  ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
-                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
+                ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
+                : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                 }`}
             >
               Help

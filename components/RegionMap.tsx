@@ -135,36 +135,38 @@ export default function RegionMap({ nodes }: RegionMapProps) {
             <FitBounds nodes={validNodes} showMarkers={showMarkers} setShowMarkers={setShowMarkers} />
 
             {/* Render all nodes with pin + circle markers like Node Details - only when animation completes */}
-            {showMarkers && validNodes.map((node) => {
-                const nodeStatus = node.status || 'offline';
-                const color = STATUS_COLORS[nodeStatus as keyof typeof STATUS_COLORS] || STATUS_COLORS.offline;
-                const pinIcon = getPinIcon(nodeStatus);
+            {
+                showMarkers && validNodes.map((node) => {
+                    const nodeStatus = node.status || 'offline';
+                    const color = STATUS_COLORS[nodeStatus as keyof typeof STATUS_COLORS] || STATUS_COLORS.offline;
+                    const pinIcon = getPinIcon(nodeStatus);
 
-                return (
-                    <React.Fragment key={node.id}>
-                        {/* Circle dot underneath the pin */}
-                        <CircleMarker
-                            center={[node.locationData!.lat, node.locationData!.lon]}
-                            radius={6}
-                            pathOptions={{
-                                fillColor: color,
-                                fillOpacity: 0.8,
-                                color: '#fff',
-                                weight: 1.5,
-                            }}
-                            interactive={false}
-                        />
-                        {/* Pin marker on top */}
-                        {pinIcon && (
-                            <Marker
-                                position={[node.locationData!.lat, node.locationData!.lon]}
-                                icon={pinIcon}
+                    return (
+                        <React.Fragment key={node.id}>
+                            {/* Circle dot underneath the pin */}
+                            <CircleMarker
+                                center={[node.locationData!.lat, node.locationData!.lon]}
+                                radius={6}
+                                pathOptions={{
+                                    fillColor: color,
+                                    fillOpacity: 0.8,
+                                    color: '#fff',
+                                    weight: 1.5,
+                                }}
                                 interactive={false}
                             />
-                        )}
-                    </React.Fragment>
-                );
-            })}
-        </MapContainer>
+                            {/* Pin marker on top */}
+                            {pinIcon && (
+                                <Marker
+                                    position={[node.locationData!.lat, node.locationData!.lon]}
+                                    icon={pinIcon}
+                                    interactive={false}
+                                />
+                            )}
+                        </React.Fragment>
+                    );
+                })
+            }
+        </MapContainer >
     );
 }

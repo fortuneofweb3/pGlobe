@@ -28,7 +28,7 @@ const statusColors = {
   offline: '#FF4444', // Red
 };
 
-// High-quality dark globe style with retina tiles
+// High-quality "light dark" globe style with retina tiles
 const MAP_STYLE = {
   version: 8,
   sources: {
@@ -49,7 +49,7 @@ const MAP_STYLE = {
       id: 'globe-background',
       type: 'background',
       paint: {
-        'background-color': '#3a4a63', // Visibly lighter base
+        'background-color': '#0f172a', // Slate 900 base
       },
     },
     {
@@ -59,10 +59,10 @@ const MAP_STYLE = {
       minzoom: 0,
       maxzoom: 20,
       paint: {
-        'raster-opacity': 0.9,
-        'raster-brightness-min': 0.6, // Very aggressive brightening
+        'raster-opacity': 0.8, // Let background bleed through for "light dark" look
+        'raster-brightness-min': 0.2, // Subtle visibility of land
         'raster-brightness-max': 1.0,
-        'raster-contrast': 0.1,
+        'raster-contrast': 0.0,
       },
     },
   ],
@@ -1874,18 +1874,18 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                 const mapAny = map as any;
                 if (typeof mapAny.setFog === 'function') {
                   mapAny.setFog({
-                    color: '#0a0f1a', // Deep blue-black atmosphere
-                    'high-color': '#1a2744', // Slightly blue horizon glow
-                    'space-color': '#000000', // Pure black space
-                    'horizon-blend': 0.08, // Subtle atmosphere blend
-                    'star-intensity': 0.15, // Subtle stars in space
+                    color: '#444450', // More visible base atmosphere
+                    'high-color': '#ffffff', // Pure white ring for maximum visibility
+                    'space-color': '#000000', // Deep space
+                    'horizon-blend': 0.3, // Wide, soft, noticeable glow
+                    'star-intensity': 0.15,
                   });
                 } else if (typeof mapAny.setAtmosphere === 'function') {
                   mapAny.setAtmosphere({
-                    color: '#0a0f1a',
-                    highColor: '#1a2744',
+                    color: '#444450',
+                    highColor: '#ffffff',
                     spaceColor: '#000000',
-                    horizonBlend: 0.08,
+                    horizonBlend: 0.3,
                   });
                 }
               } catch (e) {
@@ -1897,19 +1897,12 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                 try {
                   const style = map.getStyle();
                   if (style && style.layers) {
-                    // Log all fill layers to debug
-                    const fillLayers = style.layers.filter((l: any) => l.type === 'fill');
-                    console.debug('Found fill layers:', fillLayers.map((l: any) => l.id));
-
                     style.layers.forEach((layer: any) => {
                       // Set background layer (land) to black
                       if (layer.type === 'background') {
                         try {
-                          console.debug('Setting background (land) color to black');
                           map.setPaintProperty(layer.id, 'background-color', '#000000');
-                        } catch (e) {
-                          console.debug('Could not set background color:', e);
-                        }
+                        } catch (e) { }
                       }
 
                       if (layer.type === 'fill') {
@@ -1920,24 +1913,18 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
 
                         try {
                           if (isWater) {
-                            // Water: match sidebar background color
-                            console.debug('Setting water color for layer:', layer.id);
-                            map.setPaintProperty(layer.id, 'fill-color', '#0f0f0f');
+                            // Water: lighter ash/grey (based on #0f0f0f but lifted)
+                            map.setPaintProperty(layer.id, 'fill-color', '#222222');
                           } else {
                             // Land/landcover: black
-                            console.debug('Setting land color to black for layer:', layer.id);
                             map.setPaintProperty(layer.id, 'fill-color', '#000000');
                           }
                           map.setPaintProperty(layer.id, 'fill-opacity', 1.0);
-                        } catch (e) {
-                          console.debug('Could not set fill color for layer:', layer.id, e);
-                        }
+                        } catch (e) { }
                       }
                     });
                   }
-                } catch (e) {
-                  console.debug('Error applying fill colors:', e);
-                }
+                } catch (e) { }
               };
 
               // Apply immediately and also on style load to catch any delayed layers

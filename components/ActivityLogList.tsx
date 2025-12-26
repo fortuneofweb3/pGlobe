@@ -55,6 +55,15 @@ const barSpring = {
     damping: 20,
 };
 
+const getFlagEmoji = (countryCode: string) => {
+    if (!countryCode) return '';
+    const codePoints = countryCode
+        .toUpperCase()
+        .split('')
+        .map(char => 127397 + char.charCodeAt(0));
+    return String.fromCodePoint(...codePoints);
+};
+
 // Log item component with optimized framer-motion
 function LogItem({ log }: { log: ActivityLog }) {
     const getIcon = (type: string) => {
@@ -104,13 +113,20 @@ function LogItem({ log }: { log: ActivityLog }) {
         );
     };
 
+    // Truncate pubkey in the middle: abcd...wxyz
+    const formatPubkey = (key?: string) => {
+        if (!key) return 'Node';
+        if (key.length <= 12) return key;
+        return `${key.slice(0, 6)}...${key.slice(-4)}`;
+    };
+
     // Format message - for packets_earned, use data to show received/sent format
     const getFormattedMessage = () => {
         const data = log.data as any;
+        const pubkey = formatPubkey(log.pubkey);
 
         // For packet events, format from data to show received/sent
         if (log.type === 'packets_earned' && data) {
-            const address = log.message?.split(' ')[0] || 'Node';
             const rxEarned = data.rxEarned || 0;
             const txEarned = data.txEarned || 0;
 
@@ -119,27 +135,30 @@ function LogItem({ log }: { log: ActivityLog }) {
             if (txEarned > 0) parts.push(`sent ${txEarned.toLocaleString()}`);
 
             if (parts.length > 0) {
-                return `${address} ${parts.join(' / ')} packets`;
+                return `${pubkey} ${parts.join(' / ')} packets`;
             }
         }
 
         // For credits_lost, format properly
         if (log.type === 'credits_lost' && data?.lost) {
-            const address = log.message?.split(' ')[0] || 'Node';
-            return `${address} lost ${data.lost.toFixed(2)} credits`;
+            return `${pubkey} lost ${data.lost.toFixed(2)} credits`;
         }
 
-        // Default: use the stored message
+        // Default: use the stored message but truncate the pubkey if it's there
+        if (log.message && log.pubkey && log.message.includes(log.pubkey)) {
+            return log.message.replace(log.pubkey, formatPubkey(log.pubkey));
+        }
+
         return log.message;
     };
 
     const truncatedPubkey = useMemo(() => {
         if (!log.pubkey) return '';
-        return `${log.pubkey.slice(0, 6)}...${log.pubkey.slice(-4)}`;
+        return formatPubkey(log.pubkey);
     }, [log.pubkey]);
 
     return (
-        <Link href={`/nodes/${log.pubkey}`} className="block group">
+        <Link href={`/ nodes / ${log.pubkey} `} className="block group">
             <motion.div
                 layout="position"
                 initial={{ opacity: 0, y: -8 }}
@@ -176,10 +195,14 @@ function LogItem({ log }: { log: ActivityLog }) {
                                 </span>
                             </div>
 
-                            {log.location && (
-                                <div className="flex items-center gap-1">
-                                    <MapPin className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-zinc-600" />
-                                    <span className="text-zinc-500 font-semibold truncate max-w-[80px] sm:max-w-none">{log.location}</span>
+                            {(log.location || log.countryCode) && (
+                                <div className="flex items-center gap-1 bg-black/40 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-zinc-800/80">
+                                    <span className="text-sm sm:text-base leading-none">
+                                        {log.countryCode ? getFlagEmoji(log.countryCode) : '📍'}
+                                    </span>
+                                    <span className="text-zinc-400 font-semibold truncate max-w-[120px] sm:max-w-none">
+                                        {log.location || log.countryCode}
+                                    </span>
                                 </div>
                             )}
                         </div>
@@ -218,7 +241,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
             query.set('limit', limit.toString());
             query.set('skip', skip.toString());
 
-            const response = await fetch(`/api/activity-logs?${query.toString()}`);
+            const response = await fetch(`/ api / activity - logs ? ${query.toString()} `);
             const data = await response.json();
 
             if (data.logs) {
@@ -339,7 +362,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
 
             const logWithId = {
                 ...newLog,
-                _id: newLog._id || `${newLog.pubkey}-${newLog.type}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                _id: newLog._id || `${newLog.pubkey} -${newLog.type} -${Date.now()} -${Math.random().toString(36).slice(2)} `,
                 timestamp: newLog.timestamp || new Date().toISOString(),
             };
 
@@ -367,7 +390,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
 
     return (
         <div className="w-full h-full flex flex-col gap-2 sm:gap-4">
-            {/* Header */}
+            {/* Header - Matches NodeRace style/height */}
             <div className="flex items-center justify-between flex-shrink-0 flex-wrap gap-2">
                 <div className="flex items-center gap-2 sm:gap-3">
                     <h2 className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-1.5 sm:gap-2">
@@ -394,16 +417,16 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                 <div className="relative">
                     <button
                         onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                        className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-muted/20 hover:bg-muted/30 border border-border/40 rounded-lg transition-colors text-[10px] sm:text-xs font-semibold text-foreground/70 hover:text-foreground"
+                        className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-0.5 sm:py-1 bg-muted/20 hover:bg-muted/30 border border-border/40 rounded-lg transition-colors text-[10px] sm:text-xs font-semibold text-foreground/70 hover:text-foreground"
                     >
-                        <Filter className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                        <Filter className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                         <span className="hidden sm:inline">{ACTIVITY_TYPES.find(t => t.value === typeFilter)?.label || 'All'}</span>
                         <span className="sm:hidden">{typeFilter ? ACTIVITY_TYPES.find(t => t.value === typeFilter)?.label?.slice(0, 6) || 'All' : 'All'}</span>
-                        <ChevronDown className={`w-3 h-3 sm:w-3.5 sm:h-3.5 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
+                        <ChevronDown className={`w-2.5 h-2.5 sm:w-3 sm:h-3 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
                     </button>
 
                     {showFilterDropdown && (
-                        <div className="absolute top-full mt-2 right-0 z-50 bg-card border border-border/40 rounded-lg shadow-xl min-w-[140px] sm:min-w-[160px] overflow-hidden">
+                        <div className="absolute top-full mt-1 right-0 z-50 bg-card border border-border/40 rounded-lg shadow-xl min-w-[140px] overflow-hidden">
                             {ACTIVITY_TYPES.map((type) => (
                                 <button
                                     key={type.value}
@@ -411,7 +434,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                                         setTypeFilter(type.value);
                                         setShowFilterDropdown(false);
                                     }}
-                                    className={`w-full px-3 sm:px-4 py-2 text-left text-[10px] sm:text-xs transition-colors ${typeFilter === type.value
+                                    className={`w-full px-3 py-1.5 text-left text-[10px] sm:text-xs transition-colors ${typeFilter === type.value
                                         ? 'bg-[#F0A741]/10 text-[#F0A741] font-bold'
                                         : 'hover:bg-muted/20 text-foreground/70 hover:text-foreground'
                                         }`}
@@ -425,27 +448,25 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
             </div>
 
             {/* Log list */}
-            <div className="card p-3 sm:p-6 flex-1 relative overflow-hidden flex flex-col">
+            <div className="card p-2 sm:p-4 flex-1 relative overflow-hidden flex flex-col">
                 <div className="absolute inset-0 bg-gradient-to-br from-[#F0A741]/[0.02] via-transparent to-transparent pointer-events-none" />
 
                 {loading && logs.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-[300px] sm:h-[450px] gap-4">
-                        <RefreshCw className="w-8 h-8 sm:w-12 sm:h-12 text-foreground/10 animate-spin" />
+                    <div className="flex flex-col items-center justify-center h-[300px] gap-4">
+                        <RefreshCw className="w-8 h-8 text-foreground/10 animate-spin" />
                         <div className="text-center space-y-1">
-                            <p className="text-foreground/40 text-xs sm:text-sm font-semibold">Loading Activity</p>
-                            <p className="text-foreground/20 text-[10px] sm:text-xs">Fetching network events...</p>
+                            <p className="text-foreground/40 text-xs font-semibold">Loading Activity</p>
                         </div>
                     </div>
                 ) : logs.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-[300px] sm:h-[450px] gap-4">
-                        <Activity className="w-8 h-8 sm:w-12 sm:h-12 text-foreground/10" />
+                    <div className="flex flex-col items-center justify-center h-[300px] gap-4">
+                        <Activity className="w-8 h-8 text-foreground/10" />
                         <div className="text-center space-y-1">
-                            <p className="text-foreground/40 text-xs sm:text-sm font-semibold">No Activity Yet</p>
-                            <p className="text-foreground/20 text-[10px] sm:text-xs">Waiting for network events...</p>
+                            <p className="text-foreground/40 text-xs font-semibold">No Activity Yet</p>
                         </div>
                     </div>
                 ) : (
-                    <div className="space-y-1.5 sm:space-y-2 relative flex-1 overflow-y-auto">
+                    <div className="space-y-1 relative flex-1 overflow-y-auto">
                         <AnimatePresence mode="popLayout">
                             {filteredLogs.map((log) => (
                                 <LogItem
@@ -470,7 +491,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                                     observer.observe(el);
                                     return () => observer.disconnect();
                                 }}
-                                className="w-full py-4 flex items-center justify-center"
+                                className="w-full py-2 flex items-center justify-center"
                             >
                                 {loadingMore ? (
                                     <div className="flex items-center gap-2 text-foreground/40 text-xs">

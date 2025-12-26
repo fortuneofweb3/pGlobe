@@ -17,6 +17,7 @@ interface NodeMetrics {
     baselineCredits?: number;
     baselinePackets?: number;
     lastUpdate: number;
+    countryCode?: string;
 }
 
 interface RacingNode extends NodeMetrics {
@@ -38,6 +39,7 @@ interface ActivityEvent {
         txEarned?: number;
         earned?: number;
     };
+    countryCode?: string;
 }
 
 const RENDER_API_URL = process.env.NEXT_PUBLIC_RENDER_API_URL || 'https://pglobe.onrender.com';
@@ -84,12 +86,35 @@ function RacingBar({ node, index, maxScore }: { node: RacingNode; index: number;
         }
     };
 
+    const getFlagEmoji = (countryCode: string) => {
+        if (!countryCode) return '';
+        const codePoints = countryCode
+            .toUpperCase()
+            .split('')
+            .map(char => 127397 + char.charCodeAt(0));
+        return String.fromCodePoint(...codePoints);
+    };
+
     const getNodeLabel = () => {
+        const flag = node.countryCode ? getFlagEmoji(node.countryCode) : '';
+        const locationStr = node.location ? ` ${node.location}` : '';
+
         if (node.address) {
             const ip = node.address.split(':')[0];
-            return node.location ? `${ip} (${node.location})` : ip;
+            return (
+                <span className="flex items-center gap-1.5">
+                    {flag && <span className="text-sm sm:text-base leading-none">{flag}</span>}
+                    <span className="truncate">{ip}{locationStr && ` (${locationStr})`}</span>
+                </span>
+            );
         }
-        return `${node.pubkey.slice(0, 8)}...`;
+
+        return (
+            <span className="flex items-center gap-1.5">
+                {flag && <span className="text-sm sm:text-base leading-none">{flag}</span>}
+                <span className="truncate">{node.pubkey.slice(0, 8)}...</span>
+            </span>
+        );
     };
 
     return (
@@ -126,9 +151,9 @@ function RacingBar({ node, index, maxScore }: { node: RacingNode; index: number;
                     {/* Node info overlay */}
                     <div className="relative z-10 h-full flex items-center justify-between px-2 sm:px-4">
                         <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
-                            <span className="text-[10px] sm:text-sm font-mono font-bold text-foreground/90 drop-shadow-md truncate max-w-[80px] sm:max-w-[200px]">
+                            <div className="text-[10px] sm:text-sm font-mono font-bold text-foreground/90 drop-shadow-md truncate max-w-[120px] sm:max-w-[280px]">
                                 {getNodeLabel()}
-                            </span>
+                            </div>
                             {node.credits !== undefined && node.credits > 0 && (
                                 <span className="hidden sm:flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded border border-white/10 text-xs">
                                     <Zap className="w-3 h-3 text-[#F0A741]" />
@@ -241,6 +266,7 @@ export default function NodeRaceVisualization() {
                     baselineCredits: (log.type === 'node_online' || log.type === 'node_status' || log.type === 'new_node') ? (log.data?.credits || 0) : 0,
                     baselinePackets: (log.type === 'node_online' || log.type === 'node_status' || log.type === 'new_node') ? (log.data?.packets || 0) : 0,
                     lastUpdate: Date.now(),
+                    countryCode: log.countryCode,
                 };
 
                 const updated = {
@@ -248,6 +274,7 @@ export default function NodeRaceVisualization() {
                     lastUpdate: Date.now(),
                     address: log.address || (existing.address as string),
                     location: log.location || (existing.location as string),
+                    countryCode: log.countryCode || existing.countryCode,
                 };
 
                 if (log.type === 'new_node' || log.type === 'node_online') {

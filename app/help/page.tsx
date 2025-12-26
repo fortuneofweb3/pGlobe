@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
-import { BookOpen, ChevronRight, X, FileText, Settings, BarChart3, MapPin, Search, HelpCircle, Bot, Server } from 'lucide-react';
+import { BookOpen, ChevronRight, X, FileText, Settings, BarChart3, MapPin, Search, HelpCircle, Bot, Server, Github } from 'lucide-react';
 
 export default function HelpPage() {
   const { nodes, loading, lastUpdate, availableNetworks, currentNetwork, refreshNodes } = useNodes();
@@ -36,7 +36,7 @@ export default function HelpPage() {
 
         {/* Sidebar Navigation */}
         <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          } md:translate-x-0 fixed md:relative w-80 border-r border-[#F0A741]/20 bg-card overflow-y-auto flex-shrink-0 z-50 md:z-40 h-full transition-transform duration-300`}>
+          } md:translate-x-0 fixed md:relative w-80 border-r border-[#F0A741]/20 bg-card overflow-y-auto flex-shrink-0 z-50 md:z-40 h-full flex flex-col transition-transform duration-300`}>
           <div className="p-3 sm:p-4">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <h2 className="text-xs sm:text-sm font-semibold text-foreground/60 uppercase tracking-wide">Documentation</h2>
@@ -114,6 +114,19 @@ export default function HelpPage() {
                 <ChevronRight className="w-4 h-4" />
               </button>
             </nav>
+          </div>
+
+          {/* Sidebar Footer */}
+          <div className="mt-auto p-4 border-t border-[#F0A741]/10 bg-black/20">
+            <Link
+              href="https://github.com/fortuneofweb3/pGlobe"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-3 py-2 text-sm text-foreground/60 hover:text-[#F0A741] transition-all duration-300 group"
+            >
+              <Github className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <span className="font-medium">pGlobe GitHub</span>
+            </Link>
           </div>
         </aside>
 

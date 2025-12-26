@@ -16,7 +16,7 @@ const MapLibreGlobe = dynamic(() => import('@/components/MapLibreGlobe'), {
       <div className="flex items-center gap-2">
         <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <circle cx="12" cy="12" r="10" strokeWidth="2" strokeLinecap="round" strokeDasharray="32" strokeDashoffset="0">
-            <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite"/>
+            <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite" />
           </circle>
         </svg>
         <span>Loading 3D Globe...</span>
@@ -63,7 +63,7 @@ function HomeContent() {
   const [nodeLatencies, setNodeLatencies] = useState<Record<string, number | null>>(() => {
     return getCachedNodesLatencies(nodes);
   });
-  
+
   const [dataSource, setDataSource] = useState<'prpc' | 'mock' | 'gossip' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -85,23 +85,23 @@ function HomeContent() {
   // Measure latency for uncached nodes after initial render (deferred for better UX)
   useEffect(() => {
     let mounted = true;
-    
+
     const measureLatencies = async () => {
       if (nodes.length === 0) return;
-      
+
       // Load cached values first (already done in useState initializer)
       const cached = getCachedNodesLatencies(nodes);
       if (mounted) {
         setNodeLatencies(cached);
       }
-      
+
       // Check if we need to measure any nodes
       const uncachedNodes = nodes.filter(node => cached[node.id] === undefined);
       if (uncachedNodes.length === 0) {
         // All nodes are cached, no need to measure
         return;
       }
-      
+
       // Defer measurement until after initial render to avoid blocking UI
       // Use requestIdleCallback if available, otherwise setTimeout
       const deferMeasurement = () => {
@@ -117,7 +117,7 @@ function HomeContent() {
           }, 100);
         }
       };
-      
+
       const measureUncachedNodes = async () => {
         try {
           // Measure latency for uncached nodes only
@@ -130,12 +130,12 @@ function HomeContent() {
           // Failed to measure node latencies
         }
       };
-      
+
       deferMeasurement();
     };
 
     measureLatencies();
-    
+
     return () => {
       mounted = false;
     };
@@ -144,7 +144,7 @@ function HomeContent() {
   // Geo enrichment for map display (deferred to avoid blocking initial render)
   useEffect(() => {
     if (nodes.length === 0) return;
-    
+
     // Check if nodes already have geo data (defer this check too)
     const checkAndEnrich = () => {
       const hasGeoData = nodes.some(n => n.locationData?.lat !== undefined);
@@ -162,7 +162,7 @@ function HomeContent() {
           .catch(() => setGeoEnriching(false));
       }
     };
-    
+
     // Defer geo check until after initial render
     if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
       requestIdleCallback(() => {
@@ -183,24 +183,24 @@ function HomeContent() {
     const nodeParam = searchParams.get('node');
     if (nodeParam && nodes.length > 0 && nodesWithGeo.length > 0) {
       // Find the node by pubkey, publicKey, id, or IP address in nodesWithGeo (nodes with location)
-      const node = nodesWithGeo.find(n => 
-        n.pubkey === nodeParam || 
-        n.publicKey === nodeParam || 
+      const node = nodesWithGeo.find(n =>
+        n.pubkey === nodeParam ||
+        n.publicKey === nodeParam ||
         n.id === nodeParam ||
         n.address?.split(':')[0] === nodeParam
       );
-      
+
       if (node) {
         // Use the most reliable identifier (pubkey > publicKey > id)
         const nodeIdentifier = node.pubkey || node.publicKey || node.id;
-        
+
         setNavigateToNodeId(nodeIdentifier);
-        
+
         // Remove query parameter from URL after a short delay to allow navigation to complete
         setTimeout(() => {
           router.replace('/', { scroll: false });
         }, 100);
-        
+
         // Clear the navigation ID after navigation completes (longer delay to ensure navigation happens)
         setTimeout(() => {
           setNavigateToNodeId(null);
@@ -222,8 +222,8 @@ function HomeContent() {
         node.id?.toLowerCase().includes(query) ||
         node.publicKey?.toLowerCase().includes(query) ||
         node.pubkey?.toLowerCase().includes(query) ||
-          node.address?.toLowerCase().includes(query) ||
-          node.location?.toLowerCase().includes(query)
+        node.address?.toLowerCase().includes(query) ||
+        node.location?.toLowerCase().includes(query)
       );
     }
 
@@ -262,34 +262,34 @@ function HomeContent() {
     // Always use the full nodes array for stats, not nodesWithGeo
     const totalNodes = nodes.length;
     const onlineNodes = nodes.filter((n) => n.status === 'online').length;
-    
+
     // Storage metrics
     const totalCapacity = nodes.reduce((sum, n) => sum + (n.storageCapacity || 0), 0);
     const nodesWithCapacity = nodes.filter(n => (n.storageCapacity || 0) > 0).length;
-    
+
     // Uptime metrics - uptime is in seconds, calculate average as human-readable duration
     const nodesWithUptime = nodes.filter(n => n.uptime !== undefined && n.uptime > 0);
     const avgUptimeSeconds = nodesWithUptime.length > 0
       ? nodesWithUptime.reduce((sum, n) => sum + (n.uptime || 0), 0) / nodesWithUptime.length
       : 0;
-    
+
     // CPU metrics
     const nodesWithCPU = nodes.filter(n => n.cpuPercent !== undefined);
     const avgCPU = nodesWithCPU.length > 0
       ? nodesWithCPU.reduce((sum, n) => sum + (n.cpuPercent || 0), 0) / nodesWithCPU.length
       : 0;
-    
+
     // RAM metrics
     const totalRAM = nodes.reduce((sum, n) => sum + (n.ramTotal || 0), 0);
     const usedRAM = nodes.reduce((sum, n) => sum + (n.ramUsed || 0), 0);
     const nodesWithRAM = nodes.filter(n => n.ramTotal !== undefined);
     const avgRAMUsage = nodesWithRAM.length > 0
       ? nodesWithRAM.reduce((sum, n) => {
-          const usage = n.ramTotal && n.ramUsed ? (n.ramUsed / n.ramTotal) * 100 : 0;
-          return sum + usage;
-        }, 0) / nodesWithRAM.length
+        const usage = n.ramTotal && n.ramUsed ? (n.ramUsed / n.ramTotal) * 100 : 0;
+        return sum + usage;
+      }, 0) / nodesWithRAM.length
       : 0;
-    
+
     // Latency metrics - calculate average from per-node latencies
     const nodesWithLatency = Object.entries(nodeLatencies)
       .filter(([_, latency]) => latency !== null && latency !== undefined)
@@ -297,25 +297,25 @@ function HomeContent() {
     const avgLatency = nodesWithLatency.length > 0
       ? Math.round(nodesWithLatency.reduce((sum, lat) => sum + lat, 0) / nodesWithLatency.length)
       : 0;
-    
+
     // Network metrics
     const totalPacketsReceived = nodes.reduce((sum, n) => sum + (n.packetsReceived || 0), 0);
     const totalPacketsSent = nodes.reduce((sum, n) => sum + (n.packetsSent || 0), 0);
     const totalActiveStreams = nodes.reduce((sum, n) => sum + (n.activeStreams || 0), 0);
-    
+
     // Calculate average packet rates (estimate from cumulative totals and uptime)
-    const nodesWithPacketsAndUptime = nodes.filter(n => 
+    const nodesWithPacketsAndUptime = nodes.filter(n =>
       (n.packetsReceived !== undefined && n.packetsReceived > 0 || n.packetsSent !== undefined && n.packetsSent > 0) &&
       n.uptime && n.uptime > 0
     );
     const avgPacketRate = nodesWithPacketsAndUptime.length > 0
       ? nodesWithPacketsAndUptime.reduce((sum, n) => {
-          const rxRate = (n.packetsReceived || 0) / (n.uptime || 1);
-          const txRate = (n.packetsSent || 0) / (n.uptime || 1);
-          return sum + rxRate + txRate;
-        }, 0) / nodesWithPacketsAndUptime.length
+        const rxRate = (n.packetsReceived || 0) / (n.uptime || 1);
+        const txRate = (n.packetsSent || 0) / (n.uptime || 1);
+        return sum + rxRate + txRate;
+      }, 0) / nodesWithPacketsAndUptime.length
       : 0;
-    
+
     // Credits (from on-chain or heartbeat system)
     const nodesWithCredits = nodes.filter(n => n.credits !== undefined);
     const totalCredits = nodesWithCredits.reduce((sum, n) => sum + (n.credits || 0), 0);
@@ -355,7 +355,7 @@ function HomeContent() {
   // Search results for globe search bar
   const globeSearchResults = useMemo(() => {
     if (!globeSearchQuery.trim()) return [];
-    
+
     const query = globeSearchQuery.toLowerCase().trim();
     const results = nodes.filter((node) => {
       const pubkey = (node.pubkey || node.publicKey || '').toLowerCase();
@@ -363,7 +363,7 @@ function HomeContent() {
       const id = (node.id || '').toLowerCase();
       const city = (node.locationData?.city || '').toLowerCase();
       const country = (node.locationData?.country || '').toLowerCase();
-      
+
       return (
         pubkey.includes(query) ||
         address.includes(query) ||
@@ -372,7 +372,7 @@ function HomeContent() {
         country.includes(query)
       );
     });
-    
+
     // Limit to top 10 results
     return results.slice(0, 10);
   }, [nodes, globeSearchQuery]);
@@ -414,7 +414,7 @@ function HomeContent() {
         <Header
           activePage="overview"
           loading={true}
-          onRefresh={() => {}}
+          onRefresh={() => { }}
           showNetworkSelector={false}
         />
 
@@ -681,13 +681,13 @@ function HomeContent() {
                   value={stats.avgLatency}
                   animateValue={true}
                   valueFormatter={(v) => v > 0 ? `${v.toFixed(0)}ms` : 'N/A'}
-                  tooltip={stats.avgLatency > 0 
+                  tooltip={stats.avgLatency > 0
                     ? `Average latency: ${stats.avgLatency.toFixed(0)}ms (from ${Object.values(nodeLatencies).filter(lat => lat !== null && lat !== undefined).length} reachable nodes)`
                     : 'No latency data available'
                   }
                 />
+              </div>
             </div>
-          </div>
 
             <div className="pt-4 sm:pt-6 border-t border-border animate-fade-in" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex items-center justify-between mb-3 sm:mb-4">
@@ -717,7 +717,7 @@ function HomeContent() {
                   tooltip="Average RAM usage percentage across all nodes."
                 />
               </div>
-                  </div>
+            </div>
 
             {/* Network Activity Section */}
             <div className="pt-4 sm:pt-6 border-t border-border animate-scale-in" style={{ animationDelay: '0.4s', opacity: 0, animationFillMode: 'forwards' }}>
@@ -768,8 +768,8 @@ function HomeContent() {
                   tooltip="Total credits earned across all nodes"
                 />
               </div>
-                  </div>
-                </div>
+            </div>
+          </div>
         </aside>
 
         {/* Center - Map */}
@@ -786,7 +786,7 @@ function HomeContent() {
           </button>
 
           {/* Search Bar - Top of Globe */}
-          <div 
+          <div
             ref={searchContainerRef}
             className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4 md:px-0"
           >
@@ -842,13 +842,12 @@ function HomeContent() {
                             </div>
                             <div className="flex-shrink-0">
                               <span
-                                className={`text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded ${
-                                  node.status === 'online'
-                                    ? 'bg-green-500/20 text-green-400'
-                                    : node.status === 'syncing'
+                                className={`text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded ${node.status === 'online'
+                                  ? 'bg-green-500/20 text-green-400'
+                                  : node.status === 'syncing'
                                     ? 'bg-yellow-500/20 text-yellow-400'
                                     : 'bg-red-500/20 text-red-400'
-                                }`}
+                                  }`}
                               >
                                 {node.status || 'offline'}
                               </span>
@@ -864,33 +863,33 @@ function HomeContent() {
           </div>
 
           <div className="absolute inset-0 w-full h-full">
-                      <MapLibreGlobe 
-                        nodes={nodesWithGeo.length > 0 ? nodesWithGeo : nodes}
-                        navigateToNodeId={navigateToNodeId}
-                        onNodeClick={(node) => {
-                          // Navigate to the node via URL parameter
-                          const nodeIdentifier = node.pubkey || node.publicKey || node.id;
-                          if (nodeIdentifier) {
-                            router.push(`/?node=${encodeURIComponent(nodeIdentifier)}`, { scroll: false });
-                          }
-                        }}
-                        onPopupClick={(node) => {
-                          // Navigate to node details page when popup is clicked
-                          const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';
-                          if (nodeId) {
-                            startProgress();
-                            router.push(`/nodes/${encodeURIComponent(nodeId)}`);
-                          }
-                        }}
-                      />
-                      {geoEnriching && (
+            <MapLibreGlobe
+              nodes={nodesWithGeo.length > 0 ? nodesWithGeo : nodes}
+              navigateToNodeId={navigateToNodeId}
+              onNodeClick={(node) => {
+                // Navigate to the node via URL parameter
+                const nodeIdentifier = node.pubkey || node.publicKey || node.id;
+                if (nodeIdentifier) {
+                  router.push(`/?node=${encodeURIComponent(nodeIdentifier)}`, { scroll: false });
+                }
+              }}
+              onPopupClick={(node) => {
+                // Navigate to node details page when popup is clicked
+                const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';
+                if (nodeId) {
+                  startProgress();
+                  router.push(`/nodes/${encodeURIComponent(nodeId)}`);
+                }
+              }}
+            />
+            {geoEnriching && (
               <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-50 bg-black/90 backdrop-blur-md rounded-2xl px-4 py-2">
                 <p className="text-xs text-foreground font-mono">
-                          Loading geographic data...
-                        </p>
+                  Loading geographic data...
+                </p>
               </div>
-                      )}
-                    </div>
+            )}
+          </div>
         </main>
 
       </div>
@@ -899,8 +898,8 @@ function HomeContent() {
       {error && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-50 bg-black/90 backdrop-blur-md rounded-2xl px-4 py-2 pointer-events-auto shadow-lg">
           <p className="text-sm text-red-400 font-mono">{error}</p>
-          </div>
-        )}
+        </div>
+      )}
 
     </div>
   );
