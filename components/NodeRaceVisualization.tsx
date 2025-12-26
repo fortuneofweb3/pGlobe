@@ -378,6 +378,12 @@ export default function NodeRaceVisualization() {
                         <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#F0A741]" />
                         <span className="hidden xs:inline">Live Node Activity Race</span>
                         <span className="xs:hidden">Node Race</span>
+                        <div className="group relative ml-1 cursor-help hidden sm:block">
+                            <div className="w-3.5 h-3.5 rounded-full border border-zinc-500 text-zinc-500 flex items-center justify-center text-[9px] font-bold">?</div>
+                            <div className="absolute left-0 top-full mt-2 hidden group-hover:block w-48 bg-black/95 text-white text-[10px] p-2 rounded border border-white/20 z-[100] shadow-xl pointer-events-none">
+                                Score = (Session Credits × 10) + (Session Packets × 0.01)
+                            </div>
+                        </div>
                     </h2>
                     <div className="flex items-center gap-1.5 sm:gap-2 bg-muted/20 px-1.5 sm:px-2 py-0.5 rounded-full border border-border/40">
                         <div className={`w-1.5 h-1.5 rounded-full ${connected && !isPaused ? 'bg-green-500 animate-pulse' : isPaused ? 'bg-yellow-500' : 'bg-muted-foreground/30'}`} />
