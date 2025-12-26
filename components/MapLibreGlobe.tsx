@@ -29,19 +29,17 @@ const statusColors = {
 };
 
 // High-quality dark globe style with retina tiles
-// Using CARTO Dark Matter @2x tiles for sharp rendering on all displays
 const MAP_STYLE = {
   version: 8,
   sources: {
     'carto-dark': {
       type: 'raster',
       tiles: [
-        // @2x retina tiles for crisp rendering
         'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
         'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
         'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
       ],
-      tileSize: 512, // 512 for @2x tiles
+      tileSize: 512,
       attribution: '© OpenStreetMap contributors, © CARTO',
       maxzoom: 20,
     },
@@ -51,7 +49,7 @@ const MAP_STYLE = {
       id: 'globe-background',
       type: 'background',
       paint: {
-        'background-color': '#0a0f18', // Slightly lighter space black
+        'background-color': '#3a4a63', // Visibly lighter base
       },
     },
     {
@@ -61,9 +59,10 @@ const MAP_STYLE = {
       minzoom: 0,
       maxzoom: 20,
       paint: {
-        'raster-opacity': 1.0,
-        'raster-contrast': 0.1, // Slightly more contrast
-        'raster-saturation': -0.2, // Slightly desaturated for cleaner look
+        'raster-opacity': 0.9,
+        'raster-brightness-min': 0.6, // Very aggressive brightening
+        'raster-brightness-max': 1.0,
+        'raster-contrast': 0.1,
       },
     },
   ],
