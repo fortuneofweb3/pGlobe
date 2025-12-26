@@ -334,7 +334,7 @@ export default function NodeRaceVisualization() {
         //        console.log('[Racing] Connecting to Socket.io at:', socketUrl);
 
         const socket = io(socketUrl, {
-            transports: ['websocket', 'polling'],
+            transports: ['polling', 'websocket'],
             reconnectionAttempts: 10,
             timeout: 20000,
         });
@@ -347,7 +347,9 @@ export default function NodeRaceVisualization() {
             setNodeMetrics({});
         });
 
-        socket.on('connect_error', () => setConnected(false));
+        socket.on('connect_error', (error: any) => {
+            setConnected(false);
+        });
         socket.on('disconnect', () => {
             /*
                         console.log('[Racing] Disconnected');

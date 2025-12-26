@@ -573,17 +573,21 @@ const io = new SocketIOServer(server, {
     cors: {
         origin: '*',
         methods: ['GET', 'POST'],
+        credentials: true
     },
-    transports: ['websocket', 'polling'],
+    transports: ['polling', 'websocket'],
+    allowEIO3: true,
+    pingTimeout: 60000,
+    pingInterval: 25000,
 });
-
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
-    console.log(`[Socket] 🔌 Client connected: ${socket.id}`);
+    const clientIp = socket.handshake.address;
+    console.log(`[Socket] 🔌 Client connected: ${socket.id} (IP: ${clientIp})`);
 
-    socket.on('disconnect', () => {
-        console.log(`[Socket] 🔌 Client disconnected: ${socket.id}`);
+    socket.on('disconnect', (reason) => {
+        console.log(`[Socket] 🔌 Client disconnected: ${socket.id} (Reason: ${reason})`);
     });
 });
 

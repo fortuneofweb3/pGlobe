@@ -562,11 +562,12 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
   // 5. Active Streams
   if (oldNode && newNode.activeStreams !== undefined && oldNode.activeStreams !== undefined && newNode.activeStreams > oldNode.activeStreams) {
     const increased = newNode.activeStreams - oldNode.activeStreams;
+    const nodeLabel = nodeAddress || `${pubkey.slice(0, 8)}...`;
     const log = {
       pubkey,
       address: nodeAddress,
       type: 'streams_active' as const,
-      message: `${nodeAddress || pubkey.slice(0, 8) + '...'} active streams increased by ${increased} (Total: ${newNode.activeStreams})`,
+      message: `${nodeLabel} active streams increased by ${increased} (Total: ${newNode.activeStreams})`,
       countryCode,
       location,
       data: { increased, total: newNode.activeStreams }

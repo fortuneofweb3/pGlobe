@@ -346,11 +346,12 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         console.log('[ActivityLogs] 🔌 Connecting to Socket.io:', socketUrl);
 
         const socket = io(socketUrl, {
-            transports: ['websocket', 'polling'],
+            transports: ['polling', 'websocket'],
             reconnection: true,
             reconnectionAttempts: 10,
             reconnectionDelay: 2000,
             timeout: 20000,
+            withCredentials: true,
         });
 
         socket.on('connect', () => {
@@ -360,7 +361,10 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
             processingRef.current = false;
         });
 
-        socket.on('connect_error', () => setConnected(false));
+        socket.on('connect_error', (error: any) => {
+            console.error('[ActivityLogs] ❌ Connection error:', error.message);
+            setConnected(false);
+        });
         socket.on('disconnect', () => {
             /*
                         console.log('[ActivityLogs] Disconnected');
