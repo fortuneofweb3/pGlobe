@@ -52,15 +52,15 @@ export default function NodeRaceVisualization() {
     const calculateScore = (node: NodeMetrics): number => {
         if (node.status === 'offline') return 0;
 
-        const streams = node.activeStreams || 0;
+        const credits = node.credits || 0;
         const packets = (node.packetsReceived || 0) + (node.packetsSent || 0);
 
         // Decay score based on time since last update
         const timeSinceUpdate = Date.now() - node.lastUpdate;
         const decayFactor = Math.max(0, 1 - (timeSinceUpdate / SCORE_DECAY_MS));
 
-        // Weight: streams are more important than packets, but not overwhelmingly so (1 stream = 1000 packets)
-        const rawScore = (streams * 10) + (packets * 0.01);
+        // Weight: Credits and packets contribute to score (1 credit = 1000 packets)
+        const rawScore = (credits * 10) + (packets * 0.01);
         return rawScore * decayFactor;
     };
 
@@ -165,6 +165,11 @@ export default function NodeRaceVisualization() {
                 if (log.type === 'new_node' || log.type === 'node_online') {
                     updated.status = 'online';
                     if (log.data?.streams !== undefined) updated.activeStreams = log.data.streams;
+                    if (log.data?.credits !== undefined) updated.credits = log.data.credits;
+                    if (log.data?.packets !== undefined) {
+                        updated.packetsReceived = log.data.packets;
+                        updated.packetsSent = 0;
+                    }
                 } else if (log.type === 'node_offline') {
                     updated.status = 'offline';
                 } else if (log.type === 'node_syncing') {
@@ -172,6 +177,11 @@ export default function NodeRaceVisualization() {
                 } else if (log.type === 'node_status') {
                     updated.status = 'online';
                     if (log.data?.streams !== undefined) updated.activeStreams = log.data.streams;
+                    if (log.data?.credits !== undefined) updated.credits = log.data.credits;
+                    if (log.data?.packets !== undefined) {
+                        updated.packetsReceived = log.data.packets;
+                        updated.packetsSent = 0;
+                    }
                 } else if (log.type === 'streams_active' && log.data?.total !== undefined) {
                     updated.activeStreams = log.data.total;
                 } else if (log.type === 'packets_earned') {
@@ -252,7 +262,7 @@ export default function NodeRaceVisualization() {
                     .map(([key, node]) => ({
                         key,
                         node,
-                        score: ((node.activeStreams || 0) * 10) + ((node.packetsReceived || 0) + (node.packetsSent || 0)) * 0.01
+                        score: ((node.credits || 0) * 10) + ((node.packetsReceived || 0) + (node.packetsSent || 0)) * 0.01
                     }))
                     .sort((a, b) => b.score - a.score)
                     .slice(0, 20); // Only keep top 20
@@ -307,7 +317,7 @@ export default function NodeRaceVisualization() {
                         <div className="group relative ml-1 cursor-help">
                             <div className="w-3.5 h-3.5 rounded-full border border-zinc-500 text-zinc-500 flex items-center justify-center text-[9px] font-bold">?</div>
                             <div className="absolute left-0 top-full mt-2 hidden group-hover:block w-48 bg-black/95 text-white text-[10px] p-2 rounded border border-white/20 z-[100] shadow-xl pointer-events-none">
-                                Score = (Active Streams × 10) + (Total Packets × 0.01)
+                                Score = (Credits × 10) + (Total Packets × 0.01)
                             </div>
                         </div>
                     </h2>
@@ -390,10 +400,10 @@ export default function NodeRaceVisualization() {
                                                             {getNodeLabel(node)}
                                                         </span>
                                                         <div className="flex items-center gap-2 text-xs">
-                                                            {node.activeStreams !== undefined && node.activeStreams > 0 && (
+                                                            {node.credits !== undefined && node.credits > 0 && (
                                                                 <span className="flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded border border-white/10">
-                                                                    <Activity className="w-3 h-3 text-cyan-400" />
-                                                                    <span className="text-cyan-400 font-semibold">{node.activeStreams}</span>
+                                                                    <Zap className="w-3 h-3 text-[#F0A741]" />
+                                                                    <span className="text-[#F0A741] font-semibold">{node.credits.toFixed(1)}</span>
                                                                 </span>
                                                             )}
                                                         </div>
@@ -407,9 +417,9 @@ export default function NodeRaceVisualization() {
                                                     <div className="absolute right-0 top-full mt-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100]">
                                                         <div className="bg-black/95 backdrop-blur-sm border border-white/20 rounded-lg px-3 py-2 shadow-xl min-w-[180px]">
                                                             <div className="text-[10px] space-y-1">
-                                                                <div className="flex justify-between gap-4 text-cyan-400">
-                                                                    <span>Active Streams:</span>
-                                                                    <span className="font-bold">{node.activeStreams || 0}</span>
+                                                                <div className="flex justify-between gap-4 text-[#F0A741]">
+                                                                    <span>Credits:</span>
+                                                                    <span className="font-bold">{(node.credits || 0).toFixed(2)}</span>
                                                                 </div>
                                                                 <div className="flex justify-between gap-4 text-emerald-400">
                                                                     <span>Packets:</span>
