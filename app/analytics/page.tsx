@@ -19,6 +19,7 @@ import { useRouter } from 'next/navigation';
 import { startProgress } from '@/lib/nprogress';
 import AnimatedNumber from '@/components/AnimatedNumber';
 import StatsCard from '@/components/StatsCard';
+import { ChartSkeleton } from '@/components/Skeletons';
 
 interface HistoricalDataPoint {
   timestamp: number;
@@ -274,7 +275,7 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="card">
-                  <div className="h-[300px] w-full bg-muted/10 rounded-lg animate-pulse" />
+                  <ChartSkeleton height={300} className="w-full" />
                 </div>
               ))}
             </div>

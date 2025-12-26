@@ -10,6 +10,7 @@ import { getFlagForCountry } from '@/lib/utils/country-flags';
 import { RefreshCw, MapPin, Server, Users, TrendingUp, X } from 'lucide-react';
 import AnimatedNumber from '@/components/AnimatedNumber';
 import StatsCard from '@/components/StatsCard';
+import { CardSkeleton } from '@/components/Skeletons';
 
 const formatBytes = (bytes: number) => {
   if (bytes === 0) return '0 B';
@@ -365,11 +366,7 @@ function RegionsPageContent() {
 
           {/* Region Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="card">
-                <div className="h-32 bg-muted/20 rounded-lg animate-pulse" />
-              </div>
-            ))}
+            <CardSkeleton count={6} className="" />
           </div>
         </main>
       </div>
@@ -455,7 +452,8 @@ function RegionsPageContent() {
             </div>
 
             {/* Countries Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 stagger-children">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <CardSkeleton count={6} className="" />
               {regionData
                 .filter(country => !selectedCountry || country.name === selectedCountry)
                 .map((country) => {

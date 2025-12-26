@@ -769,6 +769,13 @@ function CountryDetailContent() {
   const { nodes, loading, error, lastUpdate, refreshNodes } = useNodes();
 
   const countryName = decodeURIComponent(params.country as string);
+
+  // Find the ISO country code for filtering
+  const resolvedCountryCode = useMemo(() => {
+    const nodeInCountry = nodes.find(n => n.locationData?.country === countryName);
+    return nodeInCountry?.locationData?.countryCode;
+  }, [nodes, countryName]);
+
   const [sortBy, setSortBy] = useState<string>('reputation');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [tableExpanded, setTableExpanded] = useState(false);
@@ -2115,7 +2122,7 @@ function CountryDetailContent() {
               )}
 
               <div className="mt-8">
-                <ActivityLogList countryCode={countryName} limit={20} />
+                <ActivityLogList countryCode={resolvedCountryCode || countryName} limit={20} />
               </div>
             </div>
           </div>

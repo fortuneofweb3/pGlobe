@@ -23,6 +23,8 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 dotenv.config({ path: '.env' });
 
+import { batchFetchLocations } from './lib/server/location-cache';
+
 // Handle unhandled rejections to prevent server crashes
 process.on('unhandledRejection', (reason, promise) => {
     console.error('[Realtime] ⚠️ Unhandled Rejection:', reason);
@@ -82,6 +84,7 @@ interface RawPod {
     city?: string;
     country?: string;
     location?: string;
+    countryCode?: string;
 }
 
 interface PreviousState {
@@ -89,6 +92,7 @@ interface PreviousState {
     packetsSent: number;
     activeStreams: number;
     credits: number;
+    countryCode?: string;
 }
 
 // ============================================================================
@@ -276,6 +280,26 @@ async function pollAndEmitActivity(io: SocketIOServer) {
 
         console.log(`[Realtime] ✅ Got ${pods.length} pods from ${successfulEndpoints}/${allEndpoints.length} endpoints`);
 
+        // Enrich with GeoIP data
+        const ipsToFetch = pods
+            .map(p => p.address?.split(':')[0])
+            .filter((ip): ip is string => !!ip && /^\d+\.\d+\.\d+\.\d+$/.test(ip));
+
+        const locationMap = await batchFetchLocations([...new Set(ipsToFetch)]);
+
+        // Apply location data to pods
+        for (const pod of pods) {
+            const ip = pod.address?.split(':')[0];
+            if (ip && locationMap.has(ip)) {
+                const loc = locationMap.get(ip);
+                if (loc) {
+                    pod.city = loc.city;
+                    pod.country = loc.country;
+                    pod.countryCode = loc.countryCode;
+                }
+            }
+        }
+
         const now = new Date();
         let emittedCount = 0;
         const connectedClients = io.sockets.sockets.size;
@@ -338,7 +362,7 @@ async function pollAndEmitActivity(io: SocketIOServer) {
                 credits: currentCredits,
             });
 
-            // First time - emit initial state and store
+            const pubkeyToCountry = new Map<string, string>();
             if (!prev) {
                 // Emit new node event
                 const newNodeLog = {
@@ -346,6 +370,7 @@ async function pollAndEmitActivity(io: SocketIOServer) {
                     pubkey,
                     address,
                     location,
+                    countryCode: pod.countryCode || pod.country || undefined,
                     message: `${address} is online${location ? ` (${location})` : ''}`,
                     data: {
                         streams: currentStreams,
@@ -361,6 +386,7 @@ async function pollAndEmitActivity(io: SocketIOServer) {
                     packetsSent: currentTx,
                     activeStreams: currentStreams,
                     credits: currentCredits,
+                    countryCode: pod.countryCode || pod.country || undefined,
                 });
                 continue;
             }
@@ -379,6 +405,7 @@ async function pollAndEmitActivity(io: SocketIOServer) {
                     pubkey,
                     address,
                     location,
+                    countryCode: pod.countryCode || pod.country || undefined,
                     message: `${address} processed ${packetDiff.toLocaleString()} packets`,
                     data: {
                         rxEarned: currentRx - prev.packetsReceived,
@@ -399,6 +426,7 @@ async function pollAndEmitActivity(io: SocketIOServer) {
                     pubkey,
                     address,
                     location,
+                    countryCode: pod.countryCode || pod.country || undefined,
                     message: `${address} earned ${creditDiff.toFixed(2)} credits`,
                     data: {
                         earned: creditDiff,
@@ -416,6 +444,7 @@ async function pollAndEmitActivity(io: SocketIOServer) {
                     pubkey,
                     address,
                     location,
+                    countryCode: pod.countryCode || pod.country || undefined,
                     message: `${address} has ${currentStreams} active streams`,
                     data: {
                         total: currentStreams,
@@ -432,6 +461,7 @@ async function pollAndEmitActivity(io: SocketIOServer) {
                 packetsSent: currentTx,
                 activeStreams: currentStreams,
                 credits: currentCredits,
+                countryCode: pod.countryCode || pod.country || undefined,
             });
         }
 
@@ -444,6 +474,7 @@ async function pollAndEmitActivity(io: SocketIOServer) {
                 const offlineLog = {
                     type: 'node_offline' as const,
                     pubkey,
+                    countryCode: prevState.countryCode,
                     message: `${pubkey.substring(0, 8)}... went offline`,
                     timestamp: now,
                     data: {

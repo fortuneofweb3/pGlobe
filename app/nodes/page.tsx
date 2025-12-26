@@ -199,7 +199,6 @@ function NodesPageContent() {
     return (
       <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
         <Header activePage="nodes" loading={true} onRefresh={() => { }} />
-
         <main className="flex-1 overflow-hidden">
           <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
@@ -214,129 +213,22 @@ function NodesPageContent() {
                 </p>
               </div>
 
-              {/* Summary Stats - 3 cards */}
+              {/* Summary Stats - 4 cards */}
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6">
-                <StatsCard
-                  title="Total Nodes"
-                  value={0}
-                  icon={<Server className="w-4 h-4" />}
-                  loading={true}
-                />
-
-                <StatsCard
-                  title="Online Nodes"
-                  value={0}
-                  icon={<TrendingUp className="w-4 h-4" />}
-                  loading={true}
-                />
-
-                <StatsCard
-                  title="Showing"
-                  value={0}
-                  icon={<Search className="w-4 h-4" />}
-                  loading={true}
-                />
+                <StatsCard title="Total Nodes" value={0} icon={<Server className="w-4 h-4" />} loading={true} />
+                <StatsCard title="Online Nodes" value={0} icon={<TrendingUp className="w-4 h-4" />} loading={true} />
+                <StatsCard title="Syncing" value={0} icon={<Activity className="w-4 h-4" />} loading={true} />
+                <StatsCard title="Offline Nodes" value={0} icon={<Server className="w-4 h-4" />} loading={true} />
               </div>
 
-              {/* Search and Filters */}
+              {/* Search and Filters placeholder */}
               <div className="mb-4 sm:mb-6 space-y-3 sm:space-y-4">
-                {/* Search Bar */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-foreground/40" />
-                  <div className="w-full pl-10 pr-4 py-3 bg-card border border-border/60 rounded-xl">
-                    <div className="h-4 w-48 bg-muted/30 rounded animate-pulse" />
-                  </div>
-                </div>
-
-                {/* Filter Button */}
-                <div className="flex items-center gap-3">
-                  <button className="flex items-center gap-2 px-4 py-2 rounded-xl card text-foreground/60" disabled>
-                    <Filter className="w-4 h-4" />
-                    <span className="text-sm font-medium">Filters</span>
-                  </button>
-                </div>
+                <div className="h-10 bg-muted/30 rounded animate-pulse" />
+                <div className="h-10 bg-muted/30 rounded animate-pulse" />
               </div>
 
-              {/* Node Table */}
-              <div className="flex-1 flex flex-col overflow-hidden">
-                <div className="card overflow-hidden flex-1 flex flex-col" style={{ padding: 0 }}>
-                  {/* Info Banner */}
-                  <div className="px-3 sm:px-4 py-2 bg-muted border-b border-border/60 text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground/60">Note: </span>
-                    <span className="hidden sm:inline">Most operators keep pRPC private for security. Stats shown: <span className="h-3 w-8 bg-muted/40 rounded inline-block animate-pulse" /> uptime, <span className="h-3 w-8 bg-muted/40 rounded inline-block animate-pulse" /> storage, <span className="h-3 w-8 bg-muted/40 rounded inline-block animate-pulse" /> CPU, <span className="h-3 w-8 bg-muted/40 rounded inline-block animate-pulse" /> latency (of <span className="h-3 w-8 bg-muted/40 rounded inline-block animate-pulse" /> total nodes)</span>
-                  </div>
-
-                  {/* Table Header */}
-                  <div className="sticky top-0 z-10 bg-muted border-b border-border/60">
-                    <table className="min-w-full border-collapse" style={{ minWidth: '800px' }}>
-                      <thead>
-                        <tr>
-                          <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                            IP Address
-                          </th>
-                          <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                            Public Key
-                          </th>
-                          <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                            Registered
-                          </th>
-                          <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                            <div className="flex items-center gap-1.5">
-                              <span>Uptime</span>
-                            </div>
-                          </th>
-                          <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                            <div className="flex items-center gap-1.5">
-                              <span>Storage</span>
-                            </div>
-                          </th>
-                          <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                            <div className="flex items-center gap-1.5">
-                              <span>RAM</span>
-                            </div>
-                          </th>
-                          <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                            Location
-                          </th>
-                        </tr>
-                      </thead>
-                    </table>
-                  </div>
-
-                  {/* Table Rows */}
-                  <div className="flex-1 overflow-y-auto">
-                    <table className="min-w-full border-collapse" style={{ minWidth: '800px' }}>
-                      <tbody>
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((row) => (
-                          <tr key={row} className="card border-b border-border/40">
-                            <td className="px-3 sm:px-5 py-4">
-                              <div className="h-4 w-32 bg-muted/30 rounded animate-pulse" />
-                            </td>
-                            <td className="px-3 sm:px-5 py-4">
-                              <div className="h-4 w-48 bg-muted/30 rounded animate-pulse" />
-                            </td>
-                            <td className="px-3 sm:px-5 py-4 text-center">
-                              <div className="h-5 w-12 bg-muted/30 rounded animate-pulse mx-auto" />
-                            </td>
-                            <td className="px-3 sm:px-5 py-4">
-                              <div className="h-4 w-20 bg-muted/30 rounded animate-pulse" />
-                            </td>
-                            <td className="px-3 sm:px-5 py-4">
-                              <div className="h-4 w-24 bg-muted/30 rounded animate-pulse" />
-                            </td>
-                            <td className="px-3 sm:px-5 py-4">
-                              <div className="h-4 w-20 bg-muted/30 rounded animate-pulse" />
-                            </td>
-                            <td className="px-2 sm:px-4 py-3">
-                              <div className="h-4 w-28 bg-muted/30 rounded animate-pulse" />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
+              {/* Table Skeleton */}
+              <TableSkeleton rows={10} columns={7} className="w-full" />
             </div>
           </div>
         </main>
