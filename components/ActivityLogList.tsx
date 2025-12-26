@@ -351,7 +351,6 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
             reconnectionAttempts: 10,
             reconnectionDelay: 2000,
             timeout: 20000,
-            withCredentials: true,
         });
 
         socket.on('connect', () => {
