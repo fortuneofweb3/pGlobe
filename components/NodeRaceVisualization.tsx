@@ -331,7 +331,7 @@ export default function NodeRaceVisualization() {
 
     useEffect(() => {
         const socketUrl = getSocketUrl();
-        console.log('[Racing] Connecting to Socket.io at:', socketUrl);
+        //        console.log('[Racing] Connecting to Socket.io at:', socketUrl);
 
         const socket = io(socketUrl, {
             transports: ['websocket', 'polling'],
@@ -340,7 +340,7 @@ export default function NodeRaceVisualization() {
         });
 
         socket.on('connect', () => {
-            console.log('[Racing] Connected');
+            //            console.log('[Racing] Connected');
             setConnected(true);
             bufferRef.current = [];
             processingRef.current = false;
@@ -349,7 +349,9 @@ export default function NodeRaceVisualization() {
 
         socket.on('connect_error', () => setConnected(false));
         socket.on('disconnect', () => {
-            console.log('[Racing] Disconnected');
+            /*
+                        console.log('[Racing] Disconnected');
+            */
             setConnected(false);
             bufferRef.current = [];
             processingRef.current = false;

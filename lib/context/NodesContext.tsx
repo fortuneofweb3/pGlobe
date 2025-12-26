@@ -47,7 +47,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         const cacheAge = Date.now() - new Date(parsed.lastUpdate).getTime();
         const maxAge = 5 * 60 * 1000; // 5 minutes
         if (cacheAge > maxAge) {
-          console.log('[NodesContext] Cache expired (age:', Math.floor(cacheAge / 1000), 'seconds), invalidating');
+          //          console.log('[NodesContext] Cache expired (age:', Math.floor(cacheAge / 1000), 'seconds), invalidating');
           localStorage.removeItem(cacheKey(selectedNetwork));
           return null;
         }
@@ -92,13 +92,13 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   const refreshNodes = useCallback(async () => {
     // Request deduplication - if already fetching, return the existing promise
     if (fetchingRef.current && fetchPromiseRef.current) {
-      console.log('[NodesContext] Already fetching, returning existing promise');
+      //      console.log('[NodesContext] Already fetching, returning existing promise');
       return fetchPromiseRef.current;
     }
 
     fetchingRef.current = true;
     // DON'T set loading to true during refresh - keep showing existing data
-    console.log('[NodesContext] 🔄 Manual refresh triggered - Starting fetch...');
+    //    console.log('[NodesContext] 🔄 Manual refresh triggered - Starting fetch...');
 
     // Trigger background refresh on Render to update DB (fire-and-forget)
     // This ensures DB is always fresh when user manually refreshes
@@ -107,7 +107,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            console.log('[NodesContext] ✅ Background refresh triggered successfully');
+            //            console.log('[NodesContext] ✅ Background refresh triggered successfully');
           } else {
             console.warn('[NodesContext] ⚠️  Background refresh trigger failed:', data);
           }
@@ -128,7 +128,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         }
         // Don't pass refresh=true - just get from MongoDB (fast path)
         const url = `/api/pnodes?${params.toString()}`;
-        console.log('[NodesContext] Fetching from:', url);
+        //        console.log('[NodesContext] Fetching from:', url);
 
         // Use fetch with reasonable timeout for API server response
         let response: Response;
@@ -136,14 +136,14 @@ export function NodesProvider({ children }: { children: ReactNode }) {
           const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
           const timeoutId = controller ? setTimeout(() => controller.abort(), 30000) : null; // 30 second timeout for slower connections
 
-          console.log('[NodesContext] Making fetch request...');
+          //          console.log('[NodesContext] Making fetch request...');
           response = await fetch(url, {
             ...(controller ? { signal: controller.signal } : {}),
             cache: 'no-store', // Always get fresh data
           });
 
           if (timeoutId) clearTimeout(timeoutId);
-          console.log('[NodesContext] Fetch response status:', response.status);
+          //          console.log('[NodesContext] Fetch response status:', response.status);
         } catch (err) {
           const error = err as Error;
           if (error?.name === 'AbortError') {
@@ -153,10 +153,10 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         }
 
         const data = await response.json();
-        console.log('[NodesContext] Received data, nodes count:', data.nodes?.length || 0);
+        //        console.log('[NodesContext] Received data, nodes count:', data.nodes?.length || 0);
 
         if (data.nodes && Array.isArray(data.nodes)) {
-          console.log('[NodesContext] ✅ Setting nodes:', data.nodes.length);
+          //          console.log('[NodesContext] ✅ Setting nodes:', data.nodes.length);
           // Always update with fresh data - even if fewer nodes (network might have changed)
           // Only skip if we get empty array AND we already have nodes (might be temporary issue)
           if (data.nodes.length > 0 || nodes.length === 0) {
@@ -183,7 +183,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
               currentNetwork: data.currentNetwork,
             });
 
-            console.log('[NodesContext] ✅ Updated to', data.nodes.length, 'nodes, cached');
+            //            console.log('[NodesContext] ✅ Updated to', data.nodes.length, 'nodes, cached');
           } else {
             console.warn('[NodesContext] Received empty nodes array, keeping existing', nodes.length, 'nodes');
             setLoading(false);
@@ -254,11 +254,11 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         setSelectedNetwork(cached.currentNetwork.id);
       }
       setLoading(false); // Set loading to false immediately so UI renders with cached data
-      console.log('[NodesContext] Loaded', cached.nodes.length, 'nodes from cache');
+      //      console.log('[NodesContext] Loaded', cached.nodes.length, 'nodes from cache');
     } else {
       // Only show loading if no cache available
       setLoading(true);
-      console.log('[NodesContext] No cache available, showing loading state');
+      //      console.log('[NodesContext] No cache available, showing loading state');
     }
 
     // STEP 1: ALWAYS fetch fresh data - don't rely on cache alone
@@ -293,7 +293,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     const oneMinuteAgo = now - 60 * 1000;
 
     if (!lastRefreshTime || parseInt(lastRefreshTime) < oneMinuteAgo) {
-      console.log('[NodesContext] Triggering background refresh on Render (last refresh was', lastRefreshTime ? `${Math.floor((now - parseInt(lastRefreshTime)) / 1000)}s ago` : 'never', ')');
+      //      console.log('[NodesContext] Triggering background refresh on Render (last refresh was', lastRefreshTime ? `${Math.floor((now - parseInt(lastRefreshTime)) / 1000)}s ago` : 'never', ')');
       // Defer background refresh to avoid blocking navigation
       if ('requestIdleCallback' in window) {
         requestIdleCallback(() => {
@@ -356,7 +356,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         }, 2000);
       }
     } else {
-      console.log('[NodesContext] Skipping background refresh (last refresh was', Math.floor((now - parseInt(lastRefreshTime)) / 1000), 'seconds ago)');
+      ////      console.log('[NodesContext] Skipping background refresh (last refresh was', Math.floor((now - parseInt(lastRefreshTime)) / 1000), 'seconds ago)');
     }
   }, [loadCache, nodes.length, refreshNodes]);
 
@@ -370,14 +370,14 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     // Only start polling if we have nodes
     if (nodes.length === 0) return;
 
-    console.log('[NodesContext] Starting passive polling (every 2 minutes)');
+    //    console.log('[NodesContext] Starting passive polling (every 2 minutes)');
     const interval = setInterval(() => {
-      console.log('[NodesContext] Passive polling tick - fetching fresh data...');
+      //      console.log('[NodesContext] Passive polling tick - fetching fresh data...');
       // Fetch in background - UI already has data, this just updates it
       refreshNodes();
     }, 120 * 1000); // 2 minutes - reduced from 1 minute to prevent excessive updates
     return () => {
-      console.log('[NodesContext] Stopping passive polling');
+      //      console.log('[NodesContext] Stopping passive polling');
       clearInterval(interval);
     };
   }, [nodes.length, refreshNodes]);
@@ -402,7 +402,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         const response = await fetch('/api/pod-credits');
         const data = await response.json();
         if (data.credits) {
-          console.log('[NodesContext] Fetched pod credits:', Object.keys(data.credits).length, 'pods');
+          //          console.log('[NodesContext] Fetched pod credits:', Object.keys(data.credits).length, 'pods');
           setPodCredits(data.credits);
         }
       } catch (error) {

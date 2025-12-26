@@ -180,7 +180,7 @@ async function fetchPodsFromEndpoint(endpoint: string): Promise<RawPod[]> {
 
         // Log stream stats for debugging
         const withStreams = pods.filter((p: RawPod) => (p.active_streams || 0) > 0).length;
-        console.log(`[Realtime] ✅ ${endpoint} returned ${pods.length} pods, ${withStreams} with active streams`);
+        // console.log(`[Realtime] ✅ ${endpoint} returned ${pods.length} pods, ${withStreams} with active streams`);
 
         return pods;
     } catch (err) {
@@ -252,7 +252,7 @@ async function pollAndEmitActivity(io: SocketIOServer) {
             ...DIRECT_PRPC_ENDPOINTS.map(e => `http://${e}/rpc`)
         ];
 
-        console.log(`[Realtime] 📊 Querying ${allEndpoints.length} endpoints...`);
+        //        console.log(`[Realtime] 📊 Querying ${allEndpoints.length} endpoints...`);
 
         // Fetch from all endpoints in parallel
         const results = await Promise.allSettled(
@@ -288,7 +288,7 @@ async function pollAndEmitActivity(io: SocketIOServer) {
             return;
         }
 
-        console.log(`[Realtime] ✅ Got ${pods.length} pods from ${successfulEndpoints}/${allEndpoints.length} endpoints`);
+        //        console.log(`[Realtime] ✅ Got ${pods.length} pods from ${successfulEndpoints}/${allEndpoints.length} endpoints`);
 
         // Enrich with GeoIP data
         const ipsToFetch = pods
@@ -342,7 +342,7 @@ async function pollAndEmitActivity(io: SocketIOServer) {
             }
         }
 
-        console.log(`[Realtime] 📊 Enriched ${enrichedStats.size}/${nodesToEnrich.length} nodes in ${Date.now() - enrichStart}ms`);
+        //        console.log(`[Realtime] 📊 Enriched ${enrichedStats.size}/${nodesToEnrich.length} nodes in ${Date.now() - enrichStart}ms`);
 
         // Collect all online nodes for status updates
         const onlineNodes: Array<{ pubkey: string; address: string; location?: string; streams: number; packets: number; credits: number }> = [];
@@ -532,7 +532,7 @@ async function pollAndEmitActivity(io: SocketIOServer) {
         }
 
         const elapsed = Date.now() - startTime;
-        console.log(`[Realtime] 📈 ${pods.length} pods, ${emittedCount} events → ${connectedClients} clients (${elapsed}ms)`);
+        //        console.log(`[Realtime] 📈 ${pods.length} pods, ${emittedCount} events → ${connectedClients} clients (${elapsed}ms)`);
 
     } catch (err) {
         const error = err as Error;

@@ -33,11 +33,18 @@ const REALTIME_SERVER_URL = process.env.NEXT_PUBLIC_REALTIME_SERVER_URL || '';
 const getSocketUrl = () => {
     if (typeof window !== 'undefined') {
         const hostname = window.location.hostname;
+        // Local dev escape hatch
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
             return `http://${hostname}:3002`;
         }
+
+        // Production logic
+        if (REALTIME_SERVER_URL) {
+            // Ensure protocol
+            return REALTIME_SERVER_URL.startsWith('http') ? REALTIME_SERVER_URL : `https://${REALTIME_SERVER_URL}`;
+        }
     }
-    return REALTIME_SERVER_URL || RENDER_API_URL;
+    return RENDER_API_URL;
 };
 
 // Smooth spring config for 60fps - fluid and natural
@@ -123,7 +130,7 @@ function LogItem({ log }: { log: ActivityLog }) {
     // Format message - for packets_earned, use data to show received/sent format
     const getFormattedMessage = () => {
         const data = log.data as any;
-        const pubkey = formatPubkey(log.pubkey);
+        const nodeIdentifier = log.address || formatPubkey(log.pubkey);
 
         // For packet events, format from data to show received/sent
         if (log.type === 'packets_earned' && data) {
@@ -135,18 +142,23 @@ function LogItem({ log }: { log: ActivityLog }) {
             if (txEarned > 0) parts.push(`sent ${txEarned.toLocaleString()}`);
 
             if (parts.length > 0) {
-                return `${pubkey} ${parts.join(' / ')} packets`;
+                return `${nodeIdentifier} ${parts.join(' / ')} packets`;
             }
         }
 
         // For credits_lost, format properly
         if (log.type === 'credits_lost' && data?.lost) {
-            return `${pubkey} lost ${data.lost.toFixed(2)} credits`;
+            return `${nodeIdentifier} lost ${data.lost.toFixed(2)} credits`;
         }
 
-        // Default: use the stored message but truncate the pubkey if it's there
+        // For credits_earned, format properly
+        if (log.type === 'credits_earned' && data?.earned) {
+            return `${nodeIdentifier} earned ${data.earned.toFixed(2)} credits`;
+        }
+
+        // Default: use the stored message but truncate the pubkey or swap with address if it's there
         if (log.message && log.pubkey && log.message.includes(log.pubkey)) {
-            return log.message.replace(log.pubkey, formatPubkey(log.pubkey));
+            return log.message.replace(log.pubkey, nodeIdentifier);
         }
 
         return log.message;
@@ -187,11 +199,10 @@ function LogItem({ log }: { log: ActivityLog }) {
 
                         {/* Meta info */}
                         <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-[10px] sm:text-xs">
-                            <div className="flex items-center gap-1 bg-black/40 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-zinc-800/80">
+                            <div className="flex items-center gap-1 bg-black/40 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-zinc-800/80" title={log.pubkey}>
                                 <Globe className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-zinc-500" />
                                 <span className="font-mono text-zinc-400 truncate">
-                                    <span className="sm:hidden">{truncatedPubkey}</span>
-                                    <span className="hidden sm:inline max-w-[180px] truncate">{log.pubkey}</span>
+                                    {truncatedPubkey}
                                 </span>
                             </div>
 
@@ -332,16 +343,18 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         fetchLogs();
 
         const socketUrl = getSocketUrl();
-        console.log('[ActivityLogs] Connecting to Socket.io at:', socketUrl);
+        console.log('[ActivityLogs] 🔌 Connecting to Socket.io:', socketUrl);
 
         const socket = io(socketUrl, {
             transports: ['websocket', 'polling'],
+            reconnection: true,
             reconnectionAttempts: 10,
+            reconnectionDelay: 2000,
             timeout: 20000,
         });
 
         socket.on('connect', () => {
-            console.log('[ActivityLogs] Connected');
+            //        console.log('[ActivityLogs] Connected');
             setConnected(true);
             bufferRef.current = [];
             processingRef.current = false;
@@ -349,7 +362,9 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
 
         socket.on('connect_error', () => setConnected(false));
         socket.on('disconnect', () => {
-            console.log('[ActivityLogs] Disconnected');
+            /*
+                        console.log('[ActivityLogs] Disconnected');
+            */
             setConnected(false);
             bufferRef.current = [];
             processingRef.current = false;
