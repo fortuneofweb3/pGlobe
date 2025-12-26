@@ -66,6 +66,14 @@ export interface PNode {
   registryPDA?: string; // Registry PDA address (from on-chain)
   validatorInfo?: unknown; // Validator info (from on-chain)
 
+  // STOINC & Rewards (from Xandeum program)
+  xandStake?: number; // Total XAND staked (raw amount)
+  activatedStakeXAND?: number; // Activated XAND stake (for reward calculation)
+  boostFactor?: number; // Combined boost multiplier (NFTs × Era)
+  eraLabel?: string; // Which era the node belongs to (e.g., "Deep South")
+  nftBoost?: number; // Individual NFT boost multiplier
+  eraBoost?: number; // Individual Era boost multiplier
+
   // On-chain account tracking (from Solana blockchain)
   accountCreatedAt?: Date; // When the Solana account was created (approximate, from first transaction)
   firstSeenSlot?: number; // First slot where account was seen (from oldest transaction signature)

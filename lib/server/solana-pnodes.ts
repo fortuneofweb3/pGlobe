@@ -5,10 +5,12 @@
 
 import { Connection, PublicKey } from '@solana/web3.js';
 import { PNode } from '../types/pnode';
+import { XANDEUM_NFT_COLLECTIONS } from '../constants/nft';
 
 const DEVNET_PROGRAM = new PublicKey('6Bzz3KPvzQruqBg2vtsvkuitd6Qb4iCcr5DViifCwLsL');
 const DEVNET_RPC = 'https://api.devnet.xandeum.com:8899';
 const INDEX_ACCOUNT = new PublicKey('GHTUesiECzPRHTShmBGt9LiaA89T8VAzw8ZWNE6EvZRs');
+const XAND_MINT = new PublicKey('XANDuUoVoUqniKkpcKhrxmvYJybpJvUxJLr21Gaj3Hx');
 
 /**
  * Fetch all pNode pubkeys from the on-chain index account
@@ -88,6 +90,10 @@ export async function enrichPNodeWithOnChainData(
   registryPDA?: string;
   managerPDA?: string;
   validatorInfo?: unknown;
+  xandStake?: number;
+  nftBoost?: number;
+  eraBoost?: number;
+  eraLabel?: string;
   error?: string;
 }> {
   try {
@@ -165,6 +171,62 @@ export async function enrichPNodeWithOnChainData(
       // Manager doesn't exist
     }
 
+    // Fetch XAND token balance (stake)
+    let xandStake = 0;
+    try {
+      const tokenAccounts = await connection.getTokenAccountsByOwner(nodePubkey, {
+        mint: XAND_MINT
+      });
+
+      if (tokenAccounts.value.length > 0) {
+        // Sum balances of all XAND token accounts
+        for (const account of tokenAccounts.value) {
+          const accountInfo = await connection.getTokenAccountBalance(account.pubkey);
+          xandStake += Number(accountInfo.value.uiAmount || 0);
+        }
+      }
+    } catch (e) {
+      // Failed to fetch token balance
+    }
+
+    // Fetch NFT Multiplier (scan for Xandeum NFTs)
+    let nftBoost = 1;
+    try {
+      // In a real implementation, we would use getProgramAccounts or Metaplex SDK
+      // to find tokens belonging to the official collections.
+      // For now, we'll implement the scanning framework.
+      const parsedTokenAccounts = await connection.getParsedTokenAccountsByOwner(nodePubkey, {
+        programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA')
+      });
+
+      for (const account of parsedTokenAccounts.value) {
+        const info = account.account.data.parsed.info;
+        const mint = info.mint;
+        const amount = info.tokenAmount.uiAmount;
+
+        if (amount >= 1) {
+          // Check if this mint belongs to any of our official collections
+          // This would normally check Metaplex Collection metadata
+          const collectionMatch = XANDEUM_NFT_COLLECTIONS.find(c => c.collectionId === mint);
+          if (collectionMatch) {
+            nftBoost = Math.max(nftBoost, collectionMatch.multiplier);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn(`[OnChain] Failed to scan NFTs for ${pubkey}:`, e);
+    }
+
+    // Determine Era Boost (simplified estimation based on existence)
+    // In a real scenario, this would check the registration timestamp or contract state
+    // For now, we'll implement a stub that can be refined
+    let eraBoost = 1;
+    let eraLabel = 'Standard';
+
+    if (isRegistered) {
+      // Default to Standard for now unless we have more specific era data
+    }
+
     return {
       balance,
       isValidator,
@@ -172,6 +234,10 @@ export async function enrichPNodeWithOnChainData(
       registryPDA,
       managerPDA,
       validatorInfo,
+      xandStake,
+      nftBoost,
+      eraBoost,
+      eraLabel,
     };
   } catch (err) {
     const error = err as Error;
@@ -195,6 +261,10 @@ export async function enrichPNodesWithOnChainData(
   registryPDA?: string;
   managerPDA?: string;
   validatorInfo?: unknown;
+  xandStake?: number;
+  nftBoost?: number;
+  eraBoost?: number;
+  eraLabel?: string;
   error?: string;
 }>> {
   const connection = new Connection(rpcUrl, 'confirmed');
@@ -255,17 +325,27 @@ export async function fetchAndEnrichOnChainPNodes(
     const pNodes: PNode[] = pubkeys.map(pubkey => {
       const onChainData = enrichmentData.get(pubkey) || {};
 
+      const nftBoost = onChainData.nftBoost || 1;
+      const eraBoost = onChainData.eraBoost || 1;
+
       return {
         id: pubkey,
         address: '', // No address from on-chain, will be merged with gossip data
         publicKey: pubkey,
         pubkey: pubkey,
+        owner: onChainData.managerPDA || pubkey, // Use manager as owner/wallet ID
         balance: onChainData.balance,
         isValidator: onChainData.isValidator,
         isRegistered: onChainData.isRegistered,
         registryPDA: onChainData.registryPDA,
         managerPDA: onChainData.managerPDA,
         validatorInfo: onChainData.validatorInfo,
+        xandStake: onChainData.xandStake,
+        nftBoost,
+        eraBoost,
+        eraLabel: onChainData.eraLabel,
+        // Calculate boost factor for single node: NFT * Era (multiplicative for individual node base)
+        boostFactor: nftBoost * eraBoost,
         // Mark as from on-chain
         _source: 'onchain',
         _onChainError: onChainData.error,

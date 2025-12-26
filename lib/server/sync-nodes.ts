@@ -385,8 +385,12 @@ export async function enrichWithBalance(
       const balanceData = await fetchBalanceForPubkey(pubkey);
       if (balanceData) {
         node.balance = balanceData.balance;
-        node.isRegistered = balanceData.balance > 0;
+        node.isRegistered = balanceData.isRegistered;
         if (balanceData.managerPDA) node.managerPDA = balanceData.managerPDA;
+        node.xandStake = balanceData.xandStake;
+        node.eraBoost = balanceData.eraBoost;
+        node.eraLabel = balanceData.eraLabel;
+        node.boostFactor = balanceData.eraBoost || 1;
       }
     } catch {
       // Silent fail for individual balance fetches
@@ -428,6 +432,10 @@ export function deduplicateNodes(nodesMap: Map<string, PNode>): PNode[] {
       // Preserve balance if not in new data
       balance: node.balance ?? existing.balance,
       managerPDA: node.managerPDA || existing.managerPDA,
+      xandStake: node.xandStake ?? existing.xandStake,
+      eraBoost: node.eraBoost ?? existing.eraBoost,
+      eraLabel: node.eraLabel || existing.eraLabel,
+      boostFactor: node.boostFactor ?? existing.boostFactor,
       // Preserve location if not in new data
       location: node.location || existing.location,
       locationData: node.locationData || existing.locationData,

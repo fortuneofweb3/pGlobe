@@ -7,7 +7,6 @@ import { Connection, PublicKey } from '@solana/web3.js';
 
 const DEVNET_RPC = 'https://api.devnet.xandeum.com:8899';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes (balances can change)
-const DEVNET_PROGRAM = new PublicKey('6Bzz3KPvzQruqBg2vtsvkuitd6Qb4iCcr5DViifCwLsL');
 
 interface ValidatorInfo {
   votePubkey: string;
@@ -15,12 +14,15 @@ interface ValidatorInfo {
   commission: number;
 }
 
-interface BalanceData {
+export interface BalanceData {
   balance: number; // in SOL
   isValidator: boolean;
   validatorInfo?: ValidatorInfo;
   isRegistered: boolean;
   managerPDA?: string;
+  xandStake?: number;
+  eraBoost?: number;
+  eraLabel?: string;
 }
 
 interface CachedBalance {
@@ -46,60 +48,28 @@ export async function fetchBalanceForPubkey(
 
   try {
     const conn = connection || new Connection(DEVNET_RPC, 'confirmed');
-    const pubkey = new PublicKey(publicKey);
 
-    // Fetch balance, validator info, and manager PDA in parallel
-    const [balance, voteAccounts, managerPDAResult] = await Promise.allSettled([
-      conn.getBalance(pubkey),
-      conn.getVoteAccounts(),
-      (async () => {
-        try {
-          const [manager] = PublicKey.findProgramAddressSync(
-            [Buffer.from('manager'), pubkey.toBuffer()],
-            DEVNET_PROGRAM
-          );
-          const managerInfo = await conn.getAccountInfo(manager);
-          return {
-            managerPDA: manager.toBase58(),
-            exists: !!managerInfo,
-          };
-        } catch {
-          return { managerPDA: undefined, exists: false };
-        }
-      })(),
-    ]);
+    // Use the comprehensive enrichment function from solana-pnodes
+    const { enrichPNodeWithOnChainData } = await import('./solana-pnodes');
+    const onChainData = await enrichPNodeWithOnChainData(publicKey, conn);
 
-    // Check if validator
-    let isValidator = false;
-    let validatorInfo: ValidatorInfo | undefined = undefined;
-
-    if (voteAccounts.status === 'fulfilled' && voteAccounts.value) {
-      const allVoteAccounts = [...voteAccounts.value.current, ...voteAccounts.value.delinquent];
-      const nodeVoteAccount = allVoteAccounts.find(
-        (v) => v.nodePubkey === publicKey || v.votePubkey === publicKey
-      );
-
-      if (nodeVoteAccount) {
-        isValidator = true;
-        validatorInfo = {
-          votePubkey: nodeVoteAccount.votePubkey,
-          activatedStake: Number(nodeVoteAccount.activatedStake || 0) / 1e9,
-          commission: nodeVoteAccount.commission,
-        };
-      }
+    if (onChainData.error) {
+      console.warn(`[Balance Cache] Enrichment error for ${publicKey}:`, onChainData.error);
     }
 
-    // Get manager PDA info
-    const managerData = managerPDAResult.status === 'fulfilled'
-      ? managerPDAResult.value
-      : { managerPDA: undefined, exists: false };
-
     const balanceData: BalanceData = {
-      balance: balance.status === 'fulfilled' ? balance.value / 1e9 : 0,
-      isValidator,
-      validatorInfo,
-      isRegistered: managerData.exists,
-      managerPDA: managerData.managerPDA,
+      balance: onChainData.balance || 0,
+      isValidator: !!onChainData.isValidator,
+      validatorInfo: onChainData.validatorInfo ? {
+        votePubkey: (onChainData.validatorInfo as any).votePubkey || '',
+        activatedStake: (onChainData.validatorInfo as any).activatedStake || 0,
+        commission: (onChainData.validatorInfo as any).commission || 0,
+      } : undefined,
+      isRegistered: !!onChainData.isRegistered,
+      managerPDA: onChainData.managerPDA,
+      xandStake: onChainData.xandStake,
+      eraBoost: onChainData.eraBoost,
+      eraLabel: onChainData.eraLabel,
     };
 
     // Cache the result
@@ -118,155 +88,23 @@ export async function fetchBalanceForPubkey(
 
 /**
  * Batch fetch balances for multiple public keys
- * Uses Solana RPC batch requests for efficiency
  */
 export async function batchFetchBalances(
   publicKeys: string[]
 ): Promise<Map<string, BalanceData>> {
   const results = new Map<string, BalanceData>();
+  const connection = new Connection(DEVNET_RPC, 'confirmed');
 
   console.log(`[Balance Cache] Fetching balances for ${publicKeys.length} pubkeys...`);
 
-  // Filter out invalid pubkeys
-  const validPubkeys: string[] = [];
+  // Process in sequence for now to avoid complexity, but could be batched further
   for (const pk of publicKeys) {
-    try {
-      new PublicKey(pk);
-      validPubkeys.push(pk);
-    } catch {
-      console.warn(`[Balance Cache] Invalid pubkey: ${pk}`);
+    const data = await fetchBalanceForPubkey(pk, connection);
+    if (data) {
+      results.set(pk, data);
     }
   }
 
-  console.log(`[Balance Cache] ${validPubkeys.length}/${publicKeys.length} pubkeys are valid`);
-
-  // Check cache first, only fetch uncached
-  const uncachedPubkeys: string[] = [];
-  for (const pk of validPubkeys) {
-    const cached = balanceCache.get(pk);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      results.set(pk, cached.data);
-    } else {
-      uncachedPubkeys.push(pk);
-    }
-  }
-
-  console.log(`[Balance Cache] ${results.size} from cache, ${uncachedPubkeys.length} need fetching`);
-
-  if (uncachedPubkeys.length === 0) {
-    return results;
-  }
-
-  try {
-    const connection = new Connection(DEVNET_RPC, 'confirmed');
-
-    // Fetch vote accounts once (for validator checks)
-    const voteAccounts = await connection.getVoteAccounts().catch(() => null);
-    const allVoteAccounts = voteAccounts
-      ? [...voteAccounts.current, ...voteAccounts.delinquent]
-      : [];
-
-    // Batch fetch balances - process in chunks of 100
-    const BATCH_SIZE = 100;
-    const batches = [];
-
-    for (let i = 0; i < uncachedPubkeys.length; i += BATCH_SIZE) {
-      batches.push(uncachedPubkeys.slice(i, i + BATCH_SIZE));
-    }
-
-    console.log(`[Balance Cache] Processing ${batches.length} batch(es) of up to ${BATCH_SIZE} pubkeys...`);
-
-    for (let i = 0; i < batches.length; i++) {
-      const batch = batches[i];
-      const batchNumber = i + 1;
-
-      console.log(`[Balance Cache] Batch ${batchNumber}/${batches.length}: Fetching ${batch.length} balances...`);
-
-      // Fetch all balances in parallel
-      const balancePromises = batch.map(async (pk) => {
-        try {
-          const pubkey = new PublicKey(pk);
-          const [balance, managerResult] = await Promise.allSettled([
-            connection.getBalance(pubkey),
-            (async () => {
-              try {
-                const [manager] = PublicKey.findProgramAddressSync(
-                  [Buffer.from('manager'), pubkey.toBuffer()],
-                  DEVNET_PROGRAM
-                );
-                const managerInfo = await connection.getAccountInfo(manager);
-                return {
-                  managerPDA: manager.toBase58(),
-                  exists: !!managerInfo,
-                };
-              } catch {
-                return { managerPDA: undefined, exists: false };
-              }
-            })(),
-          ]);
-
-          // Check if validator
-          const nodeVoteAccount = allVoteAccounts.find(
-            (v) => v.nodePubkey === pk || v.votePubkey === pk
-          );
-
-          const managerData = managerResult.status === 'fulfilled'
-            ? managerResult.value
-            : { managerPDA: undefined, exists: false };
-
-          const balanceData: BalanceData = {
-            balance: balance.status === 'fulfilled' ? balance.value / 1e9 : 0,
-            isValidator: !!nodeVoteAccount,
-            validatorInfo: nodeVoteAccount
-              ? {
-                votePubkey: nodeVoteAccount.votePubkey,
-                activatedStake: Number(nodeVoteAccount.activatedStake || 0) / 1e9,
-                commission: nodeVoteAccount.commission,
-              }
-              : undefined,
-            isRegistered: managerData.exists,
-            managerPDA: managerData.managerPDA,
-          };
-
-          // Cache it
-          balanceCache.set(pk, {
-            data: balanceData,
-            timestamp: Date.now(),
-          });
-
-          return { pk, balanceData };
-        } catch (err) {
-          const error = err as Error;
-          console.warn(`[Balance Cache] Failed for ${pk}:`, error.message);
-          return { pk, balanceData: null };
-        }
-      });
-
-      const batchResults = await Promise.all(balancePromises);
-
-      let successCount = 0;
-      batchResults.forEach(({ pk, balanceData }) => {
-        if (balanceData) {
-          results.set(pk, balanceData);
-          successCount++;
-        }
-      });
-
-      console.log(
-        `[Balance Cache] Batch ${batchNumber}/${batches.length}: ${successCount}/${batch.length} succeeded, total: ${results.size}/${validPubkeys.length}`
-      );
-
-      // Small delay between batches to avoid overwhelming RPC
-      if (i < batches.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      }
-    }
-  } catch (err) {
-    const error = err as Error;
-    console.error('[Balance Cache] Batch fetch error:', error.message);
-  }
-
-  console.log(`[Balance Cache] Completed: ${results.size}/${publicKeys.length} balances fetched`);
   return results;
 }
 
@@ -295,4 +133,3 @@ export function getBalanceCacheStats() {
     })),
   };
 }
-

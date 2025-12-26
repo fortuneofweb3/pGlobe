@@ -9,7 +9,7 @@ import { NetworkConfig } from '@/lib/server/network-config';
 import { useNodes } from '@/lib/context/NodesContext';
 
 interface HeaderProps {
-  activePage?: 'overview' | 'nodes' | 'analytics' | 'help' | 'scan' | 'regions' | 'activity';
+  activePage?: 'overview' | 'nodes' | 'analytics' | 'stoinc' | 'help' | 'scan' | 'regions' | 'activity';
   nodeCount?: number;
   lastUpdate?: Date | null;
   loading?: boolean;
@@ -105,6 +105,16 @@ export default function Header({
                 Analytics
               </Link>
               <Link
+                href="/stoinc"
+                prefetch={true}
+                className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'stoinc'
+                  ? 'bg-gradient-to-r from-green-400 via-[#F0A741] to-purple-500 bg-clip-text text-transparent font-bold bg-[#F0A741]/10 shadow-sm'
+                  : 'bg-gradient-to-r from-green-400/60 via-[#F0A741]/60 to-purple-500/60 bg-clip-text text-transparent hover:from-green-400 hover:via-[#F0A741] hover:to-purple-500 hover:bg-[#F0A741]/5'
+                  }`}
+              >
+                STOINC
+              </Link>
+              <Link
                 href="/regions"
                 prefetch={true}
                 className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'regions'
@@ -172,8 +182,8 @@ export default function Header({
             <Link
               href="/activity-logs"
               className={`p-2 relative rounded-xl transition-all duration-300 hover:scale-110 active:scale-100 group ${activePage === 'activity'
-                  ? 'text-[#F0A741] bg-[#F0A741]/10'
-                  : 'text-foreground/80 hover:text-[#F0A741] hover:bg-[#F0A741]/10'
+                ? 'text-[#F0A741] bg-[#F0A741]/10'
+                : 'text-foreground/80 hover:text-[#F0A741] hover:bg-[#F0A741]/10'
                 }`}
               aria-label="View Activity"
             >
@@ -248,6 +258,17 @@ export default function Header({
                 }`}
             >
               Analytics
+            </Link>
+            <Link
+              href="/stoinc"
+              prefetch={true}
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'stoinc'
+                ? 'bg-gradient-to-r from-green-400 via-[#F0A741] to-purple-500 bg-clip-text text-transparent font-bold bg-[#F0A741]/10 shadow-sm'
+                : 'bg-gradient-to-r from-green-400/60 via-[#F0A741]/60 to-purple-500/60 bg-clip-text text-transparent hover:from-green-400 hover:via-[#F0A741] hover:to-purple-500 hover:bg-[#F0A741]/5'
+                }`}
+            >
+              STOINC
             </Link>
             <Link
               href="/regions"

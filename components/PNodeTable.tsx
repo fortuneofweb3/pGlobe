@@ -540,6 +540,32 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                     </th>
                     <th
                       className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                      onClick={() => onSort('xandStake')}
+                    >
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span title="Staked XAND Amount">XAND Stake</span>
+                        {sortBy === 'xandStake' ? (
+                          sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
+                        ) : (
+                          <ArrowDown className="w-3 h-3 text-foreground/30" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                      onClick={() => onSort('boostFactor')}
+                    >
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span title="Total STOINC Multiplier (Era × NFTs)">Boost</span>
+                        {sortBy === 'boostFactor' ? (
+                          sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
+                        ) : (
+                          <ArrowDown className="w-3 h-3 text-foreground/30" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                       onClick={() => onSort('credits')}
                     >
                       <div className="flex items-center justify-end gap-1.5">
@@ -897,6 +923,34 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
 
                           return renderEmptyCell();
                         })()}
+                      </td>
+                      <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-right">
+                        {node.xandStake !== undefined && node.xandStake !== null ? (
+                          <div className="flex flex-col items-end">
+                            <span className="text-xs sm:text-sm font-mono text-[#F0A741] font-medium">
+                              {node.xandStake.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            </span>
+                            <span className="text-[10px] text-foreground/40 uppercase tracking-wider">XAND</span>
+                          </div>
+                        ) : (
+                          renderEmptyCell()
+                        )}
+                      </td>
+                      <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-right">
+                        {node.boostFactor !== undefined && node.boostFactor !== null ? (
+                          <div className="flex flex-col items-end">
+                            <span className="text-xs sm:text-sm font-mono text-blue-400 font-medium">
+                              {node.boostFactor.toFixed(2)}x
+                            </span>
+                            {node.eraLabel && (
+                              <span className="text-[10px] text-foreground/40 uppercase tracking-wider">
+                                {node.eraLabel}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          renderEmptyCell()
+                        )}
                       </td>
                       <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-right">
                         {node.credits !== undefined && node.credits !== null ? (
