@@ -25,6 +25,10 @@ dotenv.config({ path: '.env' });
 
 import { batchFetchLocations } from './lib/server/location-cache';
 
+// Reusable HTTP agents with keep-alive to reduce connection overhead
+const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 100 });
+const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 100 });
+
 // Handle unhandled rejections to prevent server crashes
 process.on('unhandledRejection', (reason, promise) => {
     console.error('[Realtime] ⚠️ Unhandled Rejection:', reason);
@@ -114,6 +118,7 @@ function httpPost(url: string, data: object, timeoutMs: number): Promise<any | n
             const postData = JSON.stringify(data);
             const isHttps = urlObj.protocol === 'https:';
             const httpModule = isHttps ? https : http;
+            const agent = isHttps ? httpsAgent : httpAgent;
 
             const options = {
                 hostname: urlObj.hostname,
@@ -125,6 +130,7 @@ function httpPost(url: string, data: object, timeoutMs: number): Promise<any | n
                     'Content-Length': Buffer.byteLength(postData),
                 },
                 timeout: timeoutMs,
+                agent,
             };
 
             const req = httpModule.request(options, (res) => {
@@ -252,6 +258,9 @@ async function pollAndEmitActivity(io: SocketIOServer) {
             allEndpoints.map(ep => fetchPodsFromEndpoint(ep))
         );
 
+        // Yield to event loop to allow health checks to be processed
+        await new Promise(resolve => setImmediate(resolve));
+
         // Merge all pods (dedupe by pubkey)
         const podsMap = new Map<string, RawPod>();
         let successfulEndpoints = 0;
@@ -318,6 +327,9 @@ async function pollAndEmitActivity(io: SocketIOServer) {
         const enrichResults = await Promise.allSettled(
             nodesToEnrich.map(pod => fetchNodeStats(pod.address || ''))
         );
+
+        // Yield to event loop again after massive parallel enrichment
+        await new Promise(resolve => setImmediate(resolve));
 
         for (let j = 0; j < enrichResults.length; j++) {
             const result = enrichResults[j];
@@ -533,6 +545,26 @@ async function pollAndEmitActivity(io: SocketIOServer) {
 // ============================================================================
 
 const app = express();
+
+// ============================================================================
+// HEALTH ROUTES (PRIME PRIORITY)
+// ============================================================================
+
+// Register health check endpoints FIRST before any other middleware or routes
+app.get('/', (req, res) => {
+    res.json({
+        status: 'ok',
+        service: 'realtime-activity',
+        clients: io.sockets.sockets.size,
+        cachedNodes: previousNodeStates.size,
+        timestamp: new Date().toISOString()
+    });
+});
+
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 const server = http.createServer(app);
 
 const io = new SocketIOServer(server, {
@@ -571,9 +603,18 @@ server.listen(PORT, () => {
     console.log(`[Realtime] 🚀 Server running on port ${PORT}`);
     console.log(`[Realtime] 📡 Polling every ${POLL_INTERVAL_MS / 1000}s`);
 
-    // Start polling after 3 seconds
-    setTimeout(() => pollAndEmitActivity(io), 3000);
+    // Recursive timeout pattern instead of setInterval (to prevent accumulation)
+    const runPoll = async () => {
+        try {
+            await pollAndEmitActivity(io);
+        } catch (err) {
+            console.error('[Realtime] Polling error:', err);
+        } finally {
+            // Schedule next poll only AFTER current one completes
+            setTimeout(runPoll, POLL_INTERVAL_MS);
+        }
+    };
 
-    // Poll every 5 seconds
-    setInterval(() => pollAndEmitActivity(io), POLL_INTERVAL_MS);
+    // Initial delay before first poll
+    setTimeout(runPoll, 3000);
 });

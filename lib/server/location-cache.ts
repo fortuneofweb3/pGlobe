@@ -35,7 +35,7 @@ export async function fetchLocationForIP(ip: string): Promise<LocationData | nul
   if (!ip || !ip.match(/^\d+\.\d+\.\d+\.\d+$/)) {
     return null;
   }
-  
+
   // Skip private IP ranges
   const parts = ip.split('.').map(Number);
   if (
@@ -46,7 +46,7 @@ export async function fetchLocationForIP(ip: string): Promise<LocationData | nul
   ) {
     return null;
   }
-  
+
   // Check cache first
   const cached = locationCache.get(ip);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -68,7 +68,7 @@ export async function fetchLocationForIP(ip: string): Promise<LocationData | nul
 
   try {
     requestCount++;
-    
+
     const response = await fetch(
       `http://ip-api.com/json/${ip}?fields=status,message,country,countryCode,city,lat,lon`,
       { signal: AbortSignal.timeout(3000) }
@@ -95,7 +95,7 @@ export async function fetchLocationForIP(ip: string): Promise<LocationData | nul
         timestamp: now,
       });
 
-      console.log(`[Location Cache] ✅ ${ip}: ${data.city}, ${data.country}`);
+      // console.log(`[Location Cache] ✅ ${ip}: ${data.city}, ${data.country}`);
       return locationData;
     } else {
       console.warn(`[Location Cache] ❌ ${ip}: ${data.message || 'failed'}`);
@@ -117,13 +117,13 @@ export async function batchFetchLocations(
   ips: string[]
 ): Promise<Map<string, LocationData>> {
   const results = new Map<string, LocationData>();
-  
+
   console.log(`[Location Cache] Fetching locations for ${ips.length} IPs using batch API...`);
-  
+
   // Filter out invalid/private IPs
   const validIPs = ips.filter(ip => {
     if (!ip || !ip.match(/^\d+\.\d+\.\d+\.\d+$/)) return false;
-    
+
     const parts = ip.split('.').map(Number);
     // Skip private IP ranges
     if (
@@ -134,12 +134,12 @@ export async function batchFetchLocations(
     ) {
       return false;
     }
-    
+
     return true;
   });
-  
-  console.log(`[Location Cache] ${validIPs.length}/${ips.length} IPs are valid for lookup`);
-  
+
+  // console.log(`[Location Cache] ${validIPs.length}/${ips.length} IPs are valid for lookup`);
+
   // Check cache first, only fetch uncached IPs
   const uncachedIPs: string[] = [];
   for (const ip of validIPs) {
@@ -150,30 +150,30 @@ export async function batchFetchLocations(
       uncachedIPs.push(ip);
     }
   }
-  
-  console.log(`[Location Cache] ${results.size} from cache, ${uncachedIPs.length} need fetching`);
-  
+
+  // console.log(`[Location Cache] ${results.size} from cache, ${uncachedIPs.length} need fetching`);
+
   if (uncachedIPs.length === 0) {
     return results;
   }
-  
+
   // Batch API: Can query up to 100 IPs per request
   const BATCH_SIZE = 100;
   const batches = [];
-  
+
   for (let i = 0; i < uncachedIPs.length; i += BATCH_SIZE) {
     batches.push(uncachedIPs.slice(i, i + BATCH_SIZE));
   }
-  
+
   console.log(`[Location Cache] Processing ${batches.length} batch(es) of up to ${BATCH_SIZE} IPs...`);
-  
+
   // Process batches sequentially (respect rate limits)
   for (let i = 0; i < batches.length; i++) {
     const batch = batches[i];
     const batchNumber = i + 1;
-    
-    console.log(`[Location Cache] Batch ${batchNumber}/${batches.length}: Fetching ${batch.length} IPs...`);
-    
+
+    // console.log(`[Location Cache] Batch ${batchNumber}/${batches.length}: Fetching ${batch.length} IPs...`);
+
     try {
       const response = await fetch('http://ip-api.com/batch?fields=status,message,query,country,countryCode,city,lat,lon', {
         method: 'POST',
@@ -181,19 +181,19 @@ export async function batchFetchLocations(
         body: JSON.stringify(batch),
         signal: AbortSignal.timeout(10000), // 10 second timeout for batch
       });
-      
+
       if (!response.ok) {
         console.error(`[Location Cache] Batch ${batchNumber} HTTP error: ${response.status}`);
         continue;
       }
-      
+
       const data = await response.json();
-      
+
       if (!Array.isArray(data)) {
         console.error(`[Location Cache] Batch ${batchNumber} invalid response format`);
         continue;
       }
-      
+
       let successCount = 0;
       data.forEach((result: any) => {
         if (result.status === 'success') {
@@ -204,25 +204,25 @@ export async function batchFetchLocations(
             country: result.country,
             countryCode: result.countryCode,
           };
-          
+
           // Cache the result
           locationCache.set(result.query, {
             data: locationData,
             timestamp: Date.now(),
           });
-          
+
           results.set(result.query, locationData);
           successCount++;
         } else {
           console.warn(`[Location Cache] ❌ ${result.query}: ${result.message || 'failed'}`);
         }
       });
-      
+
       console.log(`[Location Cache] Batch ${batchNumber}/${batches.length}: ${successCount}/${batch.length} succeeded, total: ${results.size}/${validIPs.length}`);
     } catch (error: any) {
       console.error(`[Location Cache] Batch ${batchNumber} error:`, error.message);
     }
-    
+
     // Wait 2 seconds between batches (rate limit safety)
     if (i < batches.length - 1) {
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -240,7 +240,7 @@ export function getCachedLocation(ip: string): LocationData | null {
   if (!ip || !ip.match(/^\d+\.\d+\.\d+\.\d+$/)) {
     return null;
   }
-  
+
   // Skip private IP ranges
   const parts = ip.split('.').map(Number);
   if (
@@ -251,12 +251,12 @@ export function getCachedLocation(ip: string): LocationData | null {
   ) {
     return null;
   }
-  
+
   const cached = locationCache.get(ip);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.data;
   }
-  
+
   return null;
 }
 
@@ -278,14 +278,14 @@ export function getCacheStats() {
 export function cleanCache() {
   const now = Date.now();
   let removed = 0;
-  
+
   for (const [ip, entry] of locationCache.entries()) {
     if (now - entry.timestamp > CACHE_TTL) {
       locationCache.delete(ip);
       removed++;
     }
   }
-  
+
   console.log(`[Location Cache] Cleaned ${removed} expired entries`);
   return removed;
 }
