@@ -50,9 +50,9 @@ const getSocketUrl = () => {
 // Smooth spring config for 60fps - fluid and natural
 const smoothSpring = {
     type: "spring" as const,
-    stiffness: 200,
-    damping: 25,
-    mass: 1,
+    stiffness: 120,
+    damping: 20,
+    mass: 0.8,
 };
 
 // Lighter spring for intensity bars
@@ -226,7 +226,7 @@ function LogItem({ log }: { log: ActivityLog }) {
     );
 }
 
-export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: ActivityLogListProps) {
+export default function ActivityLogList({ pubkey, countryCode, limit = 25 }: ActivityLogListProps) {
     const [logs, setLogs] = useState<ActivityLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -259,7 +259,24 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                 if (append) {
                     setLogs(prev => [...prev, ...data.logs]);
                 } else {
-                    setLogs(data.logs);
+                    // Initial load: 0% immediate, all to buffer for orchestrated drip
+                    initialBatchSizeRef.current = data.logs.length;
+                    logsProcessedRef.current = 0;
+                    setLogs([]); // Start empty
+
+                    // Push all results into the buffer
+                    data.logs.forEach((log: ActivityLog) => {
+                        const logWithId = {
+                            ...log,
+                            _id: log._id || `${log.pubkey}-${log.type}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                            timestamp: log.timestamp || new Date().toISOString(),
+                        };
+                        bufferRef.current.push(logWithId);
+                    });
+
+                    if (data.logs.length > 0) {
+                        processBuffer();
+                    }
                 }
                 setHasMore(data.logs.length === limit);
             }
@@ -274,6 +291,10 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
     const bufferRef = useRef<ActivityLog[]>([]);
     const processingRef = useRef(false);
     const isVisibleRef = useRef(true);
+    const cycleRef = useRef(0);
+    const initialBatchSizeRef = useRef(0);
+    const logsProcessedRef = useRef(0);
+    const isSprintModeRef = useRef(false);
 
     useEffect(() => {
         const handleVisibilityChange = () => {
@@ -307,15 +328,17 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         const processOne = () => {
             if (!isVisibleRef.current || bufferRef.current.length === 0) {
                 processingRef.current = false;
-                bufferRef.current = [];
+                isSprintModeRef.current = false;
                 return;
             }
 
-            if (bufferRef.current.length > 60) {
-                bufferRef.current = bufferRef.current.slice(-30);
+            // Relaxed trimming for performance safety
+            if (bufferRef.current.length > 1000) {
+                bufferRef.current = bufferRef.current.slice(-500);
             }
 
             const logToAdd = bufferRef.current.shift()!;
+            logsProcessedRef.current += 1;
 
             setLogs((prev: ActivityLog[]) => {
                 const isDuplicate = prev.some((l: ActivityLog) => {
@@ -324,14 +347,41 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                 });
 
                 if (isDuplicate) return prev;
-                return [logToAdd, ...prev].slice(0, 100);
+                return [logToAdd, ...prev].slice(0, 200);
             });
 
-            const bufferSize = Math.max(bufferRef.current.length + 1, 1);
-            const baseDelay = 5000 / (bufferSize * 0.9);
-            const jitter = 0.7 + Math.random() * 0.6;
-            let delay = baseDelay * jitter;
-            delay = Math.min(600, Math.max(30, delay));
+            // Calculate Delay
+            let delay = 300;
+            const bufferSize = bufferRef.current.length;
+            const initial50Percent = Math.floor(initialBatchSizeRef.current / 2);
+
+            // 1. Sprint Mode (High speed flush for live events)
+            if (isSprintModeRef.current && bufferSize > 0) {
+                delay = 40 + Math.random() * 40;
+            }
+            // 2. Startup Drip Phase (First 50% over ~6 seconds)
+            else if (logsProcessedRef.current <= initial50Percent && initialBatchSizeRef.current > 0) {
+                // If we want 12 logs over 6 seconds, average is 500ms
+                // Vary between 250ms and 750ms
+                delay = 250 + (Math.random() * 500);
+            }
+            // 3. Rhythmic Normal Phase
+            else {
+                cycleRef.current = (cycleRef.current + 1) % 10;
+                const isFastStep = cycleRef.current < 7; // 70% fast steps
+
+                let baseDelay = isFastStep ? 180 : 900;
+
+                // Adjust based on buffer size
+                if (bufferSize > 25) baseDelay = 60;
+                else if (bufferSize > 10) baseDelay = 120;
+
+                const jitter = 0.8 + Math.random() * 0.4;
+                delay = baseDelay * jitter;
+            }
+
+            // Clamp delay for sanity
+            delay = Math.min(1500, Math.max(30, delay));
 
             setTimeout(processOne, delay);
         };
@@ -377,6 +427,11 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
             if (newLog.type === 'streams_active') return;
             if (pubkey && newLog.pubkey !== pubkey) return;
             if (countryCode && newLog.countryCode !== countryCode) return;
+
+            // Live event arrived: if we have a backlog of historical logs, trigger Sprint Mode
+            if (bufferRef.current.length > 5) {
+                isSprintModeRef.current = true;
+            }
 
             const logWithId = {
                 ...newLog,
