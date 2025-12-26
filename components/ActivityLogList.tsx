@@ -158,7 +158,7 @@ function LogItem({ log }: { log: ActivityLog }) {
     }, [log.pubkey]);
 
     return (
-        <Link href={`/ nodes / ${log.pubkey} `} className="block group">
+        <Link href={`/nodes/${log.pubkey}`} className="block group">
             <motion.div
                 layout="position"
                 initial={{ opacity: 0, y: -8 }}
@@ -241,7 +241,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
             query.set('limit', limit.toString());
             query.set('skip', skip.toString());
 
-            const response = await fetch(`/ api / activity - logs ? ${query.toString()} `);
+            const response = await fetch(`/api/activity-logs?${query.toString()}`);
             const data = await response.json();
 
             if (data.logs) {
@@ -362,7 +362,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
 
             const logWithId = {
                 ...newLog,
-                _id: newLog._id || `${newLog.pubkey} -${newLog.type} -${Date.now()} -${Math.random().toString(36).slice(2)} `,
+                _id: newLog._id || `${newLog.pubkey}-${newLog.type}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
                 timestamp: newLog.timestamp || new Date().toISOString(),
             };
 
