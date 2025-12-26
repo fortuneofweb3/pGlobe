@@ -104,6 +104,35 @@ function LogItem({ log }: { log: ActivityLog }) {
         );
     };
 
+    // Format message - for packets_earned, use data to show received/sent format
+    const getFormattedMessage = () => {
+        const data = log.data as any;
+
+        // For packet events, format from data to show received/sent
+        if (log.type === 'packets_earned' && data) {
+            const address = log.message?.split(' ')[0] || 'Node';
+            const rxEarned = data.rxEarned || 0;
+            const txEarned = data.txEarned || 0;
+
+            const parts: string[] = [];
+            if (rxEarned > 0) parts.push(`received ${rxEarned.toLocaleString()}`);
+            if (txEarned > 0) parts.push(`sent ${txEarned.toLocaleString()}`);
+
+            if (parts.length > 0) {
+                return `${address} ${parts.join(' / ')} packets`;
+            }
+        }
+
+        // For credits_lost, format properly
+        if (log.type === 'credits_lost' && data?.lost) {
+            const address = log.message?.split(' ')[0] || 'Node';
+            return `${address} lost ${data.lost.toFixed(2)} credits`;
+        }
+
+        // Default: use the stored message
+        return log.message;
+    };
+
     const truncatedPubkey = useMemo(() => {
         if (!log.pubkey) return '';
         return `${log.pubkey.slice(0, 6)}...${log.pubkey.slice(-4)}`;
@@ -130,7 +159,7 @@ function LogItem({ log }: { log: ActivityLog }) {
                         {/* Message and timestamp */}
                         <div className="flex items-start justify-between gap-2 mb-1 sm:mb-2">
                             <p className="text-xs sm:text-sm text-zinc-200 font-semibold leading-relaxed line-clamp-2">
-                                {log.message}
+                                {getFormattedMessage()}
                             </p>
                             <span className="text-[8px] sm:text-[9px] text-zinc-500 whitespace-nowrap font-bold uppercase tracking-wider bg-zinc-900/50 px-1.5 sm:px-2 py-0.5 rounded border border-zinc-800/50 flex-shrink-0">
                                 {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
