@@ -353,31 +353,35 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 25 }: Act
             // Calculate Delay
             let delay = 300;
             const bufferSize = bufferRef.current.length;
-            const initial50Percent = Math.floor(initialBatchSizeRef.current / 2);
+            const initialHalf = Math.floor(initialBatchSizeRef.current / 2);
 
-            // 1. Sprint Mode (High speed flush for live events)
-            if (isSprintModeRef.current && bufferSize > 0) {
-                delay = 40 + Math.random() * 40;
+            // 1. Startup Drip Phase (First 50% over ~6 seconds)
+            // WE PROTECT THIS PHASE - it cannot be overridden by Sprint Mode
+            if (logsProcessedRef.current <= initialHalf && initialBatchSizeRef.current > 0) {
+                // If we have ~12 logs (50% of 25), average delay is ~500ms
+                // We use a slightly wider jitter to make it feel organic but average 500ms
+                delay = 350 + (Math.random() * 300);
             }
-            // 2. Startup Drip Phase (First 50% over ~6 seconds)
-            else if (logsProcessedRef.current <= initial50Percent && initialBatchSizeRef.current > 0) {
-                // If we want 12 logs over 6 seconds, average is 500ms
-                // Vary between 250ms and 750ms
-                delay = 250 + (Math.random() * 500);
+            // 2. Sprint Mode (High speed flush for catch-up)
+            // Only kicks in AFTER the startup phase
+            else if (isSprintModeRef.current && bufferSize > 0) {
+                delay = 50 + Math.random() * 50;
             }
             // 3. Rhythmic Normal Phase
             else {
                 cycleRef.current = (cycleRef.current + 1) % 10;
-                const isFastStep = cycleRef.current < 7; // 70% fast steps
 
-                let baseDelay = isFastStep ? 180 : 900;
+                // Orchestrate a "Pattern": Fast, Fast, Medium, Fast, Slow
+                const pattern = [150, 180, 400, 150, 1200, 150, 200, 500, 150, 1500];
+                const baseDelay = pattern[cycleRef.current];
 
-                // Adjust based on buffer size
-                if (bufferSize > 25) baseDelay = 60;
-                else if (bufferSize > 10) baseDelay = 120;
+                // Adjust based on buffer size (if we are lagging but not sprinting)
+                let multiplier = 1;
+                if (bufferSize > 25) multiplier = 0.5;
+                else if (bufferSize > 10) multiplier = 0.8;
 
-                const jitter = 0.8 + Math.random() * 0.4;
-                delay = baseDelay * jitter;
+                const jitter = 0.9 + Math.random() * 0.2;
+                delay = baseDelay * multiplier * jitter;
             }
 
             // Clamp delay for sanity
