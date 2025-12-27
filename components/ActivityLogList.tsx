@@ -313,9 +313,9 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
             const now = Date.now();
             const elapsed = now - batchStartTimeRef.current;
 
-            // 90% in first 7 seconds logic
+            // 70% in first 7 seconds logic - Faster initial burst
             if (elapsed < 7000) {
-                const targetToProcess = Math.ceil(logsInBatchRef.current * 0.9);
+                const targetToProcess = Math.ceil(logsInBatchRef.current * 0.7);
 
                 if (logsProcessedInBatchRef.current < targetToProcess) {
                     const logToAdd = bufferRef.current.shift()!;
@@ -329,10 +329,12 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                     });
                     logsProcessedInBatchRef.current++;
 
-                    // Calculate delay to spread remaining 90% across remaining time in 7s window
-                    const itemsLeftIn90 = targetToProcess - logsProcessedInBatchRef.current;
+                    // Calculate delay with more jitter for continuous variety
+                    const itemsLeftIn70 = targetToProcess - logsProcessedInBatchRef.current;
                     const timeLeft = 7000 - elapsed;
-                    const delay = itemsLeftIn90 > 0 ? Math.max(50, Math.min(timeLeft / (itemsLeftIn90 + 1), 1000)) : 100;
+                    const baseDelay = itemsLeftIn70 > 0 ? timeLeft / (itemsLeftIn70 + 1) : 100;
+                    const jitter = 0.4 + Math.random() * 1.2;
+                    const delay = Math.max(30, Math.min(baseDelay * jitter, 800));
 
                     setTimeout(processOne, delay);
                 } else {
@@ -355,8 +357,8 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                     });
                     logsProcessedInBatchRef.current++;
 
-                    // Random varied delay for the remaining 10%
-                    const delay = 500 + Math.random() * 5000;
+                    // Varied delay for the remaining 30%
+                    const delay = 300 + Math.random() * 4000;
                     setTimeout(processOne, delay);
                 } else {
                     processingRef.current = false;

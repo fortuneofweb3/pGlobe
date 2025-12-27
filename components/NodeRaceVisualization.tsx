@@ -266,18 +266,20 @@ export default function NodeRaceVisualization() {
             const now = Date.now();
             const elapsed = now - batchStartTimeRef.current;
 
-            // 90% in first 7 seconds logic
+            // 70% in first 7 seconds logic
             if (elapsed < 7000) {
-                const targetToProcess = Math.ceil(logsInBatchRef.current * 0.9);
+                const targetToProcess = Math.ceil(logsInBatchRef.current * 0.7);
 
                 if (logsProcessedInBatchRef.current < targetToProcess) {
                     const log = bufferRef.current.shift()!;
                     updateNodeMetrics(log);
                     logsProcessedInBatchRef.current++;
 
-                    const itemsLeftIn90 = targetToProcess - logsProcessedInBatchRef.current;
+                    const itemsLeftIn70 = targetToProcess - logsProcessedInBatchRef.current;
                     const timeLeft = 7000 - elapsed;
-                    const delay = itemsLeftIn90 > 0 ? Math.max(50, Math.min(timeLeft / (itemsLeftIn90 + 1), 1000)) : 100;
+                    const baseDelay = itemsLeftIn70 > 0 ? timeLeft / (itemsLeftIn70 + 1) : 100;
+                    const jitter = 0.4 + Math.random() * 1.2;
+                    const delay = Math.max(30, Math.min(baseDelay * jitter, 800));
 
                     setTimeout(processOne, delay);
                 } else {
@@ -292,7 +294,7 @@ export default function NodeRaceVisualization() {
                     updateNodeMetrics(log);
                     logsProcessedInBatchRef.current++;
 
-                    const delay = 500 + Math.random() * 5000;
+                    const delay = 300 + Math.random() * 4000;
                     setTimeout(processOne, delay);
                 } else {
                     processingRef.current = false;
