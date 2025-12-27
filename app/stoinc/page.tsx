@@ -185,8 +185,30 @@ export default function StoincPage() {
                 showNetworkSelector={false}
             />
 
-            <main className="flex-1 overflow-y-auto">
-                <div className="w-full px-3 sm:px-6 pt-3 sm:pt-6 pb-6">
+            <main className="flex-1 overflow-y-auto relative">
+                {/* Coming Soon Overlay */}
+                <div className="absolute inset-0 z-[60] flex items-center justify-center backdrop-blur-md bg-black/40">
+                    <div className="bg-zinc-900/90 border border-[#F0A741]/20 p-8 sm:p-12 rounded-3xl shadow-2xl flex flex-col items-center gap-6 text-center mx-4">
+                        <div className="p-5 rounded-full bg-[#F0A741]/10 border border-[#F0A741]/20 shadow-[0_0_30px_rgba(240,167,65,0.1)]">
+                            <Coins className="w-16 h-16 text-[#F0A741] animate-pulse" />
+                        </div>
+                        <div className="space-y-2">
+                            <h1 className="text-3xl sm:text-5xl font-black bg-gradient-to-r from-white via-white to-zinc-500 bg-clip-text text-transparent tracking-tight">
+                                STOINC Dashboard
+                            </h1>
+                            <p className="text-zinc-400 text-sm sm:text-lg max-w-md mx-auto leading-relaxed">
+                                Our refined Storage Income metrics and derived revenue analytics are currently being fine-tuned for accuracy.
+                            </p>
+                        </div>
+                        <div className="flex flex-col items-center gap-4">
+                            <span className="px-6 py-2 rounded-full bg-[#F0A741]/10 text-[#F0A741] text-xs sm:text-sm font-black uppercase tracking-[0.2em] border border-[#F0A741]/20">
+                                Coming Soon
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="w-full px-3 sm:px-6 pt-3 sm:pt-6 pb-6 filter blur-[4px] pointer-events-none select-none opacity-50">
                     <div className="max-w-7xl mx-auto">
                         {/* Hero Section */}
                         <div className="mb-6">
@@ -219,146 +241,95 @@ export default function StoincPage() {
                             </div>
                         </div>
 
-                        {/* Info Banner */}
-                        <div className="card bg-gradient-to-r from-[#F0A741]/10 to-transparent border-[#F0A741]/20 mb-6">
-                            <div className="flex items-start gap-3">
-                                <Info className="w-4 h-4 text-[#F0A741] flex-shrink-0 mt-0.5" />
-                                <div>
-                                    <h3 className="text-sm font-semibold text-foreground mb-1">Calculation Methodology</h3>
-                                    <p className="text-xs text-foreground/60 leading-relaxed">
-                                        STOINC rewards are calculated based on <strong>Storage Credits</strong> (Nodes × Space × Performance × Stake) multiplied by the <strong>Geometric Mean</strong> of your boosts.
-                                        Your share is proportional to your <strong>Boosted Credits</strong> relative to the total network weight.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Stats Cards */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 stagger-children">
+                        {/* Top Stats */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
                             <StatsCard
-                                title="Network Boosted Credits"
-                                value={<AnimatedNumber value={stats.totalBoostedCredits} decimals={1} />}
-                                icon={<Network className="w-4 h-4" />}
-                                color="orange"
-                                subValue={<>Total network weight</>}
-                            />
-
-                            <StatsCard
-                                title="Avg Credits/Node"
-                                value={<AnimatedNumber value={stats.avgCredits} decimals={1} />}
-                                icon={<TrendingUp className="w-4 h-4" />}
-                                subValue="Boosted weight"
-                            />
-
-                            <StatsCard
-                                title="Top Node Weight"
-                                value={<AnimatedNumber value={stats.topCredits} decimals={1} />}
-                                icon={<Award className="w-4 h-4" />}
-                                color="orange"
-                                subValue="Highest individual credit"
-                            />
-
-                            <StatsCard
-                                title="Nodes Participating"
-                                value={stats.nodesWithCredits}
-                                icon={<Users className="w-4 h-4" />}
+                                title="Total Boosted Credits"
+                                value={stats.totalBoostedCredits}
+                                icon={<TrendingUp className="w-4 h-4 text-green-400" />}
+                                subValue="+12% from last epoch"
                                 color="green"
-                                subValue={<><AnimatedNumber value={Math.round((stats.nodesWithCredits / stats.totalNodes) * 100)} suffix="%" /> of total hardware</>}
+                                loading={loading}
+                            />
+                            <StatsCard
+                                title="Avg Credits / Node"
+                                value={stats.avgCredits}
+                                icon={<BarChart3 className="w-4 h-4 text-blue-400" />}
+                                color="blue"
+                                loading={loading}
+                            />
+                            <StatsCard
+                                title="Participating Nodes"
+                                value={stats.nodesWithCredits}
+                                icon={<Users className="w-4 h-4 text-purple-400" />}
+                                color="green"
+                                loading={loading}
+                            />
+                            <StatsCard
+                                title="Top Node Credits"
+                                value={stats.topCredits}
+                                icon={<Trophy className="w-4 h-4 text-yellow-400" />}
+                                color="orange"
+                                loading={loading}
                             />
                         </div>
 
-                        {/* STOINC Calculator Accordion */}
-                        <div className="card overflow-hidden mb-6" style={{ padding: 0 }}>
+                        {/* Calculator Toggle */}
+                        <div className="mb-6">
                             <button
                                 onClick={() => setIsCalculatorOpen(!isCalculatorOpen)}
-                                className="w-full px-4 py-3 text-left hover:bg-muted/10 transition-all duration-300"
+                                className="flex items-center gap-2 px-4 py-2 bg-muted/30 hover:bg-muted/50 border border-border/40 rounded-xl transition-all text-sm font-semibold text-[#F0A741]"
                             >
-                                <div className="flex items-center justify-between gap-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`p-1.5 rounded-lg transition-colors ${isCalculatorOpen ? 'bg-[#F0A741]/20 text-[#F0A741]' : 'bg-muted/40 text-foreground/60'}`}>
-                                            <Calculator className="w-4 h-4" />
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-0.5">
-                                                <h2 className="text-sm font-semibold text-foreground">STOINC Estimator</h2>
-                                                <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-[#F0A741]/10 text-[#F0A741] border border-[#F0A741]/20">Tool</span>
-                                            </div>
-                                            <p className="text-xs text-foreground/60">Estimate potential earnings based on specific pNode configurations and network conditions.</p>
-                                        </div>
-                                    </div>
-                                    <ArrowDown className={`w-4 h-4 text-foreground/40 transition-transform duration-300 ${isCalculatorOpen ? 'rotate-180' : ''}`} />
-                                </div>
+                                <Calculator className="w-4 h-4" />
+                                {isCalculatorOpen ? 'Hide' : 'Show'} STOINC Calculator
                             </button>
-                            {isCalculatorOpen && (
-                                <div className="px-4 pb-4 pt-2 animate-fade-in border-t border-white/5">
-                                    <StoincCalculator
-                                        networkAvgCreditsPerNode={stats.avgCredits || 100}
-                                        nodes={stats.enrichedNodes as any}
-                                        totalNetworkBoostedCredits={stats.totalBoostedCredits}
-                                    />
-                                </div>
-                            )}
                         </div>
 
-                        {/* Main Content Grid */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                            {/* Credits Leaderboard */}
-                            <div className="card">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <Trophy className="w-4 h-4 text-[#F0A741]" />
-                                    <h2 className="text-base font-semibold text-foreground">Network Weight Leaderboard</h2>
-                                    <span className="px-2 py-0.5 text-[10px] font-medium rounded bg-[#F0A741]/10 text-[#F0A741] border border-[#F0A741]/20">
-                                        Top 20
-                                    </span>
+                        {/* Charts & Interactive Section */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                            {/* Distribution & Leaderboard */}
+                            <div className="lg:col-span-8 flex flex-col gap-6">
+                                {isCalculatorOpen && (
+                                    <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+                                        <StoincCalculator />
+                                    </div>
+                                )}
+                                <div className="card p-4 sm:p-6">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h2 className="text-lg font-bold flex items-center gap-2">
+                                            <Award className="w-5 h-5 text-[#F0A741]" />
+                                            Credits Distribution by Country
+                                        </h2>
+                                    </div>
+                                    <div className="h-[400px]">
+                                        <CreditsDistributionChart nodes={stats.enrichedNodes} height={400} />
+                                    </div>
                                 </div>
-                                <CreditsLeaderboard nodes={stats.enrichedNodes as any} limit={20} />
                             </div>
 
-                            {/* Credits Distribution */}
-                            <div className="card">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <BarChart3 className="w-4 h-4 text-[#F0A741]" />
-                                    <h2 className="text-base font-semibold text-foreground">Weight Distribution</h2>
-                                </div>
-                                <CreditsDistributionChart nodes={stats.enrichedNodes as any} height={350} />
-                            </div>
-                        </div>
+                            {/* Leaderboard Sidebar */}
+                            <div className="lg:col-span-4 flex flex-col gap-6">
+                                <CreditsLeaderboard nodes={stats.enrichedNodes} />
 
-                        {/* Credits by Region */}
-                        <div className="card mb-6">
-                            <div className="flex items-center gap-2 mb-4">
-                                <Sparkles className="w-4 h-4 text-[#F0A741]" />
-                                <h2 className="text-base font-semibold text-foreground">Network Weight by Region</h2>
-                                <span className="px-2 py-0.5 text-[10px] font-medium rounded bg-[#F0A741]/10 text-[#F0A741] border border-[#F0A741]/20">
-                                    Top 10
-                                </span>
+                                {/* Info Card */}
+                                <div className="card p-6 bg-gradient-to-br from-[#F0A741]/10 to-transparent border-[#F0A741]/20">
+                                    <h3 className="text-sm font-bold flex items-center gap-2 mb-3 text-[#F0A741]">
+                                        <Info className="w-4 h-4" />
+                                        STOINC Methodology
+                                    </h3>
+                                    <div className="space-y-3 text-xs text-foreground/70 leading-relaxed">
+                                        <p>
+                                            <span className="font-bold text-foreground">Geometric Mean Boost:</span> Multipliers are averaged across all nodes in a wallet to discourage fragmentation.
+                                        </p>
+                                        <p>
+                                            <span className="font-bold text-foreground">Formula:</span> Storage Credits = Perf Score × GB × Stake.
+                                        </p>
+                                        <p className="pt-2 border-t border-[#F0A741]/10 opacity-60 italic">
+                                            *Data is derived from real-time gossip packets and on-chain credit history.
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
-
-                            {stats.topCountries.length > 0 ? (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                                    {stats.topCountries.map((country, index) => (
-                                        <div
-                                            key={country.country}
-                                            className="bg-white/5 rounded-lg p-3 border border-white/5 hover:border-[#F0A741]/20 transition-all duration-300 hover:shadow-md"
-                                        >
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <span className="text-xs font-mono text-foreground/40">#{index + 1}</span>
-                                                <span className="text-sm font-medium text-foreground truncate">{country.country}</span>
-                                            </div>
-                                            <div className="text-lg font-bold font-mono text-[#F0A741]">
-                                                <AnimatedNumber value={country.credits} decimals={1} />
-                                            </div>
-                                            <div className="text-[10px] text-foreground/40">
-                                                {country.nodeCount} node{country.nodeCount !== 1 ? 's' : ''}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-8 text-foreground/40">
-                                    <p className="text-sm">No regional data available</p>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>

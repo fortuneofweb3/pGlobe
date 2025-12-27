@@ -37,7 +37,7 @@ const getSocketUrl = () => {
             return `http://${hostname}:3002`;
         }
     }
-    return REALTIME_SERVER_URL || RENDER_API_URL;
+    return REALTIME_SERVER_URL || 'https://pglobe-logs.onrender.com' || RENDER_API_URL;
 };
 
 // Smooth spring config for 60fps - fluid and natural
@@ -306,8 +306,8 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                 return;
             }
 
-            if (bufferRef.current.length > 60) {
-                bufferRef.current = bufferRef.current.slice(-30);
+            if (bufferRef.current.length > 20) {
+                bufferRef.current = bufferRef.current.slice(-20);
             }
 
             const logToAdd = bufferRef.current.shift()!;

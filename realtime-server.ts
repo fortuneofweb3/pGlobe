@@ -138,18 +138,30 @@ function httpPost(url: string, data: object, timeoutMs: number): Promise<Record<
                 res.on('data', (chunk: Buffer) => responseData += chunk.toString());
                 res.on('end', () => {
                     try {
-                        resolve(JSON.parse(responseData));
+                        const parsed = JSON.parse(responseData);
+                        resolve(parsed);
                     } catch {
+                        // Log first 100 chars of malformed response
+                        if (responseData.length > 0) {
+                            // console.warn(`[HTTP] Malformed JSON from ${url}:`, responseData.slice(0, 100));
+                        }
                         resolve(null);
                     }
                 });
             });
 
-            req.on('error', () => resolve(null));
-            req.on('timeout', () => { req.destroy(); resolve(null); });
+            req.on('error', (err) => {
+                // console.error(`[HTTP] Connection error for ${url}:`, err.message);
+                resolve(null);
+            });
+            req.on('timeout', () => {
+                req.destroy();
+                resolve(null);
+            });
             req.write(postData);
             req.end();
-        } catch {
+        } catch (err) {
+            // console.error(`[HTTP] Setup error for ${url}:`, err);
             resolve(null);
         }
     });
@@ -224,7 +236,7 @@ async function fetchNodeStats(address: string): Promise<{ packets_received?: num
     const url = `http://${ip}:6000/rpc`;
     const payload = { jsonrpc: '2.0', method: 'get-stats', id: 1, params: [] };
 
-    const result = await httpPost(url, payload, 1500); // 1.5 second timeout
+    const result = await httpPost(url, payload, 3000); // 3 second timeout (increased for reliability)
     return result?.result as Record<string, number> | null;
 }
 

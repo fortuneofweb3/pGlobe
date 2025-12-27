@@ -54,7 +54,7 @@ const getSocketUrl = () => {
             return `http://${hostname}:3002`;
         }
     }
-    return REALTIME_SERVER_URL || RENDER_API_URL;
+    return REALTIME_SERVER_URL || 'https://pglobe-logs.onrender.com' || RENDER_API_URL;
 };
 
 // Smooth spring config for 60fps - fluid and natural
