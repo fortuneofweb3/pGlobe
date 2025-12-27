@@ -362,7 +362,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         });
 
         socket.on('activity', (newLog: ActivityLog) => {
-            if (newLog.type === 'streams_active') return;
+
             if (pubkey && newLog.pubkey !== pubkey) return;
             if (countryCode && newLog.countryCode !== countryCode) return;
 

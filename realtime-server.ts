@@ -143,7 +143,7 @@ function httpPost(url: string, data: object, timeoutMs: number): Promise<Record<
                     } catch {
                         // Log first 100 chars of malformed response
                         if (responseData.length > 0) {
-                            // console.warn(`[HTTP] Malformed JSON from ${url}:`, responseData.slice(0, 100));
+                            console.warn(`[HTTP] Malformed JSON from ${url}:`, responseData.slice(0, 100));
                         }
                         resolve(null);
                     }
@@ -151,7 +151,7 @@ function httpPost(url: string, data: object, timeoutMs: number): Promise<Record<
             });
 
             req.on('error', (err) => {
-                // console.error(`[HTTP] Connection error for ${url}:`, err.message);
+                console.error(`[HTTP] Connection error for ${url}:`, err.message);
                 resolve(null);
             });
             req.on('timeout', () => {
@@ -232,12 +232,20 @@ async function fetchNodeStats(address: string): Promise<{ packets_received?: num
     const ip = address.split(':')[0];
     if (!ip) return null;
 
-    // Only try port 6000 with short timeout for speed
-    const url = `http://${ip}:6000/rpc`;
-    const payload = { jsonrpc: '2.0', method: 'get-stats', id: 1, params: [] };
+    // Try port 6000 and 9000 with short timeouts for speed
+    const ports = [6000, 9000];
 
-    const result = await httpPost(url, payload, 3000); // 3 second timeout (increased for reliability)
-    return result?.result as Record<string, number> | null;
+    for (const port of ports) {
+        const url = `http://${ip}:${port}/rpc`;
+        const payload = { jsonrpc: '2.0', method: 'get-stats', id: 1, params: [] };
+
+        const result = await httpPost(url, payload, 2000); // 2 second timeout per port
+        if (result?.result) {
+            return result.result as Record<string, number>;
+        }
+    }
+
+    return null;
 }
 
 // ============================================================================
@@ -264,7 +272,7 @@ async function pollAndEmitActivity(io: SocketIOServer) {
             ...DIRECT_PRPC_ENDPOINTS.map(e => `http://${e}/rpc`)
         ];
 
-        //        console.log(`[Realtime] 📊 Querying ${allEndpoints.length} endpoints...`);
+        console.log(`[Realtime] 📊 Querying ${allEndpoints.length} endpoints...`);
 
         // Fetch from all endpoints in parallel
         const results = await Promise.allSettled(
@@ -354,7 +362,7 @@ async function pollAndEmitActivity(io: SocketIOServer) {
             }
         }
 
-        //        console.log(`[Realtime] 📊 Enriched ${enrichedStats.size}/${nodesToEnrich.length} nodes in ${Date.now() - enrichStart}ms`);
+        console.log(`[Realtime] 📊 Enriched ${enrichedStats.size}/${nodesToEnrich.length} nodes in ${Date.now() - enrichStart}ms`);
 
         // Collect all online nodes for status updates
         const onlineNodes: Array<{ pubkey: string; address: string; location?: string; streams: number; packets: number; credits: number }> = [];
@@ -433,6 +441,7 @@ async function pollAndEmitActivity(io: SocketIOServer) {
                     countryCode: pod.countryCode || pod.country || undefined,
                     message: `${address} processed ${packetDiff.toLocaleString()} packets`,
                     data: {
+                        packets: currentRx + currentTx, // Component expects 'packets' for live score
                         rxEarned: currentRx - prev.packetsReceived,
                         txEarned: currentTx - prev.packetsSent,
                         totalRx: currentRx,
@@ -454,6 +463,7 @@ async function pollAndEmitActivity(io: SocketIOServer) {
                     countryCode: pod.countryCode || pod.country || undefined,
                     message: `${address} earned ${creditDiff.toFixed(2)} credits`,
                     data: {
+                        credits: currentCredits, // Component expects 'credits' for live score
                         earned: creditDiff,
                         total: currentCredits,
                     },
@@ -472,6 +482,7 @@ async function pollAndEmitActivity(io: SocketIOServer) {
                     countryCode: pod.countryCode || pod.country || undefined,
                     message: `${address} has ${currentStreams} active streams`,
                     data: {
+                        streams: currentStreams, // Component expects 'streams' key
                         total: currentStreams,
                         previous: prev.activeStreams,
                     },
@@ -544,7 +555,7 @@ async function pollAndEmitActivity(io: SocketIOServer) {
         }
 
         const elapsed = Date.now() - startTime;
-        //        console.log(`[Realtime] 📈 ${pods.length} pods, ${emittedCount} events → ${connectedClients} clients (${elapsed}ms)`);
+        console.log(`[Realtime] 📈 ${pods.length} pods, ${emittedCount} events → ${connectedClients} clients (${elapsed}ms)`);
 
     } catch (err) {
         const error = err as Error;
