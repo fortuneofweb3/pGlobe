@@ -367,12 +367,13 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 25 }: Act
             } else {
                 // Default rhythmic live feed
                 cycleRef.current = (cycleRef.current + 1) % 10;
-                const pattern = [150, 180, 400, 150, 1200, 150, 200, 500, 150, 1500];
+                // Faster, more varied rhythmic pattern for live feed
+                const pattern = [80, 120, 200, 80, 300, 80, 150, 250, 80, 400];
                 const base = pattern[cycleRef.current];
-                let multiplier = 1;
-                if (bufferSize > 25) multiplier = 0.5;
-                else if (bufferSize > 10) multiplier = 0.8;
-                delay = base * multiplier * (0.9 + Math.random() * 0.2);
+                let speedFactor = 1;
+                if (bufferSize > 25) speedFactor = 0.7; // slightly faster when many items
+                else if (bufferSize > 10) speedFactor = 0.9; // moderate speed
+                delay = base * speedFactor * (0.9 + Math.random() * 0.2);
             }
 
             // Clamp delay for sanity
