@@ -399,19 +399,22 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
           <table className="min-w-full border-collapse m-0 border-spacing-0" style={{ minWidth: '800px', borderCollapse: 'collapse', margin: 0, padding: 0 }}>
             <colgroup>
               <col className="w-[8%]" />
-              <col className="w-[10%]" />
+              <col className="w-[4%]" />
+              <col className="w-[6%]" />
+              <col className="w-[6%]" />
+              <col className="w-[7%]" />
+              <col className="w-[5%]" />
+              <col className="w-[6%]" />
+              <col className="w-[7%]" />
+              <col className="w-[7%]" />
+              <col className="w-[7%]" />
+              <col className="w-[6%]" />
               <col className="w-[6%]" />
               <col className="w-[6%]" />
               <col className="w-[7%]" />
               <col className="w-[8%]" />
               <col className="w-[8%]" />
-              <col className="w-[7%]" />
               <col className="w-[6%]" />
-              <col className="w-[6%]" />
-              <col className="w-[7%]" />
-              <col className="w-[6%]" />
-              <col className="w-[6%]" />
-              <col className="w-[9%]" />
             </colgroup>
             <thead className="sticky top-0 z-10 bg-muted border-b border-border/60" style={{ margin: 0, padding: 0 }}>
               <tr>
@@ -900,12 +903,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           return renderEmptyCell();
                         })()}
                       </td>
-                      <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-right">
-                        {/* XAND Stake cell hidden */}
-                      </td>
-                      <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-right">
-                        {/* Boost cell hidden */}
-                      </td>
+                      {/* XAND Stake and Boost columns hidden - no placeholders needed */}
                       <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-right">
                         {node.credits !== undefined && node.credits !== null ? (
                           <span className="text-xs sm:text-sm font-mono text-foreground/80">

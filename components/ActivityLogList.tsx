@@ -197,7 +197,7 @@ function LogItem({ log }: { log: ActivityLog }) {
                             <div className="flex items-center gap-1 bg-black/40 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-zinc-800/80">
                                 <Globe className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-zinc-500" />
                                 <span className="font-mono text-zinc-400">
-                                    {log.address || truncatedPubkey}
+                                    {truncatedPubkey || log.address}
                                 </span>
                             </div>
 

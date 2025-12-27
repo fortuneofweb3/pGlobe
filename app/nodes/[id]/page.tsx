@@ -1532,7 +1532,7 @@ function NodeDetailContent() {
                 </div>
 
                 {/* Private Node Info Grid - Well-arranged layout */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                   {/* Basic Information Card */}
                   <div className="card animate-slide-in-left" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
                     <div className="flex items-center gap-2 mb-4">
@@ -1563,33 +1563,7 @@ function NodeDetailContent() {
                     </div>
                   </div>
 
-                  {/* STOINC & Rewards Card */}
-                  <div className="card animate-scale-in" style={{ animationDelay: '0.23s', opacity: 0, animationFillMode: 'forwards' }}>
-                    <div className="flex items-center gap-2 mb-4">
-                      <TrendingUp className="w-4 h-4 text-blue-400" />
-                      <h3 className="text-sm font-semibold text-foreground">STOINC & Rewards</h3>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                        <span className="text-sm text-foreground/80">XAND Stake</span>
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-[#F0A741]">
-                            {node.xandStake !== undefined && node.xandStake !== null ? node.xandStake.toLocaleString() : '0'}
-                          </div>
-                          <div className="text-[10px] text-foreground/40 uppercase tracking-wider font-semibold">XAND Tokens</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                        <span className="text-sm text-foreground/80">Current Boost</span>
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-blue-400">
-                            {node.boostFactor ? node.boostFactor.toFixed(2) : '1.00'}x
-                          </div>
-                          <div className="text-[10px] text-foreground/40 uppercase tracking-wider font-semibold">{node.eraLabel || 'Standard'}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+
 
                   {/* Network & Registration Card */}
                   <div className="card animate-slide-in-right" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
@@ -1642,7 +1616,7 @@ function NodeDetailContent() {
               /* Public Node View - Full Details */
               <>
                 {/* Performance Metrics Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                   {/* Resource Usage Card */}
                   <div className="card animate-slide-in-left" style={{ animationDelay: '0.15s', opacity: 0, animationFillMode: 'forwards' }}>
                     <div className="flex items-center gap-2 mb-4">
@@ -1712,33 +1686,7 @@ function NodeDetailContent() {
                     </div>
                   </div>
 
-                  {/* STOINC & Rewards Card */}
-                  <div className="card animate-scale-in" style={{ animationDelay: '0.23s', opacity: 0, animationFillMode: 'forwards' }}>
-                    <div className="flex items-center gap-2 mb-4">
-                      <TrendingUp className="w-4 h-4 text-blue-400" />
-                      <h3 className="text-sm font-semibold text-foreground">STOINC & Rewards</h3>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                        <span className="text-sm text-foreground/80">XAND Stake</span>
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-[#F0A741]">
-                            {node.xandStake !== undefined && node.xandStake !== null ? node.xandStake.toLocaleString() : '0'}
-                          </div>
-                          <div className="text-[10px] text-foreground/40 uppercase tracking-wider font-semibold">XAND Tokens</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                        <span className="text-sm text-foreground/80">Current Boost</span>
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-blue-400">
-                            {node.boostFactor ? node.boostFactor.toFixed(2) : '1.00'}x
-                          </div>
-                          <div className="text-[10px] text-foreground/40 uppercase tracking-wider font-semibold">{node.eraLabel || 'Standard'}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+
 
                   {/* Status & Credits Card */}
                   <div className="card animate-slide-in-right" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>

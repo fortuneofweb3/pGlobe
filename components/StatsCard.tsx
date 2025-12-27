@@ -8,7 +8,7 @@ interface StatsCardProps {
   loading?: boolean;
   className?: string; // Additional classes
   subValue?: React.ReactNode;
-  color?: 'orange' | 'green' | 'blue' | 'red'; // Theme color
+  color?: 'orange' | 'green' | 'blue' | 'red' | 'emerald' | 'purple'; // Theme color
 }
 
 export default function StatsCard({
@@ -49,10 +49,24 @@ export default function StatsCard({
       iconColor: 'text-[#ef4444]',
       blurBg: 'bg-[#ef4444]/5',
       blurGroupHoverBg: 'group-hover:bg-[#ef4444]/10'
+    },
+    emerald: {
+      hoverBorder: 'hover:border-[#10b981]/20',
+      groupHoverText: 'group-hover:text-[#10b981]',
+      iconColor: 'text-[#10b981]',
+      blurBg: 'bg-[#10b981]/5',
+      blurGroupHoverBg: 'group-hover:bg-[#10b981]/10'
+    },
+    purple: {
+      hoverBorder: 'hover:border-[#a855f7]/20',
+      groupHoverText: 'group-hover:text-[#a855f7]',
+      iconColor: 'text-[#a855f7]',
+      blurBg: 'bg-[#a855f7]/5',
+      blurGroupHoverBg: 'group-hover:bg-[#a855f7]/10'
     }
   };
 
-  const theme = colorStyles[color];
+  const theme = colorStyles[color] || colorStyles.orange;
 
   if (loading) {
     return (

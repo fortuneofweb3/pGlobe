@@ -42,13 +42,14 @@ export default function CreditsDistributionChart({ nodes, height = 300 }: Credit
     } = useTooltip<BucketData>();
 
     const chartData = useMemo(() => {
-        const nodesWithCredits = nodes.filter(n => (n as any).derivedBoostedCredits !== undefined && (n as any).derivedBoostedCredits > 0);
+        const nodesWithCredits = nodes.filter(n => n.credits !== undefined && n.credits > 0);
 
         if (nodesWithCredits.length === 0) return [];
 
-        const maxCredits = Math.max(...nodesWithCredits.map(n => (n as any).derivedBoostedCredits || 0));
-        const bucketCount = Math.min(10, Math.max(5, Math.ceil(maxCredits / 100)));
-        const bucketSize = Math.ceil(maxCredits / bucketCount);
+        const maxCredits = Math.max(...nodesWithCredits.map(n => n.credits || 0));
+        // Find a sensible bucket size
+        const bucketCount = 10;
+        const bucketSize = Math.max(1, Math.ceil(maxCredits / bucketCount));
 
         const buckets: BucketData[] = [];
 
@@ -64,7 +65,7 @@ export default function CreditsDistributionChart({ nodes, height = 300 }: Credit
         }
 
         for (const node of nodesWithCredits) {
-            const credits = (node as any).derivedBoostedCredits || 0;
+            const credits = node.credits || 0;
             const bucketIndex = Math.min(Math.floor(credits / bucketSize), bucketCount - 1);
             buckets[bucketIndex].count++;
         }
@@ -128,7 +129,8 @@ export default function CreditsDistributionChart({ nodes, height = 300 }: Credit
                                                     tooltipData: d,
                                                     tooltipLeft: (coords?.x ?? 0) + margin.left,
                                                     tooltipTop: (coords?.y ?? 0) + margin.top,
-                                                });
+                                                    tooltipData: d,
+                                                } as any);
                                             }}
                                             onMouseLeave={() => hideTooltip()}
                                         />
@@ -175,7 +177,7 @@ export default function CreditsDistributionChart({ nodes, height = 300 }: Credit
                     style={tooltipStyles}
                 >
                     <div className="text-xs">
-                        <div className="text-foreground/60 mb-1">Boosted Weight: {tooltipData.range}</div>
+                        <div className="text-foreground/60 mb-1">Credits Range: {tooltipData.range}</div>
                         <div className="text-[#F0A741] font-bold">{tooltipData.count} nodes</div>
                     </div>
                 </TooltipWithBounds>
