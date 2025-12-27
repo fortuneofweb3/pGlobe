@@ -305,13 +305,25 @@ export default function NodeRaceVisualization() {
                         updated.packetsReceived = Math.max(0, log.data.packets - (updated.baselinePackets || 0));
                         updated.packetsSent = 0;
                     }
-                } else if (log.type === 'streams_active' && log.data?.total !== undefined) {
-                    updated.activeStreams = log.data.total;
+                } else if (log.type === 'streams_active') {
+                    if (log.data?.streams !== undefined) updated.activeStreams = log.data.streams;
+                    else if (log.data?.total !== undefined) updated.activeStreams = log.data.total;
                 } else if (log.type === 'packets_earned') {
-                    updated.packetsReceived = (updated.packetsReceived || 0) + (log.data?.rxEarned || 0);
-                    updated.packetsSent = (updated.packetsSent || 0) + (log.data?.txEarned || 0);
-                } else if (log.type === 'credits_earned' && log.data?.earned !== undefined) {
-                    updated.credits = (updated.credits || 0) + log.data.earned;
+                    if (log.data?.packets !== undefined) {
+                        if (updated.baselinePackets === 0 && log.data.packets > 0) updated.baselinePackets = log.data.packets;
+                        updated.packetsReceived = Math.max(0, log.data.packets - (updated.baselinePackets || 0));
+                        updated.packetsSent = 0;
+                    } else {
+                        updated.packetsReceived = (updated.packetsReceived || 0) + (log.data?.rxEarned || 0);
+                        updated.packetsSent = (updated.packetsSent || 0) + (log.data?.txEarned || 0);
+                    }
+                } else if (log.type === 'credits_earned') {
+                    if (log.data?.credits !== undefined) {
+                        if (updated.baselineCredits === 0 && log.data.credits > 0) updated.baselineCredits = log.data.credits;
+                        updated.credits = Math.max(0, log.data.credits - (updated.baselineCredits || 0));
+                    } else if (log.data?.earned !== undefined) {
+                        updated.credits = (updated.credits || 0) + log.data.earned;
+                    }
                 }
 
                 return { ...prev, [log.pubkey]: updated };
