@@ -322,10 +322,10 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
             });
 
             // Adaptive Delay: faster when buffer is full, slower when empty, always jittered
-            // Base delay ranges from ~1000ms (emptyish) to ~50ms (very full)
+            // Base delay ranges from ~1000ms (emptyish) to ~30ms (very full)
             const baseDelay = 5000 / (bufferRef.current.length + 5);
             const jitter = 0.5 + Math.random() * 1.5; // Heavy jitter for organic feel
-            const delay = Math.max(50, Math.min(baseDelay * jitter, 2500));
+            const delay = Math.max(30, Math.min(baseDelay * jitter, 1000));
 
             setTimeout(processOne, delay);
         };
@@ -373,6 +373,12 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
             };
 
             bufferRef.current.push(logWithId);
+
+            // Buffer Management: strict cap of 100 items to stay fresh
+            if (bufferRef.current.length > 100) {
+                bufferRef.current = bufferRef.current.slice(-100);
+            }
+
             processBuffer();
         });
 

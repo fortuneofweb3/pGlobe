@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import io from 'socket.io-client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, Zap, TrendingUp, Pause, Play } from 'lucide-react';
+import { Activity, TrendingUp, Pause, Play } from 'lucide-react';
 
 interface NodeMetrics {
     pubkey: string;
@@ -159,17 +159,6 @@ function RacingBar({ node, index, maxScore }: { node: RacingNode; index: number;
                                     <span className="text-[#F0A741] font-semibold">{node.credits.toFixed(1)}</span>
                                 </span>
                             )}
-                            {node.activeStreams !== undefined && node.activeStreams > 0 && (
-                                <div className="flex items-center gap-0.5">
-                                    {Array.from({ length: Math.min(node.activeStreams, 10) }).map((_, i) => (
-                                        <Zap
-                                            key={i}
-                                            className={`w-2.5 h-2.5 sm:w-3 sm:h-3 text-cyan-400 fill-cyan-400/20 ${i > 4 ? 'hidden sm:block' : ''}`}
-                                        />
-                                    ))}
-                                    {node.activeStreams > 10 && <span className="text-[8px] sm:text-[10px] text-cyan-400 font-bold">+{node.activeStreams - 10}</span>}
-                                </div>
-                            )}
                         </div>
 
                         <div className="text-[10px] sm:text-xs font-bold text-foreground/70 drop-shadow-md whitespace-nowrap">
@@ -262,7 +251,7 @@ export default function NodeRaceVisualization() {
             // Adaptive Delay: faster when buffer is full, slower when empty, always jittered
             const baseDelay = 5000 / (bufferRef.current.length + 5);
             const jitter = 0.5 + Math.random() * 1.5;
-            const delay = Math.max(50, Math.min(baseDelay * jitter, 2500));
+            const delay = Math.max(30, Math.min(baseDelay * jitter, 1000));
 
             setTimeout(processOne, delay);
         };
@@ -378,6 +367,12 @@ export default function NodeRaceVisualization() {
         socket.on('activity', (log: unknown) => {
             const event = log as ActivityEvent;
             bufferRef.current.push(event);
+
+            // Buffer Management: strict cap of 100 items to stay fresh
+            if (bufferRef.current.length > 100) {
+                bufferRef.current = bufferRef.current.slice(-100);
+            }
+
             processBuffer();
         });
 
