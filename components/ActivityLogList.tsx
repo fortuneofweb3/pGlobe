@@ -189,9 +189,8 @@ function LogItem({ log }: { log: ActivityLog }) {
                         <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-[10px] sm:text-xs">
                             <div className="flex items-center gap-1 bg-black/40 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-zinc-800/80">
                                 <Globe className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-zinc-500" />
-                                <span className="font-mono text-zinc-400 truncate">
-                                    <span className="sm:hidden">{truncatedPubkey}</span>
-                                    <span className="hidden sm:inline max-w-[180px] truncate">{log.pubkey}</span>
+                                <span className="font-mono text-zinc-400">
+                                    {truncatedPubkey}
                                 </span>
                             </div>
 
@@ -270,6 +269,12 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
     const processingRef = useRef(false);
     const isVisibleRef = useRef(true);
 
+    // Staggered display state refs
+    const batchStartTimeRef = useRef<number>(0);
+    const logsInBatchRef = useRef<number>(0);
+    const logsProcessedInBatchRef = useRef<number>(0);
+    const isSlowPhaseRef = useRef<boolean>(false);
+
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.hidden) {
@@ -300,35 +305,63 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         processingRef.current = true;
 
         const processOne = () => {
-            if (!isVisibleRef.current || bufferRef.current.length === 0) {
+            if (!isVisibleRef.current || isPausedRef.current || bufferRef.current.length === 0) {
                 processingRef.current = false;
-                bufferRef.current = [];
                 return;
             }
 
-            if (bufferRef.current.length > 20) {
-                bufferRef.current = bufferRef.current.slice(-20);
+            const now = Date.now();
+            const elapsed = now - batchStartTimeRef.current;
+
+            // 90% in first 7 seconds logic
+            if (elapsed < 7000) {
+                const targetToProcess = Math.ceil(logsInBatchRef.current * 0.9);
+
+                if (logsProcessedInBatchRef.current < targetToProcess) {
+                    const logToAdd = bufferRef.current.shift()!;
+                    setLogs((prev) => {
+                        const isDuplicate = prev.some((l) => {
+                            const timeDiff = Math.abs(new Date(l.timestamp).getTime() - new Date(logToAdd.timestamp).getTime());
+                            return l.pubkey === logToAdd.pubkey && l.type === logToAdd.type && l.message === logToAdd.message && timeDiff < 5000;
+                        });
+                        if (isDuplicate) return prev;
+                        return [logToAdd, ...prev].slice(0, 100);
+                    });
+                    logsProcessedInBatchRef.current++;
+
+                    // Calculate delay to spread remaining 90% across remaining time in 7s window
+                    const itemsLeftIn90 = targetToProcess - logsProcessedInBatchRef.current;
+                    const timeLeft = 7000 - elapsed;
+                    const delay = itemsLeftIn90 > 0 ? Math.max(50, Math.min(timeLeft / (itemsLeftIn90 + 1), 1000)) : 100;
+
+                    setTimeout(processOne, delay);
+                } else {
+                    // Reached 90% or no more to process in this window, check again in a bit
+                    setTimeout(processOne, 200);
+                }
+            } else {
+                // Slow phase (7s+ elapsed)
+                isSlowPhaseRef.current = true;
+
+                if (bufferRef.current.length > 0) {
+                    const logToAdd = bufferRef.current.shift()!;
+                    setLogs((prev) => {
+                        const isDuplicate = prev.some((l) => {
+                            const timeDiff = Math.abs(new Date(l.timestamp).getTime() - new Date(logToAdd.timestamp).getTime());
+                            return l.pubkey === logToAdd.pubkey && l.type === logToAdd.type && l.message === logToAdd.message && timeDiff < 5000;
+                        });
+                        if (isDuplicate) return prev;
+                        return [logToAdd, ...prev].slice(0, 100);
+                    });
+                    logsProcessedInBatchRef.current++;
+
+                    // Random varied delay for the remaining 10%
+                    const delay = 500 + Math.random() * 5000;
+                    setTimeout(processOne, delay);
+                } else {
+                    processingRef.current = false;
+                }
             }
-
-            const logToAdd = bufferRef.current.shift()!;
-
-            setLogs((prev: ActivityLog[]) => {
-                const isDuplicate = prev.some((l: ActivityLog) => {
-                    const timeDiff = Math.abs(new Date(l.timestamp).getTime() - new Date(logToAdd.timestamp).getTime());
-                    return l.pubkey === logToAdd.pubkey && l.type === logToAdd.type && l.message === logToAdd.message && timeDiff < 5000;
-                });
-
-                if (isDuplicate) return prev;
-                return [logToAdd, ...prev].slice(0, 100);
-            });
-
-            const bufferSize = Math.max(bufferRef.current.length + 1, 1);
-            const baseDelay = 5000 / (bufferSize * 0.9);
-            const jitter = 0.7 + Math.random() * 0.6;
-            let delay = baseDelay * jitter;
-            delay = Math.min(600, Math.max(30, delay));
-
-            setTimeout(processOne, delay);
         };
 
         processOne();
@@ -364,17 +397,26 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         });
 
         socket.on('activity', (newLog: ActivityLog) => {
-
             if (pubkey && newLog.pubkey !== pubkey) return;
             if (countryCode && newLog.countryCode !== countryCode) return;
 
+            // Reset cycle if in slow phase or if it's been idle for a while
+            if (isSlowPhaseRef.current || bufferRef.current.length === 0) {
+                batchStartTimeRef.current = Date.now();
+                logsInBatchRef.current = 0;
+                logsProcessedInBatchRef.current = 0;
+                isSlowPhaseRef.current = false;
+                bufferRef.current = []; // Clear current remainder
+            }
+
             const logWithId = {
                 ...newLog,
-                _id: newLog._id || `${newLog.pubkey} -${newLog.type} -${Date.now()} -${Math.random().toString(36).slice(2)} `,
+                _id: newLog._id || `${newLog.pubkey}-${newLog.type}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
                 timestamp: newLog.timestamp || new Date().toISOString(),
             };
 
             bufferRef.current.push(logWithId);
+            logsInBatchRef.current++;
             processBuffer();
         });
 

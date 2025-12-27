@@ -112,7 +112,7 @@ function RacingBar({ node, index, maxScore }: { node: RacingNode; index: number;
         return (
             <span className="flex items-center gap-1.5">
                 {flag && <span className="text-sm sm:text-base leading-none">{flag}</span>}
-                <span className="truncate">{node.pubkey.slice(0, 8)}...</span>
+                <span className="truncate">{node.pubkey.slice(0, 6)}...{node.pubkey.slice(-4)}</span>
             </span>
         );
     };
@@ -156,9 +156,20 @@ function RacingBar({ node, index, maxScore }: { node: RacingNode; index: number;
                             </div>
                             {node.credits !== undefined && node.credits > 0 && (
                                 <span className="hidden sm:flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded border border-white/10 text-xs">
-                                    <Zap className="w-3 h-3 text-[#F0A741]" />
+                                    <TrendingUp className="w- 3 h-3 text-[#F0A741]" />
                                     <span className="text-[#F0A741] font-semibold">{node.credits.toFixed(1)}</span>
                                 </span>
+                            )}
+                            {node.activeStreams !== undefined && node.activeStreams > 0 && (
+                                <div className="flex items-center gap-0.5">
+                                    {Array.from({ length: Math.min(node.activeStreams, 10) }).map((_, i) => (
+                                        <Zap
+                                            key={i}
+                                            className={`w-2.5 h-2.5 sm:w-3 sm:h-3 text-cyan-400 fill-cyan-400/20 ${i > 4 ? 'hidden sm:block' : ''}`}
+                                        />
+                                    ))}
+                                    {node.activeStreams > 10 && <span className="text-[8px] sm:text-[10px] text-cyan-400 font-bold">+{node.activeStreams - 10}</span>}
+                                </div>
                             )}
                         </div>
 
@@ -210,6 +221,12 @@ export default function NodeRaceVisualization() {
     const processingRef = useRef(false);
     const isVisibleRef = useRef(true);
 
+    // Staggered display state refs
+    const batchStartTimeRef = useRef<number>(0);
+    const logsInBatchRef = useRef<number>(0);
+    const logsProcessedInBatchRef = useRef<number>(0);
+    const isSlowPhaseRef = useRef<boolean>(false);
+
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.hidden) {
@@ -241,105 +258,128 @@ export default function NodeRaceVisualization() {
         processingRef.current = true;
 
         const processOne = () => {
-            if (!isVisibleRef.current || bufferRef.current.length === 0) {
+            if (!isVisibleRef.current || isPausedRef.current || bufferRef.current.length === 0) {
                 processingRef.current = false;
-                bufferRef.current = [];
                 return;
             }
 
-            if (bufferRef.current.length > 60) {
-                bufferRef.current = bufferRef.current.slice(-30);
-            }
+            const now = Date.now();
+            const elapsed = now - batchStartTimeRef.current;
 
-            const log = bufferRef.current.shift()!;
+            // 90% in first 7 seconds logic
+            if (elapsed < 7000) {
+                const targetToProcess = Math.ceil(logsInBatchRef.current * 0.9);
 
-            setNodeMetrics((prev) => {
-                const existing = prev[log.pubkey] || {
-                    pubkey: log.pubkey,
-                    address: log.address,
-                    location: log.location,
-                    status: 'online',
-                    activeStreams: 0,
-                    packetsReceived: 0,
-                    packetsSent: 0,
-                    credits: 0,
-                    baselineCredits: (log.type === 'node_online' || log.type === 'node_status' || log.type === 'new_node') ? (log.data?.credits || 0) : 0,
-                    baselinePackets: (log.type === 'node_online' || log.type === 'node_status' || log.type === 'new_node') ? (log.data?.packets || 0) : 0,
-                    lastUpdate: Date.now(),
-                    countryCode: log.countryCode,
-                };
+                if (logsProcessedInBatchRef.current < targetToProcess) {
+                    const log = bufferRef.current.shift()!;
+                    updateNodeMetrics(log);
+                    logsProcessedInBatchRef.current++;
 
-                const updated = {
-                    ...existing,
-                    lastUpdate: Date.now(),
-                    address: log.address || (existing.address as string),
-                    location: log.location || (existing.location as string),
-                    countryCode: log.countryCode || existing.countryCode,
-                };
+                    const itemsLeftIn90 = targetToProcess - logsProcessedInBatchRef.current;
+                    const timeLeft = 7000 - elapsed;
+                    const delay = itemsLeftIn90 > 0 ? Math.max(50, Math.min(timeLeft / (itemsLeftIn90 + 1), 1000)) : 100;
 
-                if (log.type === 'new_node' || log.type === 'node_online') {
-                    updated.status = 'online';
-                    if (log.data?.streams !== undefined) updated.activeStreams = log.data.streams;
-                    if (log.data?.credits !== undefined) {
-                        if (existing.baselineCredits === 0) updated.baselineCredits = log.data.credits;
-                        updated.credits = Math.max(0, log.data.credits - (updated.baselineCredits || 0));
-                    }
-                    if (log.data?.packets !== undefined) {
-                        if (existing.baselinePackets === 0) updated.baselinePackets = log.data.packets;
-                        updated.packetsReceived = Math.max(0, log.data.packets - (updated.baselinePackets || 0));
-                        updated.packetsSent = 0;
-                    }
-                } else if (log.type === 'node_offline') {
-                    updated.status = 'offline';
-                } else if (log.type === 'node_syncing') {
-                    updated.status = 'syncing';
-                } else if (log.type === 'node_status') {
-                    updated.status = 'online';
-                    if (log.data?.streams !== undefined) updated.activeStreams = log.data.streams;
-                    if (log.data?.credits !== undefined) {
-                        if (existing.baselineCredits === 0 && log.data.credits > 0) updated.baselineCredits = log.data.credits;
-                        updated.credits = Math.max(0, log.data.credits - (updated.baselineCredits || 0));
-                    }
-                    if (log.data?.packets !== undefined) {
-                        if (existing.baselinePackets === 0 && log.data.packets > 0) updated.baselinePackets = log.data.packets;
-                        updated.packetsReceived = Math.max(0, log.data.packets - (updated.baselinePackets || 0));
-                        updated.packetsSent = 0;
-                    }
-                } else if (log.type === 'streams_active') {
-                    if (log.data?.streams !== undefined) updated.activeStreams = log.data.streams;
-                    else if (log.data?.total !== undefined) updated.activeStreams = log.data.total;
-                } else if (log.type === 'packets_earned') {
-                    if (log.data?.packets !== undefined) {
-                        if (updated.baselinePackets === 0 && log.data.packets > 0) updated.baselinePackets = log.data.packets;
-                        updated.packetsReceived = Math.max(0, log.data.packets - (updated.baselinePackets || 0));
-                        updated.packetsSent = 0;
-                    } else {
-                        updated.packetsReceived = (updated.packetsReceived || 0) + (log.data?.rxEarned || 0);
-                        updated.packetsSent = (updated.packetsSent || 0) + (log.data?.txEarned || 0);
-                    }
-                } else if (log.type === 'credits_earned') {
-                    if (log.data?.credits !== undefined) {
-                        if (updated.baselineCredits === 0 && log.data.credits > 0) updated.baselineCredits = log.data.credits;
-                        updated.credits = Math.max(0, log.data.credits - (updated.baselineCredits || 0));
-                    } else if (log.data?.earned !== undefined) {
-                        updated.credits = (updated.credits || 0) + log.data.earned;
-                    }
+                    setTimeout(processOne, delay);
+                } else {
+                    setTimeout(processOne, 200);
                 }
+            } else {
+                // Slow phase
+                isSlowPhaseRef.current = true;
 
-                return { ...prev, [log.pubkey]: updated };
-            });
+                if (bufferRef.current.length > 0) {
+                    const log = bufferRef.current.shift()!;
+                    updateNodeMetrics(log);
+                    logsProcessedInBatchRef.current++;
 
-            const bufferSize = Math.max(bufferRef.current.length + 1, 1);
-            const baseDelay = 5000 / (bufferSize * 0.9);
-            const jitter = 0.5 + Math.random();
-            let delay = baseDelay * jitter;
-            delay = Math.min(600, Math.max(30, delay));
-
-            setTimeout(processOne, delay);
+                    const delay = 500 + Math.random() * 5000;
+                    setTimeout(processOne, delay);
+                } else {
+                    processingRef.current = false;
+                }
+            }
         };
 
         processOne();
     }, []);
+
+    const updateNodeMetrics = (log: ActivityEvent) => {
+        setNodeMetrics((prev) => {
+            const existing = prev[log.pubkey] || {
+                pubkey: log.pubkey,
+                address: log.address,
+                location: log.location,
+                status: 'online',
+                activeStreams: 0,
+                packetsReceived: 0,
+                packetsSent: 0,
+                credits: 0,
+                baselineCredits: (log.type === 'node_online' || log.type === 'node_status' || log.type === 'new_node') ? (log.data?.credits || 0) : 0,
+                baselinePackets: (log.type === 'node_online' || log.type === 'node_status' || log.type === 'new_node') ? (log.data?.packets || 0) : 0,
+                lastUpdate: Date.now(),
+                countryCode: log.countryCode,
+            };
+
+            const updated = {
+                ...existing,
+                lastUpdate: Date.now(),
+                address: log.address || (existing.address as string),
+                location: log.location || (existing.location as string),
+                countryCode: log.countryCode || existing.countryCode,
+            };
+
+            if (log.type === 'new_node' || log.type === 'node_online') {
+                updated.status = 'online';
+                if (log.data?.streams !== undefined) updated.activeStreams = log.data.streams;
+                if (log.data?.credits !== undefined) {
+                    if (existing.baselineCredits === 0) updated.baselineCredits = log.data.credits;
+                    updated.credits = Math.max(0, log.data.credits - (updated.baselineCredits || 0));
+                }
+                if (log.data?.packets !== undefined) {
+                    if (existing.baselinePackets === 0) updated.baselinePackets = log.data.packets;
+                    updated.packetsReceived = Math.max(0, log.data.packets - (updated.baselinePackets || 0));
+                    updated.packetsSent = 0;
+                }
+            } else if (log.type === 'node_offline') {
+                updated.status = 'offline';
+            } else if (log.type === 'node_syncing') {
+                updated.status = 'syncing';
+            } else if (log.type === 'node_status') {
+                updated.status = 'online';
+                if (log.data?.streams !== undefined) updated.activeStreams = log.data.streams;
+                if (log.data?.credits !== undefined) {
+                    if (existing.baselineCredits === 0 && log.data.credits > 0) updated.baselineCredits = log.data.credits;
+                    updated.credits = Math.max(0, log.data.credits - (updated.baselineCredits || 0));
+                }
+                if (log.data?.packets !== undefined) {
+                    if (existing.baselinePackets === 0 && log.data.packets > 0) updated.baselinePackets = log.data.packets;
+                    updated.packetsReceived = Math.max(0, log.data.packets - (updated.baselinePackets || 0));
+                    updated.packetsSent = 0;
+                }
+            } else if (log.type === 'streams_active') {
+                if (log.data?.streams !== undefined) updated.activeStreams = log.data.streams;
+                else if (log.data?.total !== undefined) updated.activeStreams = log.data.total;
+            } else if (log.type === 'packets_earned') {
+                if (log.data?.packets !== undefined) {
+                    if (updated.baselinePackets === 0 && log.data.packets > 0) updated.baselinePackets = log.data.packets;
+                    updated.packetsReceived = Math.max(0, log.data.packets - (updated.baselinePackets || 0));
+                    updated.packetsSent = 0;
+                } else {
+                    updated.packetsReceived = (updated.packetsReceived || 0) + (log.data?.rxEarned || 0);
+                    updated.packetsSent = (updated.packetsSent || 0) + (log.data?.txEarned || 0);
+                }
+            } else if (log.type === 'credits_earned') {
+                if (log.data?.credits !== undefined) {
+                    if (updated.baselineCredits === 0 && log.data.credits > 0) updated.baselineCredits = log.data.credits;
+                    updated.credits = Math.max(0, log.data.credits - (updated.baselineCredits || 0));
+                } else if (log.data?.earned !== undefined) {
+                    updated.credits = (updated.credits || 0) + log.data.earned;
+                }
+            }
+
+            return { ...prev, [log.pubkey]: updated };
+        });
+    };
 
     useEffect(() => {
         const socketUrl = getSocketUrl();
@@ -374,7 +414,19 @@ export default function NodeRaceVisualization() {
         });
 
         socket.on('activity', (log: unknown) => {
-            bufferRef.current.push(log as ActivityEvent);
+            const event = log as ActivityEvent;
+
+            // Reset cycle if in slow phase or idle
+            if (isSlowPhaseRef.current || bufferRef.current.length === 0) {
+                batchStartTimeRef.current = Date.now();
+                logsInBatchRef.current = 0;
+                logsProcessedInBatchRef.current = 0;
+                isSlowPhaseRef.current = false;
+                bufferRef.current = [];
+            }
+
+            bufferRef.current.push(event);
+            logsInBatchRef.current++;
             processBuffer();
         });
 
