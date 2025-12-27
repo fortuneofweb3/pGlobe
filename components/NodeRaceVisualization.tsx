@@ -347,7 +347,9 @@ export default function NodeRaceVisualization() {
 
         const socket = io(socketUrl, {
             transports: ['polling', 'websocket'],
+            reconnection: true,
             reconnectionAttempts: 10,
+            reconnectionDelay: 2000,
             timeout: 20000,
         });
 

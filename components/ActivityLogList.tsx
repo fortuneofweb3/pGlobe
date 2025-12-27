@@ -341,8 +341,10 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         console.log('[ActivityLogs] Connecting to Socket.io at:', socketUrl);
 
         const socket = io(socketUrl, {
-            transports: ['websocket', 'polling'],
+            transports: ['polling', 'websocket'],
+            reconnection: true,
             reconnectionAttempts: 10,
+            reconnectionDelay: 2000,
             timeout: 20000,
         });
 
