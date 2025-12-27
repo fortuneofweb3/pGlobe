@@ -353,14 +353,14 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 25 }: Act
             // Calculate Delay
             let delay = 300;
             const bufferSize = bufferRef.current.length;
-            const initialHalf = Math.floor(initialBatchSizeRef.current / 2);
+            const initial70Percent = Math.floor(initialBatchSizeRef.current * 0.7);
 
-            // 1. Startup Drip Phase (First 50% over ~6 seconds)
+            // 1. Startup Drip Phase (First 70% over ~6 seconds)
             // WE PROTECT THIS PHASE - it cannot be overridden by Sprint Mode
-            if (logsProcessedRef.current <= initialHalf && initialBatchSizeRef.current > 0) {
-                // If we have ~12 logs (50% of 25), average delay is ~500ms
-                // We use a slightly wider jitter to make it feel organic but average 500ms
-                delay = 350 + (Math.random() * 300);
+            if (logsProcessedRef.current <= initial70Percent && initialBatchSizeRef.current > 0) {
+                // If we have ~17 logs (70% of 25), average delay is ~350ms to hit ~6s
+                // Vary between 200ms and 500ms
+                delay = 200 + (Math.random() * 300);
             }
             // 2. Sprint Mode (High speed flush for catch-up)
             // Only kicks in AFTER the startup phase
