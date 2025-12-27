@@ -120,10 +120,17 @@ function LogItem({ log }: { log: ActivityLog }) {
         return `${key.slice(0, 6)}...${key.slice(-4)}`;
     };
 
+    // Identity helper: prioritize IP:Port over pubkey
+    const getIdentity = (address?: string, pubkey?: string) => {
+        if (address) return address;
+        if (pubkey) return formatPubkey(pubkey);
+        return 'Node';
+    };
+
     // Format message - for packets_earned, use data to show received/sent format
     const getFormattedMessage = () => {
         const data = log.data as any;
-        const pubkey = formatPubkey(log.pubkey);
+        const identity = getIdentity(log.address, log.pubkey);
 
         // For packet events, format from data to show received/sent
         if (log.type === 'packets_earned' && data) {
@@ -135,18 +142,18 @@ function LogItem({ log }: { log: ActivityLog }) {
             if (txEarned > 0) parts.push(`sent ${txEarned.toLocaleString()}`);
 
             if (parts.length > 0) {
-                return `${pubkey} ${parts.join(' / ')} packets`;
+                return `${identity} ${parts.join(' / ')} packets`;
             }
         }
 
         // For credits_lost, format properly
         if (log.type === 'credits_lost' && data?.lost) {
-            return `${pubkey} lost ${data.lost.toFixed(2)} credits`;
+            return `${identity} lost ${data.lost.toFixed(2)} credits`;
         }
 
-        // Default: use the stored message but truncate the pubkey if it's there
+        // Default: use the stored message but truncate the pubkey or replace with IP if available
         if (log.message && log.pubkey && log.message.includes(log.pubkey)) {
-            return log.message.replace(log.pubkey, formatPubkey(log.pubkey));
+            return log.message.replace(log.pubkey, identity);
         }
 
         return log.message;
@@ -190,7 +197,7 @@ function LogItem({ log }: { log: ActivityLog }) {
                             <div className="flex items-center gap-1 bg-black/40 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-zinc-800/80">
                                 <Globe className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-zinc-500" />
                                 <span className="font-mono text-zinc-400">
-                                    {truncatedPubkey}
+                                    {log.address || truncatedPubkey}
                                 </span>
                             </div>
 

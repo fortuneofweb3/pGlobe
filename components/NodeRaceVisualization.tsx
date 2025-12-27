@@ -100,11 +100,10 @@ function RacingBar({ node, index, maxScore }: { node: RacingNode; index: number;
         const locationStr = node.location ? ` ${node.location}` : '';
 
         if (node.address) {
-            const ip = node.address.split(':')[0];
             return (
                 <span className="flex items-center gap-1.5">
                     {flag && <span className="text-sm sm:text-base leading-none">{flag}</span>}
-                    <span className="truncate">{ip}{locationStr && ` (${locationStr})`}</span>
+                    <span className="truncate">{node.address}{locationStr && ` (${locationStr})`}</span>
                 </span>
             );
         }
