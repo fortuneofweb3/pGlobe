@@ -276,12 +276,6 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
     const processingRef = useRef(false);
     const isVisibleRef = useRef(true);
 
-    // Staggered display state refs
-    const batchStartTimeRef = useRef<number>(0);
-    const logsInBatchRef = useRef<number>(0);
-    const logsProcessedInBatchRef = useRef<number>(0);
-    const isSlowPhaseRef = useRef<boolean>(false);
-
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.hidden) {
@@ -317,60 +311,23 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                 return;
             }
 
-            const now = Date.now();
-            const elapsed = now - batchStartTimeRef.current;
+            const logToAdd = bufferRef.current.shift()!;
+            setLogs((prev) => {
+                const isDuplicate = prev.some((l) => {
+                    const timeDiff = Math.abs(new Date(l.timestamp).getTime() - new Date(logToAdd.timestamp).getTime());
+                    return l.pubkey === logToAdd.pubkey && l.type === logToAdd.type && l.message === logToAdd.message && timeDiff < 5000;
+                });
+                if (isDuplicate) return prev;
+                return [logToAdd, ...prev].slice(0, 100);
+            });
 
-            // 70% in first 7 seconds logic - Faster initial burst
-            if (elapsed < 7000) {
-                const targetToProcess = Math.ceil(logsInBatchRef.current * 0.7);
+            // Adaptive Delay: faster when buffer is full, slower when empty, always jittered
+            // Base delay ranges from ~1000ms (emptyish) to ~50ms (very full)
+            const baseDelay = 5000 / (bufferRef.current.length + 5);
+            const jitter = 0.5 + Math.random() * 1.5; // Heavy jitter for organic feel
+            const delay = Math.max(50, Math.min(baseDelay * jitter, 2500));
 
-                if (logsProcessedInBatchRef.current < targetToProcess) {
-                    const logToAdd = bufferRef.current.shift()!;
-                    setLogs((prev) => {
-                        const isDuplicate = prev.some((l) => {
-                            const timeDiff = Math.abs(new Date(l.timestamp).getTime() - new Date(logToAdd.timestamp).getTime());
-                            return l.pubkey === logToAdd.pubkey && l.type === logToAdd.type && l.message === logToAdd.message && timeDiff < 5000;
-                        });
-                        if (isDuplicate) return prev;
-                        return [logToAdd, ...prev].slice(0, 100);
-                    });
-                    logsProcessedInBatchRef.current++;
-
-                    // Calculate delay with more jitter for continuous variety
-                    const itemsLeftIn70 = targetToProcess - logsProcessedInBatchRef.current;
-                    const timeLeft = 7000 - elapsed;
-                    const baseDelay = itemsLeftIn70 > 0 ? timeLeft / (itemsLeftIn70 + 1) : 100;
-                    const jitter = 0.4 + Math.random() * 1.2;
-                    const delay = Math.max(30, Math.min(baseDelay * jitter, 800));
-
-                    setTimeout(processOne, delay);
-                } else {
-                    // Reached 90% or no more to process in this window, check again in a bit
-                    setTimeout(processOne, 200);
-                }
-            } else {
-                // Slow phase (7s+ elapsed)
-                isSlowPhaseRef.current = true;
-
-                if (bufferRef.current.length > 0) {
-                    const logToAdd = bufferRef.current.shift()!;
-                    setLogs((prev) => {
-                        const isDuplicate = prev.some((l) => {
-                            const timeDiff = Math.abs(new Date(l.timestamp).getTime() - new Date(logToAdd.timestamp).getTime());
-                            return l.pubkey === logToAdd.pubkey && l.type === logToAdd.type && l.message === logToAdd.message && timeDiff < 5000;
-                        });
-                        if (isDuplicate) return prev;
-                        return [logToAdd, ...prev].slice(0, 100);
-                    });
-                    logsProcessedInBatchRef.current++;
-
-                    // Varied delay for the remaining 30%
-                    const delay = 300 + Math.random() * 4000;
-                    setTimeout(processOne, delay);
-                } else {
-                    processingRef.current = false;
-                }
-            }
+            setTimeout(processOne, delay);
         };
 
         processOne();
@@ -409,15 +366,6 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
             if (pubkey && newLog.pubkey !== pubkey) return;
             if (countryCode && newLog.countryCode !== countryCode) return;
 
-            // Reset cycle if in slow phase or if it's been idle for a while
-            if (isSlowPhaseRef.current || bufferRef.current.length === 0) {
-                batchStartTimeRef.current = Date.now();
-                logsInBatchRef.current = 0;
-                logsProcessedInBatchRef.current = 0;
-                isSlowPhaseRef.current = false;
-                bufferRef.current = []; // Clear current remainder
-            }
-
             const logWithId = {
                 ...newLog,
                 _id: newLog._id || `${newLog.pubkey}-${newLog.type}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -425,7 +373,6 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
             };
 
             bufferRef.current.push(logWithId);
-            logsInBatchRef.current++;
             processBuffer();
         });
 

@@ -220,12 +220,6 @@ export default function NodeRaceVisualization() {
     const processingRef = useRef(false);
     const isVisibleRef = useRef(true);
 
-    // Staggered display state refs
-    const batchStartTimeRef = useRef<number>(0);
-    const logsInBatchRef = useRef<number>(0);
-    const logsProcessedInBatchRef = useRef<number>(0);
-    const isSlowPhaseRef = useRef<boolean>(false);
-
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.hidden) {
@@ -262,43 +256,15 @@ export default function NodeRaceVisualization() {
                 return;
             }
 
-            const now = Date.now();
-            const elapsed = now - batchStartTimeRef.current;
+            const log = bufferRef.current.shift()!;
+            updateNodeMetrics(log);
 
-            // 70% in first 7 seconds logic
-            if (elapsed < 7000) {
-                const targetToProcess = Math.ceil(logsInBatchRef.current * 0.7);
+            // Adaptive Delay: faster when buffer is full, slower when empty, always jittered
+            const baseDelay = 5000 / (bufferRef.current.length + 5);
+            const jitter = 0.5 + Math.random() * 1.5;
+            const delay = Math.max(50, Math.min(baseDelay * jitter, 2500));
 
-                if (logsProcessedInBatchRef.current < targetToProcess) {
-                    const log = bufferRef.current.shift()!;
-                    updateNodeMetrics(log);
-                    logsProcessedInBatchRef.current++;
-
-                    const itemsLeftIn70 = targetToProcess - logsProcessedInBatchRef.current;
-                    const timeLeft = 7000 - elapsed;
-                    const baseDelay = itemsLeftIn70 > 0 ? timeLeft / (itemsLeftIn70 + 1) : 100;
-                    const jitter = 0.4 + Math.random() * 1.2;
-                    const delay = Math.max(30, Math.min(baseDelay * jitter, 800));
-
-                    setTimeout(processOne, delay);
-                } else {
-                    setTimeout(processOne, 200);
-                }
-            } else {
-                // Slow phase
-                isSlowPhaseRef.current = true;
-
-                if (bufferRef.current.length > 0) {
-                    const log = bufferRef.current.shift()!;
-                    updateNodeMetrics(log);
-                    logsProcessedInBatchRef.current++;
-
-                    const delay = 300 + Math.random() * 4000;
-                    setTimeout(processOne, delay);
-                } else {
-                    processingRef.current = false;
-                }
-            }
+            setTimeout(processOne, delay);
         };
 
         processOne();
@@ -384,7 +350,6 @@ export default function NodeRaceVisualization() {
 
     useEffect(() => {
         const socketUrl = getSocketUrl();
-        //        console.log('[Racing] Connecting to Socket.io at:', socketUrl);
 
         const socket = io(socketUrl, {
             transports: ['polling', 'websocket'],
@@ -395,7 +360,6 @@ export default function NodeRaceVisualization() {
         });
 
         socket.on('connect', () => {
-            //            console.log('[Racing] Connected');
             setConnected(true);
             bufferRef.current = [];
             processingRef.current = false;
@@ -406,9 +370,6 @@ export default function NodeRaceVisualization() {
             setConnected(false);
         });
         socket.on('disconnect', () => {
-            /*
-                        console.log('[Racing] Disconnected');
-            */
             setConnected(false);
             bufferRef.current = [];
             processingRef.current = false;
@@ -416,18 +377,7 @@ export default function NodeRaceVisualization() {
 
         socket.on('activity', (log: unknown) => {
             const event = log as ActivityEvent;
-
-            // Reset cycle if in slow phase or idle
-            if (isSlowPhaseRef.current || bufferRef.current.length === 0) {
-                batchStartTimeRef.current = Date.now();
-                logsInBatchRef.current = 0;
-                logsProcessedInBatchRef.current = 0;
-                isSlowPhaseRef.current = false;
-                bufferRef.current = [];
-            }
-
             bufferRef.current.push(event);
-            logsInBatchRef.current++;
             processBuffer();
         });
 
