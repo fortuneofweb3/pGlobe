@@ -225,12 +225,14 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
     const [isPaused, setIsPaused] = useState(false);
     const isPausedRef = useRef(isPaused);
     const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const fetchLogs = async (skip: number = 0, append: boolean = false) => {
         if (append) {
             setLoadingMore(true);
         } else {
             setLoading(true);
+            setErrorMessage(null);
         }
 
         try {
@@ -241,7 +243,10 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
             query.set('limit', limit.toString());
             query.set('skip', skip.toString());
 
-            const response = await fetch(`/ api / activity - logs ? ${query.toString()} `);
+            const response = await fetch(`/api/activity-logs?${query.toString()}`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
             const data = await response.json();
 
             if (data.logs) {
@@ -254,6 +259,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
             }
         } catch (error) {
             console.error('Failed to fetch logs:', error);
+            setErrorMessage('Failed to load activity logs.');
         } finally {
             setLoading(false);
             setLoadingMore(false);
@@ -390,6 +396,9 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
 
     return (
         <div className="w-full h-full flex flex-col gap-2 sm:gap-4">
+            {errorMessage && (
+                <p className="text-center text-red-500 text-sm mb-2">{errorMessage}</p>
+            )}
             {/* Header - Matches NodeRace style/height */}
             <div className="flex items-center justify-between flex-shrink-0 flex-wrap gap-2">
                 <div className="flex items-center gap-2 sm:gap-3">
