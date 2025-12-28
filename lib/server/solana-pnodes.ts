@@ -6,11 +6,22 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 import { PNode } from '../types/pnode';
 import { XANDEUM_NFT_COLLECTIONS } from '../constants/nft';
+import {
+  getGovernanceAccounts,
+  getRealm,
+  getTokenOwnerRecord,
+  GovernanceAccountType,
+} from '@solana/spl-governance';
 
 const DEVNET_PROGRAM = new PublicKey('6Bzz3KPvzQruqBg2vtsvkuitd6Qb4iCcr5DViifCwLsL');
 const DEVNET_RPC = 'https://api.devnet.xandeum.com:8899';
 const INDEX_ACCOUNT = new PublicKey('GHTUesiECzPRHTShmBGt9LiaA89T8VAzw8ZWNE6EvZRs');
 const XAND_MINT = new PublicKey('XANDuUoVoUqniKkpcKhrxmvYJybpJvUxJLr21Gaj3Hx');
+// Xandeum DAO Realm ID from user
+const XANDEUM_REALM_ID = new PublicKey('5JpYydB2VFcxbPGr8xmpefmJw86GQELCk7cB132wRXCa');
+// SPL Governance Program ID (Devnet/Mainnet typically the same for standard deployments, but verifying for Xandeum)
+// Assuming standard SPL Governance v2 or v3
+const GOVERNANCE_PROGRAM_ID = new PublicKey('GovER5Lthms3bLBqWub97yVrMmEogzX7xNdXwpXH7sj');
 
 /**
  * Fetch all pNode pubkeys from the on-chain index account
@@ -78,6 +89,71 @@ export async function getOnChainPNodeCount(
 }
 
 /**
+ * Fetch staked XAND in the DAO for a given owner
+ */
+async function fetchDAOStake(
+  connection: Connection,
+  ownerPubkey: PublicKey
+): Promise<number> {
+  try {
+    // Try to find the TokenOwnerRecord for this owner in the Xandeum Realm
+    // The TokenOwnerRecord holds the amount of governing tokens (XAND) deposited
+
+    // We need to derive the address of the TokenOwnerRecord
+    // Seed: ['governance', realm, token_mint, token_owner]
+    // However, spl-governance SDK provides helper
+
+    // Since we don't have the SDK fully configured with all IDLs in this lightweight script, 
+    // we'll try to fetch program accounts or use the address derivation if possible.
+    // For robust 'get', we can use the helper if the package exports it cleanly.
+
+    // Note: XAND_MINT is likely the governing token mint for the Realm
+
+    try {
+      const tokenOwnerRecordAddress = await getTokenOwnerRecordAddress(
+        GOVERNANCE_PROGRAM_ID,
+        XANDEUM_REALM_ID,
+        XAND_MINT,
+        ownerPubkey
+      );
+
+      const tokenOwnerRecord = await getTokenOwnerRecord(connection, tokenOwnerRecordAddress);
+
+      // governingTokenDepositAmount is a BN
+      // We'll convert to number (careful with precision, but XAND decimals usually 9)
+      const amount = Number(tokenOwnerRecord.account.governingTokenDepositAmount.toString());
+      return amount / 1e9; // Assuming 9 decimals for XAND
+    } catch (e) {
+      // If record not found, stake is 0
+      return 0;
+    }
+
+  } catch (err) {
+    console.warn('[OnChain] Failed to fetch DAO stake:', err);
+    return 0;
+  }
+}
+
+// Helper to derive TokenOwnerRecord address manually if needed/simplified
+async function getTokenOwnerRecordAddress(
+  programId: PublicKey,
+  realm: PublicKey,
+  governingTokenMint: PublicKey,
+  governingTokenOwner: PublicKey
+): Promise<PublicKey> {
+  const [tokenOwnerRecordAddress] = await PublicKey.findProgramAddress(
+    [
+      Buffer.from('governance'),
+      realm.toBuffer(),
+      governingTokenMint.toBuffer(),
+      governingTokenOwner.toBuffer(),
+    ],
+    programId
+  );
+  return tokenOwnerRecordAddress;
+}
+
+/**
  * Enrich a pNode with on-chain data (balance, validator status, registry/manager PDAs)
  */
 export async function enrichPNodeWithOnChainData(
@@ -89,9 +165,12 @@ export async function enrichPNodeWithOnChainData(
   isRegistered?: boolean;
   registryPDA?: string;
   managerPDA?: string;
+  managerWallet?: string;
   validatorInfo?: unknown;
   xandStake?: number;
+  daoStake?: number;
   nftBoost?: number;
+  nftDetails?: { name: string; multiplier: number; icon: string }[];
   eraBoost?: number;
   eraLabel?: string;
   error?: string;
@@ -99,14 +178,36 @@ export async function enrichPNodeWithOnChainData(
   try {
     const nodePubkey = new PublicKey(pubkey);
 
+    // Pre-calculate PDAs to fetch them in parallel
+    let registryAddress: PublicKey | undefined;
+    try {
+      [registryAddress] = PublicKey.findProgramAddressSync(
+        [Buffer.from('registry'), nodePubkey.toBuffer()],
+        DEVNET_PROGRAM
+      );
+    } catch { }
+
+    let managerAddress: PublicKey | undefined;
+    try {
+      [managerAddress] = PublicKey.findProgramAddressSync(
+        [Buffer.from('manager'), nodePubkey.toBuffer()],
+        DEVNET_PROGRAM
+      );
+    } catch { }
+
     // Fetch all data in parallel
     const [
       balanceResult,
       voteAccountsResult,
+      nodeAccountResult,
+      registryAccountResult,
+      managerAccountResult,
     ] = await Promise.allSettled([
       connection.getBalance(nodePubkey),
       connection.getVoteAccounts(),
       connection.getAccountInfo(nodePubkey),
+      registryAddress ? connection.getAccountInfo(registryAddress) : Promise.resolve(null),
+      managerAddress ? connection.getAccountInfo(managerAddress) : Promise.resolve(null),
     ]);
 
     // Process balance
@@ -145,36 +246,38 @@ export async function enrichPNodeWithOnChainData(
     let isRegistered = false;
     let registryPDA: string | undefined;
     let managerPDA: string | undefined;
+    let managerWallet: string | undefined;
 
-    try {
-      const [registry] = PublicKey.findProgramAddressSync(
-        [Buffer.from('registry'), nodePubkey.toBuffer()],
-        DEVNET_PROGRAM
-      );
-      registryPDA = registry.toBase58();
+    if (registryAddress && registryAccountResult.status === 'fulfilled' && registryAccountResult.value) {
+      registryPDA = registryAddress.toBase58();
+      isRegistered = true;
+    }
 
-      const registryInfo = await connection.getAccountInfo(registry);
-      if (registryInfo && registryInfo.data) {
-        isRegistered = true;
+    if (managerAddress && managerAccountResult.status === 'fulfilled' && managerAccountResult.value) {
+      managerPDA = managerAddress.toBase58();
+      // Extract Manager Wallet (Authority) from first 32 bytes
+      if (managerAccountResult.value.data.length >= 32) {
+        try {
+          const authorityBytes = managerAccountResult.value.data.slice(0, 32);
+          managerWallet = new PublicKey(authorityBytes).toBase58();
+        } catch (e) {
+          console.warn(`[OnChain] Failed to parse authority from manager PDA for ${pubkey}`);
+        }
       }
-    } catch (e) {
-      // Registry doesn't exist
     }
 
-    try {
-      const [manager] = PublicKey.findProgramAddressSync(
-        [Buffer.from('manager'), nodePubkey.toBuffer()],
-        DEVNET_PROGRAM
-      );
-      managerPDA = manager.toBase58();
-    } catch (e) {
-      // Manager doesn't exist
-    }
+    // Determine the "Owner" wallet for DAO checks
+    // If we found the managerWallet (Buyer), use that! 
+    // Otherwise fallback to node pubkey (which is likely wrong for holding stake, but a fallback)
+    const ownerForStake = managerWallet ? new PublicKey(managerWallet) : nodePubkey;
 
-    // Fetch XAND token balance (stake)
+    // Fetch DAO stake for the Owner
+    const daoStake = await fetchDAOStake(connection, ownerForStake);
+
+    // Fetch XAND token balance (liquid stake)
     let xandStake = 0;
     try {
-      const tokenAccounts = await connection.getTokenAccountsByOwner(nodePubkey, {
+      const tokenAccounts = await connection.getTokenAccountsByOwner(ownerForStake, {
         mint: XAND_MINT
       });
 
@@ -191,11 +294,10 @@ export async function enrichPNodeWithOnChainData(
 
     // Fetch NFT Multiplier (scan for Xandeum NFTs)
     let nftBoost = 1;
+    const nftDetails: { name: string; multiplier: number; icon: string }[] = [];
     try {
-      // In a real implementation, we would use getProgramAccounts or Metaplex SDK
-      // to find tokens belonging to the official collections.
-      // For now, we'll implement the scanning framework.
-      const parsedTokenAccounts = await connection.getParsedTokenAccountsByOwner(nodePubkey, {
+      // Scan owner for NFTs
+      const parsedTokenAccounts = await connection.getParsedTokenAccountsByOwner(ownerForStake, {
         programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA')
       });
 
@@ -210,11 +312,16 @@ export async function enrichPNodeWithOnChainData(
           const collectionMatch = XANDEUM_NFT_COLLECTIONS.find(c => c.collectionId === mint);
           if (collectionMatch) {
             nftBoost = Math.max(nftBoost, collectionMatch.multiplier);
+            nftDetails.push({
+              name: collectionMatch.name,
+              multiplier: collectionMatch.multiplier,
+              icon: collectionMatch.icon
+            });
           }
         }
       }
     } catch (e) {
-      console.warn(`[OnChain] Failed to scan NFTs for ${pubkey}:`, e);
+      // console.warn(`[OnChain] Failed to scan NFTs for ${pubkey}:`, e);
     }
 
     // Determine Era Boost (simplified estimation based on existence)
@@ -233,9 +340,12 @@ export async function enrichPNodeWithOnChainData(
       isRegistered,
       registryPDA,
       managerPDA,
+      managerWallet,
       validatorInfo,
       xandStake,
+      daoStake,
       nftBoost,
+      nftDetails,
       eraBoost,
       eraLabel,
     };
@@ -260,9 +370,12 @@ export async function enrichPNodesWithOnChainData(
   isRegistered?: boolean;
   registryPDA?: string;
   managerPDA?: string;
+  managerWallet?: string;
   validatorInfo?: unknown;
   xandStake?: number;
+  daoStake?: number;
   nftBoost?: number;
+  nftDetails?: { name: string; multiplier: number; icon: string }[];
   eraBoost?: number;
   eraLabel?: string;
   error?: string;
@@ -341,7 +454,9 @@ export async function fetchAndEnrichOnChainPNodes(
         managerPDA: onChainData.managerPDA,
         validatorInfo: onChainData.validatorInfo,
         xandStake: onChainData.xandStake,
+        daoStake: onChainData.daoStake,
         nftBoost,
+        nftDetails: onChainData.nftDetails,
         eraBoost,
         eraLabel: onChainData.eraLabel,
         // Calculate boost factor for single node: NFT * Era (multiplicative for individual node base)
