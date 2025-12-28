@@ -53,41 +53,25 @@ export async function GET() {
             return managerMap.get(wallet)!;
         };
 
-        // Pass 1: Identify Links (Registrar -> Buyer)
-        // If a node has both managerWallet AND registrarWallet, and they are different,
-        // we know that ReistrarWallet is "owned" by ManagerWallet.
-        const registrarToBuyer = new Map<string, string>();
-
+        // Process Nodes into Managers
         for (const node of nodes) {
-            if (node.managerWallet && node.registrarWallet && node.managerWallet !== node.registrarWallet) {
-                registrarToBuyer.set(node.registrarWallet, node.managerWallet);
-            }
-        }
-
-        // Pass 2: Process Nodes into Managers
-        for (const node of nodes) {
-            // Determine the "Primary Identity" for this node.
-            // 1. If it has a Manager Wallet (Buyer), that is the Primary.
-            // 2. If it has a Registrar Wallet, check if that Registrar is linked to a Buyer.
-            // 3. If Registrar is not linked, the Registrar itself is the Primary.
+            // STRICT LINKING:
+            // 1. If node.managerWallet exists (Buyer), use it.
+            // 2. If only node.registrarWallet exists, use it (Registrar).
+            // Do NOT infer Buyer from Registrar across different nodes.
 
             let primaryWallet: string | undefined;
-            let role: 'buyer' | 'registrar' = 'registrar'; // Default implication
+            let role: 'buyer' | 'registrar' = 'registrar'; // Default
 
             if (node.managerWallet) {
                 primaryWallet = node.managerWallet;
-                role = 'buyer'; // Direct buyer link
+                role = 'buyer'; // Direct buyer link (Strongest)
             } else if (node.registrarWallet) {
-                if (registrarToBuyer.has(node.registrarWallet)) {
-                    primaryWallet = registrarToBuyer.get(node.registrarWallet);
-                    role = 'registrar'; // Linked via registrar
-                } else {
-                    primaryWallet = node.registrarWallet;
-                    role = 'registrar'; // Standalone registrar
-                }
+                primaryWallet = node.registrarWallet;
+                role = 'registrar'; // Standalone registrar (Weakest)
             }
 
-            if (!primaryWallet) continue; // Skip nodes with absolutely no wallet info (unlikely)
+            if (!primaryWallet) continue; // Skip if absolutely no wallet info
 
             const manager = getOrCreateManager(primaryWallet);
 
@@ -99,8 +83,7 @@ export async function GET() {
                 if (manager.source === 'mainnet') manager.source = 'both';
             }
 
-            // Link Associated Wallet if needed
-            // If this node came via a Registrar wallet that isn't the primary, valid link
+            // Link Associated Wallet if present on THIS node specifically
             if (node.registrarWallet && node.registrarWallet !== primaryWallet) {
                 if (!manager.associatedWallets.includes(node.registrarWallet)) {
                     manager.associatedWallets.push(node.registrarWallet);
@@ -108,7 +91,6 @@ export async function GET() {
             }
 
             // Add Node Stats
-            // Avoid duplicates in knownNodes (though iterating nodes once should be safe)
             if (!manager.knownNodes.some(kn => kn.pubkey === (node.pubkey || node.publicKey))) {
                 manager.knownNodes.push({
                     pubkey: node.pubkey || node.publicKey || '',
