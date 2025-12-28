@@ -454,6 +454,55 @@ export async function getAllNodes(): Promise<PNode[]> {
 }
 
 /**
+ * Get nodes optimized for Manager view (projection)
+ */
+export async function getAllNodesForManagers(): Promise<PNode[]> {
+  const retries = 3;
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await getClient();
+      const collection = await getNodesCollection();
+
+      // Project only necessary fields
+      const cursor = collection.find({}, {
+        projection: {
+          _id: 1,
+          pubkey: 1,
+          publicKey: 1,
+          managerWallet: 1,
+          registrarWallet: 1,
+          credits: 1,
+          status: 1,
+          version: 1,
+          location: 1,
+          seenInGossip: 1
+        }
+      }).batchSize(1000);
+
+      const docs = await cursor.toArray();
+      console.log(`[MongoDB] ✅ Retrieved ${docs.length} nodes (lightweight)`);
+      return docs.map(doc => documentToNode(doc as unknown as NodeDocument));
+    } catch (err: unknown) {
+      const error = err as Error;
+      lastError = error;
+      const errorMsg = error?.message || String(err);
+      console.error(`[MongoDB] Error fetching lightweight nodes (attempt ${attempt}/${retries}):`, errorMsg);
+
+      if (errorMsg.includes('Topology') || errorMsg.includes('connection')) {
+        client = null;
+      }
+
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+      }
+    }
+  }
+  return [];
+}
+
+/**
  * Get node by pubkey
  */
 export async function getNodeByPubkey(pubkey: string): Promise<PNode | null> {

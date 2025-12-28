@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllNodes } from '@/lib/server/mongodb-nodes';
+import { getAllNodesForManagers } from '@/lib/server/mongodb-nodes';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,8 +30,8 @@ interface Manager {
 
 export async function GET() {
     try {
-        // Fetch all nodes
-        const nodes = await getAllNodes();
+        // Fetch all nodes (lightweight)
+        const nodes = await getAllNodesForManagers();
 
         // Initialize Manager Map
         const managerMap = new Map<string, Manager>();
