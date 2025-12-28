@@ -108,11 +108,18 @@ export default function Header({
                 href="/stoinc"
                 prefetch={true}
                 className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'stoinc'
-                  ? 'bg-gradient-to-r from-green-400 via-[#F0A741] to-purple-500 bg-clip-text text-transparent font-bold bg-[#F0A741]/10 shadow-sm'
-                  : 'bg-gradient-to-r from-green-400/60 via-[#F0A741]/60 to-purple-500/60 bg-clip-text text-transparent hover:from-green-400 hover:via-[#F0A741] hover:to-purple-500 hover:bg-[#F0A741]/5'
+                  ? 'bg-[#F0A741]/10 shadow-sm'
+                  : 'hover:bg-[#F0A741]/5'
                   }`}
               >
-                STOINC
+                <span className={`bg-gradient-to-r from-green-400 via-[#F0A741] to-purple-500 bg-clip-text text-transparent font-bold ${activePage === 'stoinc'
+                  ? 'opacity-100'
+                  : 'opacity-60 hover:opacity-100'
+                  }`}
+                  style={{ WebkitBackgroundClip: 'text' }}
+                >
+                  STOINC
+                </span>
               </Link>
               <Link
                 href="/regions"
@@ -264,11 +271,18 @@ export default function Header({
               prefetch={true}
               onClick={() => setMobileMenuOpen(false)}
               className={`block px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'stoinc'
-                ? 'bg-gradient-to-r from-green-400 via-[#F0A741] to-purple-500 bg-clip-text text-transparent font-bold bg-[#F0A741]/10 shadow-sm'
-                : 'bg-gradient-to-r from-green-400/60 via-[#F0A741]/60 to-purple-500/60 bg-clip-text text-transparent hover:from-green-400 hover:via-[#F0A741] hover:to-purple-500 hover:bg-[#F0A741]/5'
+                ? 'bg-[#F0A741]/10 shadow-sm'
+                : 'hover:bg-[#F0A741]/5'
                 }`}
             >
-              STOINC
+              <span className={`bg-gradient-to-r from-green-400 via-[#F0A741] to-purple-500 bg-clip-text text-transparent font-bold ${activePage === 'stoinc'
+                ? 'opacity-100'
+                : 'opacity-60 hover:opacity-100'
+                }`}
+                style={{ WebkitBackgroundClip: 'text' }}
+              >
+                STOINC
+              </span>
             </Link>
             <Link
               href="/regions"

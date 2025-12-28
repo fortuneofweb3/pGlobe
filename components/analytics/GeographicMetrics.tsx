@@ -333,12 +333,12 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
         </div>
       </div>
 
-      <div className="flex-1" style={{ width: '100%', minHeight: 200, position: 'relative' }}>
+      <div className="flex-1" style={{ width: '100%', minHeight: typeof window !== 'undefined' && window.innerWidth < 640 ? 400 : 200, position: 'relative' }}>
         <ParentSize>
           {({ width: parentWidth = 800, height: parentHeight = 200 }) => (
             <BarChart
               width={parentWidth}
-              height={Math.max(200, parentHeight)}
+              height={Math.max(typeof window !== 'undefined' && window.innerWidth < 640 ? 400 : 200, parentHeight)}
               data={data}
               baseMargin={baseMargin}
               getColor={getColor}

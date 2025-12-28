@@ -29,16 +29,16 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
   // Fetch historical data for packet rate calculation
   useEffect(() => {
     if (activeTab !== 'packets') return;
-    
-    const nodesWithPackets = nodes.filter(n => 
+
+    const nodesWithPackets = nodes.filter(n =>
       (n.packetsReceived !== undefined && n.packetsReceived > 0) ||
       (n.packetsSent !== undefined && n.packetsSent > 0)
     );
-    
+
     if (nodesWithPackets.length === 0) return;
-    
+
     setLoadingRates(true);
-    
+
     // Fetch historical data for nodes with packet data
     const fetchRates = async () => {
       const ratesMap = new Map<string, { rxRate: number; txRate: number; totalRate: number }>();
@@ -47,18 +47,18 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
 
       // Fetch for all nodes to get accurate packet rates
       const nodesToFetch = nodesWithPackets;
-      
+
       await Promise.all(
         nodesToFetch.map(async (node) => {
           try {
             const pubkey = node.pubkey || node.publicKey || node.id;
             if (!pubkey) return;
-            
+
             const url = `/api/history?nodeId=${encodeURIComponent(pubkey)}&startTime=${startTime}&endTime=${endTime}`;
             const response = await fetch(url);
-            
+
             if (!response.ok) return;
-            
+
             const data = await response.json();
             if (data.data && Array.isArray(data.data) && data.data.length >= 2) {
               const historicalData = data.data.map((snapshot: any) => ({
@@ -66,7 +66,7 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
                 packetsReceived: snapshot.packetsReceived,
                 packetsSent: snapshot.packetsSent,
               }));
-              
+
               const rates = calculatePacketRates(historicalData, 60); // 60 minute window
               if (rates) {
                 ratesMap.set(node.id, rates);
@@ -78,11 +78,11 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
           }
         })
       );
-      
+
       setPacketRates(ratesMap);
       setLoadingRates(false);
     };
-    
+
     fetchRates();
   }, [activeTab, nodes]);
 
@@ -99,8 +99,8 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
     // Use uptimePercent if available, otherwise calculate from uptime (seconds)
     const byUptime = [...nodes]
       .map(n => {
-        const uptimePercent = n.uptimePercent !== undefined 
-          ? n.uptimePercent 
+        const uptimePercent = n.uptimePercent !== undefined
+          ? n.uptimePercent
           : calculateUptimePercent(n.uptime);
         return { ...n, calculatedUptimePercent: uptimePercent };
       })
@@ -169,13 +169,13 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
     return 'Unknown';
   };
 
-  const currentRankings = activeTab === 'uptime' 
-    ? rankings.byUptime 
+  const currentRankings = activeTab === 'uptime'
+    ? rankings.byUptime
     : activeTab === 'storage'
-    ? rankings.byStorage
-    : activeTab === 'packets'
-    ? rankings.byPackets
-    : rankings.byCredits;
+      ? rankings.byStorage
+      : activeTab === 'packets'
+        ? rankings.byPackets
+        : rankings.byCredits;
   const hasData = currentRankings.length > 0;
 
   // Get latest version for status badges (excluding trynet versions)
@@ -186,53 +186,49 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
 
   return (
     <div className="space-y-3 h-full flex flex-col">
-      
+
       {/* Tab buttons */}
       <div className="flex gap-1 p-1 bg-muted/30 rounded-lg">
         <button
           onClick={() => setActiveTab('uptime')}
-          className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-            activeTab === 'uptime'
+          className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'uptime'
               ? 'bg-[#F0A741]/20 text-[#F0A741]'
               : 'text-muted-foreground hover:text-foreground'
-          }`}
+            }`}
         >
           Top by Uptime
         </button>
         <button
           onClick={() => setActiveTab('storage')}
-          className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-            activeTab === 'storage'
+          className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'storage'
               ? 'bg-[#F0A741]/20 text-[#F0A741]'
               : 'text-muted-foreground hover:text-foreground'
-          }`}
+            }`}
         >
           Top by Storage
         </button>
         <button
           onClick={() => setActiveTab('packets')}
-          className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-            activeTab === 'packets'
+          className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'packets'
               ? 'bg-[#F0A741]/20 text-[#F0A741]'
               : 'text-muted-foreground hover:text-foreground'
-          }`}
+            }`}
         >
           Top by Packets
         </button>
         <button
           onClick={() => setActiveTab('credits')}
-          className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-            activeTab === 'credits'
+          className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'credits'
               ? 'bg-[#F0A741]/20 text-[#F0A741]'
               : 'text-muted-foreground hover:text-foreground'
-          }`}
+            }`}
         >
           Top by Credits
         </button>
       </div>
 
       {/* Rankings list - scrollable for top 10 */}
-      <div className="space-y-1.5 flex-1 overflow-y-auto pr-1 scrollbar-thin min-h-0 max-h-[280px]">
+      <div className="space-y-1.5 flex-1 overflow-y-auto pr-1 scrollbar-thin min-h-0 max-h-[500px]">
         {loadingRates && activeTab === 'packets' ? (
           <div className="text-center py-4 text-xs text-muted-foreground">
             <p>Calculating packet rates...</p>
@@ -242,20 +238,18 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
             <div
               key={node.id}
               onClick={() => onNodeClick?.(node)}
-              className={`flex items-center gap-2 p-2 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors ${
-                onNodeClick ? 'cursor-pointer' : ''
-              }`}
+              className={`flex items-center gap-2 p-2 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors ${onNodeClick ? 'cursor-pointer' : ''
+                }`}
             >
               {/* Rank badge */}
-              <span className={`w-5 h-5 flex items-center justify-center text-xs font-bold rounded ${
-                index === 0 ? 'bg-[#F0A741]/30 text-[#F0A741]' :
-                index === 1 ? 'bg-gray-400/30 text-gray-300' :
-                index === 2 ? 'bg-amber-700/30 text-amber-500' :
-                'bg-muted text-muted-foreground'
-              }`}>
+              <span className={`w-5 h-5 flex items-center justify-center text-xs font-bold rounded ${index === 0 ? 'bg-[#F0A741]/30 text-[#F0A741]' :
+                  index === 1 ? 'bg-gray-400/30 text-gray-300' :
+                    index === 2 ? 'bg-amber-700/30 text-amber-500' :
+                      'bg-muted text-muted-foreground'
+                }`}>
                 {index + 1}
               </span>
-              
+
               {/* Node info */}
               <div className="flex-1 min-w-0 space-y-1">
                 <span className="text-xs font-mono text-foreground/90 truncate block">
@@ -281,23 +275,23 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
                   <NodeStatusBadge node={node} latestVersion={latestVersion} showLabel={false} />
                 )}
               </div>
-              
+
               {/* Value */}
               <span className="text-xs font-semibold text-[#3F8277] whitespace-nowrap">
                 {activeTab === 'uptime'
                   ? <AnimatedNumber value={node.uptimePercent || 0} decimals={1} suffix="%" />
                   : activeTab === 'storage'
-                  ? formatStorageBytes(node.storageCapacity || 0)
-                  : activeTab === 'credits'
-                  ? (node.credits !== undefined && node.credits !== null)
-                    ? <AnimatedNumber value={node.credits} />
-                    : 'N/A'
-                  : (() => {
-                      const nodeWithRate = node as NodeWithPacketRate;
-                      return nodeWithRate.totalRate 
-                        ? formatPacketRate(nodeWithRate.totalRate)
-                        : 'N/A';
-                    })()
+                    ? formatStorageBytes(node.storageCapacity || 0)
+                    : activeTab === 'credits'
+                      ? (node.credits !== undefined && node.credits !== null)
+                        ? <AnimatedNumber value={node.credits} />
+                        : 'N/A'
+                      : (() => {
+                        const nodeWithRate = node as NodeWithPacketRate;
+                        return nodeWithRate.totalRate
+                          ? formatPacketRate(nodeWithRate.totalRate)
+                          : 'N/A';
+                      })()
                 }
               </span>
             </div>
