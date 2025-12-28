@@ -13,7 +13,7 @@ export default function ActivityLogsPage() {
     const [activeTab, setActiveTab] = React.useState<'racing' | 'feed'>('feed');
 
     return (
-        <div className="h-screen w-full fixed inset-0 flex flex-col bg-black text-foreground overflow-hidden">
+        <div className="h-[100dvh] w-full fixed inset-0 flex flex-col bg-black text-foreground overflow-hidden">
             <Header
                 activePage="activity"
                 nodeCount={nodes.length}
@@ -71,7 +71,7 @@ export default function ActivityLogsPage() {
                 </div>
 
                 {/* Main content - stacked tabs on mobile, side by side on xl */}
-                <div className="flex-1 px-3 sm:px-6 pb-6 overflow-hidden">
+                <div className="flex-1 px-3 sm:px-6 pb-6 sm:pb-8 overflow-hidden">
                     <div className="max-w-7xl mx-auto h-full flex flex-col overflow-hidden">
                         {/* Desktop View: Side by Side */}
                         <div className="hidden xl:grid grid-cols-2 gap-4 sm:gap-6 h-full overflow-hidden">
@@ -83,17 +83,14 @@ export default function ActivityLogsPage() {
                             </div>
                         </div>
 
-                        {/* Mobile View: Tabbed Viewport */}
-                        <div className="xl:hidden flex-1 overflow-hidden">
-                            {activeTab === 'feed' ? (
-                                <div className="h-full animate-fade-in overflow-hidden">
-                                    <ActivityLogList limit={50} showFilters={true} />
-                                </div>
-                            ) : (
-                                <div className="h-full animate-fade-in overflow-hidden">
-                                    <NodeRaceVisualization />
-                                </div>
-                            )}
+                        {/* Mobile View: Tabbed Viewport - Keep both mounted for background connectivity */}
+                        <div className="xl:hidden flex-1 relative overflow-hidden">
+                            <div className={`h-full absolute inset-0 transition-opacity duration-300 ${activeTab === 'feed' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
+                                <ActivityLogList limit={50} showFilters={true} />
+                            </div>
+                            <div className={`h-full absolute inset-0 transition-opacity duration-300 ${activeTab === 'racing' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
+                                <NodeRaceVisualization />
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -280,12 +280,10 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         const handleVisibilityChange = () => {
             if (document.hidden) {
                 isVisibleRef.current = false;
-                bufferRef.current = [];
-                processingRef.current = false;
+                // Don't clear buffer - keep it so we can see info immediately on return
             } else {
                 isVisibleRef.current = true;
-                bufferRef.current = [];
-                processingRef.current = false;
+                // No need to clear buffer when returning
             }
         };
 
@@ -298,7 +296,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
     }, [isPaused]);
 
     const processBuffer = React.useCallback(() => {
-        if (!isVisibleRef.current || isPausedRef.current) {
+        if (isPausedRef.current) {
             bufferRef.current = [];
             return;
         }
@@ -306,7 +304,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         processingRef.current = true;
 
         const processOne = () => {
-            if (!isVisibleRef.current || isPausedRef.current || bufferRef.current.length === 0) {
+            if (isPausedRef.current || bufferRef.current.length === 0) {
                 processingRef.current = false;
                 return;
             }

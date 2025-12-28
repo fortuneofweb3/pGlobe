@@ -213,13 +213,10 @@ export default function NodeRaceVisualization() {
         const handleVisibilityChange = () => {
             if (document.hidden) {
                 isVisibleRef.current = false;
-                bufferRef.current = [];
-                processingRef.current = false;
-                setNodeMetrics({});
+                // Don't clear buffer or metrics - keep them so we can see info immediately on return
             } else {
                 isVisibleRef.current = true;
-                bufferRef.current = [];
-                processingRef.current = false;
+                // No need to clear buffer when returning
             }
         };
 
@@ -232,7 +229,7 @@ export default function NodeRaceVisualization() {
     }, [isPaused]);
 
     const processBuffer = React.useCallback(() => {
-        if (!isVisibleRef.current || isPausedRef.current) {
+        if (isPausedRef.current) {
             bufferRef.current = [];
             return;
         }
@@ -240,7 +237,7 @@ export default function NodeRaceVisualization() {
         processingRef.current = true;
 
         const processOne = () => {
-            if (!isVisibleRef.current || isPausedRef.current || bufferRef.current.length === 0) {
+            if (isPausedRef.current || bufferRef.current.length === 0) {
                 processingRef.current = false;
                 return;
             }

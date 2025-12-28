@@ -15,7 +15,7 @@ export default function VersionDistribution({ nodes }: VersionDistributionProps)
 
   const versionStats = useMemo(() => {
     const versionMap = new Map<string, number>();
-    
+
     nodes.forEach(node => {
       const version = node.version || 'Unknown';
       versionMap.set(version, (versionMap.get(version) || 0) + 1);
@@ -32,25 +32,25 @@ export default function VersionDistribution({ nodes }: VersionDistributionProps)
 
     // Latest version is the one with highest semantic version (excluding trynet versions)
     // Filter out trynet versions when determining "current"
-    const nonTrynetVersions = sorted.filter(v => 
+    const nonTrynetVersions = sorted.filter(v =>
       v.version !== 'Unknown' && !v.version.includes('-trynet')
     );
-    
+
     const latestVersion = nonTrynetVersions.length > 0
       ? nonTrynetVersions.sort((a, b) => {
-          // Try semantic version comparison
-          // Extract base version (before any dashes)
-          const aBase = a.version.replace('v', '').split('-')[0];
-          const bBase = b.version.replace('v', '').split('-')[0];
-          const aParts = aBase.split('.').map(Number);
-          const bParts = bBase.split('.').map(Number);
-          for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
-            const aVal = aParts[i] || 0;
-            const bVal = bParts[i] || 0;
-            if (aVal !== bVal) return bVal - aVal;
-          }
-          return 0;
-        })[0]?.version
+        // Try semantic version comparison
+        // Extract base version (before any dashes)
+        const aBase = a.version.replace('v', '').split('-')[0];
+        const bBase = b.version.replace('v', '').split('-')[0];
+        const aParts = aBase.split('.').map(Number);
+        const bParts = bBase.split('.').map(Number);
+        for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+          const aVal = aParts[i] || 0;
+          const bVal = bParts[i] || 0;
+          if (aVal !== bVal) return bVal - aVal;
+        }
+        return 0;
+      })[0]?.version
       : null;
 
     return { versions: sorted, latestVersion };
@@ -59,25 +59,25 @@ export default function VersionDistribution({ nodes }: VersionDistributionProps)
   // Animate progress bars on mount and when data changes
   useEffect(() => {
     if (versionStats.versions.length === 0) return;
-    
+
     hasAnimatedRef.current = false;
-    
+
     const timer = setTimeout(() => {
       if (hasAnimatedRef.current) return;
-      
+
       versionStats.versions.forEach(({ version, percentage }, index) => {
         const bar = progressBarRefs.current.get(version);
         if (bar) {
           // Start from 0 width
           bar.style.width = '0%';
           bar.style.transition = `width 1s ease-out ${index * 0.1}s`;
-          
+
           requestAnimationFrame(() => {
             bar.style.width = `${percentage}%`;
           });
         }
       });
-      
+
       hasAnimatedRef.current = true;
     }, 50);
 
@@ -104,27 +104,32 @@ export default function VersionDistribution({ nodes }: VersionDistributionProps)
       </div>
 
       {/* Version List */}
-      <div className="space-y-2 flex-1 overflow-y-auto pr-2 min-h-0 max-h-[360px]">
+      <div className="space-y-4 flex-1 overflow-y-auto pr-2 min-h-0 max-h-[360px]">
         {versionStats.versions.map(({ version, count, percentage }) => {
           const isLatest = version === versionStats.latestVersion;
           const label = getVersionLabel(version, isLatest);
 
+          // Truncate long trynet versions for mobile
+          const displayVersion = version.includes('-trynet')
+            ? `${version.split('-')[0]}-trynet...${version.slice(-7)}`
+            : version;
+
           return (
             <div key={version} className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-mono text-foreground">
-                    {version}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm font-mono text-foreground truncate" title={version}>
+                    {displayVersion}
                   </span>
                   {label && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-[#3F8277]/20 text-[#3F8277] font-medium">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#3F8277]/20 text-[#3F8277] font-bold uppercase tracking-tight flex-shrink-0">
                       {label}
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    <AnimatedNumber value={count} /> (<AnimatedNumber value={percentage} decimals={0} suffix="%" />)
+                <div className="flex-shrink-0">
+                  <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">
+                    <AnimatedNumber value={count} /> <span className="text-foreground/20 mx-0.5">/</span> (<AnimatedNumber value={percentage} decimals={0} suffix="%" />)
                   </span>
                 </div>
               </div>
@@ -133,9 +138,8 @@ export default function VersionDistribution({ nodes }: VersionDistributionProps)
                   ref={(el) => {
                     if (el) progressBarRefs.current.set(version, el);
                   }}
-                  className={`h-1.5 rounded-full ${
-                    isLatest ? 'bg-[#3F8277]' : 'bg-[#F0A741]/50'
-                  }`}
+                  className={`h-1.5 rounded-full ${isLatest ? 'bg-[#3F8277]' : 'bg-[#F0A741]/50'
+                    }`}
                   style={{ width: `${percentage}%` }}
                 />
               </div>

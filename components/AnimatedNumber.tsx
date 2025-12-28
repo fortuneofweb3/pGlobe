@@ -227,13 +227,13 @@ export default function AnimatedNumber({
   const finalUnit = suffix || targetParsed.unitPart;
 
   return (
-    <span className={`inline-flex items-center ${className}`} style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+    <span className={`inline-flex items-center ${className}`} style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
       {/* Hidden for copy */}
       <span className="sr-only" aria-live="polite">{prefix}{targetFormatted}{finalUnit}</span>
 
-      {prefix && <span className="select-none">{prefix}</span>}
+      {prefix && <span className="select-none leading-none">{prefix}</span>}
 
-      <span className="inline-flex select-none">
+      <span className="inline-flex items-center select-none">
         {numberDisplay.map((item, idx) => {
           if (item.type === 'separator') {
             return <span key={`sep-${idx}`} className="leading-none">{item.value}</span>;
@@ -257,10 +257,10 @@ export default function AnimatedNumber({
               }}
               className="inline-block relative overflow-hidden"
               style={{
-                height: '1.2em',
+                height: '1em',
                 width: '0.6em',
                 textAlign: 'center',
-                verticalAlign: 'baseline'
+                verticalAlign: 'middle'
               }}
             >
               <span
@@ -287,7 +287,7 @@ export default function AnimatedNumber({
         })}
       </span>
 
-      {finalUnit && <span className="ml-0.5 select-none">{finalUnit}</span>}
+      {finalUnit && <span className="ml-0.5 select-none leading-none">{finalUnit}</span>}
     </span>
   );
 }
