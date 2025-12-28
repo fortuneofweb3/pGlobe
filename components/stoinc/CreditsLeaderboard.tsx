@@ -59,7 +59,7 @@ export default function CreditsLeaderboard({ nodes, limit = 20 }: CreditsLeaderb
             {/* Header */}
             <div className="grid grid-cols-12 gap-2 px-3 py-2 text-[10px] uppercase tracking-wider text-foreground/40 font-bold border-b border-white/5">
                 <div className="col-span-1">#</div>
-                <div className="col-span-7">Node</div>
+                <div className="col-span-7">pNode</div>
                 <div className="col-span-4 text-right">Credits</div>
             </div>
 

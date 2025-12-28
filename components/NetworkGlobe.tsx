@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { PNode } from '@/lib/types/pnode';
 import dynamic from 'next/dynamic';
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Globe as GlobeIcon } from 'lucide-react';
 
 // Dynamically import Globe to avoid SSR issues
 // react-globe.gl exports a default component
@@ -35,6 +35,8 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
   }, []);
 
   // Filter nodes with location data
+  const onlineNodes = useMemo(() => nodes.filter(n => n.status === 'online').length, [nodes]);
+
   const nodesWithLocation = useMemo(() => {
     return nodes.filter((node) => node.locationData && node.locationData.lat && node.locationData.lon);
   }, [nodes]);
@@ -182,7 +184,7 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
   if (!isClient) {
     return (
       <div>
-        <h3 className="text-h3 text-foreground mb-4">Global Node Distribution</h3>
+        <h3 className="text-h3 text-foreground mb-4">Global pNode Distribution</h3>
         <div className="h-[500px] flex items-center justify-center text-muted-foreground">
           Loading globe...
         </div>
@@ -193,22 +195,19 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
   return (
     <div>
       <div className="mb-4">
-        <h3 className="text-h3 text-foreground mb-2">Global Node Distribution</h3>
-        <div className="flex items-center gap-4 text-body text-muted-foreground">
-          <span>{nodesWithLocation.length} nodes mapped</span>
-          <span>•</span>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-[#3F8277]" />
-              <span>Online</span>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <GlobeIcon className="w-4 h-4 text-[#F0A741]" />
+            <h2 className="text-base font-semibold text-foreground">Global pNode Distribution</h2>
+          </div>
+          <div className="flex items-center gap-3 text-xs">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-[#3F8277]" />
+              <span className="text-muted-foreground">{onlineNodes} Online</span>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-[#F0A741]" />
-              <span>Syncing</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-[#ED1C24]" />
-              <span>Offline</span>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-red-500" />
+              <span className="text-muted-foreground">{nodes.length - onlineNodes} Offline</span>
             </div>
           </div>
         </div>

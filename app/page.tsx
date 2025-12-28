@@ -427,7 +427,7 @@ function HomeContent() {
                 <h2 className="text-xs font-semibold text-foreground/60 mb-3 sm:mb-4 uppercase tracking-wide">Network Stats</h2>
                 <div className="space-y-2 sm:space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs sm:text-sm text-foreground/70">Total Nodes</span>
+                    <span className="text-xs sm:text-sm text-foreground/70">Total pNodes</span>
                     <span className="h-4 w-12 bg-muted/40 rounded animate-pulse" />
                   </div>
                   <div className="flex items-center justify-between">
@@ -457,7 +457,7 @@ function HomeContent() {
               <div className="pt-4 sm:pt-6 border-t border-border">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Performance</h2>
-                  <InfoTooltip content="Stats from nodes with public pRPC only (~10 of 135 nodes). Most operators keep pRPC private (localhost-only) for security.">
+                  <InfoTooltip content="Stats from pNodes with public pRPC only (~10 of 135 pNodes). Most operators keep pRPC private (localhost-only) for security.">
                     <span className="h-3 w-16 bg-muted/40 rounded animate-pulse hidden sm:inline-block" />
                   </InfoTooltip>
                 </div>
@@ -508,7 +508,7 @@ function HomeContent() {
               <div className="pt-4 sm:pt-6 border-t border-border">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Network Activity</h2>
-                  <InfoTooltip content="From nodes with public pRPC only. Most nodes keep pRPC private.">
+                  <InfoTooltip content="From pNodes with public pRPC only. Most pNodes keep pRPC private.">
                     <span className="h-3 w-16 bg-muted/40 rounded animate-pulse hidden sm:inline-block" />
                   </InfoTooltip>
                 </div>
@@ -611,7 +611,7 @@ function HomeContent() {
               <h2 className="text-xs font-semibold text-foreground/60 mb-2 uppercase tracking-wide hidden md:block">Network Stats</h2>
               <div className="space-y-1.5 sm:space-y-2">
                 <div className="flex items-center justify-between group">
-                  <span className="text-xs sm:text-sm text-foreground/70 transition-colors duration-300 group-hover:text-foreground">Total Nodes</span>
+                  <span className="text-xs sm:text-sm text-foreground/70 transition-colors duration-300 group-hover:text-foreground">Total pNodes</span>
                   <span className="text-xs sm:text-sm font-semibold text-foreground transition-all duration-300 group-hover:scale-110">
                     <AnimatedNumber value={stats.totalNodes} />
                   </span>
@@ -649,7 +649,7 @@ function HomeContent() {
             <div className="pt-4 sm:pt-6 border-t border-border animate-slide-in-left" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Performance</h2>
-                <InfoTooltip content="Stats from nodes with public pRPC only (~10 of 135 nodes). Most operators keep pRPC private (localhost-only) for security.">
+                <InfoTooltip content="Stats from pNodes with public pRPC only (~10 of 135 pNodes). Most operators keep pRPC private (localhost-only) for security.">
                   <span className="text-xs text-muted-foreground hidden sm:inline">
                     {nodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent > 0).length}/{nodes.length} reporting
                   </span>
@@ -682,7 +682,7 @@ function HomeContent() {
                   animateValue={true}
                   valueFormatter={(v) => v > 0 ? `${v.toFixed(0)}ms` : 'N/A'}
                   tooltip={stats.avgLatency > 0
-                    ? `Average latency: ${stats.avgLatency.toFixed(0)}ms (from ${Object.values(nodeLatencies).filter(lat => lat !== null && lat !== undefined).length} reachable nodes)`
+                    ? `Average latency: ${stats.avgLatency.toFixed(0)}ms (from ${Object.values(nodeLatencies).filter(lat => lat !== null && lat !== undefined).length} reachable pNodes)`
                     : 'No latency data available'
                   }
                 />
@@ -697,17 +697,17 @@ function HomeContent() {
                 <MetricRow
                   label="Total Storage"
                   value={formatStorageBytes(stats.totalCapacity)}
-                  tooltip="Total storage capacity across all nodes."
+                  tooltip="Total storage capacity across all pNodes."
                 />
                 <MetricRow
                   label="Total RAM"
                   value={formatStorageBytes(stats.totalRAM)}
-                  tooltip="Total RAM capacity across all nodes."
+                  tooltip="Total RAM capacity across all pNodes."
                 />
                 <MetricRow
                   label="Used RAM"
                   value={formatStorageBytes(stats.usedRAM)}
-                  tooltip="Total RAM currently in use across all nodes."
+                  tooltip="Total RAM currently in use across all pNodes."
                 />
                 <MetricRow
                   label="Avg RAM Usage"
@@ -723,7 +723,7 @@ function HomeContent() {
             <div className="pt-4 sm:pt-6 border-t border-border animate-scale-in" style={{ animationDelay: '0.4s', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Network Activity</h2>
-                <InfoTooltip content="From nodes with public pRPC only. Most nodes keep pRPC private.">
+                <InfoTooltip content="From pNodes with public pRPC only. Most pNodes keep pRPC private.">
                   <span className="text-xs text-muted-foreground hidden sm:inline">
                     {nodes.filter(n => n.packetsReceived !== undefined && n.packetsReceived > 0).length}/{nodes.length}
                   </span>
@@ -796,7 +796,7 @@ function HomeContent() {
                 setGlobeSearchQuery(value);
                 setShowSearchResults(true);
               }}
-              placeholder="Search nodes by pubkey, address, or location..."
+              placeholder="Search pNodes by pubkey, address, or location..."
               showClearButton={true}
               onClear={() => {
                 setShowSearchResults(false);
@@ -810,7 +810,7 @@ function HomeContent() {
                 <div className="absolute top-full left-0 right-0 mt-2 bg-black/95 backdrop-blur-md border border-[#F0A741]/20 rounded-lg shadow-xl max-h-64 sm:max-h-96 overflow-y-auto z-50 dropdown-animate">
                   {globeSearchResults.length === 0 ? (
                     <div className="p-4 text-sm text-muted-foreground text-center">
-                      No nodes found
+                      No pNodes found
                     </div>
                   ) : (
                     <div className="py-2">

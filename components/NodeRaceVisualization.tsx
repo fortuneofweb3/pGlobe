@@ -415,8 +415,8 @@ export default function NodeRaceVisualization() {
             <div className="flex items-center justify-between flex-shrink-0 flex-wrap gap-2">
                 <div className="flex items-center gap-2 sm:gap-3">
                     <h2 className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-1.5 sm:gap-2">
-                        <span className="hidden xs:inline">Live Node Activity Race</span>
-                        <span className="xs:hidden">Node Race</span>
+                        <span className="hidden xs:inline">Live pNode Activity Race</span>
+                        <span className="xs:hidden">pNode Race</span>
                         <div className="group relative ml-1 cursor-help hidden sm:block">
                             <div className="w-3.5 h-3.5 rounded-full border border-zinc-500 text-zinc-500 flex items-center justify-center text-[9px] font-bold">?</div>
                             <div className="absolute left-0 top-full mt-2 hidden group-hover:block w-48 bg-black/95 text-white text-[10px] p-2 rounded border border-white/20 z-[100] shadow-xl pointer-events-none">
@@ -451,8 +451,8 @@ export default function NodeRaceVisualization() {
                     <div className="flex flex-col items-center justify-center h-[250px] sm:h-[350px] gap-4">
                         <Activity className="w-8 h-8 sm:w-12 sm:h-12 text-foreground/10 animate-pulse" />
                         <div className="text-center space-y-1">
-                            <p className="text-foreground/40 text-xs sm:text-sm font-semibold">Waiting for Active Nodes</p>
-                            <p className="text-foreground/20 text-[10px] sm:text-xs">Real-time activity will appear here...</p>
+                            <p className="text-foreground/40 text-xs sm:text-sm font-semibold">Waiting for Active pNodes</p>
+                            <p className="text-foreground/20 text-[10px] sm:text-xs">Real-time pNode activity will appear here...</p>
                         </div>
                     </div>
                 ) : (

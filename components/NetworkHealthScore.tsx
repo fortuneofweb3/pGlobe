@@ -60,7 +60,7 @@ export default function NetworkHealthScore({ nodes }: NetworkHealthScoreProps) {
           </div>
         </div>
       </div>
-      
+
       {/* Status Bar */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
@@ -71,18 +71,17 @@ export default function NetworkHealthScore({ nodes }: NetworkHealthScoreProps) {
         </div>
         <div className="w-full bg-muted rounded-full h-1.5">
           <div
-            className={`h-1.5 rounded-full transition-all ${
-              healthScore >= 80 ? 'bg-green-500' : healthScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-            }`}
+            className={`h-1.5 rounded-full transition-all ${healthScore >= 80 ? 'bg-green-500' : healthScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+              }`}
             style={{ width: `${healthScore}%` }}
           />
         </div>
       </div>
-      
+
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-3 pt-2">
         <div>
-          <div className="text-[10px] text-muted-foreground mb-0.5">Online Nodes</div>
+          <div className="text-[10px] text-muted-foreground mb-0.5">Online pNodes</div>
           <div className="text-xs font-medium text-foreground">
             {nodes.filter(n => n.status === 'online').length} / {nodes.length}
           </div>
@@ -93,7 +92,7 @@ export default function NetworkHealthScore({ nodes }: NetworkHealthScoreProps) {
             {nodes.filter(n => {
               const latest = nodes.map(n => n.version).filter((v): v is string => !!v).sort().reverse()[0];
               return n.version === latest;
-            }).length} nodes
+            }).length} pNodes
           </div>
         </div>
       </div>

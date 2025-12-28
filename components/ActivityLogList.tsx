@@ -17,7 +17,7 @@ interface ActivityLogListProps {
 
 const ACTIVITY_TYPES = [
     { value: '', label: 'All Activities' },
-    { value: 'new_node', label: 'New Nodes' },
+    { value: 'new_node', label: 'New pNodes' },
     { value: 'node_online', label: 'Online' },
     { value: 'node_offline', label: 'Offline' },
     { value: 'node_status', label: 'Status Updates' },
@@ -115,7 +115,7 @@ function LogItem({ log }: { log: ActivityLog }) {
 
     // Truncate pubkey in the middle: abcd...wxyz
     const formatPubkey = (key?: string) => {
-        if (!key) return 'Node';
+        if (!key) return 'pNode';
         if (key.length <= 12) return key;
         return `${key.slice(0, 6)}...${key.slice(-4)}`;
     };
@@ -124,7 +124,7 @@ function LogItem({ log }: { log: ActivityLog }) {
     const getIdentity = (address?: string, pubkey?: string) => {
         if (address) return address;
         if (pubkey) return formatPubkey(pubkey);
-        return 'Node';
+        return 'pNode';
     };
 
     // Format message - for packets_earned, use data to show received/sent format
@@ -165,7 +165,7 @@ function LogItem({ log }: { log: ActivityLog }) {
     }, [log.pubkey]);
 
     return (
-        <Link href={`/ nodes / ${log.pubkey} `} className="block group">
+        <Link href={`/nodes/${log.pubkey}`} className="block group">
             <motion.div
                 layout="position"
                 initial={{ opacity: 0, y: -8 }}
@@ -431,9 +431,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                         onClick={() => setShowFilterDropdown(!showFilterDropdown)}
                         className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-0.5 sm:py-1 bg-muted/20 hover:bg-muted/30 border border-border/40 rounded-lg transition-colors text-[10px] sm:text-xs font-semibold text-foreground/70 hover:text-foreground"
                     >
-                        <Filter className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                        <span className="hidden sm:inline">{ACTIVITY_TYPES.find(t => t.value === typeFilter)?.label || 'All'}</span>
-                        <span className="sm:hidden">{typeFilter ? ACTIVITY_TYPES.find(t => t.value === typeFilter)?.label?.slice(0, 6) || 'All' : 'All'}</span>
+                        <span>Filter pNodes...</span>
                         <ChevronDown className={`w-2.5 h-2.5 sm:w-3 sm:h-3 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
                     </button>
 

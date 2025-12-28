@@ -175,7 +175,7 @@ export default function StoincPage() {
                                 loading={loading}
                             />
                             <StatsCard
-                                title="Participating Nodes"
+                                title="Participating pNodes"
                                 value={stats.nodesWithCredits}
                                 icon={<Users className="w-4 h-4 text-purple-400" />}
                                 color="purple"
@@ -231,7 +231,7 @@ export default function StoincPage() {
                                             <span className="font-bold text-foreground">Storage Income (STOINC)</span> is the core incentive mechanism of the Xandeum network. It rewards pNode operators for providing scalable storage capacity.
                                         </p>
                                         <p>
-                                            <span className="font-bold text-foreground">How it works:</span> Nodes earn credits by successfully processing data packets and maintaining high uptime. These credits determine their share of the network's storage fees.
+                                            <span className="font-bold text-foreground">How it works:</span> pNodes earn credits by successfully processing data packets and maintaining high uptime. These credits determine their share of the network's storage fees.
                                         </p>
                                         <p>
                                             This dashboard shows the real-time activity and distribution of these rewards across the global pNode network.

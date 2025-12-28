@@ -143,14 +143,14 @@ export default function StoincCalculator({
                 <div className="flex-1 w-full space-y-2">
                     <label className="flex items-center gap-2 text-xs uppercase tracking-wider text-foreground/40 font-bold">
                         <Search className="w-3.5 h-3.5" />
-                        Quick Fill from Existing Node
+                        Quick Fill from Existing pNode
                     </label>
                     <select
                         value={selectedNodeId}
                         onChange={(e) => handleNodeChange(e.target.value)}
                         className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-lg text-foreground focus:border-[#F0A741]/40 focus:outline-none focus:ring-1 focus:ring-[#F0A741]/20 transition-colors"
                     >
-                        <option value="">-- Select a Node to Pre-fill --</option>
+                        <option value="">-- Select a pNode to Pre-fill --</option>
                         {nodes.map(node => (
                             <option key={node.id} value={node.id}>
                                 {node.locationData?.city || 'pNode'} ({node.id.slice(0, 8)}...)

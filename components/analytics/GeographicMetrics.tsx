@@ -115,7 +115,7 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
   }, [nodes, selectedMetric]);
 
   const metricOptions = [
-    { value: 'nodeCount' as MetricType, label: 'Node Count' },
+    { value: 'nodeCount' as MetricType, label: 'pNode Count' },
     { value: 'latency' as MetricType, label: 'Avg Latency' },
     { value: 'storage' as MetricType, label: 'Total Storage' },
     { value: 'onlineRate' as MetricType, label: 'Online Rate' },
@@ -204,7 +204,7 @@ export default function GeographicMetrics({ nodes }: GeographicMetricsProps) {
         switch (selectedMetric) {
           case 'nodeCount':
             value = data.count;
-            label = 'Nodes';
+            label = 'pNodes';
             unit = '';
             break;
           case 'latency':

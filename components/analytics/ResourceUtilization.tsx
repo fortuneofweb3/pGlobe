@@ -35,7 +35,7 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
   const data = useMemo(() => {
     const nodesWithResources = nodes.filter(
       n => (n.cpuPercent !== undefined && n.cpuPercent !== null) ||
-           (n.ramUsed !== undefined && n.ramTotal !== undefined && n.ramTotal > 0)
+        (n.ramUsed !== undefined && n.ramTotal !== undefined && n.ramTotal > 0)
     );
 
     if (nodesWithResources.length === 0) {
@@ -155,32 +155,32 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
             // Animate bars on mount and when data changes
             useEffect(() => {
               if (!svgRef.current || data.length === 0) return;
-              
+
               hasAnimatedRef.current = false;
-              
+
               const timer = setTimeout(() => {
                 if (!svgRef.current || hasAnimatedRef.current) return;
-                
+
                 const bars = svgRef.current.querySelectorAll('rect[fill]');
-                
+
                 bars.forEach((barEl: Element, index) => {
                   const rect = barEl as SVGRectElement;
                   const originalHeight = parseFloat(rect.getAttribute('height') || '0');
                   const originalY = parseFloat(rect.getAttribute('y') || '0');
-                  
+
                   if (originalHeight > 0) {
                     // Start from bottom (full height, at bottom)
                     rect.setAttribute('height', '0');
                     rect.setAttribute('y', String(originalY + originalHeight));
                     rect.style.transition = `height 1s ease-out ${index * 0.05}s, y 1s ease-out ${index * 0.05}s`;
-                    
+
                     requestAnimationFrame(() => {
                       rect.setAttribute('height', String(originalHeight));
                       rect.setAttribute('y', String(originalY));
                     });
                   }
                 });
-                
+
                 hasAnimatedRef.current = true;
               }, 50);
 
@@ -189,38 +189,38 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
 
             return (
               <>
-              <svg ref={svgRef} width={width} height={chartHeight}>
+                <svg ref={svgRef} width={width} height={chartHeight}>
                   <Group left={margin.left} top={margin.top}>
-                      {/* Grid lines for reference */}
-                      <GridRows
-                        scale={yScale}
-                        width={innerWidth}
-                        strokeDasharray="2,2"
-                        stroke="rgba(156, 163, 175, 0.2)"
-                        pointerEvents="none"
-                      />
-                      {/* Bars */}
+                    {/* Grid lines for reference */}
+                    <GridRows
+                      scale={yScale}
+                      width={innerWidth}
+                      strokeDasharray="2,2"
+                      stroke="rgba(156, 163, 175, 0.2)"
+                      pointerEvents="none"
+                    />
+                    {/* Bars */}
                     {data.map((d) => {
                       const x = xScale(d.range) || 0;
-                        const cpuValue = d.cpu;
-                        const ramValue = d.ram;
-                        const cpuBarTop = yScale(cpuValue);
-                        const ramBarTop = yScale(ramValue);
-                        const cpuBarHeight = Math.max(innerHeight - cpuBarTop, 0);
-                        const ramBarHeight = Math.max(innerHeight - ramBarTop, 0);
+                      const cpuValue = d.cpu;
+                      const ramValue = d.ram;
+                      const cpuBarTop = yScale(cpuValue);
+                      const ramBarTop = yScale(ramValue);
+                      const cpuBarHeight = Math.max(innerHeight - cpuBarTop, 0);
+                      const ramBarHeight = Math.max(innerHeight - ramBarTop, 0);
 
                       return (
                         <Group key={d.range}>
                           <Bar
                             x={x}
-                              y={cpuBarTop}
-                              width={Math.max(barWidth, 1)}
+                            y={cpuBarTop}
+                            width={Math.max(barWidth, 1)}
                             height={cpuBarHeight}
                             fill={colors.cpu}
                             rx={4}
-                              style={{ pointerEvents: 'all' }}
+                            style={{ pointerEvents: 'all' }}
                             onMouseMove={(event) => {
-                                const coords = localPoint(event);
+                              const coords = localPoint(event);
                               if (coords) {
                                 showTooltip({
                                   tooltipLeft: coords.x,
@@ -233,14 +233,14 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
                           />
                           <Bar
                             x={x + barWidth}
-                              y={ramBarTop}
-                              width={Math.max(barWidth, 1)}
+                            y={ramBarTop}
+                            width={Math.max(barWidth, 1)}
                             height={ramBarHeight}
                             fill={colors.ram}
                             rx={4}
-                              style={{ pointerEvents: 'all' }}
+                            style={{ pointerEvents: 'all' }}
                             onMouseMove={(event) => {
-                                const coords = localPoint(event);
+                              const coords = localPoint(event);
                               if (coords) {
                                 showTooltip({
                                   tooltipLeft: coords.x,
@@ -256,10 +256,10 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
                     })}
                   </Group>
                   <AxisBottom
-                      top={margin.top + innerHeight}
+                    top={margin.top + innerHeight}
                     left={margin.left}
                     scale={xScale}
-                      numTicks={data.length}
+                    numTicks={data.length}
                     tickFormat={(d) => d}
                     tickLabelProps={() => ({
                       fill: '#9CA3AF',
@@ -269,9 +269,9 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
                   />
                   <AxisLeft
                     left={margin.left}
-                      top={margin.top}
+                    top={margin.top}
                     scale={yScale}
-                      numTicks={5}
+                    numTicks={5}
                     tickFormat={(d) => String(d)}
                     tickLabelProps={() => ({
                       fill: '#9CA3AF',
@@ -281,32 +281,32 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
                     })}
                   />
                 </svg>
-        {tooltipOpen && tooltipData && (
-          <TooltipWithBounds
-            top={tooltipTop}
-            left={tooltipLeft}
-            style={{
-              ...defaultStyles,
-              backgroundColor: 'rgba(0, 0, 0, 0.9)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '8px',
-              padding: '8px 12px',
-                        pointerEvents: 'none',
-            }}
-          >
-            <div className="text-xs">
-              <div className="font-semibold text-foreground mb-1">{tooltipData.range}</div>
-              <div className="text-foreground/80 space-y-1">
-                <div>CPU: {tooltipData.cpu} nodes</div>
-                <div>RAM: {tooltipData.ram} nodes</div>
-              </div>
-            </div>
-          </TooltipWithBounds>
-        )}
-                </>
-              );
-            }}
-          </ParentSize>
+                {tooltipOpen && tooltipData && (
+                  <TooltipWithBounds
+                    top={tooltipTop}
+                    left={tooltipLeft}
+                    style={{
+                      ...defaultStyles,
+                      backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    <div className="text-xs">
+                      <div className="font-semibold text-foreground mb-1">{tooltipData.range}</div>
+                      <div className="text-foreground/80 space-y-1">
+                        <div>CPU: {tooltipData.cpu} pNodes</div>
+                        <div>RAM: {tooltipData.ram} pNodes</div>
+                      </div>
+                    </div>
+                  </TooltipWithBounds>
+                )}
+              </>
+            );
+          }}
+        </ParentSize>
       </div>
       <div className="flex items-center justify-center gap-4 mt-3 text-xs">
         <div className="flex items-center gap-2">

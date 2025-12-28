@@ -567,7 +567,7 @@ function ChartContent({
           <AxisRight
             left={xMax}
             scale={yScaleOnline}
-            label="Online Nodes"
+            label="Online pNodes"
             labelProps={{
               fill: '#ffffff',
               fontSize: 11,
@@ -626,7 +626,7 @@ function ChartContent({
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-0.5 bg-[#3F8277]"></div>
-          <span className="text-xs text-foreground/80">Online Nodes</span>
+          <span className="text-xs text-foreground/80">Online pNodes</span>
         </div>
       </div>
 

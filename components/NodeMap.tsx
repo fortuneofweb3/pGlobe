@@ -156,7 +156,7 @@ export default function NodeMap({ node, allNodes, center, zoom }: NodeMapProps) 
                     >
                         <Tooltip permanent={false} direction="top" offset={[0, -10]}>
                             <div className="text-sm">
-                                <div className="font-semibold mb-1 text-[#F0A741]">📍 Current Node</div>
+                                <div className="font-semibold mb-1 text-[#F0A741]">📍 Current pNode</div>
                                 <div className="font-semibold">{node.locationData.city || 'Unknown'}, {node.locationData.country || 'Unknown'}</div>
                             </div>
                         </Tooltip>

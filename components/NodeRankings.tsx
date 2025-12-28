@@ -192,8 +192,8 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
         <button
           onClick={() => setActiveTab('uptime')}
           className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'uptime'
-              ? 'bg-[#F0A741]/20 text-[#F0A741]'
-              : 'text-muted-foreground hover:text-foreground'
+            ? 'bg-[#F0A741]/20 text-[#F0A741]'
+            : 'text-muted-foreground hover:text-foreground'
             }`}
         >
           Top by Uptime
@@ -201,8 +201,8 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
         <button
           onClick={() => setActiveTab('storage')}
           className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'storage'
-              ? 'bg-[#F0A741]/20 text-[#F0A741]'
-              : 'text-muted-foreground hover:text-foreground'
+            ? 'bg-[#F0A741]/20 text-[#F0A741]'
+            : 'text-muted-foreground hover:text-foreground'
             }`}
         >
           Top by Storage
@@ -210,8 +210,8 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
         <button
           onClick={() => setActiveTab('packets')}
           className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'packets'
-              ? 'bg-[#F0A741]/20 text-[#F0A741]'
-              : 'text-muted-foreground hover:text-foreground'
+            ? 'bg-[#F0A741]/20 text-[#F0A741]'
+            : 'text-muted-foreground hover:text-foreground'
             }`}
         >
           Top by Packets
@@ -219,8 +219,8 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
         <button
           onClick={() => setActiveTab('credits')}
           className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'credits'
-              ? 'bg-[#F0A741]/20 text-[#F0A741]'
-              : 'text-muted-foreground hover:text-foreground'
+            ? 'bg-[#F0A741]/20 text-[#F0A741]'
+            : 'text-muted-foreground hover:text-foreground'
             }`}
         >
           Top by Credits
@@ -243,9 +243,9 @@ export default function NodeRankings({ nodes, onNodeClick }: NodeRankingsProps) 
             >
               {/* Rank badge */}
               <span className={`w-5 h-5 flex items-center justify-center text-xs font-bold rounded ${index === 0 ? 'bg-[#F0A741]/30 text-[#F0A741]' :
-                  index === 1 ? 'bg-gray-400/30 text-gray-300' :
-                    index === 2 ? 'bg-amber-700/30 text-amber-500' :
-                      'bg-muted text-muted-foreground'
+                index === 1 ? 'bg-gray-400/30 text-gray-300' :
+                  index === 2 ? 'bg-amber-700/30 text-amber-500' :
+                    'bg-muted text-muted-foreground'
                 }`}>
                 {index + 1}
               </span>

@@ -273,11 +273,6 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes.length]);
 
-  const formatBytes = (bytes?: number) => {
-    if (bytes === undefined || bytes === null) return null;
-    if (bytes === 0) return '0.00 GB';
-    return formatStorageBytes(bytes);
-  };
 
   const formatUptime = (uptime?: number) => {
     if (!uptime || uptime === 0) return null;
@@ -388,7 +383,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
       {statsWithData.total > 0 && (
         <div className="px-3 sm:px-4 py-2 bg-muted border-b border-border/60 text-xs text-muted-foreground flex-shrink-0">
           <span className="font-medium text-foreground/60">Note: </span>
-          <span className="hidden sm:inline">Most operators keep pRPC private for security. Stats shown: {statsWithData.withUptime} uptime, {statsWithData.withStorage} storage, {statsWithData.withCPU} CPU, {statsWithData.withLatency} latency (of {statsWithData.total} total nodes)</span>
+          <span className="hidden sm:inline">Most operators keep pRPC private for security. Stats shown: {statsWithData.withUptime} uptime, {statsWithData.withStorage} storage, {statsWithData.withCPU} CPU, {statsWithData.withLatency} latency (of {statsWithData.total} total pNodes)</span>
           <span className="sm:hidden">Limited stats: {statsWithData.withUptime} uptime, {statsWithData.withStorage} storage, {statsWithData.withCPU} CPU, {statsWithData.withLatency} latency</span>
         </div>
       )}
@@ -786,7 +781,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           if (hasCapacity) {
                             return (
                               <span className="text-xs sm:text-sm text-foreground/80">
-                                {formatBytes(capacity)}
+                                {formatStorageBytes(capacity)}
                               </span>
                             );
                           }
@@ -800,8 +795,8 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           const hasRAM = ramTotal !== undefined && ramTotal !== null;
 
                           if (hasRAM) {
-                            const used = ramUsed !== undefined && ramUsed !== null ? formatBytes(ramUsed) : '—';
-                            const total = formatBytes(ramTotal);
+                            const used = ramUsed !== undefined && ramUsed !== null ? formatStorageBytes(ramUsed) : '—';
+                            const total = formatStorageBytes(ramTotal);
                             return (
                               <span className="text-xs sm:text-sm text-foreground/80">
                                 {used} / {total}
@@ -868,7 +863,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                             return <span className="text-muted-foreground/50 text-xs">Measuring...</span>;
                           }
 
-                          return renderEmptyCell('Node not reachable');
+                          return renderEmptyCell('pNode not reachable');
                         })()}
                       </td>
                       <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">

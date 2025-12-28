@@ -16,7 +16,7 @@ const MapLibreGlobe = dynamic(() => import('@/components/MapLibreGlobe'), {
   ),
 });
 import Header from '@/components/Header';
-import { Search, MapPin, Navigation2, Loader2, X } from 'lucide-react';
+import { Search, MapPin, Activity, HelpCircle, Shield, Globe, Navigation, Navigation2, Target, Cpu, HardDrive, Zap, Info, ArrowUpRight, ChevronRight, Share2, Copy, Check, Loader2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { startProgress } from '@/lib/nprogress';
 import { enrichNodesWithGeo } from '@/lib/utils/geo';
@@ -255,11 +255,11 @@ export default function ScanPage() {
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-base sm:text-lg font-semibold text-foreground flex items-center gap-2">
                     <Search className="w-4 h-4 sm:w-5 sm:h-5 text-foreground/40" />
-                    Node Scanner
+                    pNode Scanner
                   </h2>
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  Find the closest nodes to any IP address
+                  Find the closest pNodes to any IP address
                 </p>
               </div>
 
@@ -309,7 +309,7 @@ export default function ScanPage() {
               {/* Placeholder for results */}
               <div>
                 <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-2">
-                  Closest Nodes
+                  Closest pNodes
                 </h3>
                 <div className="space-y-1.5">
                   {[1, 2, 3, 4, 5].map((i) => (
@@ -400,7 +400,7 @@ export default function ScanPage() {
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-base sm:text-lg font-semibold text-foreground flex items-center gap-2">
                   <Search className="w-4 h-4 sm:w-5 sm:h-5 text-foreground/40" />
-                  Node Scanner
+                  pNode Scanner
                 </h2>
                 <button
                   onClick={() => setSidebarOpen(false)}
@@ -411,7 +411,7 @@ export default function ScanPage() {
                 </button>
               </div>
               <p className="text-xs sm:text-sm text-muted-foreground">
-                Find the closest nodes to any IP address
+                Find the closest pNodes to any IP address
               </p>
             </div>
 
@@ -487,11 +487,15 @@ export default function ScanPage() {
               </div>
             )}
 
-            {/* Results - Closest Nodes */}
+            {/* Results - Closest pNodes */}
             {closestNodes.length > 0 && (
               <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Activity className="w-5 h-5 text-[#F0A741]" />
+                  <h2 className="text-xl font-bold text-foreground">Closest pNodes</h2>
+                </div>
                 <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-2">
-                  {scanIp === userIp ? 'Nodes Near Me' : 'Closest Nodes'} ({closestNodes.length})
+                  {scanIp === userIp ? 'pNodes Near Me' : 'Closest pNodes'} ({closestNodes.length})
                 </h3>
 
                 {/* Results list - scrollable for top 20 */}
@@ -548,7 +552,7 @@ export default function ScanPage() {
 
             {!scanning && !scanLocation && !scanError && (
               <div className="text-center py-6 text-xs text-muted-foreground">
-                Enter an IP address and click Scan to find the closest nodes
+                Enter an IP address and click Scan to find the closest pNodes
               </div>
             )}
           </div>

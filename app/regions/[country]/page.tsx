@@ -1322,7 +1322,7 @@ function CountryDetailContent() {
             Back to Regions
           </Link>
           <div className="card text-center" style={{ padding: '2rem' }}>
-            <p className="text-foreground/60">No nodes found for {countryName}</p>
+            <p className="text-foreground/60">No pNodes found for {countryName}</p>
           </div>
         </main>
       </div>
@@ -1414,7 +1414,7 @@ function CountryDetailContent() {
                       <div className="flex items-center gap-3 flex-wrap mb-4">
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/10 text-white border border-white/20 backdrop-blur-md">
                           <Activity className="w-3.5 h-3.5 text-[#F0A741]" />
-                          {stats.totalNodes} Nodes
+                          {stats.totalNodes} pNodes
                         </span>
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#3F8277]/20 text-[#3F8277] border border-[#3F8277]/30 backdrop-blur-md">
                           <div className="w-1.5 h-1.5 rounded-full bg-[#3F8277]" />
@@ -1570,7 +1570,7 @@ function CountryDetailContent() {
                       </h1>
                     </div>
                     <p className="text-foreground/60">
-                      {stats.totalNodes} node{stats.totalNodes !== 1 ? 's' : ''} in this region
+                      {stats.totalNodes} pNode{stats.totalNodes !== 1 ? 's' : ''} in this region
                     </p>
                   </div>
                 </div>
@@ -1703,7 +1703,7 @@ function CountryDetailContent() {
                       currNodeCredits.forEach((currNode: any) => {
                         const prevCredits = prevMap.get(currNode.nodeId);
                         if (prevCredits !== undefined) {
-                          // Node exists in both snapshots - count the delta
+                          // pNode exists in both snapshots - count the delta
                           const delta = currNode.credits - prevCredits;
                           creditsEarned += delta;
                         }
@@ -1714,7 +1714,7 @@ function CountryDetailContent() {
                       const nodesJoined = currNodeCredits.filter((n: any) => !prevMap.has(n.nodeId)).length;
                       const nodesLeft = prevNodeCredits.filter((n: any) => !currMap.has(n.nodeId)).length;
                       if (nodesJoined > 0 || nodesLeft > 0) {
-                        console.log(`[RegionPage] Node membership changes at ${new Date(current.timestamp).toLocaleTimeString()}: +${nodesJoined} nodes, -${nodesLeft} nodes`);
+                        console.log(`[RegionPage] pNode membership changes at ${new Date(current.timestamp).toLocaleTimeString()}: +${nodesJoined} pNodes, -${nodesLeft} pNodes`);
                       }
                     } else {
                       // FALLBACK: Old method for backward compatibility with snapshots without per-node data
@@ -1960,7 +1960,7 @@ function CountryDetailContent() {
                                 <Info className="w-3.5 h-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help transition-colors" />
                                 <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-zinc-900 border border-border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
                                   <p className="text-xs text-foreground/80 leading-relaxed">
-                                    Credit changes may fluctuate when nodes go online/offline. Nodes earn credits for responding to heartbeats and lose credits for missing data requests.
+                                    Credit changes may fluctuate when pNodes go online/offline. pNodes earn credits for responding to heartbeats and lose credits for missing data requests.
                                   </p>
                                 </div>
                               </div>
@@ -2060,7 +2060,7 @@ function CountryDetailContent() {
               })()}
             </div>
 
-            {/* Nodes Table - Collapsible */}
+            {/* pNodes Table - Collapsible */}
             <div className="flex flex-col animate-scale-in" style={{ animationDelay: '0.4s', opacity: 0, animationFillMode: 'forwards' }}>
               <button
                 onClick={() => setTableExpanded(!tableExpanded)}
@@ -2069,7 +2069,7 @@ function CountryDetailContent() {
                 <div className="flex items-center gap-3">
                   <Server className="w-5 h-5 text-[#F0A741]" />
                   <h2 className="text-lg font-semibold text-foreground">
-                    Nodes ({filteredAndSortedNodes.length})
+                    pNodes ({filteredAndSortedNodes.length})
                   </h2>
                 </div>
                 {tableExpanded ? (
@@ -2087,7 +2087,7 @@ function CountryDetailContent() {
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-foreground/40" />
                       <input
                         type="text"
-                        placeholder="Search nodes by IP, public key, location, or version..."
+                        placeholder="Search pNodes by IP, public key, location, or version..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-10 pr-4 py-2.5 text-sm bg-card/50 border border-border/60 rounded-lg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-[#F0A741]/20 focus:border-[#F0A741]/30 transition-all"

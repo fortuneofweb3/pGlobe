@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
-import { BookOpen, ChevronRight, X, FileText, Settings, BarChart3, MapPin, Search, HelpCircle, Bot, Server, Github } from 'lucide-react';
+import { BookOpen, ChevronRight, X, FileText, Settings, BarChart3, MapPin, Search, HelpCircle, Bot, Server, Github, Activity, Coins } from 'lucide-react';
 
 export default function HelpPage() {
   const { nodes, loading, lastUpdate, availableNetworks, currentNetwork, refreshNodes } = useNodes();
@@ -63,15 +63,41 @@ export default function HelpPage() {
               </button>
               <button
                 onClick={() => {
-                  setActiveDoc('deployment');
+                  setActiveDoc('monitoring');
                   setSidebarOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${activeDoc === 'deployment'
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${activeDoc === 'monitoring'
                   ? 'bg-[#1a1a1a] text-foreground font-medium'
                   : 'text-foreground hover:hover:bg-[#1a1a1a]'
                   }`}
               >
-                <span>Deployment</span>
+                <span>Live Monitoring</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => {
+                  setActiveDoc('explorer');
+                  setSidebarOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${activeDoc === 'explorer'
+                  ? 'bg-[#1a1a1a] text-foreground font-medium'
+                  : 'text-foreground hover:hover:bg-[#1a1a1a]'
+                  }`}
+              >
+                <span>Network Explorer</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => {
+                  setActiveDoc('stoinc');
+                  setSidebarOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${activeDoc === 'stoinc'
+                  ? 'bg-[#1a1a1a] text-foreground font-medium'
+                  : 'text-foreground hover:hover:bg-[#1a1a1a]'
+                  }`}
+              >
+                <span>STOINC & Rewards</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
               <button
@@ -89,6 +115,19 @@ export default function HelpPage() {
               </button>
               <button
                 onClick={() => {
+                  setActiveDoc('ai');
+                  setSidebarOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${activeDoc === 'ai'
+                  ? 'bg-[#1a1a1a] text-foreground font-medium'
+                  : 'text-foreground hover:hover:bg-[#1a1a1a]'
+                  }`}
+              >
+                <span>AI Assistant</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => {
                   setActiveDoc('architecture');
                   setSidebarOpen(false);
                 }}
@@ -102,15 +141,15 @@ export default function HelpPage() {
               </button>
               <button
                 onClick={() => {
-                  setActiveDoc('ai');
+                  setActiveDoc('deployment');
                   setSidebarOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${activeDoc === 'ai'
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${activeDoc === 'deployment'
                   ? 'bg-[#1a1a1a] text-foreground font-medium'
                   : 'text-foreground hover:hover:bg-[#1a1a1a]'
                   }`}
               >
-                <span>AI Assistant</span>
+                <span>Deployment</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </nav>
@@ -145,14 +184,20 @@ export default function HelpPage() {
 
           {activeDoc === null ? (
             <QuickStartGuide />
-          ) : activeDoc === 'deployment' ? (
-            <DeploymentDocs onClose={() => setActiveDoc(null)} />
+          ) : activeDoc === 'monitoring' ? (
+            <LiveMonitoringDocs onClose={() => setActiveDoc(null)} />
+          ) : activeDoc === 'explorer' ? (
+            <ExplorerDocs onClose={() => setActiveDoc(null)} />
+          ) : activeDoc === 'stoinc' ? (
+            <StoincDocs onClose={() => setActiveDoc(null)} />
           ) : activeDoc === 'analytics' ? (
             <AnalyticsDocs onClose={() => setActiveDoc(null)} />
-          ) : activeDoc === 'architecture' ? (
-            <ArchitectureDocs onClose={() => setActiveDoc(null)} />
           ) : activeDoc === 'ai' ? (
             <AIFeaturesDocs onClose={() => setActiveDoc(null)} />
+          ) : activeDoc === 'architecture' ? (
+            <ArchitectureDocs onClose={() => setActiveDoc(null)} />
+          ) : activeDoc === 'deployment' ? (
+            <DeploymentDocs onClose={() => setActiveDoc(null)} />
           ) : null}
         </div>
       </main>
@@ -183,15 +228,15 @@ function QuickStartGuide() {
             <div className="border border-border rounded-lg p-4">
               <h3 className="font-semibold text-foreground mb-2">What are pNodes?</h3>
               <p className="text-sm text-muted-foreground">
-                Provider Nodes (pNodes) form a distributed storage network where each node contributes storage capacity
+                Provider Nodes (pNodes) form a distributed storage network where each pNode contributes storage capacity
                 and earns rewards for serving data to applications. They're the backbone of Xandeum's decentralized storage infrastructure.
               </p>
             </div>
             <div className="border border-border rounded-lg p-4">
               <h3 className="font-semibold text-foreground mb-2">Why Use pGlobe?</h3>
               <p className="text-sm text-muted-foreground">
-                Monitor network health, track node performance, analyze storage distribution, and make informed decisions
-                about staking or operating nodes. All in real-time with historical data tracking.
+                Monitor network health, track pNode performance, analyze storage distribution, and make informed decisions
+                about staking or operating pNodes. All in real-time with historical data tracking.
               </p>
             </div>
           </div>
@@ -206,60 +251,38 @@ function QuickStartGuide() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="border border-border rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
-                <MapPin className="w-5 h-5 text-muted-foreground" />
-                <h4 className="font-medium text-foreground">Overview</h4>
+                <Activity className="w-5 h-5 text-muted-foreground" />
+                <h4 className="font-medium text-foreground">Live Monitoring</h4>
               </div>
               <p className="text-sm text-muted-foreground">
-                The main dashboard with interactive globe, network statistics, health score, and node list.
-                Click any node on the globe or in the list to view detailed information.
+                Real-time network events, status changes, and performance updates via the Live Feed and pNode Racing.
               </p>
             </div>
             <div className="border border-border rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
-                <BarChart3 className="w-5 h-5 text-muted-foreground" />
-                <h4 className="font-medium text-foreground">Analytics</h4>
+                <Coins className="w-5 h-5 text-muted-foreground" />
+                <h4 className="font-medium text-foreground">STOINC</h4>
               </div>
               <p className="text-sm text-muted-foreground">
-                Deep dive into network metrics with charts showing performance trends, resource utilization,
-                latency distribution, and geographic metrics.
+                Detailed STOINC metrics, earnings calculator, and reputation leaderboards for pNode operators.
               </p>
             </div>
             <div className="border border-border rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Server className="w-5 h-5 text-muted-foreground" />
-                <h4 className="font-medium text-foreground">Nodes</h4>
+                <h4 className="font-medium text-foreground">Explorer</h4>
               </div>
               <p className="text-sm text-muted-foreground">
-                Comprehensive node list with advanced search, filters, sorting, and export capabilities.
-                View all nodes in a detailed table format.
+                Global pNode lists, regional distribution analysis, and pScan proximity searching.
               </p>
             </div>
             <div className="border border-border rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
-                <MapPin className="w-5 h-5 text-muted-foreground" />
-                <h4 className="font-medium text-foreground">Regions</h4>
+                <Bot className="w-5 h-5 text-muted-foreground" />
+                <h4 className="font-medium text-foreground">AI Assistant</h4>
               </div>
               <p className="text-sm text-muted-foreground">
-                Browse nodes by geographic location. View statistics by country and continent with
-                detailed breakdowns of node distribution.
-              </p>
-            </div>
-            <div className="border border-border rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Search className="w-5 h-5 text-muted-foreground" />
-                <h4 className="font-medium text-foreground">Scan</h4>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Find nodes nearest to your location or a particular IP address. Measure latency and view distance-based rankings.
-              </p>
-            </div>
-            <div className="border border-border rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <HelpCircle className="w-5 h-5 text-muted-foreground" />
-                <h4 className="font-medium text-foreground">Help</h4>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Documentation, FAQs, and guides to help you get the most out of pGlobe.
+                Natural language interface for querying pNode network data, performance trends, and technical FAQs.
               </p>
             </div>
           </div>
@@ -268,7 +291,7 @@ function QuickStartGuide() {
           <ul className="space-y-2 text-foreground">
             <li className="flex items-start gap-2">
               <span className="text-muted-foreground mt-1">•</span>
-              <span><strong>Refresh Data:</strong> Click the refresh button (↻) in the header to manually update node data</span>
+              <span><strong>Refresh Data:</strong> Click the refresh button (↻) in the header to manually update pNode data</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-muted-foreground mt-1">•</span>
@@ -276,19 +299,19 @@ function QuickStartGuide() {
             </li>
             <li className="flex items-start gap-2">
               <span className="text-muted-foreground mt-1">•</span>
-              <span><strong>View Node Details:</strong> Click any node on the globe, in the list, or in rankings to see full details</span>
+              <span><strong>View pNode Details:</strong> Click any pNode on the globe, in the list, or in rankings to see full details</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-muted-foreground mt-1">•</span>
-              <span><strong>Export Data:</strong> Use the export button in the Nodes page to download all node data as CSV or JSON</span>
+              <span><strong>Export Data:</strong> Use the export button in the pNodes page to download all pNode data as CSV or JSON</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-muted-foreground mt-1">•</span>
-              <span><strong>Search Nodes:</strong> Use the search bar on the Nodes page to find nodes by IP, public key, location, or version</span>
+              <span><strong>Search pNodes:</strong> Use the search bar on the pNodes page to find pNodes by IP, public key, location, or version</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-muted-foreground mt-1">•</span>
-              <span><strong>Filter Nodes:</strong> Apply filters by status, version, credits, or packets to narrow down the node list</span>
+              <span><strong>Filter pNodes:</strong> Apply filters by status, version, credits, or packets to narrow down the pNode list</span>
             </li>
           </ul>
         </div>
@@ -299,16 +322,16 @@ function QuickStartGuide() {
         <h2 className="text-2xl font-semibold text-foreground mb-4">Using Filters & Search</h2>
         <div className="prose prose-gray prose-invert max-w-none">
           <p className="text-foreground mb-4">
-            The Nodes page provides powerful filtering and search capabilities to help you find specific nodes or analyze subsets of the network.
+            The pNodes page provides powerful filtering and search capabilities to help you find specific pNodes or analyze subsets of the network.
           </p>
 
           <h3 className="text-xl font-semibold text-foreground mb-3">Search Bar</h3>
           <p className="text-foreground mb-3">
-            The search bar lets you quickly find nodes by entering any of the following:
+            The search bar lets you quickly find pNodes by entering any of the following:
           </p>
           <ul className="list-disc list-inside text-foreground space-y-1 mb-4">
             <li>IP address (e.g., "173.212.207.32")</li>
-            <li>Public key or Node ID (full or partial)</li>
+            <li>Public key or pNode ID (full or partial)</li>
             <li>Location (city, country, or continent)</li>
             <li>Version number (e.g., "0.7.0")</li>
           </ul>
@@ -318,32 +341,32 @@ function QuickStartGuide() {
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">Status Filter</dt>
               <dd className="text-sm text-muted-foreground">
-                Show only Online, Syncing, or Offline nodes. Useful for monitoring network health or troubleshooting.
+                Show only Online, Syncing, or Offline pNodes. Useful for monitoring network health or troubleshooting.
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">Version Filter</dt>
               <dd className="text-sm text-muted-foreground">
-                Filter nodes by software version. Helps identify nodes that need updates or track version adoption.
+                Filter pNodes by software version. Helps identify pNodes that need updates or track version adoption.
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">Credits Filter</dt>
               <dd className="text-sm text-muted-foreground">
-                Show nodes with or without credits. Credits indicate active participation in the network.
+                Show pNodes with or without credits. Credits indicate active participation in the network.
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">Packets Filter</dt>
               <dd className="text-sm text-muted-foreground">
-                Filter by nodes that have packet activity. Useful for finding actively serving nodes.
+                Filter by pNodes that have packet activity. Useful for finding actively serving pNodes.
               </dd>
             </div>
           </dl>
 
           <h3 className="text-xl font-semibold text-foreground mb-3">Sorting</h3>
           <p className="text-foreground mb-3">
-            Click any column header in the nodes table to sort by that metric:
+            Click any column header in the pNodes table to sort by that metric:
           </p>
           <ul className="list-disc list-inside text-foreground space-y-1 mb-4">
             <li>Status (online first)</li>
@@ -371,24 +394,24 @@ function QuickStartGuide() {
       <section className="mb-12 animate-fade-in" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
         <h2 className="text-2xl font-semibold text-foreground mb-4">Understanding Metrics</h2>
         <div className="prose prose-gray prose-invert max-w-none">
-          <h3 className="text-xl font-semibold text-foreground mb-3">Node Status</h3>
+          <h3 className="text-xl font-semibold text-foreground mb-3">pNode Status</h3>
           <dl className="space-y-3 mb-6">
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">Online</dt>
               <dd className="text-sm text-muted-foreground">
-                Node was seen in gossip within the last 5 minutes. These are actively participating nodes.
+                pNode was seen in gossip within the last 5 minutes. These are actively participating pNodes.
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">Syncing</dt>
               <dd className="text-sm text-muted-foreground">
-                Node was seen within the last hour but not in the last 5 minutes. May be catching up on network state.
+                pNode was seen within the last hour but not in the last 5 minutes. May be catching up on network state.
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">Offline</dt>
               <dd className="text-sm text-muted-foreground">
-                Node hasn't been seen for over an hour. May be down, disconnected, or experiencing issues.
+                pNode hasn't been seen for over an hour. May be down, disconnected, or experiencing issues.
               </dd>
             </div>
           </dl>
@@ -398,14 +421,14 @@ function QuickStartGuide() {
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">Uptime (%)</dt>
               <dd className="text-sm text-muted-foreground">
-                Percentage of time the node has been continuously running, calculated over a 30-day window.
-                Higher uptime (95%+) indicates a reliable, well-maintained node.
+                Percentage of time the pNode has been continuously running, calculated over a 30-day window.
+                Higher uptime (95%+) indicates a reliable, well-maintained pNode.
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">CPU (%)</dt>
               <dd className="text-sm text-muted-foreground">
-                Processor utilization. Shows how much of the node's CPU capacity is being used.
+                Processor utilization. Shows how much of the pNode's CPU capacity is being used.
                 Lower values (under 50%) mean more headroom for growth and better performance.
               </dd>
             </div>
@@ -419,15 +442,15 @@ function QuickStartGuide() {
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">Storage Capacity</dt>
               <dd className="text-sm text-muted-foreground">
-                Total storage capacity allocated by the node (in bytes, displayed as TB/GB/MB). This represents the total space
-                the node has committed for storage, not the amount of data currently stored. Nodes can allocate storage capacity
+                Total storage capacity allocated by the pNode (in bytes, displayed as TB/GB/MB). This represents the total space
+                the pNode has committed for storage, not the amount of data currently stored. pNodes can allocate storage capacity
                 without necessarily using all of it.
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">Latency (ms)</dt>
               <dd className="text-sm text-muted-foreground">
-                Response time measured directly from your browser to each node's pRPC endpoint.
+                Response time measured directly from your browser to each pNode's pRPC endpoint.
                 This gives you accurate latency based on your location and internet connection.
                 Latency measurements are cached for 1 hour to improve performance. Lower is better (under 100ms is excellent).
               </dd>
@@ -435,7 +458,7 @@ function QuickStartGuide() {
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">Credits</dt>
               <dd className="text-sm text-muted-foreground">
-                Reputation credits earned by the node. Credits are calculated as follows:
+                Reputation credits earned by the pNode. Credits are calculated as follows:
               </dd>
               <ul className="list-disc list-inside text-sm text-muted-foreground ml-4 mt-2 space-y-1">
                 <li><strong>+1 credit</strong> per heartbeat request responded to (~30 second intervals)</li>
@@ -443,8 +466,8 @@ function QuickStartGuide() {
                 <li>Credits <strong>reset monthly</strong> (tracked via creditsResetMonth field)</li>
               </ul>
               <p className="text-sm text-muted-foreground mt-2">
-                Credits are fetched from the Xandeum pod credits API and represent the node's reputation and reliability.
-                Higher credits indicate a more reliable node that consistently responds to network requests.
+                Credits are fetched from the Xandeum pod credits API and represent the pNode's reputation and reliability.
+                Higher credits indicate a more reliable pNode that consistently responds to network requests.
               </p>
             </div>
           </dl>
@@ -454,26 +477,26 @@ function QuickStartGuide() {
             The health score (0-100) is a weighted composite metric that provides an overall assessment of network health:
           </p>
           <ul className="list-disc list-inside text-foreground space-y-1 mb-4">
-            <li><strong>40%</strong> - Availability (online nodes / total nodes)</li>
-            <li><strong>35%</strong> - Version Health (% of nodes on the latest version)</li>
-            <li><strong>25%</strong> - Geographic Distribution (diversity of node locations)</li>
-            <li><strong>Regional Scores</strong> - Health is also calculated individually for every country and region based on local node performance.</li>
+            <li><strong>40%</strong> - Availability (online pNodes / total pNodes)</li>
+            <li><strong>35%</strong> - Version Health (% of pNodes on the latest version)</li>
+            <li><strong>25%</strong> - Geographic Distribution (diversity of pNode locations)</li>
+            <li><strong>Regional Scores</strong> - Health is also calculated individually for every country and region based on local pNode performance.</li>
           </ul>
 
-          <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Node Identification</h3>
+          <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">pNode Identification</h3>
           <dl className="space-y-3 mb-6">
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">TRYNET Badge</dt>
               <dd className="text-sm text-muted-foreground">
-                Nodes running trynet versions (development/test network) are marked with an orange "TRYNET" badge in the node details modal.
-                In the nodes table, trynet nodes have a subtle orange background to distinguish them from mainnet nodes.
+                pNodes running trynet versions (development/test network) are marked with an orange "TRYNET" badge in the pNode details modal.
+                In the pNodes table, trynet pNodes have a subtle orange background to distinguish them from mainnet pNodes.
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-foreground mb-1">Country Flags</dt>
               <dd className="text-sm text-muted-foreground">
-                Country flags are displayed next to node locations throughout the interface - in the nodes table, node details modal,
-                globe popups, and geographic charts. This provides quick visual identification of node locations.
+                Country flags are displayed next to pNode locations throughout the interface - in the pNodes table, pNode details modal,
+                globe popups, and geographic charts. This provides quick visual identification of pNode locations.
               </dd>
             </div>
           </dl>
@@ -485,11 +508,11 @@ function QuickStartGuide() {
         <h2 className="text-2xl font-semibold text-foreground mb-4">Frequently Asked Questions</h2>
         <div className="space-y-4">
           <div className="border border-border rounded-lg p-4">
-            <h3 className="font-semibold text-foreground mb-2">Why do some nodes show "N/A" for stats?</h3>
+            <h3 className="font-semibold text-foreground mb-2">Why do some pNodes show "N/A" for stats?</h3>
             <p className="text-sm text-muted-foreground">
               pNode operators can choose to keep their pRPC endpoint private (localhost-only) for security.
               This is the recommended security configuration and the network-wide standard. Only nodes with public pRPC expose detailed statistics.
-              Typically, only ~10-15 nodes per hundred report full hardware metrics. We still track all nodes via gossip for discovery and basic status, but resource metrics are absent by design for security-conscious operators.
+              Typically, only ~10-15 pNodes per hundred report full hardware metrics. We still track all pNodes via gossip for discovery and basic status, but resource metrics are absent by design for security-conscious operators.
             </p>
           </div>
           <div className="border border-border rounded-lg p-4">
@@ -500,19 +523,19 @@ function QuickStartGuide() {
             </p>
           </div>
           <div className="border border-border rounded-lg p-4">
-            <h3 className="font-semibold text-foreground mb-2">How do I export node data?</h3>
+            <h3 className="font-semibold text-foreground mb-2">How do I export pNode data?</h3>
             <p className="text-sm text-muted-foreground">
-              Go to the Nodes page and look for the "Export" button in the top right. You can download all node data
+              Go to the pNodes page and look for the "Export" button in the top right. You can download all pNode data
               in CSV format (for Excel/spreadsheets) or JSON format (for developers/scripts). Exports include all current
-              node metrics and status information.
+              pNode metrics and status information.
             </p>
           </div>
           <div className="border border-border rounded-lg p-4">
             <h3 className="font-semibold text-foreground mb-2">How does the Scan feature work?</h3>
             <p className="text-sm text-muted-foreground">
-              The Scan page uses your IP address (or any IP you enter) to calculate the geographic distance to each node.
-              It then ranks nodes by proximity, showing you the 20 closest nodes. This is useful for finding low-latency
-              nodes near your location or testing network coverage in specific regions.
+              The Scan page uses your IP address (or any IP you enter) to calculate the geographic distance to each pNode.
+              It then ranks pNodes by proximity, showing you the 20 closest pNodes. This is useful for finding low-latency
+              pNodes near your location or testing network coverage in specific regions.
             </p>
           </div>
         </div>
@@ -523,7 +546,7 @@ function QuickStartGuide() {
         <h2 className="text-2xl font-semibold text-foreground mb-4">Regions & Geographic Browsing</h2>
         <div className="prose prose-gray prose-invert max-w-none">
           <p className="text-foreground mb-4">
-            The Regions page lets you explore the network's geographic distribution and browse nodes by location.
+            The Regions page lets you explore the network's geographic distribution and browse pNodes by location.
           </p>
 
           <h3 className="text-xl font-semibold text-foreground mb-3">Country View</h3>
@@ -532,22 +555,22 @@ function QuickStartGuide() {
           </p>
           <ul className="list-disc list-inside text-foreground space-y-1 mb-4">
             <li><strong>Country flag</strong> for quick visual identification</li>
-            <li><strong>Total nodes</strong> in that country</li>
+            <li><strong>Total pNodes</strong> in that country</li>
             <li><strong>Status breakdown</strong> (online, syncing, offline counts)</li>
             <li><strong>Total storage capacity</strong> contributed by nodes in that country</li>
-            <li><strong>Total credits</strong> earned by nodes in that country</li>
-            <li><strong>Average latency</strong> to nodes in that country (from your location)</li>
+            <li><strong>Total credits</strong> earned by pNodes in that country</li>
+            <li><strong>Average latency</strong> to pNodes in that country (from your location)</li>
           </ul>
 
           <h3 className="text-xl font-semibold text-foreground mb-3">Continent Overview</h3>
           <p className="text-foreground mb-3">
-            The page header shows how many continents have active nodes, giving you a quick sense of global distribution.
+            The page header shows how many continents have active pNodes, giving you a quick sense of global distribution.
           </p>
 
           <h3 className="text-xl font-semibold text-foreground mb-3">Drilling Down</h3>
           <p className="text-foreground mb-3">
-            Click any country card to view all nodes in that country. You can then apply additional filters or sort by
-            specific metrics to analyze regional node performance.
+            Click any country card to view all pNodes in that country. You can then apply additional filters or sort by
+            specific metrics to analyze regional pNode performance.
           </p>
         </div>
       </section>
@@ -557,7 +580,7 @@ function QuickStartGuide() {
         <h2 className="text-2xl font-semibold text-foreground mb-4">Using the Scan Feature</h2>
         <div className="prose prose-gray prose-invert max-w-none">
           <p className="text-foreground mb-4">
-            The Scan feature helps you find the closest nodes to any location by calculating geographic distances and ranking nodes by proximity.
+            The Scan feature helps you find the closest pNodes to any location by calculating geographic distances and ranking pNodes by proximity.
           </p>
 
           <h3 className="text-xl font-semibold text-foreground mb-3">How to Scan</h3>
@@ -565,7 +588,7 @@ function QuickStartGuide() {
             <li>Navigate to the Scan page</li>
             <li>Either click "Use My IP Address" for auto-detection, or manually enter any IP address</li>
             <li>Click "Scan" to start the proximity search</li>
-            <li>View the top 20 closest nodes ranked by distance</li>
+            <li>View the top 20 closest pNodes ranked by distance</li>
           </ol>
 
           <h3 className="text-xl font-semibold text-foreground mb-3">Understanding Results</h3>
@@ -576,22 +599,22 @@ function QuickStartGuide() {
             <li><strong>Distance</strong> in kilometers (km) or meters (m) from the scan location</li>
             <li><strong>Ranking badge</strong> (1st, 2nd, 3rd for top 3 nodes)</li>
             <li><strong>Status indicator</strong> (color-coded: green = online, yellow = syncing, red = offline)</li>
-            <li><strong>City and country</strong> location of the node</li>
-            <li><strong>Node details</strong> (click any node to view full information)</li>
+            <li><strong>City and country</strong> location of the pNode</li>
+            <li><strong>pNode details</strong> (click any pNode to view full information)</li>
           </ul>
 
           <h3 className="text-xl font-semibold text-foreground mb-3">Globe Integration</h3>
           <p className="text-foreground mb-3">
-            After scanning, the 3D globe automatically navigates to the scanned location and highlights nearby nodes,
-            giving you a visual representation of node proximity.
+            After scanning, the 3D globe automatically navigates to the scanned location and highlights nearby pNodes,
+            giving you a visual representation of pNode proximity.
           </p>
 
           <h3 className="text-xl font-semibold text-foreground mb-3">Use Cases</h3>
           <ul className="list-disc list-inside text-foreground space-y-1 mb-4">
-            <li>Find low-latency nodes for optimal data access</li>
+            <li>Find low-latency pNodes for optimal data access</li>
             <li>Test network coverage in specific geographic regions</li>
             <li>Identify redundancy and failover options near your location</li>
-            <li>Analyze regional node distribution patterns</li>
+            <li>Analyze regional pNode distribution patterns</li>
           </ul>
         </div>
       </section>
@@ -646,20 +669,27 @@ function DeploymentDocs({ onClose }: { onClose: () => void }) {
                 </ul>
               </div>
               <div>
-                <h3 className="font-semibold text-foreground mb-2">Backend (Render)</h3>
+                <h3 className="font-semibold text-foreground mb-2">Backend (Render - Sync)</h3>
                 <ul className="list-disc list-inside text-sm text-foreground space-y-1">
-                  <li>Express.js API server hosted on Render</li>
+                  <li>Express.js API server for data synchronization</li>
                   <li>Background refresh worker (runs every minute)</li>
-                  <li>pRPC fetching and gossip network discovery</li>
-                  <li>MongoDB read/write operations</li>
-                  <li>Historical data storage</li>
+                  <li>MongoDB read/write operations and history tracking</li>
+                  <li>Automatic deployments on git push</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground mb-2">Realtime (Render - Activity)</h3>
+                <ul className="list-disc list-inside text-sm text-foreground space-y-1">
+                  <li>Socket.io server for live network activity</li>
+                  <li>Sub-10s polling of gossip network discovery</li>
+                  <li>Direct WebSocket broadcasting to clients</li>
                   <li>Automatic deployments on git push</li>
                 </ul>
               </div>
               <div>
                 <h3 className="font-semibold text-foreground mb-2">Database (MongoDB Atlas)</h3>
                 <ul className="list-disc list-inside text-sm text-foreground space-y-1">
-                  <li>Node data storage</li>
+                  <li>pNode data storage</li>
                   <li>Historical snapshots</li>
                   <li>Geographic location cache</li>
                   <li>Only accessible from Render backend</li>
@@ -689,7 +719,17 @@ function DeploymentDocs({ onClose }: { onClose: () => void }) {
           </div>
 
           <div className="mb-6">
-            <h4 className="font-semibold text-foreground mb-2">2. Vercel Frontend Setup</h4>
+            <h4 className="font-semibold text-foreground mb-2">2. Render Realtime Server Setup</h4>
+            <ol className="list-decimal list-inside text-foreground space-y-2 mb-4">
+              <li>Created new Render Web Service named <code className="bg-[#1a1a1a] px-1 rounded">pglobe-realtime-server</code></li>
+              <li>Configured build command: <code className="bg-[#1a1a1a] px-1 rounded">npm install --include=dev</code></li>
+              <li>Configured start command: <code className="bg-[#1a1a1a] px-1 rounded">npx tsx realtime-server.ts</code></li>
+              <li>Realtime URL obtained: <code className="bg-[#1a1a1a] px-1 rounded">https://pglobe-realtime-server.onrender.com</code></li>
+            </ol>
+          </div>
+
+          <div className="mb-6">
+            <h4 className="font-semibold text-foreground mb-2">3. Vercel Frontend Setup</h4>
             <ol className="list-decimal list-inside text-foreground space-y-2 mb-4">
               <li>Created Vercel account and imported GitHub repository</li>
               <li>Vercel auto-detected Next.js configuration</li>
@@ -736,15 +776,25 @@ function DeploymentDocs({ onClose }: { onClose: () => void }) {
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Infrastructure Details</h2>
 
-          <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Render Service</h3>
-          <ul className="list-disc list-inside text-foreground space-y-2 mb-4">
-            <li><strong>Service Type:</strong> Web Service</li>
-            <li><strong>Runtime:</strong> Node.js</li>
-            <li><strong>Build:</strong> <code className="bg-[#1a1a1a] px-1 rounded">npm install --include=dev</code></li>
-            <li><strong>Start:</strong> <code className="bg-[#1a1a1a] px-1 rounded">npx tsx render-api-server.ts</code></li>
-            <li><strong>Background Tasks:</strong> Runs background refresh every minute</li>
-            <li><strong>API Endpoints:</strong> <code className="bg-[#1a1a1a] px-1 rounded">/api/pnodes</code>, <code className="bg-[#1a1a1a] px-1 rounded">/api/refresh-nodes</code>, <code className="bg-[#1a1a1a] px-1 rounded">/health</code></li>
-          </ul>
+          <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Render Services</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+            <div className="border border-border rounded-lg p-4">
+              <h4 className="font-bold mb-2">API / Sync Service</h4>
+              <ul className="list-disc list-inside text-sm text-foreground space-y-1">
+                <li><strong>Start:</strong> <code className="bg-[#1a1a1a] px-1 rounded">npx tsx render-api-server.ts</code></li>
+                <li><strong>Poll Rate:</strong> 60 seconds</li>
+                <li><strong>Database:</strong> Full read/write access</li>
+              </ul>
+            </div>
+            <div className="border border-border rounded-lg p-4">
+              <h4 className="font-bold mb-2">Realtime / Activity Service</h4>
+              <ul className="list-disc list-inside text-sm text-foreground space-y-1">
+                <li><strong>Start:</strong> <code className="bg-[#1a1a1a] px-1 rounded">npx tsx realtime-server.ts</code></li>
+                <li><strong>Poll Rate:</strong> 5 seconds</li>
+                <li><strong>Database:</strong> Read-only (GeoIP cache)</li>
+              </ul>
+            </div>
+          </div>
 
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Vercel Service</h3>
           <ul className="list-disc list-inside text-foreground space-y-2 mb-4">
@@ -810,7 +860,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
             The top section displays key network metrics calculated in real-time:
           </p>
           <ul className="list-disc list-inside text-foreground space-y-2 mb-4">
-            <li><strong>Total Nodes:</strong> Count of all discovered pNodes in the network</li>
+            <li><strong>Total pNodes:</strong> Count of all discovered pNodes in the network</li>
             <li><strong>Online/Syncing/Offline:</strong> Status breakdown based on last seen timestamps</li>
             <li><strong>Storage Capacity:</strong> Total storage capacity allocated by all nodes (in TB)</li>
             <li><strong>Total RAM / Used RAM:</strong> Aggregated RAM metrics showing total capacity and current usage</li>
@@ -911,22 +961,22 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
             and geographic diversity. Countries are sorted by node count (highest first). You can switch between different metrics:
           </p>
           <ul className="list-disc list-inside text-foreground space-y-1 ml-4 mb-4">
-            <li>Node Count</li>
+            <li>pNode Count</li>
             <li>Average Latency</li>
             <li>Total Storage</li>
             <li>Online Rate</li>
             <li>Average Uptime</li>
           </ul>
 
-          <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Top Performing Nodes</h3>
+          <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Top Performing pNodes</h3>
           <p className="text-foreground mb-4">
             Leaderboards showing the top 10 nodes by:
           </p>
           <ul className="list-disc list-inside text-foreground space-y-2 mb-4">
-            <li><strong>Uptime:</strong> Nodes with the highest uptime percentage (calculated over 30-day window)</li>
-            <li><strong>Storage:</strong> Nodes with the highest storage capacity</li>
-            <li><strong>Packets:</strong> Nodes with the highest packet transfer rates</li>
-            <li><strong>Credits:</strong> Nodes with the highest reputation credits</li>
+            <li><strong>Uptime:</strong> pNodes with the highest uptime percentage (calculated over 30-day window)</li>
+            <li><strong>Storage:</strong> pNodes with the highest storage capacity</li>
+            <li><strong>Packets:</strong> pNodes with the highest packet transfer rates</li>
+            <li><strong>Credits:</strong> pNodes with the highest reputation credits</li>
             <li><strong>Regional Earnings:</strong> Top earning countries and regions based on aggregate credit accumulation.</li>
           </ul>
           <p className="text-foreground mb-4">
@@ -935,7 +985,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
         </section>
 
         <section className="mb-8">
-          <h2 className="text-2xl font-semibold text-foreground mb-4">Node Details Modal</h2>
+          <h2 className="text-2xl font-semibold text-foreground mb-4">pNode Details Modal</h2>
 
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Historical Data Charts</h3>
           <p className="text-foreground mb-4">
@@ -979,7 +1029,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
             <li>Client-side latency measurement</li>
             <li>Storage capacity (total allocated space)</li>
             <li>Network activity (packets, streams)</li>
-            <li>Node status and version (with TRYNET badge for trynet versions)</li>
+            <li>pNode status and version (with TRYNET badge for trynet versions)</li>
             <li>Geographic location with country flag</li>
           </ul>
         </section>
@@ -987,7 +1037,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-foreground mb-4">Data Collection & Processing</h2>
 
-          <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">How We Build the Nodes List</h3>
+          <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">How We Build the pNodes List</h3>
           <p className="text-foreground mb-4">
             pGlobe discovers and maintains the network's node list through a multi-stage process that ensures accuracy and completeness:
           </p>
@@ -1013,7 +1063,7 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
             <ul className="list-disc list-inside text-foreground space-y-2 mb-4">
               <li><strong>Valid Public Key:</strong> Must be a valid Solana base58-encoded public key (32-44 characters)</li>
               <li><strong>Required Fields:</strong> Must have both an IP address and a public key</li>
-              <li><strong>Test Nodes Excluded:</strong> Filters out test/placeholder pubkeys like "TestPubkey14"</li>
+              <li><strong>Test pNodes Excluded:</strong> Filters out test/placeholder pubkeys like "TestPubkey14"</li>
             </ul>
             <p className="text-sm text-foreground mt-2">
               <strong>Why filter?</strong> Invalid or test nodes would skew network statistics and provide no useful information.
@@ -1022,13 +1072,13 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
           </div>
 
           <div className="bg-[#0f0f0f] border border-border rounded-lg p-6 mb-6">
-            <h4 className="font-semibold text-foreground mb-3">Stage 3: Deduplication & Node Identity</h4>
+            <h4 className="font-semibold text-foreground mb-3">Stage 3: Deduplication & pNode Identity</h4>
             <p className="text-foreground mb-3">
               <strong>Core principle:</strong> A node's <code className="bg-[#1a1a1a] px-1 rounded">pubkey</code> is its unique identity.
               The same pubkey always represents the same node, even if other properties change.
             </p>
             <p className="text-foreground mb-3">
-              <strong>The Challenge:</strong> Nodes can change IP addresses (e.g., server relocation, network changes).
+              <strong>The Challenge:</strong> pNodes can change IP addresses (e.g., server relocation, network changes).
               During discovery, we might see the same pubkey at different IPs, or the same IP with different pubkeys over time.
             </p>
             <p className="text-foreground mb-3">
@@ -1047,9 +1097,9 @@ function AnalyticsDocs({ onClose }: { onClose: () => void }) {
             </ol>
 
             <div className="bg-blue-950/30 border border-blue-800 rounded-lg p-4 mt-4">
-              <h5 className="font-semibold text-foreground mb-2">Example: Node IP Change</h5>
+              <h5 className="font-semibold text-foreground mb-2">Example: pNode IP Change</h5>
               <div className="text-sm text-foreground space-y-2">
-                <p><strong>Discovery 1:</strong> Node <code className="bg-[#1a1a1a] px-1 rounded">EcTqXgB6...</code> at <code className="bg-[#1a1a1a] px-1 rounded">173.212.207.32:9001</code></p>
+                <p><strong>Discovery 1:</strong> pNode <code className="bg-[#1a1a1a] px-1 rounded">EcTqXgB6...</code> at <code className="bg-[#1a1a1a] px-1 rounded">173.212.207.32:9001</code></p>
                 <p><strong>Discovery 2 (later):</strong> Same node <code className="bg-[#1a1a1a] px-1 rounded">EcTqXgB6...</code> now at <code className="bg-[#1a1a1a] px-1 rounded">192.168.1.100:9001</code></p>
                 <p><strong>Result in database:</strong></p>
                 <ul className="list-disc list-inside ml-4 space-y-1">
@@ -1169,19 +1219,29 @@ function ArchitectureDocs({ onClose }: { onClose: () => void }) {
                 </ul>
               </div>
               <div>
-                <h3 className="font-semibold text-foreground mb-2">Backend (Render)</h3>
+                <h3 className="font-semibold text-foreground mb-2">Backend (Render - Sync)</h3>
                 <ul className="list-disc list-inside text-sm text-foreground space-y-1">
-                  <li>Express.js API server</li>
+                  <li>Express.js API server for main application data</li>
                   <li>Background refresh worker (runs every minute)</li>
                   <li>pRPC fetching and gossip network discovery</li>
                   <li>MongoDB read/write operations</li>
-                  <li>Historical data storage</li>
+                  <li>Historical Snapshotting (every 10 minutes)</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground mb-2">Realtime Server (Render - Activity)</h3>
+                <ul className="list-disc list-inside text-sm text-foreground space-y-1">
+                  <li>Standalone WebSocket server using Socket.io</li>
+                  <li>High-frequency polling of gossip endpoints (every 5 seconds)</li>
+                  <li>Real-time packet and credit delta calculations</li>
+                  <li>Broadcasts live activity to all connected clients</li>
+                  <li>Powers the Live Feed and pNode Racing visualizer</li>
                 </ul>
               </div>
               <div>
                 <h3 className="font-semibold text-foreground mb-2">Database (MongoDB)</h3>
                 <ul className="list-disc list-inside text-sm text-foreground space-y-1">
-                  <li>Node data storage</li>
+                  <li>pNode data storage</li>
                   <li>Historical snapshots</li>
                   <li>Geographic location cache</li>
                   <li>Only accessible from Render backend</li>
@@ -1212,6 +1272,16 @@ function ArchitectureDocs({ onClose }: { onClose: () => void }) {
             <li>Render backend queries MongoDB and returns data</li>
             <li>Frontend receives data and renders UI</li>
             <li>Client-side latency measurement runs in background</li>
+          </ol>
+
+          <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">Realtime Activity Flow</h3>
+          <ol className="list-decimal list-inside text-foreground space-y-2 mb-4">
+            <li>Realtime server polls gossip discovery endpoints every ~5 seconds</li>
+            <li>Calculates differences (deltas) between current and previous node states</li>
+            <li>Identifies packet earnings, credit gains, and stream changes</li>
+            <li>Discovers new nodes or detects nodes going offline</li>
+            <li>Emits events via WebSockets (Socket.io) to all connected clients</li>
+            <li>Frontend components (Live Feed, pNode Racing) react instantly to updates</li>
           </ol>
         </section>
 
@@ -1305,7 +1375,7 @@ function AIFeaturesDocs({ onClose }: { onClose: () => void }) {
                   <li>Performance insights - analyzes historical trends and patterns</li>
                   <li>Geographic intelligence - finds closest nodes, compares countries</li>
                   <li>Regional Analytics - understands regional health scores and credit earnings</li>
-                  <li>Metadata Insights - explains database discovery vs network join times</li>
+                  <li>STOINC Insights - explains rewards structure and earning potential</li>
                 </ul>
               </div>
             </div>
@@ -1332,7 +1402,7 @@ function AIFeaturesDocs({ onClose }: { onClose: () => void }) {
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="border border-border rounded-lg p-4">
-              <h4 className="font-semibold text-foreground mb-2">Node Queries</h4>
+              <h4 className="font-semibold text-foreground mb-2">pNode Queries</h4>
               <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
                 <li>"How many nodes are in India?"</li>
                 <li>"Show me nodes with high CPU usage"</li>
@@ -1427,7 +1497,7 @@ function AIFeaturesDocs({ onClose }: { onClose: () => void }) {
             The AI can analyze historical data to answer questions about:
           </p>
           <ul className="list-disc list-inside text-foreground space-y-2 mb-4">
-            <li>Node performance over time</li>
+            <li>pNode performance over time</li>
             <li>Credit earnings in specific time periods</li>
             <li>Network trends and changes</li>
             <li>Status change patterns</li>
@@ -1533,6 +1603,198 @@ function AIFeaturesDocs({ onClose }: { onClose: () => void }) {
             <li>Only used to provide context for follow-up questions</li>
             <li>Never shared with third parties</li>
           </ul>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function LiveMonitoringDocs({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Live Network Monitoring</h1>
+          <p className="text-muted-foreground">Real-time visibility into network activity and performance</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-2 hover:hover:bg-[#1a1a1a] rounded-lg transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="prose prose-gray prose-invert max-w-none">
+        <section className="mb-12">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Live Network Feed</h2>
+          <p className="text-foreground mb-4">
+            The Live Network Feed provides a real-time stream of events happening across the Xandeum pNode network.
+            It allows you to monitor node status changes, performance updates, and network-wide events as they occur.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+            <div className="border border-border rounded-lg p-4">
+              <h3 className="font-semibold text-foreground mb-2">Event Types</h3>
+              <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                <li><strong>Status Changes:</strong> Online, Offline, and Syncing updates</li>
+                <li><strong>Performance:</strong> Large spikes in credits or packet earnings</li>
+                <li><strong>Network:</strong> Global health score updates and version shifts</li>
+                <li><strong>Analytics:</strong> Automatic refresh and data enrichment logs</li>
+              </ul>
+            </div>
+            <div className="border border-border rounded-lg p-4">
+              <h3 className="font-semibold text-foreground mb-2">Filtering & Search</h3>
+              <p className="text-sm text-muted-foreground">
+                Search the live feed for specific node IDs, IPs, or event types. Use the filter controls to toggle specific event categories on or off to focus on what matters most to you.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-12">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">pNode Racing Visualization</h2>
+          <p className="text-foreground mb-4">
+            pNode Racing is an interactive, visual representation of pNode performance. It transforms raw packet transfer and credit accumulation data into a dynamic "race" where you can see which pNodes are currently leading in network participation.
+          </p>
+          <div className="bg-[#0f0f0f] border border-border rounded-lg p-6 mb-6">
+            <h3 className="font-semibold text-foreground mb-3 text-lg">How it Works</h3>
+            <ul className="list-decimal list-inside text-foreground space-y-3">
+              <li><strong>Real-time Data:</strong> The visualization is powered by real-time streams of packet and credit data from the network.</li>
+              <li><strong>Dynamic Ranking:</strong> pNode positions are calculated based on their recent activity relative to other nodes.</li>
+              <li><strong>Interactive Elements:</strong> Click on any node in the race to jump directly to its detailed statistics and historical trends.</li>
+              <li><strong>Background Continuity:</strong> The race logic continues to process data even when you switch tabs, ensuring you never miss a lead change.</li>
+            </ul>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function ExplorerDocs({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Network Explorer</h1>
+          <p className="text-muted-foreground">Comprehensive tools for discovery and deep-dives</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-2 hover:hover:bg-[#1a1a1a] rounded-lg transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="prose prose-gray prose-invert max-w-none">
+        <section className="mb-12">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Global pNode List</h2>
+          <p className="text-foreground mb-4">
+            The multi-functional node table is the core of the Explorer. It provides a complete inventory of every discovered pNode with advanced sorting and filtering.
+          </p>
+          <ul className="list-disc list-inside text-foreground space-y-2 mb-6 ml-4">
+            <li><strong>Live Tracking:</strong> Real-time status indicators (Online/Syncing/Offline)</li>
+            <li><strong>Hardware Metrics:</strong> CPU, RAM, and Storage capacity at a glance</li>
+            <li><strong>Version Control:</strong> Direct visibility into software versioning across the network</li>
+            <li><strong>Latency:</strong> Geographic latency measured directly from your location</li>
+          </ul>
+        </section>
+
+        <section className="mb-12">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Regional & Geographic Views</h2>
+          <p className="text-foreground mb-4">
+            Browse the network through a geographic lens. The Regions page aggregates performance and distribution data by country and continent.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="border border-border rounded-lg p-4">
+              <h3 className="font-semibold text-foreground mb-2">Regional Health</h3>
+              <p className="text-sm text-muted-foreground">Each region has a localized health score based on the performance and availability of nodes within its borders.</p>
+            </div>
+            <div className="border border-border rounded-lg p-4">
+              <h3 className="font-semibold text-foreground mb-2">Distribution Analysis</h3>
+              <p className="text-sm text-muted-foreground">Identify where the network is strongest and which regions need more pNode coverage.</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-12">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">pScan: Proximity Search</h2>
+          <p className="text-foreground mb-4">
+            The pScan feature allows you to find the nodes physically closest to any IP address or your current location.
+          </p>
+          <div className="bg-[#0f0f0f] border border-border rounded-lg p-5">
+            <h4 className="font-semibold text-foreground mb-2 uppercase text-xs tracking-wider opacity-60">Use Cases</h4>
+            <ul className="list-disc list-inside text-sm text-foreground space-y-1">
+              <li>Finding the lowest-latency nodes for application integration</li>
+              <li>Verifying local network coverage during pNode deployment</li>
+              <li>Analyzing network density in specific metropolitan areas</li>
+            </ul>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function StoincDocs({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">STOINC & Rewards</h1>
+          <p className="text-muted-foreground">Understanding the Storage Income (STOINC) economy</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-2 hover:hover:bg-[#1a1a1a] rounded-lg transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="prose prose-gray prose-invert max-w-none">
+        <section className="mb-12">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">What is STOINC?</h2>
+          <p className="text-foreground mb-4">
+            <strong>STOINC (Storage Income)</strong> is the incentive mechanism that rewards Xandeum pNode operators for providing storage capacity to the network. Unlike traditional mining, STOINC rewards are based on the continuous availability and successful processing of data.
+          </p>
+        </section>
+
+        <section className="mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="bg-[#111] p-4 rounded-xl border border-[#F0A741]/20">
+              <h3 className="text-[#F0A741] font-bold mb-1">Credits</h3>
+              <p className="text-xs text-muted-foreground">The primary reputation metric. Earned through successful heartbeats and data requests.</p>
+            </div>
+            <div className="bg-[#111] p-4 rounded-xl border border-blue-500/20">
+              <h3 className="text-blue-500 font-bold mb-1">Packets</h3>
+              <p className="text-xs text-muted-foreground">Measure of raw data throughput. Higher packet activity often correlates with higher rewards.</p>
+            </div>
+            <div className="bg-[#111] p-4 rounded-xl border border-green-500/20">
+              <h3 className="text-green-500 font-bold mb-1">Revenue Share</h3>
+              <p className="text-xs text-muted-foreground">The portion of network storage fees allocated to the pNode layer (currently 94%).</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-12">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">STOINC Calculator</h2>
+          <p className="text-foreground mb-4">
+            Use the interactive STOINC Calculator to estimate potential earnings based on node performance.
+          </p>
+          <ul className="list-disc list-inside text-foreground space-y-2 ml-4">
+            <li><strong>Dynamic Inputs:</strong> Adjust metrics like credit accumulation and network-wide fees.</li>
+            <li><strong>Boosted Metrics:</strong> See how different tiers of performance impact potential revenue.</li>
+            <li><strong>Real-time Comparison:</strong> Compare your estimated earnings against the current top-performing nodes.</li>
+          </ul>
+        </section>
+
+        <section className="mb-12">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Credits Leaderboard</h2>
+          <p className="text-foreground mb-4">
+            The Credits Leaderboard tracks the top pNodes in the network by their reputation score. This provides a transparent view of which operators are providing the most reliable storage services to Xandeum.
+          </p>
         </section>
       </div>
     </div>

@@ -107,9 +107,9 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
   const getBest = (key: string, higherBetter: boolean): string | null => {
     if (selectedNodes.length < 2) return null;
     const entries = selectedNodes
-      .map(n => ({ 
-        id: n.id || n.pubkey || n.publicKey || 'unknown', 
-        val: getValue(n, key) 
+      .map(n => ({
+        id: n.id || n.pubkey || n.publicKey || 'unknown',
+        val: getValue(n, key)
       }))
       .filter(e => e.val !== null && e.id !== 'unknown');
     if (entries.length < 2) return null;
@@ -204,7 +204,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                     value={slot.searchQuery}
                     onChange={(e) => updateSlot(idx, { searchQuery: e.target.value, isOpen: true })}
                     onFocus={() => updateSlot(idx, { isOpen: true })}
-                    placeholder={`Node ${idx + 1}...`}
+                    placeholder={`pNode ${idx + 1}...`}
                     className="input pl-12 pr-3 h-11 w-full focus:border-border focus:ring-0 focus:shadow-none"
                     style={{ paddingLeft: '2.75rem' }}
                   />
@@ -218,7 +218,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
                         const filtered = getFiltered(slot.searchQuery, excludedIds);
                         return filtered.length === 0 ? (
                           <div className="p-4 text-center text-sm text-muted-foreground">
-                            {slot.searchQuery ? 'No nodes found' : 'Start typing...'}
+                            {slot.searchQuery ? 'No pNodes found' : 'Start typing...'}
                           </div>
                         ) : (
                           filtered.map((node) => {
@@ -265,7 +265,7 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
             className="flex-shrink-0 h-11 px-4 border-2 border-dashed border-border rounded-lg flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground hover:border-[#3F8277]/30 hover:bg-[#3F8277]/5 transition-all"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Node</span>
+            <span>Add pNode</span>
           </button>
         )}
       </div>
@@ -444,9 +444,9 @@ export default function NodeComparison({ nodes }: NodeComparisonProps) {
           <div className="w-16 h-16 rounded-xl bg-muted/50 flex items-center justify-center mb-4">
             <Server className="w-8 h-8 text-muted-foreground" />
           </div>
-          <p className="text-sm font-semibold text-foreground mb-2">Compare Nodes</p>
+          <p className="text-sm font-semibold text-foreground mb-2">Compare pNodes</p>
           <p className="text-xs text-muted-foreground max-w-[280px]">
-            Select at least 2 nodes above to see a side-by-side comparison of their metrics
+            Select at least 2 pNodes above to see a side-by-side comparison of their metrics
           </p>
         </div>
       )}

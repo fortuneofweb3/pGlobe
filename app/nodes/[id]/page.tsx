@@ -1117,7 +1117,7 @@ function NodeDetailContent() {
             <div className="max-w-7xl mx-auto">
               {/* Breadcrumb */}
               <div className="mb-4 sm:mb-6 flex items-center gap-2 text-sm text-foreground/60">
-                <Link href="/nodes" className="hover:text-foreground transition-colors">Nodes</Link>
+                <Link href="/nodes" className="hover:text-foreground transition-colors">pNodes</Link>
                 <span>/</span>
                 <span className="h-4 w-48 bg-muted/40 rounded animate-pulse inline-block font-mono" />
               </div>
@@ -1168,7 +1168,7 @@ function NodeDetailContent() {
                     <h2 className="text-base font-semibold text-foreground">Location</h2>
                   </div>
                   <span className="text-xs text-foreground/60">
-                    <span className="h-4 w-16 bg-muted/40 rounded animate-pulse inline-block" /> other nodes on map
+                    <span className="h-4 w-16 bg-muted/40 rounded animate-pulse inline-block" /> other pNodes on map
                   </span>
                 </div>
                 <div className="h-[300px] w-full bg-muted/20 rounded-lg animate-pulse" />
@@ -1234,10 +1234,10 @@ function NodeDetailContent() {
         <Header activePage="nodes" nodeCount={allNodes.length} lastUpdate={lastUpdate} loading={loading} onRefresh={handleRefresh} />
         <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] p-6">
           <div className="text-center space-y-4">
-            <p className="text-lg text-foreground/60">Node not found</p>
+            <p className="text-lg text-foreground/60">pNode not found</p>
             <Link href="/nodes" className="inline-flex items-center gap-2 text-[#F0A741] hover:text-[#F0A741]/80 transition-colors">
               <ArrowLeft className="w-4 h-4" />
-              Back to Nodes
+              Back to pNodes
             </Link>
           </div>
         </div>
@@ -1255,7 +1255,7 @@ function NodeDetailContent() {
             <div className="max-w-7xl mx-auto">
               {/* Breadcrumb */}
               <div className="mb-4 sm:mb-6 flex items-center gap-2 text-sm text-foreground/60">
-                <Link href="/nodes" className="hover:text-foreground transition-colors">Nodes</Link>
+                <Link href="/nodes" className="hover:text-foreground transition-colors">pNodes</Link>
                 <span>/</span>
                 <span className="h-4 w-48 bg-muted/40 rounded animate-pulse inline-block font-mono" />
               </div>
@@ -1337,7 +1337,7 @@ function NodeDetailContent() {
                 {/* Back button */}
                 <Link href="/nodes" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6 transition-all duration-300 hover:translate-x-[-4px] group">
                   <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
-                  <span>Back to Nodes</span>
+                  <span>Back to pNodes</span>
                 </Link>
 
                 <div className="relative rounded-2xl overflow-hidden border border-border/40 shadow-2xl bg-card" style={{ minHeight: '234px', maxHeight: '260px' }}>
@@ -1401,13 +1401,13 @@ function NodeDetailContent() {
                         <div className="flex items-center gap-3 flex-wrap mb-4">
                           {getStatusBadge(node.status)}
                           {node.isPublic === true && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30" title="Public node - pRPC is publicly accessible">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30" title="Public pNode - pRPC is publicly accessible">
                               <Globe className="w-3 h-3" />
                               Public
                             </span>
                           )}
                           {node.isPublic === false && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30" title="Private node - pRPC is not publicly accessible">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30" title="Private pNode - pRPC is not publicly accessible">
                               <Lock className="w-3 h-3" />
                               Private
                             </span>
@@ -1480,7 +1480,7 @@ function NodeDetailContent() {
                 {/* Fallback Header (no location) */}
                 <Link href="/nodes" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6 transition-all duration-300 hover:translate-x-[-4px] group">
                   <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
-                  <span>Back to Nodes</span>
+                  <span>Back to pNodes</span>
                 </Link>
 
                 <div className="mb-6 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }}>
@@ -1523,9 +1523,12 @@ function NodeDetailContent() {
                   <div className="flex items-start gap-3">
                     <Lock className="w-5 h-5 text-orange-400 mt-0.5 flex-shrink-0" />
                     <div className="flex-1">
-                      <h3 className="text-sm font-semibold text-orange-400 mb-1">Private Node</h3>
-                      <p className="text-xs text-foreground/70 leading-relaxed">
-                        This node's pRPC is not publicly accessible. Detailed performance metrics, resource usage, and historical data are not available. Only basic information from network gossip is shown.
+                      <h3 className="text-xl font-bold text-foreground">Private pNode</h3>
+                      <p className="text-muted-foreground mt-2">
+                        This pNode is configured as private. Historical data and detailed performance metrics are only visible to the node owner or authorized operators.
+                      </p>
+                      <p className="text-xs text-foreground/70 leading-relaxed mt-2">
+                        Only basic information from network gossip is shown.
                       </p>
                     </div>
                   </div>
@@ -1860,7 +1863,7 @@ function NodeDetailContent() {
                           <div className="text-center">
                             <div className="text-xs font-medium text-foreground/60 uppercase tracking-wide mb-1">Memory</div>
                             <div className="text-xs text-muted-foreground">
-                              {formatValue(node.ramUsed, formatBytes)} / {formatValue(node.ramTotal, formatBytes)}
+                              {formatValue(node.ramUsed, formatStorageBytes)} / {formatValue(node.ramTotal, formatStorageBytes)}
                             </div>
                           </div>
                         </div>
@@ -2029,7 +2032,7 @@ function NodeDetailContent() {
                     {/* Status over time */}
                     <div className="card">
                       <HistoricalLineChart
-                        title="Node Status"
+                        title="pNode Status"
                         data={filteredData.map(d => ({
                           timestamp: d.timestamp,
                           value: d.status === 'online' ? 2 : d.status === 'syncing' ? 1 : 0,

@@ -26,7 +26,7 @@ export default function NetworkInsights({ nodes }: NetworkInsightsProps) {
         id: 'no-data',
         type: 'info' as const,
         title: 'No data available',
-        description: 'Waiting for node data...',
+        description: 'Waiting for pNode data...',
         icon: <Info className="w-4 h-4" />,
       }];
     }
@@ -34,13 +34,13 @@ export default function NetworkInsights({ nodes }: NetworkInsightsProps) {
     // 1. Network Availability
     const onlineNodes = nodes.filter(n => n.status === 'online').length;
     const availabilityPercent = (onlineNodes / nodes.length) * 100;
-    
+
     if (availabilityPercent === 100) {
       insights.push({
         id: 'full-availability',
         type: 'success',
         title: 'Full network availability',
-        description: 'All nodes are online and responsive',
+        description: 'All pNodes are online and responsive',
         icon: <CheckCircle className="w-4 h-4" />,
       });
     } else if (availabilityPercent < 80) {
@@ -48,7 +48,7 @@ export default function NetworkInsights({ nodes }: NetworkInsightsProps) {
         id: 'low-availability',
         type: 'warning',
         title: 'Reduced network availability',
-        description: `Only ${onlineNodes} of ${nodes.length} nodes online (${availabilityPercent.toFixed(0)}%)`,
+        description: `Only ${onlineNodes} of ${nodes.length} pNodes online (${availabilityPercent.toFixed(0)}%)`,
         icon: <AlertTriangle className="w-4 h-4" />,
       });
     }
@@ -64,7 +64,7 @@ export default function NetworkInsights({ nodes }: NetworkInsightsProps) {
         id: 'version-health',
         type: 'success',
         title: 'Excellent version health',
-        description: '100% of nodes on latest version',
+        description: '100% of pNodes on latest version',
         icon: <CheckCircle className="w-4 h-4" />,
       });
     } else if (versionHealthPercent < 80) {
@@ -73,30 +73,30 @@ export default function NetworkInsights({ nodes }: NetworkInsightsProps) {
         id: 'version-warning',
         type: 'warning',
         title: 'Version fragmentation detected',
-        description: `${outdatedCount} node${outdatedCount === 1 ? '' : 's'} running outdated version${outdatedCount === 1 ? '' : 's'}`,
+        description: `${outdatedCount} pNode${outdatedCount === 1 ? '' : 's'} running outdated version${outdatedCount === 1 ? '' : 's'}`,
         icon: <AlertTriangle className="w-4 h-4" />,
       });
     }
 
-    // 3. At Risk Nodes (offline or old version)
+    // 3. At Risk pNodes (offline or old version)
     const atRiskNodes = nodes.filter(n => n.status === 'offline' || n.version !== latestVersion);
     if (atRiskNodes.length === 0) {
       insights.push({
         id: 'no-risk',
         type: 'success',
-        title: 'No nodes at risk',
-        description: 'All nodes are healthy and up to date',
+        title: 'No pNodes at risk',
+        description: 'All pNodes are healthy and up to date',
         icon: <CheckCircle className="w-4 h-4" />,
       });
     } else if (atRiskNodes.length > 0) {
       insights.push({
         id: 'at-risk',
         type: atRiskNodes.length > nodes.length * 0.2 ? 'error' : 'info',
-        title: `${atRiskNodes.length} node${atRiskNodes.length === 1 ? '' : 's'} at risk`,
+        title: `${atRiskNodes.length} pNode${atRiskNodes.length === 1 ? '' : 's'} at risk`,
         description: atRiskNodes.length > nodes.length * 0.2
-          ? 'Significant number of nodes offline or outdated'
-          : 'Some nodes need attention',
-        icon: atRiskNodes.length > nodes.length * 0.2 
+          ? 'Significant number of pNodes offline or outdated'
+          : 'Some pNodes need attention',
+        icon: atRiskNodes.length > nodes.length * 0.2
           ? <AlertCircle className="w-4 h-4" />
           : <Info className="w-4 h-4" />,
       });

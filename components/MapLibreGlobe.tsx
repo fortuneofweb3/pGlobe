@@ -2660,7 +2660,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
           )}
         </MapGL>
 
-        {/* Node Details Popup - 60 FPS smooth with direct DOM manipulation */}
+        {/* pNode Details Popup - 60 FPS smooth with direct DOM manipulation */}
         {selectedNodeId && isLoaded && popupPosition.nodePos && popupPosition.popupPos && (() => {
           const nodeIndex = nodesWithLocation.findIndex(n => n.id === selectedNodeId);
           const selectedNode = nodeIndex >= 0 ? nodesWithLocation[nodeIndex] : null;
@@ -2816,7 +2816,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
             <button
               onClick={handlePreviousNode}
               className="p-2 hover:bg-muted rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Previous Node"
+              title="Previous pNode"
               disabled={navigableNodes.length <= 1}
             >
               <ChevronLeft className="w-5 h-5 text-foreground" />
@@ -2831,7 +2831,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
             <button
               onClick={handleNextNode}
               className="p-2 hover:bg-muted rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Next Node"
+              title="Next pNode"
               disabled={navigableNodes.length <= 1}
             >
               <ChevronRight className="w-5 h-5 text-foreground" />
@@ -2876,7 +2876,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                 setLegendOpen(!legendOpen);
               }}
               className="md:hidden absolute top-20 left-4 z-10 p-2 bg-card border border-border rounded shadow-lg hover:bg-muted transition-colors"
-              title="Node Status Legend"
+              title="pNode Status Legend"
               aria-label="Toggle node status legend"
             >
               <Info className="w-5 h-5 text-foreground" />
@@ -2889,7 +2889,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
               className={`absolute top-20 left-4 md:top-4 md:left-4 bg-card border border-border rounded p-3 z-10 shadow-lg max-w-[200px] ${legendOpen || (typeof window !== 'undefined' && window.innerWidth >= 768) ? 'block' : 'hidden'
                 }`}
             >
-              <div className="text-body-small font-semibold mb-2">Node Status</div>
+              <div className="text-body-small font-semibold mb-2">pNode Status</div>
               <div className="flex flex-col gap-1.5">
                 <div
                   className="flex items-center gap-2 group relative"

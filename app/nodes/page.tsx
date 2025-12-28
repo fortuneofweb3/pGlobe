@@ -206,19 +206,19 @@ function NodesPageContent() {
               <div className="mb-4 sm:mb-6">
                 <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
                   <Server className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
-                  Network Nodes
+                  Network pNodes
                 </h1>
                 <p className="text-foreground/60 text-sm sm:text-base">
-                  Complete overview of all nodes in the network
+                  Complete overview of all pNodes in the network
                 </p>
               </div>
 
               {/* Summary Stats - 4 cards */}
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6">
-                <StatsCard title="Total Nodes" value={0} icon={<Server className="w-4 h-4" />} loading={true} />
-                <StatsCard title="Online Nodes" value={0} icon={<TrendingUp className="w-4 h-4" />} loading={true} />
+                <StatsCard title="Total pNodes" value={0} icon={<Server className="w-4 h-4" />} loading={true} />
+                <StatsCard title="Online pNodes" value={0} icon={<TrendingUp className="w-4 h-4" />} loading={true} />
                 <StatsCard title="Syncing" value={0} icon={<Activity className="w-4 h-4" />} loading={true} />
-                <StatsCard title="Offline Nodes" value={0} icon={<Server className="w-4 h-4" />} loading={true} />
+                <StatsCard title="Offline pNodes" value={0} icon={<Server className="w-4 h-4" />} loading={true} />
               </div>
 
               {/* Search and Filters placeholder */}
@@ -247,24 +247,24 @@ function NodesPageContent() {
             <div className="mb-4 sm:mb-6">
               <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
                 <Server className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
-                Network Nodes
+                Network pNodes
               </h1>
               <p className="text-foreground/60 text-sm sm:text-base">
-                Complete overview of all nodes in the network
+                Complete overview of all pNodes in the network
               </p>
             </div>
 
             {/* Summary Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6 stagger-children">
               <StatsCard
-                title="Total Nodes"
+                title="Total pNodes"
                 value={nodes.length}
                 icon={<Server className="w-4 h-4" />}
                 color="orange"
               />
 
               <StatsCard
-                title="Online Nodes"
+                title="Online pNodes"
                 value={statusCounts.online}
                 icon={<TrendingUp className="w-4 h-4" />}
                 color="green"
@@ -278,7 +278,7 @@ function NodesPageContent() {
               />
 
               <StatsCard
-                title="Offline Nodes"
+                title="Offline pNodes"
                 value={statusCounts.offline}
                 icon={<Server className="w-4 h-4" />}
                 color="red"
@@ -544,7 +544,7 @@ function NodesPageContent() {
 
               {filteredAndSortedNodes.length === 0 && !loading && (
                 <div className="card text-center" style={{ padding: '2rem' }}>
-                  <p className="text-foreground/60">No nodes found</p>
+                  <p className="text-foreground/60">No pNodes found</p>
                   {hasActiveFilters && (
                     <button
                       onClick={() => {

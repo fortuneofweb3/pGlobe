@@ -146,7 +146,7 @@ function CountryCard({ country, flagUrl }: {
             <div className="text-2xl font-bold text-foreground">
               <AnimatedNumber value={country.nodeCount} />
             </div>
-            <div className="text-xs text-foreground/60">nodes</div>
+            <div className="text-xs text-foreground/60">pNodes</div>
           </div>
         </div>
 
@@ -341,13 +341,13 @@ function RegionsPageContent() {
               Network Regions
             </h1>
             <p className="text-foreground/60 text-sm sm:text-base">
-              Geographic distribution of nodes across regions
+              Geographic distribution of pNodes across regions
             </p>
           </div>
 
           {/* Summary Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            {['Total Regions', 'Total Nodes', 'Online Nodes'].map((label) => (
+            {['Total Regions', 'Total pNodes', 'Online pNodes'].map((label) => (
               <StatsCard
                 key={label}
                 title={label}
@@ -396,7 +396,7 @@ function RegionsPageContent() {
                     Network Regions
                   </h1>
                   <p className="text-foreground/60 text-sm sm:text-base">
-                    Geographic distribution of nodes across countries
+                    Geographic distribution of pNodes across countries
                   </p>
                 </div>
                 {selectedCountry && (
@@ -412,7 +412,7 @@ function RegionsPageContent() {
               {selectedCountry && (
                 <div className="mt-3 p-3 bg-[#F0A741]/10 border border-[#F0A741]/30 rounded-lg">
                   <p className="text-sm text-foreground">
-                    Showing nodes in <span className="font-semibold text-[#F0A741]">{selectedCountry}</span>
+                    Showing pNodes in <span className="font-semibold text-[#F0A741]">{selectedCountry}</span>
                   </p>
                 </div>
               )}
@@ -421,7 +421,7 @@ function RegionsPageContent() {
             {/* Summary Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 stagger-children">
               <StatsCard
-                title="Total Nodes"
+                title="Total pNodes"
                 value={nodes.length}
                 icon={<Server className="w-4 h-4" />}
               />

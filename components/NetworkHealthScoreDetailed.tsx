@@ -30,9 +30,9 @@ export default function NetworkHealthScoreDetailed({ nodes }: NetworkHealthScore
       {/* Header */}
       <div className="flex items-center gap-2">
         <Activity className="w-4 h-4 text-foreground/40" />
-        <h2 className="text-base font-semibold text-foreground">Network Health Score</h2>
+        <h2 className="text-base font-semibold text-foreground">pNode Network Health Score</h2>
       </div>
-      
+
       {/* Overall Score - Large Display */}
       <div className="text-center py-3 border-b border-border">
         <div className="text-4xl font-bold mb-1">
@@ -51,7 +51,7 @@ export default function NetworkHealthScoreDetailed({ nodes }: NetworkHealthScore
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-foreground">Availability</span>
-              <button className="text-muted-foreground hover:text-foreground transition-colors" title="Percentage of nodes currently online">
+              <button className="text-muted-foreground hover:text-foreground transition-colors" title="Percentage of pNodes currently online">
                 <Info className="w-3 h-3" />
               </button>
             </div>
@@ -66,7 +66,7 @@ export default function NetworkHealthScoreDetailed({ nodes }: NetworkHealthScore
             />
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            <AnimatedNumber value={nodes.filter(n => n.status === 'online').length} /> / <AnimatedNumber value={nodes.length} /> nodes online
+            <AnimatedNumber value={nodes.filter(n => n.status === 'online').length} /> / <AnimatedNumber value={nodes.length} /> pNodes online
           </div>
         </div>
 
@@ -74,7 +74,7 @@ export default function NetworkHealthScoreDetailed({ nodes }: NetworkHealthScore
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-foreground">Version Health</span>
-              <button className="text-muted-foreground hover:text-foreground transition-colors" title="Percentage of nodes on the latest version">
+              <button className="text-muted-foreground hover:text-foreground transition-colors" title="Percentage of pNodes on the latest version">
                 <Info className="w-3 h-3" />
               </button>
             </div>
@@ -93,7 +93,7 @@ export default function NetworkHealthScoreDetailed({ nodes }: NetworkHealthScore
               const versions = nodes.map(n => n.version).filter((v): v is string => !!v);
               const latest = getLatestVersion(versions);
               return latest ? nodes.filter(n => n.version === latest).length : 0;
-            })()} /> nodes on latest version
+            })()} /> pNodes on latest version
           </div>
         </div>
 

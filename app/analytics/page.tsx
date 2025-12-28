@@ -145,7 +145,7 @@ export default function AnalyticsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `xandeum-nodes-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `xandeum-pnodes-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -156,7 +156,7 @@ export default function AnalyticsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `xandeum-nodes-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `xandeum-pnodes-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -256,8 +256,8 @@ export default function AnalyticsPage() {
             {/* Summary Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               {[
-                { label: 'Total Nodes', icon: Server },
-                { label: 'Online Nodes', icon: TrendingUp },
+                { label: 'Total pNodes', icon: Server },
+                { label: 'Online pNodes', icon: TrendingUp },
                 { label: 'Total Storage', icon: HardDrive },
                 { label: 'Network Health', icon: Activity },
               ].map((stat) => (
@@ -340,7 +340,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {/* Node Comparison Section - Accordion Style */}
+            {/* pNode Comparison Section - Accordion Style */}
             <div className="card overflow-hidden mt-4 sm:mt-6" style={{ padding: 0 }}>
               {/* Header - Clickable */}
               <button
@@ -360,14 +360,14 @@ export default function AnalyticsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
                         <h2 className="text-sm font-semibold text-foreground">
-                          Node Comparison
+                          pNode Comparison
                         </h2>
                         <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-[#F0A741]/10 text-[#F0A741] border border-[#F0A741]/20">
                           Tool
                         </span>
                       </div>
                       <p className="text-xs text-foreground/60 line-clamp-1">
-                        Compare up to 3 nodes side-by-side to analyze performance metrics and make informed decisions.
+                        Compare up to 3 pNodes side-by-side to analyze performance metrics and make informed decisions.
                       </p>
                     </div>
                   </div>
@@ -395,7 +395,7 @@ export default function AnalyticsPage() {
             {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-4 sm:mt-6 stagger-children">
               <StatsCard
-                title="Total Nodes"
+                title="Total pNodes"
                 value={stats.totalNodes}
                 icon={<Server className="w-4 h-4" />}
                 subValue="Across all discovered networks"
@@ -457,7 +457,7 @@ export default function AnalyticsPage() {
                 icon={<Cpu className="w-4 h-4" />}
                 subValue={
                   <>
-                    <AnimatedNumber value={stats.nodesWithCPU} className="align-baseline" /> <span className="align-baseline">nodes reporting</span>
+                    <AnimatedNumber value={stats.nodesWithCPU} className="align-baseline" /> <span className="align-baseline">pNodes reporting</span>
                   </>
                 }
               />
@@ -471,7 +471,7 @@ export default function AnalyticsPage() {
                 icon={<TrendingUp className="w-4 h-4" />}
                 subValue={
                   <>
-                    <AnimatedNumber value={nodes.filter(n => n.uptime && n.uptime > 0).length} className="align-baseline" /> <span className="align-baseline">nodes reporting</span>
+                    <AnimatedNumber value={nodes.filter(n => n.uptime && n.uptime > 0).length} className="align-baseline" /> <span className="align-baseline">pNodes reporting</span>
                   </>
                 }
               />
@@ -483,7 +483,7 @@ export default function AnalyticsPage() {
                 color="orange"
                 subValue={
                   <>
-                    <AnimatedNumber value={stats.nodesWithCredits} /> <span className="ml-1">nodes reporting</span>
+                    <AnimatedNumber value={stats.nodesWithCredits} /> <span className="ml-1">pNodes reporting</span>
                   </>
                 }
               />
@@ -495,7 +495,7 @@ export default function AnalyticsPage() {
                 color="green"
                 subValue={
                   <>
-                    <AnimatedNumber value={stats.nodesWithStreams} /> <span className="ml-1">nodes active</span>
+                    <AnimatedNumber value={stats.nodesWithStreams} /> <span className="ml-1">pNodes active</span>
                   </>
                 }
               />
@@ -558,11 +558,11 @@ export default function AnalyticsPage() {
                 </div>
               </div>
 
-              {/* Row 3: Top Nodes */}
+              {/* Row 3: Top pNodes */}
               <div className="card flex flex-col">
                 <div className="flex items-center gap-2 mb-3">
                   <Server className="w-4 h-4 text-foreground/40" />
-                  <h2 className="text-base font-semibold text-foreground">Top Nodes</h2>
+                  <h2 className="text-base font-semibold text-foreground">Top pNodes</h2>
                 </div>
                 <div className="flex-1">
                   <NodeRankings

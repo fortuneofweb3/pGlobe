@@ -675,8 +675,8 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
 
         {/* Legend/Info - Right Column / Mobile Collapsible */}
         <div className={`w-full lg:w-auto h-full border-t lg:border-t-0 lg:border-l border-border/60 flex flex-col gap-3 lg:gap-4 justify-between overflow-y-auto lg:overflow-hidden transition-all duration-300 ${mobileInfoOpen
-            ? 'max-h-[35vh] opacity-100 p-3 lg:p-5'
-            : 'max-h-0 opacity-0 p-0 lg:max-h-full lg:opacity-100 lg:p-5'
+          ? 'max-h-[35vh] opacity-100 p-3 lg:p-5'
+          : 'max-h-0 opacity-0 p-0 lg:max-h-full lg:opacity-100 lg:p-5'
           }`}>
           <div className="flex flex-col gap-2 lg:gap-4">
             {/* Header */}
@@ -690,7 +690,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
             {/* Stats */}
             <div className="grid grid-cols-2 gap-2 lg:gap-4">
               <div>
-                <p className="text-[10px] lg:text-xs font-medium text-foreground/70 mb-0.5 lg:mb-1">Total Nodes</p>
+                <p className="text-[10px] lg:text-xs font-medium text-foreground/70 mb-0.5 lg:mb-1">Total pNodes</p>
                 <p className="text-xl lg:text-2xl font-bold text-foreground">{nodes.length}</p>
               </div>
               <div>
@@ -701,7 +701,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
 
             {/* Color Scale */}
             <div>
-              <p className="text-[10px] lg:text-xs font-medium text-foreground/70 mb-1 lg:mb-2">Node Density Scale</p>
+              <p className="text-[10px] lg:text-xs font-medium text-foreground/70 mb-1 lg:mb-2">pNode Density Scale</p>
               <div className="flex items-center gap-2 mb-1 lg:mb-2">
                 <span className="text-[10px] lg:text-xs text-muted-foreground">Low</span>
                 <div className="flex-1 h-2 lg:h-3 rounded-full bg-gradient-to-r from-red-950 via-orange-600 to-orange-400"></div>

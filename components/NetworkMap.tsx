@@ -96,7 +96,7 @@ export default function NetworkMap({ nodes }: NetworkMapProps) {
   if (!isClient) {
     return (
       <div>
-        <h3 className="text-h3 text-foreground mb-4">Global Node Distribution</h3>
+        <h3 className="text-h3 text-foreground mb-4">Global pNode Distribution</h3>
         <MapSkeleton height={400} />
       </div>
     );
@@ -105,9 +105,9 @@ export default function NetworkMap({ nodes }: NetworkMapProps) {
   return (
     <div>
       <div className="mb-4">
-        <h3 className="text-h3 text-foreground mb-2">Global Node Distribution</h3>
+        <h3 className="text-h3 text-foreground mb-2">Global pNode Distribution</h3>
         <div className="flex items-center gap-4 text-body text-muted-foreground">
-          <span>{nodesWithLocation.length} nodes mapped</span>
+          <span>{nodesWithLocation.length} pNodes mapped</span>
           <span>•</span>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1">
@@ -170,7 +170,7 @@ export default function NetworkMap({ nodes }: NetworkMapProps) {
                   >
                     <Popup>
                       <div className="text-body">
-                        <div className="font-semibold mb-2">Node Details</div>
+                        <div className="font-semibold mb-2">pNode Details</div>
                         <div className="space-y-1">
                           <div><strong>ID:</strong> {node.id}</div>
                           {node.pubkey && <div><strong>Pubkey:</strong> {node.pubkey.slice(0, 8)}...{node.pubkey.slice(-4)}</div>}
@@ -190,7 +190,7 @@ export default function NetworkMap({ nodes }: NetworkMapProps) {
           ) : nodesWithLocation.length === 0 ? (
             <div className="h-full flex items-center justify-center text-muted-foreground">
               <div className="text-center">
-                <p className="mb-2">No nodes with location data available</p>
+                <p className="mb-2">No pNodes with location data available</p>
                 <p className="text-body-small">Geographic data is being loaded...</p>
               </div>
             </div>

@@ -92,7 +92,7 @@ export default function Header({
                   : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                   }`}
               >
-                Nodes {nodeCount > 0 && `(${nodeCount})`}
+                pNodes {nodeCount > 0 && `(${nodeCount})`}
               </Link>
               <Link
                 href="/analytics"
@@ -112,9 +112,9 @@ export default function Header({
                   : 'hover:bg-[#F0A741]/5'
                   }`}
               >
-                <span className={`bg-gradient-to-r from-green-400 via-[#F0A741] to-purple-500 bg-clip-text text-transparent font-bold ${activePage === 'stoinc'
-                  ? 'opacity-100 animate-gradient-x'
-                  : 'opacity-60 hover:opacity-100 hover:animate-gradient-x'
+                <span className={`bg-gradient-to-r from-green-400 via-[#F0A741] to-purple-500 bg-clip-text text-transparent font-bold animate-gradient-x ${activePage === 'stoinc'
+                  ? 'opacity-100'
+                  : 'opacity-60 hover:opacity-100'
                   }`}
                   style={{ WebkitBackgroundClip: 'text', backgroundSize: '200% auto' }}
                 >
@@ -253,7 +253,7 @@ export default function Header({
                 : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                 }`}
             >
-              Nodes {nodeCount > 0 && `(${nodeCount})`}
+              pNodes {nodeCount > 0 && `(${nodeCount})`}
             </Link>
             <Link
               href="/analytics"
@@ -275,9 +275,9 @@ export default function Header({
                 : 'hover:bg-[#F0A741]/5'
                 }`}
             >
-              <span className={`bg-gradient-to-r from-green-400 via-[#F0A741] to-purple-500 bg-clip-text text-transparent font-bold ${activePage === 'stoinc'
-                ? 'opacity-100 animate-gradient-x'
-                : 'opacity-60 hover:opacity-100 hover:animate-gradient-x'
+              <span className={`bg-gradient-to-r from-green-400 via-[#F0A741] to-purple-500 bg-clip-text text-transparent font-bold animate-gradient-x ${activePage === 'stoinc'
+                ? 'opacity-100'
+                : 'opacity-60 hover:opacity-100'
                 }`}
                 style={{ WebkitBackgroundClip: 'text', backgroundSize: '200% auto' }}
               >
