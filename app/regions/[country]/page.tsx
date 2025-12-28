@@ -1482,7 +1482,6 @@ function CountryDetailContent() {
                         <span className="text-xl sm:text-2xl font-bold font-mono text-foreground">
                           {stats.totalCredits > 1000000 ? (stats.totalCredits / 1000000).toFixed(1) + 'M' : stats.totalCredits.toLocaleString()}
                         </span>
-                        <span className="text-[10px] text-foreground/40 font-bold">XND</span>
                       </div>
                       <span className="text-[9px] text-foreground/30 mt-1">From {stats.nodesReportingCredits} nodes</span>
                       <div className="absolute -right-6 -bottom-6 w-12 h-12 bg-[#F0A741]/5 rounded-full blur-xl group-hover:bg-[#F0A741]/10 transition-colors" />
