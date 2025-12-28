@@ -2436,7 +2436,7 @@ function NodeDetailContent() {
               </div>
             )}
 
-            <div className="mt-8">
+            <div className="mt-8 h-[500px] overflow-hidden">
               <ActivityLogList pubkey={node.pubkey || node.publicKey} limit={20} />
             </div>
           </div>

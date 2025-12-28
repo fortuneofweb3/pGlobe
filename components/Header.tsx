@@ -113,10 +113,10 @@ export default function Header({
                   }`}
               >
                 <span className={`bg-gradient-to-r from-green-400 via-[#F0A741] to-purple-500 bg-clip-text text-transparent font-bold ${activePage === 'stoinc'
-                  ? 'opacity-100'
-                  : 'opacity-60 hover:opacity-100'
+                  ? 'opacity-100 animate-gradient-x'
+                  : 'opacity-60 hover:opacity-100 hover:animate-gradient-x'
                   }`}
-                  style={{ WebkitBackgroundClip: 'text' }}
+                  style={{ WebkitBackgroundClip: 'text', backgroundSize: '200% auto' }}
                 >
                   STOINC
                 </span>
@@ -276,10 +276,10 @@ export default function Header({
                 }`}
             >
               <span className={`bg-gradient-to-r from-green-400 via-[#F0A741] to-purple-500 bg-clip-text text-transparent font-bold ${activePage === 'stoinc'
-                ? 'opacity-100'
-                : 'opacity-60 hover:opacity-100'
+                ? 'opacity-100 animate-gradient-x'
+                : 'opacity-60 hover:opacity-100 hover:animate-gradient-x'
                 }`}
-                style={{ WebkitBackgroundClip: 'text' }}
+                style={{ WebkitBackgroundClip: 'text', backgroundSize: '200% auto' }}
               >
                 STOINC
               </span>

@@ -29,15 +29,15 @@ const config: Config = {
         muted: {
           DEFAULT: 'rgb(var(--muted) / <alpha-value>)',
           foreground: 'rgb(var(--muted-foreground) / <alpha-value>)',
-          },
-          accent: {
+        },
+        accent: {
           DEFAULT: 'rgb(var(--accent) / <alpha-value>)',
           foreground: 'rgb(var(--accent-foreground) / <alpha-value>)',
-          },
+        },
         destructive: 'rgb(var(--destructive) / <alpha-value>)',
         success: 'rgb(var(--success) / <alpha-value>)',
         warning: 'rgb(var(--warning) / <alpha-value>)',
-        },
+      },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
@@ -52,6 +52,7 @@ const config: Config = {
         'slide-in-bottom': 'slideInFromBottom 0.4s ease-out',
         'scale-in': 'scaleIn 0.3s ease-out',
         'shimmer': 'shimmer 2s linear infinite',
+        'gradient-x': 'gradient-x 3s ease infinite',
       },
       keyframes: {
         fadeIn: {
@@ -85,6 +86,16 @@ const config: Config = {
         shimmer: {
           '0%': { backgroundPosition: '-1000px 0' },
           '100%': { backgroundPosition: '1000px 0' },
+        },
+        'gradient-x': {
+          '0%, 100%': {
+            'background-size': '200% 200%',
+            'background-position': 'left center'
+          },
+          '50%': {
+            'background-size': '200% 200%',
+            'background-position': 'right center'
+          }
         },
       },
       transitionDuration: {

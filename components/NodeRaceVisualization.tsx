@@ -418,7 +418,6 @@ export default function NodeRaceVisualization() {
             <div className="flex items-center justify-between flex-shrink-0 flex-wrap gap-2">
                 <div className="flex items-center gap-2 sm:gap-3">
                     <h2 className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-1.5 sm:gap-2">
-                        <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#F0A741]" />
                         <span className="hidden xs:inline">Live Node Activity Race</span>
                         <span className="xs:hidden">Node Race</span>
                         <div className="group relative ml-1 cursor-help hidden sm:block">

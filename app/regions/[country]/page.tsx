@@ -2121,7 +2121,7 @@ function CountryDetailContent() {
                 </div>
               )}
 
-              <div className="mt-8">
+              <div className="mt-8 h-[500px] overflow-hidden">
                 <ActivityLogList countryCode={resolvedCountryCode || countryName} limit={20} />
               </div>
             </div>

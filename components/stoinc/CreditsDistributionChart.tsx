@@ -16,7 +16,7 @@ interface CreditsDistributionChartProps {
 }
 
 interface BucketData {
-    range: string;
+    label: string;
     count: number;
     min: number;
     max: number;
@@ -56,8 +56,17 @@ export default function CreditsDistributionChart({ nodes, height = 300 }: Credit
         for (let i = 0; i < bucketCount; i++) {
             const min = i * bucketSize;
             const max = (i + 1) * bucketSize;
+
+            // Format single value label (upper bound)
+            let label = '';
+            if (max >= 1000) {
+                label = `${(max / 1000).toFixed(0)}k`;
+            } else {
+                label = `${max}`;
+            }
+
             buckets.push({
-                range: `${min}-${max}`,
+                label,
                 count: 0,
                 min,
                 max,
@@ -81,12 +90,17 @@ export default function CreditsDistributionChart({ nodes, height = 300 }: Credit
         );
     }
 
-    const margin = { top: 20, right: 20, bottom: 60, left: 50 };
-
     return (
         <div style={{ position: 'relative', height }}>
             <ParentSize>
                 {({ width, height: parentHeight }) => {
+                    const isMobile = width < 640;
+                    const margin = {
+                        top: 20,
+                        right: isMobile ? 10 : 20,
+                        bottom: isMobile ? 40 : 60,
+                        left: isMobile ? 35 : 50
+                    };
                     const innerWidth = width - margin.left - margin.right;
                     const innerHeight = parentHeight - margin.top - margin.bottom;
 
@@ -94,7 +108,7 @@ export default function CreditsDistributionChart({ nodes, height = 300 }: Credit
 
                     const xScale = scaleBand<string>({
                         range: [0, innerWidth],
-                        domain: chartData.map(d => d.range),
+                        domain: chartData.map(d => d.label),
                         padding: 0.3,
                     });
 
@@ -110,7 +124,7 @@ export default function CreditsDistributionChart({ nodes, height = 300 }: Credit
                                 {chartData.map((d, i) => {
                                     const barWidth = xScale.bandwidth();
                                     const barHeight = innerHeight - (yScale(d.count) ?? 0);
-                                    const barX = xScale(d.range) ?? 0;
+                                    const barX = xScale(d.label) ?? 0;
                                     const barY = innerHeight - barHeight;
                                     const opacity = 0.4 + (i / chartData.length) * 0.6;
 
@@ -129,8 +143,7 @@ export default function CreditsDistributionChart({ nodes, height = 300 }: Credit
                                                     tooltipData: d,
                                                     tooltipLeft: (coords?.x ?? 0) + margin.left,
                                                     tooltipTop: (coords?.y ?? 0) + margin.top,
-                                                    tooltipData: d,
-                                                } as any);
+                                                });
                                             }}
                                             onMouseLeave={() => hideTooltip()}
                                         />
@@ -142,14 +155,14 @@ export default function CreditsDistributionChart({ nodes, height = 300 }: Credit
                                     scale={xScale}
                                     tickLabelProps={() => ({
                                         fill: 'rgba(255,255,255,0.4)',
-                                        fontSize: 10,
-                                        textAnchor: 'end',
-                                        angle: -45,
-                                        dy: '0.25em',
-                                        dx: '-0.5em',
+                                        fontSize: isMobile ? 9 : 10,
+                                        textAnchor: 'middle',
+                                        angle: 0,
+                                        dy: '0.5em',
                                     })}
                                     tickLineProps={{ stroke: 'rgba(255,255,255,0.1)' }}
                                     stroke="rgba(255,255,255,0.1)"
+                                    numTicks={isMobile ? 5 : 10}
                                 />
 
                                 <AxisLeft
@@ -177,7 +190,7 @@ export default function CreditsDistributionChart({ nodes, height = 300 }: Credit
                     style={tooltipStyles}
                 >
                     <div className="text-xs">
-                        <div className="text-foreground/60 mb-1">Credits Range: {tooltipData.range}</div>
+                        <div className="text-foreground/60 mb-1">Credits: {tooltipData.min.toLocaleString()} - {tooltipData.max.toLocaleString()}</div>
                         <div className="text-[#F0A741] font-bold">{tooltipData.count} nodes</div>
                     </div>
                 </TooltipWithBounds>
