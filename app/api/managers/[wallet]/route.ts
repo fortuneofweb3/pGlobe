@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllNodes } from '@/lib/server/mongodb-nodes';
+import { Connection, PublicKey } from '@solana/web3.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,14 +12,42 @@ export async function GET(
         const { wallet } = await params;
         const nodes = await getAllNodes();
 
-        // Find all nodes for this manager
-        const managerNodes = nodes.filter(n => n.managerWallet === wallet);
+        // 1. Identify all nodes "owned" by this wallet
+        // Ownership definitions:
+        // - Direct Manager: node.managerWallet === wallet
+        // - Direct Registrar: node.registrarWallet === wallet
+        // - Linked Manager: node.registrarWallet points to this wallet via some other link (we can try to infer this)
+
+        // For the details view, we want to show everything associated with this wallet.
+        // We also need to know if this wallet is a "Mainnet Buyer" or "Devnet Registrar" or both.
+
+        // Let's first find the matching nodes
+        const managerNodes = nodes.filter(n =>
+            n.managerWallet === wallet ||
+            n.registrarWallet === wallet
+        );
 
         if (managerNodes.length === 0) {
+            // It might be a wallet that hasn't registered any nodes yet, but exists as a Buyer or Registrar?
+            // For now, if no nodes, return 404 (or we could fetch from chain to verify existence)
             return NextResponse.json(
                 { success: false, error: 'Manager not found' },
                 { status: 404 }
             );
+        }
+
+        // 2. Identify associated wallets
+        // If this wallet is a Buyer, find its Registrars.
+        // If this wallet is a Registrar, find its Buyer? (Ideally we redirect to Buyer, but for now just show what we have)
+
+        const associatedWallets = new Set<string>();
+        for (const n of managerNodes) {
+            if (n.managerWallet === wallet && n.registrarWallet && n.registrarWallet !== wallet) {
+                associatedWallets.add(n.registrarWallet);
+            }
+            if (n.registrarWallet === wallet && n.managerWallet && n.managerWallet !== wallet) {
+                associatedWallets.add(n.managerWallet);
+            }
         }
 
         // Calculate stats
@@ -34,6 +63,7 @@ export async function GET(
             avgUptime: managerNodes.filter(n => n.uptime).length > 0
                 ? managerNodes.reduce((sum, n) => sum + (n.uptime || 0), 0) / managerNodes.filter(n => n.uptime).length
                 : 0,
+            associatedWallets: Array.from(associatedWallets)
         };
 
         return NextResponse.json({
@@ -42,6 +72,7 @@ export async function GET(
             nodes: managerNodes.map(n => ({
                 pubkey: n.pubkey || n.publicKey,
                 address: n.address,
+                role: n.managerWallet === wallet ? 'buyer' : 'registrar',
                 status: n.status,
                 version: n.version,
                 uptime: n.uptime,
@@ -52,7 +83,9 @@ export async function GET(
                 locationData: n.locationData,
                 lastSeen: n.lastSeen,
             })),
+            associatedWallets: Array.from(associatedWallets) // Send to top level too
         });
+
     } catch (error) {
         console.error('[API/managers/wallet] Error:', error);
         return NextResponse.json(
