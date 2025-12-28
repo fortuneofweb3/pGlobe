@@ -157,6 +157,8 @@ export interface NodeDocument {
   creditsResetMonth?: string;
   isRegistered?: boolean;
   managerPDA?: string;
+  managerWallet?: string; // Mainnet reward wallet (discovered via tx history)
+  registrarWallet?: string; // Devnet wallet that registered the node
   accountCreatedAt?: Date;
   firstSeenSlot?: number;
   seenInGossip?: boolean;
@@ -225,6 +227,8 @@ function nodeToDocument(node: PNode): Partial<NodeDocument> {
     creditsResetMonth: node.creditsResetMonth,
     isRegistered: node.isRegistered,
     managerPDA: node.managerPDA,
+    managerWallet: node.managerWallet,
+    registrarWallet: node.registrarWallet,
     accountCreatedAt: node.accountCreatedAt,
     firstSeenSlot: node.firstSeenSlot,
     seenInGossip: node.seenInGossip,
@@ -265,6 +269,8 @@ export function documentToNode(doc: NodeDocument): PNode {
     creditsResetMonth: doc.creditsResetMonth,
     isRegistered: doc.isRegistered,
     managerPDA: doc.managerPDA,
+    managerWallet: doc.managerWallet,
+    registrarWallet: doc.registrarWallet,
     accountCreatedAt: doc.accountCreatedAt,
     firstSeenSlot: doc.firstSeenSlot,
     seenInGossip: doc.seenInGossip,
@@ -334,7 +340,7 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
       }
 
       // Preserved fields - only set if provided (don't overwrite with undefined)
-      const preservedFields = ['balance', 'isRegistered', 'managerPDA', 'accountCreatedAt', 'firstSeenSlot',
+      const preservedFields = ['balance', 'isRegistered', 'managerPDA', 'managerWallet', 'accountCreatedAt', 'firstSeenSlot',
         'location', 'locationLat', 'locationLon', 'locationCity', 'locationCountry', 'locationCountryCode'];
 
       for (const field of preservedFields) {

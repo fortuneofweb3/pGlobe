@@ -63,15 +63,19 @@ export interface PNode {
   creditsResetMonth?: string; // YYYY-MM format to track which month these credits are for (e.g., "2025-01")
   isRegistered?: boolean; // Is node registered on-chain? (balance > 0)
   managerPDA?: string; // Manager PDA address (from on-chain)
+  managerWallet?: string; // Mainnet reward wallet (discovered via tx history scan)
+  registrarWallet?: string; // Devnet wallet that registered the node (discovered via tx history scan)
   registryPDA?: string; // Registry PDA address (from on-chain)
   validatorInfo?: unknown; // Validator info (from on-chain)
 
   // STOINC & Rewards (from Xandeum program)
-  xandStake?: number; // Total XAND staked (raw amount)
+  xandStake?: number; // Total XAND staked (raw amount from liquid stake)
+  daoStake?: number; // Staked XAND in the DAO (governance)
   activatedStakeXAND?: number; // Activated XAND stake (for reward calculation)
   boostFactor?: number; // Combined boost multiplier (NFTs × Era)
   eraLabel?: string; // Which era the node belongs to (e.g., "Deep South")
   nftBoost?: number; // Individual NFT boost multiplier
+  nftDetails?: { name: string; multiplier: number; icon: string }[]; // Details of NFTs held
   eraBoost?: number; // Individual Era boost multiplier
 
   // On-chain account tracking (from Solana blockchain)
