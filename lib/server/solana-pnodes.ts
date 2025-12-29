@@ -163,9 +163,10 @@ export async function enrichPNodeWithOnChainData(
   balance?: number;
   isValidator?: boolean;
   isRegistered?: boolean;
+  registrarWallet?: string;
+  managerWallet?: string;
   registryPDA?: string;
   managerPDA?: string;
-  managerWallet?: string;
   validatorInfo?: unknown;
   xandStake?: number;
   daoStake?: number;
@@ -247,16 +248,44 @@ export async function enrichPNodeWithOnChainData(
     let registryPDA: string | undefined;
     let managerPDA: string | undefined;
     let managerWallet: string | undefined;
+    let registrarWallet: string | undefined;
 
     if (registryAddress && registryAccountResult.status === 'fulfilled' && registryAccountResult.value) {
       registryPDA = registryAddress.toBase58();
       isRegistered = true;
+
+      // Extract wallets from Registry PDA
+      // Offset 8: Registrar Wallet (32 bytes)
+      // Offset 42: Manager/Buyer Wallet (32 bytes)
+      const data = registryAccountResult.value.data;
+      if (data.length >= 40) {
+        try {
+          registrarWallet = new PublicKey(data.slice(8, 40)).toBase58();
+          if (registrarWallet === '11111111111111111111111111111111') {
+            registrarWallet = undefined;
+          }
+        } catch (e) {
+          console.warn(`[OnChain] Failed to parse registrar wallet from registry PDA for ${pubkey}`);
+        }
+      }
+
+      if (data.length >= 74) {
+        try {
+          managerWallet = new PublicKey(data.slice(42, 74)).toBase58();
+          if (managerWallet === '11111111111111111111111111111111') {
+            managerWallet = undefined;
+          }
+        } catch (e) {
+          console.warn(`[OnChain] Failed to parse buyer/manager wallet from registry PDA for ${pubkey}`);
+        }
+      }
     }
 
     if (managerAddress && managerAccountResult.status === 'fulfilled' && managerAccountResult.value) {
       managerPDA = managerAddress.toBase58();
-      // Extract Manager Wallet (Authority) from first 32 bytes
-      if (managerAccountResult.value.data.length >= 32) {
+      // Extract Manager Wallet (Authority) from first 32 bytes as fallback or verification
+      // (The Registry PDA at offset 42 is the primary source for Buyer wallet now)
+      if (!managerWallet && managerAccountResult.value.data.length >= 32) {
         try {
           const authorityBytes = managerAccountResult.value.data.slice(0, 32);
           managerWallet = new PublicKey(authorityBytes).toBase58();
@@ -341,6 +370,7 @@ export async function enrichPNodeWithOnChainData(
       registryPDA,
       managerPDA,
       managerWallet,
+      registrarWallet,
       validatorInfo,
       xandStake,
       daoStake,
@@ -371,6 +401,7 @@ export async function enrichPNodesWithOnChainData(
   registryPDA?: string;
   managerPDA?: string;
   managerWallet?: string;
+  registrarWallet?: string;
   validatorInfo?: unknown;
   xandStake?: number;
   daoStake?: number;
@@ -452,6 +483,8 @@ export async function fetchAndEnrichOnChainPNodes(
         isRegistered: onChainData.isRegistered,
         registryPDA: onChainData.registryPDA,
         managerPDA: onChainData.managerPDA,
+        managerWallet: onChainData.managerWallet,
+        registrarWallet: onChainData.registrarWallet,
         validatorInfo: onChainData.validatorInfo,
         xandStake: onChainData.xandStake,
         daoStake: onChainData.daoStake,

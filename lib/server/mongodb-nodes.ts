@@ -340,7 +340,7 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
       }
 
       // Preserved fields - only set if provided (don't overwrite with undefined)
-      const preservedFields = ['balance', 'isRegistered', 'managerPDA', 'managerWallet', 'accountCreatedAt', 'firstSeenSlot',
+      const preservedFields = ['balance', 'isRegistered', 'managerPDA', 'managerWallet', 'registrarWallet', 'accountCreatedAt', 'firstSeenSlot',
         'location', 'locationLat', 'locationLon', 'locationCity', 'locationCountry', 'locationCountryCode'];
 
       for (const field of preservedFields) {

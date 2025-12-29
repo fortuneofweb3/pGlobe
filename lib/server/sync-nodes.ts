@@ -367,7 +367,9 @@ export async function enrichWithBalance(
   // Only fetch balance for nodes that don't have it yet
   const nodesNeedingBalance = Array.from(nodesMap.values()).filter(node => {
     const existing = existingNodes.get(node.pubkey || node.publicKey || '');
-    return !existing?.balance && existing?.balance !== 0;
+    // Fetch if balance is missing, OR if it's a registered node missing buyer/registrar info
+    const needsInfo = existing?.isRegistered && (!existing.managerWallet || !existing.registrarWallet);
+    return (!existing?.balance && existing?.balance !== 0) || needsInfo;
   });
 
   if (nodesNeedingBalance.length === 0) {
