@@ -417,6 +417,9 @@ export async function enrichWithBalance(
 
   console.log(`[Sync] Fetching on-chain data for ${nodesNeedingBalance.length} nodes...`);
 
+  let enrichedCount = 0;
+  let walletAssignedCount = 0;
+
   for (const node of nodesNeedingBalance) {
     const pubkey = node.pubkey || node.publicKey;
     if (!pubkey) continue;
@@ -427,19 +430,23 @@ export async function enrichWithBalance(
         node.balance = balanceData.balance;
         node.isRegistered = balanceData.isRegistered;
         if (balanceData.managerPDA) node.managerPDA = balanceData.managerPDA;
-        if (balanceData.managerWallet) node.managerWallet = balanceData.managerWallet;
+        if (balanceData.managerWallet) {
+          node.managerWallet = balanceData.managerWallet;
+          walletAssignedCount++;
+        }
         if (balanceData.registrarWallet) node.registrarWallet = balanceData.registrarWallet;
         node.xandStake = balanceData.xandStake;
         node.eraBoost = balanceData.eraBoost;
         node.eraLabel = balanceData.eraLabel;
         node.boostFactor = balanceData.eraBoost || 1;
+        enrichedCount++;
       }
     } catch {
       // Silent fail for individual balance fetches
     }
   }
 
-  console.log(`[Sync] On-chain enrichment complete`);
+  console.log(`[Sync] On-chain enrichment complete: ${enrichedCount} nodes enriched, ${walletAssignedCount} wallets assigned`);
 }
 
 // ============================================================================

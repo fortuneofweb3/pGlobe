@@ -45,7 +45,15 @@ export async function fetchBalanceForPubkey(
   // Check cache first
   const cached = balanceCache.get(publicKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.data;
+    // Cache-bust if it's a registered node missing wallet info
+    // This ensures we re-fetch from chain to get the wallet data
+    const needsRefresh = cached.data.isRegistered &&
+      (!cached.data.managerWallet || !cached.data.registrarWallet);
+
+    if (!needsRefresh) {
+      return cached.data;
+    }
+    // Otherwise, continue to fetch fresh data
   }
 
   try {
@@ -75,6 +83,12 @@ export async function fetchBalanceForPubkey(
       managerWallet: onChainData.managerWallet,
       registrarWallet: onChainData.registrarWallet,
     };
+
+    // Log wallet extraction for registered nodes
+    if (balanceData.isRegistered) {
+      const shortPubkey = publicKey.slice(0, 8) + '...';
+      console.log(`[Balance Cache] ${shortPubkey}: Registered=${balanceData.isRegistered}, Manager=${balanceData.managerWallet?.slice(0, 8) || 'NONE'}, Registrar=${balanceData.registrarWallet?.slice(0, 8) || 'NONE'}`);
+    }
 
     // Cache the result
     balanceCache.set(publicKey, {
