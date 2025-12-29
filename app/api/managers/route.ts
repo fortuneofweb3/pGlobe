@@ -35,10 +35,11 @@ interface Manager {
 
 export async function GET() {
     try {
-        const cached = managerListCache.get('all_managers');
-        if (cached) {
-            return NextResponse.json(cached);
-        }
+        // Cache temporarily disabled to ensure fresh data during enrichment
+        // const cached = managerListCache.get('all_managers');
+        // if (cached) {
+        //     return NextResponse.json(cached);
+        // }
 
         // Fetch all nodes (lightweight)
         const nodes = await getAllNodesForManagers();

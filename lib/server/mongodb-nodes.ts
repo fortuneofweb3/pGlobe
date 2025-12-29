@@ -510,7 +510,14 @@ export async function getAllNodesForManagers(): Promise<PNode[]> {
           status: 1,
           version: 1,
           location: 1,
-          seenInGossip: 1
+          seenInGossip: 1,
+          // Enrichment Fields
+          xandStake: 1,
+          daoStake: 1,
+          nftBoost: 1,
+          eraBoost: 1,
+          eraLabel: 1,
+          boostFactor: 1
         }
       }).batchSize(1000);
 
