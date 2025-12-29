@@ -30,9 +30,6 @@ export async function getActivityCollection(): Promise<Collection<ActivityLog>> 
 }
 
 export async function storeActivityLog(log: Omit<ActivityLog, 'timestamp'>): Promise<void> {
-    // Disabled to save storage space - realtime only
-    return;
-    /*
     try {
         const collection = await getActivityCollection();
         await collection.insertOne({
@@ -43,7 +40,6 @@ export async function storeActivityLog(log: Omit<ActivityLog, 'timestamp'>): Pro
         const error = err as Error;
         console.error('[Activity] ❌ Failed to store activity log:', error.message);
     }
-    */
 }
 
 export async function getActivityLogs(options: {
@@ -82,6 +78,10 @@ export async function createActivityIndexes(): Promise<void> {
         await collection.createIndex({ timestamp: -1 });
         await collection.createIndex({ pubkey: 1, timestamp: -1 });
         await collection.createIndex({ countryCode: 1, timestamp: -1 });
+
+        // TTL index: delete logs older than 6 hours (21600 seconds)
+        await collection.createIndex({ timestamp: 1 }, { expireAfterSeconds: 21600 });
+
         console.log('[Activity] ✅ Created indexes for activity_logs');
     } catch (err) {
         const error = err as Error;

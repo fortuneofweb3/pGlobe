@@ -22,6 +22,7 @@ const COLLECTION_NAME = 'node_history';
 export interface HistoricalSnapshot {
   _id?: ObjectId;
   timestamp: number; // Unix timestamp in milliseconds
+  createdAt?: Date; // TTL index field
   interval: string; // YYYY-MM-DD-HH-MM format for 10-minute aggregation (MM is 00, 10, 20, 30, 40, 50)
   date: string; // YYYY-MM-DD for easy querying
 
@@ -114,10 +115,9 @@ export async function createHistoryIndexes(): Promise<void> {
     await collection.createIndex({ 'nodeSnapshots.nodeLocation.country': 1, timestamp: -1 });
     await collection.createIndex({ 'nodeSnapshots.nodeLocation.countryCode': 1, timestamp: -1 });
 
-    // TTL index: automatically delete snapshots older than 90 days
-    // Note: TTL indexes require the field to be a Date, but we're using number (timestamp)
-    // So we'll handle cleanup manually or convert timestamp to Date if needed
-    // For now, we'll rely on manual cleanup or a separate cleanup job
+    // TTL index: automatically delete snapshots older than 2 weeks (1209600 seconds)
+    // Note: TTL indexes require the field to be a Date
+    await collection.createIndex({ createdAt: 1 }, { expireAfterSeconds: 1209600 });
 
     console.log('[MongoDB History] ✅ Indexes created');
   } catch (err) {
@@ -162,6 +162,7 @@ export async function storeHistoricalSnapshot(
       // Update existing snapshot (use latest data for the interval)
       const updateData: Partial<HistoricalSnapshot> = {
         timestamp: now,
+        createdAt: new Date(now),
         totalNodes: nodes.length,
         onlineNodes: nodes.filter(n => n.status === 'online').length,
         offlineNodes: nodes.filter(n => n.status === 'offline').length,
@@ -196,6 +197,7 @@ export async function storeHistoricalSnapshot(
     // Create new snapshot
     const snapshot: HistoricalSnapshot = {
       timestamp: now,
+      createdAt: new Date(now),
       interval,
       date: dateStr,
       totalNodes: nodes.length,

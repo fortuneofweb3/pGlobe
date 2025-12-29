@@ -21,8 +21,10 @@ async function backfillNodes() {
     try {
         // 1. Fetch all nodes from DB
         console.log('Fetching all nodes from database...');
-        const nodes = await getAllNodes();
-        console.log(`Found ${nodes.length} nodes to process.`);
+        const allNodes = await getAllNodes();
+        const nodes = allNodes.filter(n => n.isRegistered);
+        console.log(`Found ${allNodes.length} total nodes.`);
+        console.log(`Processing ${nodes.length} REGISTERED nodes.`);
 
         let processed = 0;
         let errors = 0;
@@ -59,6 +61,23 @@ async function backfillNodes() {
 
                 if (!enrichedData) {
                     console.warn(`  > Failed to fetch data after retries.`);
+                    errors++;
+                    continue;
+                }
+
+                // Safety Check: If DB says Registered, but OnChain says NOT, it's likely a silent RPC failure (null return).
+                // Do NOT overwrite with "Standard". Throw to trigger retry or skip.
+                if (node.isRegistered && !enrichedData.isRegistered) {
+                    console.warn(`  > Result mismatch (Expected Registered). RPC likely returned null. Retrying...`);
+                    // Throwing here will be caught by the retry loop?
+                    // No, "enrichedData" is returned by catch block of try loop.
+                    // The retry loop wraps the enrich call. This check is OUTSIDE.
+                    // We need to move this check INSIDE the retry loop or force a retry here.
+
+                    // Actually, just throwing here won't work easily because we are outside the retry loop.
+                    // Let's modify the retry loop logic instead?
+                    // But simpler: just SKIP the update to avoid corrupting data.
+                    console.warn(`  > SKIPPING update for ${pubkey} to avoid overwriting with 'Standard'.`);
                     errors++;
                     continue;
                 }

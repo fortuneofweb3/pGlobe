@@ -206,6 +206,17 @@ export async function enrichPNodeWithOnChainData(
       managerAddress ? connection.getAccountInfo(managerAddress) : Promise.resolve(null),
     ]);
 
+    // Check for 429 Rate Limits in any rejected promise
+    const results = [balanceResult, voteAccountsResult, nodeAccountResult, registryAccountResult, managerAccountResult];
+    for (const res of results) {
+      if (res.status === 'rejected') {
+        const msg = res.reason?.message || '';
+        if (msg.includes('429') || msg.includes('Too many requests')) {
+          throw new Error('429 Too Many Requests');
+        }
+      }
+    }
+
     // Process balance
     let balance: number | undefined;
     if (balanceResult.status === 'fulfilled') {
@@ -350,7 +361,10 @@ export async function enrichPNodeWithOnChainData(
       const data = registryAccountResult.value.data;
       if (data.length >= 48) {
         try {
-          const purchasePriceLamports = Number(data.readBigUInt64LE(40));
+          // Purchase Price is at offset 34 (u64)
+          // Accounts for overlap with Registrar if previous assumption was wrong, 
+          // but fits perfectly before Manager at 42.
+          const purchasePriceLamports = Number(data.readBigUInt64LE(34));
           const purchasePriceSOL = purchasePriceLamports / 1e9;
 
           // Map purchase price to Era
@@ -393,6 +407,10 @@ export async function enrichPNodeWithOnChainData(
     };
   } catch (err) {
     const error = err as Error;
+    // CRITICAL: Rethrow 429 errors so the caller can retry!
+    if (error.message && (error.message.includes('429') || error.message.includes('Too Many Requests'))) {
+      throw error;
+    }
     return {
       error: error.message || 'Failed to fetch on-chain data',
     };
