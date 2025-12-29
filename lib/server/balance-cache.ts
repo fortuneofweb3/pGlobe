@@ -23,6 +23,8 @@ export interface BalanceData {
   xandStake?: number;
   eraBoost?: number;
   eraLabel?: string;
+  managerWallet?: string;
+  registrarWallet?: string;
 }
 
 interface CachedBalance {
@@ -70,6 +72,8 @@ export async function fetchBalanceForPubkey(
       xandStake: onChainData.xandStake,
       eraBoost: onChainData.eraBoost,
       eraLabel: onChainData.eraLabel,
+      managerWallet: onChainData.managerWallet,
+      registrarWallet: onChainData.registrarWallet,
     };
 
     // Cache the result
@@ -128,6 +132,8 @@ export function getBalanceCacheStats() {
       isValidator: value.data.isValidator,
       isRegistered: value.data.isRegistered,
       managerPDA: value.data.managerPDA,
+      managerWallet: value.data.managerWallet,
+      registrarWallet: value.data.registrarWallet,
       cachedAt: new Date(value.timestamp).toISOString(),
       age: Date.now() - value.timestamp,
     })),

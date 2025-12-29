@@ -364,20 +364,58 @@ export async function enrichWithBalance(
 ): Promise<void> {
   const { fetchBalanceForPubkey } = await import('./balance-cache');
 
-  // Only fetch balance for nodes that don't have it yet
+  // Filter for nodes that need on-chain enrichment:
+  // 1. New nodes (no existing record in DB)
+  // 2. Existing nodes without balance data
+  // 3. Registered nodes missing managerWallet or registrarWallet
+  // 4. Unregistered nodes that haven't been checked in 24 hours (to detect new registrations)
+  const REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+  const now = Date.now();
+
   const nodesNeedingBalance = Array.from(nodesMap.values()).filter(node => {
-    const existing = existingNodes.get(node.pubkey || node.publicKey || '');
-    // Fetch if balance is missing, OR if it's a registered node missing buyer/registrar info
-    const needsInfo = existing?.isRegistered && (!existing.managerWallet || !existing.registrarWallet);
-    return (!existing?.balance && existing?.balance !== 0) || needsInfo;
+    const pubkey = node.pubkey || node.publicKey || '';
+    const existing = existingNodes.get(pubkey);
+
+    // Case 1: New node (not in DB yet)
+    if (!existing) {
+      return true;
+    }
+
+    // Case 2: Existing node without balance data (unless balance is explicitly 0)
+    const hasBalance = existing.balance !== undefined && existing.balance !== null;
+    if (!hasBalance) {
+      return true;
+    }
+
+    // Case 3: Registered node missing wallet info (backfill scenario)
+    const isRegistered = existing.isRegistered || (existing.balance && existing.balance > 0);
+    const missingWalletInfo = !existing.managerWallet || !existing.registrarWallet;
+    if (isRegistered && missingWalletInfo) {
+      return true;
+    }
+
+    // Case 4: Unregistered node - periodically re-check to detect new registrations
+    // Only re-check if updatedAt is older than REFRESH_INTERVAL_MS
+    if (!isRegistered) {
+      const updatedAt = existing.createdAt instanceof Date
+        ? existing.createdAt.getTime()
+        : (typeof existing.createdAt === 'string' ? new Date(existing.createdAt).getTime() : 0);
+
+      // If no updatedAt or it's old enough, refresh
+      if (!updatedAt || (now - updatedAt > REFRESH_INTERVAL_MS)) {
+        return true;
+      }
+    }
+
+    return false;
   });
 
   if (nodesNeedingBalance.length === 0) {
-    console.log('[Sync] All nodes already have balance data');
+    console.log('[Sync] All nodes already have up-to-date balance and wallet data');
     return;
   }
 
-  console.log(`[Sync] Fetching balance for ${nodesNeedingBalance.length} new nodes...`);
+  console.log(`[Sync] Fetching on-chain data for ${nodesNeedingBalance.length} nodes...`);
 
   for (const node of nodesNeedingBalance) {
     const pubkey = node.pubkey || node.publicKey;
@@ -389,6 +427,8 @@ export async function enrichWithBalance(
         node.balance = balanceData.balance;
         node.isRegistered = balanceData.isRegistered;
         if (balanceData.managerPDA) node.managerPDA = balanceData.managerPDA;
+        if (balanceData.managerWallet) node.managerWallet = balanceData.managerWallet;
+        if (balanceData.registrarWallet) node.registrarWallet = balanceData.registrarWallet;
         node.xandStake = balanceData.xandStake;
         node.eraBoost = balanceData.eraBoost;
         node.eraLabel = balanceData.eraLabel;
@@ -399,7 +439,7 @@ export async function enrichWithBalance(
     }
   }
 
-  console.log(`[Sync] Balance enrichment complete`);
+  console.log(`[Sync] On-chain enrichment complete`);
 }
 
 // ============================================================================

@@ -519,6 +519,34 @@ export async function getNodeByPubkey(pubkey: string): Promise<PNode | null> {
 }
 
 /**
+ * Update a single node with specific fields
+ */
+export async function updateNode(pubkey: string, updates: Partial<PNode>): Promise<void> {
+  try {
+    await getClient();
+    const collection = await getNodesCollection();
+    const doc = nodeToDocument(updates as any);
+
+    // Remove _id from doc to avoid update error
+    delete doc._id;
+
+    await collection.updateOne(
+      { _id: pubkey as unknown as ObjectId },
+      {
+        $set: {
+          ...doc,
+          updatedAt: new Date()
+        }
+      }
+    );
+  } catch (err) {
+    const error = err as Error;
+    console.error(`[MongoDB] Error updating node ${pubkey}:`, error.message);
+    throw error;
+  }
+}
+
+/**
  * Clean up invalid nodes
  */
 export async function cleanupInvalidNodes(): Promise<number> {
