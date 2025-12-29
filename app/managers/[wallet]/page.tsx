@@ -200,7 +200,8 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                             </div>
 
                             {/* Stats Cards Skeleton */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+                                <CardSkeleton />
                                 <CardSkeleton />
                                 <CardSkeleton />
                                 <CardSkeleton />
@@ -340,7 +341,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                         </div>
 
                         {/* Stats Row - Outside Header */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
                             <div className="card p-4">
                                 <div className="flex items-center gap-2 text-foreground/50 text-xs uppercase tracking-wider mb-1">
                                     <Server className="w-3.5 h-3.5" />
