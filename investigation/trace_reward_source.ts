@@ -24,7 +24,7 @@ async function traceRewards() {
         const instructions = tx.transaction.message.instructions;
         for (const ix of instructions) {
             // Check if it's a token transfer
-            if ('parsed' in ix && ix.parsed?.type === 'transfer' || ix.parsed?.type === 'transferChecked') {
+            if ('parsed' in ix && (ix.parsed.type === 'transfer' || ix.parsed.type === 'transferChecked')) {
                 const info = ix.parsed.info;
                 if (info.mint === XAND_MINT || info.destination) {
                     console.log(`\n[${date}] Token Transfer:`);

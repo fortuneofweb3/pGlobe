@@ -41,9 +41,11 @@
   "exclude": [
     "node_modules",
     "reference-repos",
+    "scripts",
+    "investigation",
+    "tmp",
     "render-api-server.ts",
     "render-server.ts",
-    "check_buypnode_accounts.ts",
-    "scripts"
+    "realtime-server.ts"
   ]
 }
