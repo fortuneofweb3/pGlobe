@@ -75,29 +75,59 @@ export default function StoincPage() {
                     <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 space-y-4">
                         {/* Hero */}
                         <div className="card" style={{ borderRadius: '1rem', padding: '1.25rem 1.5rem' }}>
-                            <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
+                            <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3 text-foreground">
                                 <Coins className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
                                 STOINC Dashboard
                             </h1>
                             <p className="text-foreground/60 text-sm sm:text-base">
-                                Storage Income metrics and earnings
+                                Detailed STOINC metrics, derived boosted credits, and revenue share
                             </p>
                         </div>
 
-                        {/* Stats Skeleton */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                            {[...Array(4)].map((_, i) => (
-                                <StatsCard key={i} title="Loading..." value={0} loading={true} />
-                            ))}
+                        {/* Top Stats Skeleton */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                            <StatsCard title="Total Network Credits" value={0} icon={<TrendingUp className="w-4 h-4 text-green-400" />} color="green" loading={true} />
+                            <StatsCard title="Total Packets Rx" value={0} icon={<Activity className="w-4 h-4 text-blue-400" />} color="blue" loading={true} />
+                            <StatsCard title="Total Packets Tx" value={0} icon={<Activity className="w-4 h-4 text-emerald-400" />} color="emerald" loading={true} />
+                            <StatsCard title="Participating pNodes" value={0} icon={<Users className="w-4 h-4 text-purple-400" />} color="purple" loading={true} />
                         </div>
 
-                        {/* Charts Skeleton */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <div className="card">
-                                <ChartSkeleton height={400} />
+                        {/* Calculator Toggle Placeholder */}
+                        <div className="mb-6">
+                            <div className="h-9 w-48 bg-muted/20 border border-border/40 rounded-xl animate-pulse" />
+                        </div>
+
+                        {/* Charts & Leaderboard Skeleton */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                            <div className="lg:col-span-8 flex flex-col gap-6">
+                                <div className="card p-4 sm:p-6">
+                                    <div className="flex items-center gap-2 mb-6">
+                                        <BarChart3 className="w-5 h-5 text-[#F0A741]" />
+                                        <h2 className="text-lg font-bold text-foreground">Credits Distribution</h2>
+                                    </div>
+                                    <div className="h-[400px]">
+                                        <ChartSkeleton height={400} />
+                                    </div>
+                                </div>
                             </div>
-                            <div className="card">
-                                <ChartSkeleton height={400} />
+                            <div className="lg:col-span-4 flex flex-col gap-6">
+                                <div className="card overflow-hidden">
+                                    <div className="p-4 border-b border-border/40 bg-muted/10">
+                                        <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                                            <Trophy className="w-4 h-4 text-[#F0A741]" />
+                                            Credits Leaderboard
+                                        </h2>
+                                    </div>
+                                    <div className="p-4 space-y-3">
+                                        {[...Array(5)].map((_, i) => (
+                                            <div key={i} className="flex items-center gap-3">
+                                                <div className="h-4 w-4 bg-muted/20 rounded animate-pulse" />
+                                                <div className="h-4 w-32 bg-muted/30 rounded animate-pulse" />
+                                                <div className="ml-auto h-4 w-16 bg-muted/20 rounded animate-pulse" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

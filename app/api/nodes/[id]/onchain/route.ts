@@ -12,14 +12,14 @@ export async function GET(
   try {
     const nodeId = params.id;
     const node = await getNodeByPubkey(nodeId);
-    
+
     if (!node) {
       return NextResponse.json(
         { error: 'Node not found' },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json({
       success: true,
       data: {
@@ -27,6 +27,7 @@ export async function GET(
         balance: node.balance,
         isRegistered: node.isRegistered || false,
         managerPDA: node.managerPDA,
+        managerWallet: node.managerWallet,
       },
     });
   } catch (error: any) {

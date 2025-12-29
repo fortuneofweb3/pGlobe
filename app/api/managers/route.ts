@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getAllNodesForManagers } from '@/lib/server/mongodb-nodes';
+import { SimpleCache } from '@/lib/server/cache-utils';
 
-export const dynamic = 'force-dynamic';
+const managerListCache = new SimpleCache<any>(2); // 2 minute cache
 
 interface Manager {
     wallet: string; // The primary wallet (Buyer if known, otherwise Registrar)
@@ -30,6 +31,11 @@ interface Manager {
 
 export async function GET() {
     try {
+        const cached = managerListCache.get('all_managers');
+        if (cached) {
+            return NextResponse.json(cached);
+        }
+
         // Fetch all nodes (lightweight)
         const nodes = await getAllNodesForManagers();
 
@@ -117,13 +123,16 @@ export async function GET() {
             .filter(m => m.knownNodes.length > 0) // Only show managers with nodes
             .sort((a, b) => b.knownNodes.length - a.knownNodes.length);
 
-        return NextResponse.json({
+        const response = {
             success: true,
             count: managers.length,
             totalRegisteredNodes: managers.reduce((s, m) => s + m.registeredNodes, 0),
             totalPurchasedNodes: managers.reduce((s, m) => s + m.purchasedNodes, 0),
             managers,
-        });
+        };
+
+        managerListCache.set('all_managers', response);
+        return NextResponse.json(response);
 
     } catch (error) {
         console.error('[API/managers] Error:', error);

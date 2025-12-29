@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllNodes } from '@/lib/server/mongodb-nodes';
 import { Connection, PublicKey } from '@solana/web3.js';
+import { SimpleCache } from '@/lib/server/cache-utils';
 
-export const dynamic = 'force-dynamic';
+const managerDetailCache = new SimpleCache<any>(2); // 2 minute cache
 
 export async function GET(
     request: NextRequest,
@@ -10,6 +11,12 @@ export async function GET(
 ) {
     try {
         const { wallet } = await params;
+
+        const cached = managerDetailCache.get(wallet);
+        if (cached) {
+            return NextResponse.json(cached);
+        }
+
         const nodes = await getAllNodes();
 
         // 1. Identify all nodes "owned" by this wallet
@@ -66,7 +73,7 @@ export async function GET(
             associatedWallets: Array.from(associatedWallets)
         };
 
-        return NextResponse.json({
+        const response = {
             success: true,
             manager: stats,
             nodes: managerNodes.map(n => ({
@@ -82,9 +89,20 @@ export async function GET(
                 location: n.location,
                 locationData: n.locationData,
                 lastSeen: n.lastSeen,
+                createdAt: n.createdAt,
+                isPublic: n.isPublic,
+                cpuPercent: n.cpuPercent,
+                ramUsed: n.ramUsed,
+                ramTotal: n.ramTotal,
+                packetsReceived: n.packetsReceived,
+                packetsSent: n.packetsSent,
+                balance: n.balance,
             })),
             associatedWallets: Array.from(associatedWallets) // Send to top level too
-        });
+        };
+
+        managerDetailCache.set(wallet, response);
+        return NextResponse.json(response);
 
     } catch (error) {
         console.error('[API/managers/wallet] Error:', error);

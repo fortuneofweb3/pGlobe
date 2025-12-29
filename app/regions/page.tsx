@@ -10,14 +10,9 @@ import { MapPin, Server, X } from 'lucide-react';
 import AnimatedNumber from '@/components/AnimatedNumber';
 import StatsCard from '@/components/StatsCard';
 import { CardSkeleton } from '@/components/Skeletons';
+import { formatStorageBytes } from '@/lib/utils/storage';
 
-const formatBytes = (bytes: number) => {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
-};
+
 
 
 // Map country codes to continents
@@ -178,7 +173,7 @@ function CountryCard({ country, flagUrl }: {
             <div className="flex justify-between items-center">
               <span className="text-foreground/60">Total Storage</span>
               <span className="font-mono font-semibold text-foreground">
-                {formatBytes(country.totalStorage)}
+                {formatStorageBytes(country.totalStorage)}
               </span>
             </div>
           )}

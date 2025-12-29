@@ -24,6 +24,7 @@ function NodesPageContent() {
   const [joinedFilter, setJoinedFilter] = useState<string>('all');
   const [creditsFilter, setCreditsFilter] = useState<string>('all');
   const [packetsFilter, setPacketsFilter] = useState<string>('all');
+  const [registeredFilter, setRegisteredFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showFilters, setShowFilters] = useState(false);
@@ -94,6 +95,13 @@ function NodesPageContent() {
       }
     }
 
+    if (registeredFilter !== 'all') {
+      filtered = filtered.filter((node) => {
+        const isRegistered = node.isRegistered || (node.balance !== undefined && node.balance > 0);
+        return registeredFilter === 'registered' ? isRegistered : !isRegistered;
+      });
+    }
+
     // Sort by the selected column (overrides all default sorting)
     if (sortBy) {
       filtered.sort((a, b) => {
@@ -123,7 +131,7 @@ function NodesPageContent() {
     }
 
     return filtered;
-  }, [nodes, searchQuery, statusFilter, versionFilter, joinedFilter, creditsFilter, packetsFilter, sortBy, sortOrder]);
+  }, [nodes, searchQuery, statusFilter, versionFilter, joinedFilter, creditsFilter, packetsFilter, registeredFilter, sortBy, sortOrder]);
 
   const versions = useMemo(() => {
     const versionSet = new Set<string>();
@@ -164,7 +172,15 @@ function NodesPageContent() {
     };
   }, [nodes]);
 
-  const hasActiveFilters = statusFilter !== 'all' || versionFilter !== 'all' || joinedFilter !== 'all' || creditsFilter !== 'all' || packetsFilter !== 'all' || searchQuery;
+  const registeredCounts = useMemo(() => {
+    return {
+      all: nodes.length,
+      registered: nodes.filter(n => n.isRegistered || (n.balance !== undefined && n.balance > 0)).length,
+      unregistered: nodes.filter(n => !n.isRegistered && (!n.balance || n.balance === 0)).length,
+    };
+  }, [nodes]);
+
+  const hasActiveFilters = statusFilter !== 'all' || versionFilter !== 'all' || joinedFilter !== 'all' || creditsFilter !== 'all' || packetsFilter !== 'all' || registeredFilter !== 'all' || searchQuery;
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredAndSortedNodes.length / ITEMS_PER_PAGE);
@@ -176,7 +192,7 @@ function NodesPageContent() {
   // Reset to page 1 when filters/search/sort changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter, versionFilter, joinedFilter, creditsFilter, packetsFilter, sortBy, sortOrder]);
+  }, [searchQuery, statusFilter, versionFilter, joinedFilter, creditsFilter, packetsFilter, registeredFilter, sortBy, sortOrder]);
 
   // Show loading skeleton when loading or no data available
   const isLoading = loading || (nodes.length === 0 && !error);
@@ -221,14 +237,28 @@ function NodesPageContent() {
                 <StatsCard title="Offline pNodes" value={0} icon={<Server className="w-4 h-4" />} loading={true} />
               </div>
 
-              {/* Search and Filters placeholder */}
-              <div className="mb-4 sm:mb-6 space-y-3 sm:space-y-4">
-                <div className="h-10 bg-muted/30 rounded animate-pulse" />
-                <div className="h-10 bg-muted/30 rounded animate-pulse" />
+              {/* Search and Filters - Compact (Fixed Structure) */}
+              <div className="mb-4 sm:mb-6">
+                <div className="flex flex-row gap-2 sm:gap-3 items-center">
+                  {/* Search Bar Skeleton */}
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-foreground/20" />
+                    <div className="w-full h-[42px] bg-card border border-border/40 rounded-lg animate-pulse" />
+                  </div>
+
+                  {/* Filters Button Skeleton */}
+                  <div className="h-[42px] w-24 sm:w-32 bg-card border border-border/40 rounded-lg animate-pulse flex items-center justify-center gap-2">
+                    <Filter className="w-4 h-4 text-foreground/20" />
+                    <div className="h-4 w-12 bg-muted/20 rounded hidden sm:block" />
+                  </div>
+                </div>
               </div>
 
               {/* Table Skeleton */}
-              <TableSkeleton rows={10} />
+              <div className="card p-4 overflow-hidden">
+                <div className="h-6 w-48 bg-muted/20 rounded mb-4 animate-pulse" />
+                <TableSkeleton rows={12} />
+              </div>
             </div>
           </div>
         </main>
@@ -320,7 +350,7 @@ function NodesPageContent() {
                   <span className="hidden sm:inline font-medium">Filters</span>
                   {hasActiveFilters && (
                     <span className="px-1.5 py-0.5 bg-[#F0A741] text-black text-xs font-bold rounded">
-                      {[statusFilter !== 'all' && 1, versionFilter !== 'all' && 1, joinedFilter !== 'all' && 1, creditsFilter !== 'all' && 1, packetsFilter !== 'all' && 1].filter(Boolean).length}
+                      {[statusFilter !== 'all' && 1, versionFilter !== 'all' && 1, joinedFilter !== 'all' && 1, creditsFilter !== 'all' && 1, packetsFilter !== 'all' && 1, registeredFilter !== 'all' && 1].filter(Boolean).length}
                     </span>
                   )}
                 </button>
@@ -333,6 +363,7 @@ function NodesPageContent() {
                       setJoinedFilter('all');
                       setCreditsFilter('all');
                       setPacketsFilter('all');
+                      setRegisteredFilter('all');
                       setSearchQuery('');
                     }}
                     className="text-sm text-foreground/60 hover:text-foreground transition-colors px-3 py-2"
@@ -428,6 +459,22 @@ function NodesPageContent() {
                         <option value="all">All ({packetsCounts.all})</option>
                         <option value="with">With Packets ({packetsCounts.with})</option>
                         <option value="without">No Packets ({packetsCounts.without})</option>
+                      </select>
+                    </div>
+
+                    {/* Registered Filter */}
+                    <div>
+                      <label className="block text-xs font-medium text-foreground/60 uppercase tracking-wide mb-2">
+                        Registered
+                      </label>
+                      <select
+                        value={registeredFilter}
+                        onChange={(e) => setRegisteredFilter(e.target.value)}
+                        className="input w-full text-foreground focus:outline-none focus:ring-2 focus:ring-[#F0A741]/20 focus:border-[#F0A741]/60 transition-all text-sm"
+                      >
+                        <option value="all">All ({registeredCounts.all})</option>
+                        <option value="registered">Registered ({registeredCounts.registered})</option>
+                        <option value="unregistered">Unregistered ({registeredCounts.unregistered})</option>
                       </select>
                     </div>
                   </div>
@@ -553,6 +600,7 @@ function NodesPageContent() {
                         setJoinedFilter('all');
                         setCreditsFilter('all');
                         setPacketsFilter('all');
+                        setRegisteredFilter('all');
                         setSearchQuery('');
                       }}
                       className="mt-4 text-sm text-[#F0A741] hover:text-[#F0A741]/80 transition-colors"

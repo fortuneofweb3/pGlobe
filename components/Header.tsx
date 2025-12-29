@@ -2,15 +2,16 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { RefreshCw, Menu, X, Activity } from 'lucide-react';
+import { Menu, X, Activity, HelpCircle } from 'lucide-react';
 import NetworkSelector from './NetworkSelector';
 import NetToggle from './NetToggle';
 import { NetworkConfig } from '@/lib/server/network-config';
 import { useNodes } from '@/lib/context/NodesContext';
 
 interface HeaderProps {
-  activePage?: 'overview' | 'nodes' | 'analytics' | 'stoinc' | 'help' | 'scan' | 'regions' | 'activity';
+  activePage?: 'overview' | 'nodes' | 'analytics' | 'stoinc' | 'help' | 'scan' | 'regions' | 'activity' | 'managers';
   nodeCount?: number;
+  managerCount?: number;
   lastUpdate?: Date | null;
   loading?: boolean;
   onRefresh?: () => void;
@@ -24,6 +25,7 @@ interface HeaderProps {
 export default function Header({
   activePage = 'overview',
   nodeCount: propNodeCount,
+  managerCount: propManagerCount,
   lastUpdate: propLastUpdate,
   loading: propLoading = false,
   onRefresh,
@@ -36,6 +38,7 @@ export default function Header({
   // Get values from context as fallback to prevent header from clearing on page transitions
   const context = useNodes();
   const nodeCount = propNodeCount ?? context?.nodes.length ?? 0;
+  const managerCount = propManagerCount ?? context?.managerCount ?? 0;
   const lastUpdate = propLastUpdate ?? context?.lastUpdate ?? null;
   const loading = propLoading || context?.loading || false;
   const networks = propNetworks.length > 0 ? propNetworks : (context?.availableNetworks ?? []);
@@ -122,6 +125,16 @@ export default function Header({
                 </span>
               </Link>
               <Link
+                href="/managers"
+                prefetch={true}
+                className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'managers'
+                  ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
+                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
+                  }`}
+              >
+                Managers {managerCount > 0 && `(${managerCount})`}
+              </Link>
+              <Link
                 href="/regions"
                 prefetch={true}
                 className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'regions'
@@ -141,16 +154,7 @@ export default function Header({
               >
                 Scan
               </Link>
-              <Link
-                href="/help"
-                prefetch={true}
-                className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'help'
-                  ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
-                  : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
-                  }`}
-              >
-                Help
-              </Link>
+
             </nav>
           </div>
 
@@ -174,16 +178,7 @@ export default function Header({
                 </span>
               </div>
             )}
-            {(onRefresh !== undefined || context?.refreshNodes !== undefined) && (
-              <button
-                onClick={onRefresh || context?.refreshNodes || (() => { })}
-                disabled={loading}
-                className="px-2 sm:px-4 py-2 rounded-xl text-sm flex items-center gap-2 text-foreground/80 hover:text-foreground hover:bg-foreground/10 transition-all duration-300 hover:scale-105 active:scale-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-              >
-                <RefreshCw className={`w-4 h-4 transition-transform duration-300 ${loading ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">Refresh</span>
-              </button>
-            )}
+
 
             {/* Activity Button */}
             <Link
@@ -200,6 +195,23 @@ export default function Header({
               {/* Tooltip */}
               <div className="absolute top-full mt-2 right-0 px-2 py-1 bg-black/90 border border-[#F0A741]/20 rounded text-[10px] text-[#F0A741] whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-300 z-[60]">
                 Live Activity
+              </div>
+            </Link>
+
+            {/* Help Button */}
+            <Link
+              href="/help"
+              className={`p-2 relative rounded-xl transition-all duration-300 hover:scale-110 active:scale-100 group ${activePage === 'help'
+                ? 'text-[#F0A741] bg-[#F0A741]/10'
+                : 'text-foreground/80 hover:text-[#F0A741] hover:bg-[#F0A741]/10'
+                }`}
+              aria-label="Get Help"
+            >
+              <HelpCircle className="w-5 h-5" />
+
+              {/* Tooltip */}
+              <div className="absolute top-full mt-2 right-0 px-2 py-1 bg-black/90 border border-[#F0A741]/20 rounded text-[10px] text-[#F0A741] whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-300 z-[60]">
+                Help & Documentation
               </div>
             </Link>
 
@@ -285,6 +297,17 @@ export default function Header({
               </span>
             </Link>
             <Link
+              href="/managers"
+              prefetch={true}
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'managers'
+                ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
+                : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
+                }`}
+            >
+              Managers {managerCount > 0 && `(${managerCount})`}
+            </Link>
+            <Link
               href="/regions"
               prefetch={true}
               onClick={() => setMobileMenuOpen(false)}
@@ -310,12 +333,13 @@ export default function Header({
               href="/help"
               prefetch={true}
               onClick={() => setMobileMenuOpen(false)}
-              className={`block px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'help'
+              className={`flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'help'
                 ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
                 : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                 }`}
             >
-              Help
+              <HelpCircle className="w-4 h-4" />
+              Help & FAQ
             </Link>
             {showNetworkSelector && networks.length > 0 && (
               <div className="px-4 py-2 bg-muted">

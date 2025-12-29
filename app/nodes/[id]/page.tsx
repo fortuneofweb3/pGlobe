@@ -4,7 +4,7 @@ import React, { useMemo, useState, useEffect, Suspense, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PNode } from '@/lib/types/pnode';
-import { Copy, Check, RefreshCw, HardDrive, Cpu, MemoryStick, Network, MapPin, Clock, CheckCircle2, XCircle, TrendingUp, Server, ArrowLeft, Activity, Award, Globe, Lock } from 'lucide-react';
+import { Copy, Check, RefreshCw, HardDrive, Cpu, MemoryStick, Network, MapPin, Clock, CheckCircle2, XCircle, TrendingUp, Server, ArrowLeft, Activity, Award, Globe, Lock, ExternalLink } from 'lucide-react';
 import { ChartSkeleton, MapSkeleton, CardSkeleton, TableSkeleton } from '@/components/Skeletons';
 import { detectDataCenter, getRegionName } from '@/lib/utils/dataCenter';
 import { formatBytes, formatStorageBytes } from '@/lib/utils/storage';
@@ -25,6 +25,7 @@ import { localPoint } from '@visx/event';
 import { timeFormat } from 'd3-time-format';
 import ParentSize from '@visx/responsive/lib/components/ParentSize';
 import Header from '@/components/Header';
+import StatsCard from '@/components/StatsCard';
 import dynamic from 'next/dynamic';
 import { MapContainer, TileLayer, Marker, Tooltip, CircleMarker } from 'react-leaflet';
 
@@ -33,7 +34,6 @@ const NodeMap = dynamic(
   () => import('@/components/NodeMap'),
   { ssr: false, loading: () => <div className="h-full w-full bg-muted/20 rounded-lg animate-pulse" /> }
 );
-import StatsCard from '@/components/StatsCard';
 import ActivityLogList from '@/components/ActivityLogList';
 
 // Helper function to calculate center offset to position node on right side (desktop) or center (mobile)
@@ -1115,11 +1115,11 @@ function NodeDetailContent() {
         <main className="flex-1 overflow-hidden">
           <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
             <div className="max-w-7xl mx-auto">
-              {/* Breadcrumb */}
+              {/* Breadcrumb (Static structure) */}
               <div className="mb-4 sm:mb-6 flex items-center gap-2 text-sm text-foreground/60">
                 <Link href="/nodes" className="hover:text-foreground transition-colors">pNodes</Link>
                 <span>/</span>
-                <span className="h-4 w-48 bg-muted/40 rounded animate-pulse inline-block font-mono" />
+                <span className="h-4 w-48 bg-muted/20 rounded animate-pulse inline-block font-mono" />
               </div>
 
               {/* Header Section */}
@@ -1128,16 +1128,16 @@ function NodeDetailContent() {
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                     <div className="flex-1 space-y-3">
                       <div className="flex items-center gap-3 flex-wrap">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted/40 text-foreground/60 border border-border/30">
-                          <span className="h-3 w-12 bg-muted/40 rounded animate-pulse inline-block" />
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted/20 text-foreground/40 border border-border/30 animate-pulse">
+                          Status
                         </span>
                         <div>
                           <h1 className="text-xl sm:text-2xl font-bold font-mono text-foreground">
-                            <span className="h-7 w-64 bg-muted/40 rounded animate-pulse inline-block" />
+                            <span className="h-7 w-64 bg-muted/20 rounded animate-pulse inline-block" />
                           </h1>
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-xs text-foreground/60">Version</span>
-                            <span className="h-4 w-20 bg-muted/40 rounded animate-pulse inline-block" />
+                            <span className="h-4 w-20 bg-muted/20 rounded animate-pulse inline-block" />
                           </div>
                         </div>
                       </div>
@@ -1167,58 +1167,80 @@ function NodeDetailContent() {
                     <MapPin className="w-4 h-4 text-foreground/40" />
                     <h2 className="text-base font-semibold text-foreground">Location</h2>
                   </div>
-                  <span className="text-xs text-foreground/60">
-                    <span className="h-4 w-16 bg-muted/40 rounded animate-pulse inline-block" /> other pNodes on map
+                  <span className="text-xs text-foreground/60 flex items-center gap-1.5">
+                    <span className="h-4 w-12 bg-muted/20 rounded animate-pulse" /> other pNodes on map
                   </span>
                 </div>
-                <div className="h-[300px] w-full bg-muted/20 rounded-lg animate-pulse" />
+                <div className="h-[300px] w-full bg-muted/10 rounded-lg animate-pulse" />
               </div>
 
               {/* Stats Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 stagger-children">
-                {[1, 2, 3, 4].map((i) => (
-                  <StatsCard
-                    key={i}
-                    title="Loading"
-                    value={0}
-                    loading={true}
-                  />
-                ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                <StatsCard title="Uptime" value={0} icon={<Clock className="w-4 h-4" />} loading={true} />
+                <StatsCard title="CPU Usage" value={0} icon={<Cpu className="w-4 h-4" />} loading={true} />
+                <StatsCard title="RAM Usage" value={0} icon={<MemoryStick className="w-4 h-4" />} loading={true} />
+                <StatsCard title="Latency" value={0} icon={<Activity className="w-4 h-4" />} loading={true} />
               </div>
 
-              {/* Main Content Grid */}
+              {/* Main Content Grid (Fixed structure) */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mb-6">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="card">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="h-4 w-4 bg-muted/30 rounded animate-pulse" />
-                      <div className="h-4 w-32 bg-muted/30 rounded animate-pulse" />
-                    </div>
-                    <div className="space-y-2">
-                      {[1, 2, 3, 4].map((j) => (
-                        <div key={j} className="flex justify-between">
-                          <div className="h-4 w-24 bg-muted/20 rounded animate-pulse" />
-                          <div className="h-4 w-32 bg-muted/30 rounded animate-pulse" />
-                        </div>
-                      ))}
-                    </div>
+                {/* Location Details */}
+                <div className="card">
+                  <div className="flex items-center gap-2 mb-4">
+                    <MapPin className="w-4 h-4 text-foreground/40" />
+                    <h3 className="text-sm font-semibold text-foreground">Location Details</h3>
                   </div>
-                ))}
+                  <div className="space-y-3">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="flex justify-between items-center pb-2 border-b border-border/20 last:border-0">
+                        <div className="h-3 w-20 bg-muted/20 rounded animate-pulse" />
+                        <div className="h-3 w-32 bg-muted/30 rounded animate-pulse" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Network Stats */}
+                <div className="card">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Network className="w-4 h-4 text-foreground/40" />
+                    <h3 className="text-sm font-semibold text-foreground">Network</h3>
+                  </div>
+                  <div className="space-y-3">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="flex justify-between items-center pb-2 border-b border-border/20 last:border-0">
+                        <div className="h-3 w-24 bg-muted/20 rounded animate-pulse" />
+                        <div className="h-3 w-20 bg-muted/30 rounded animate-pulse" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
-              {/* Historical Data Section */}
+              {/* Historical Data Section (Fixed structure) */}
               <div className="card mb-6" style={{ padding: '1.5rem' }}>
                 <div className="flex items-center justify-between mb-6">
-                  <div className="h-4 w-48 bg-muted/30 rounded animate-pulse" />
-                  <div className="h-8 w-32 bg-muted/30 rounded animate-pulse" />
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-foreground/40" />
+                    <h2 className="text-lg font-bold text-foreground">Historical Performance</h2>
+                  </div>
+                  <div className="h-9 w-40 bg-muted/20 border border-border/40 rounded-lg animate-pulse" />
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                  {[1, 2].map((i) => (
-                    <div key={i} className="space-y-4">
-                      <div className="h-4 w-32 bg-muted/30 rounded animate-pulse" />
-                      <div className="h-[250px] w-full bg-muted/10 rounded-lg animate-pulse" />
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="h-4 w-32 bg-muted/20 rounded animate-pulse" />
+                      <div className="h-4 w-24 bg-muted/10 rounded animate-pulse" />
                     </div>
-                  ))}
+                    <div className="h-[250px] w-full bg-muted/5 rounded-lg animate-pulse border border-border/10" />
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="h-4 w-32 bg-muted/20 rounded animate-pulse" />
+                      <div className="h-4 w-24 bg-muted/10 rounded animate-pulse" />
+                    </div>
+                    <div className="h-[250px] w-full bg-muted/5 rounded-lg animate-pulse border border-border/10" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1253,11 +1275,11 @@ function NodeDetailContent() {
         <main className="flex-1 overflow-hidden">
           <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
             <div className="max-w-7xl mx-auto">
-              {/* Breadcrumb */}
+              {/* Breadcrumb (Static structure) */}
               <div className="mb-4 sm:mb-6 flex items-center gap-2 text-sm text-foreground/60">
                 <Link href="/nodes" className="hover:text-foreground transition-colors">pNodes</Link>
                 <span>/</span>
-                <span className="h-4 w-48 bg-muted/40 rounded animate-pulse inline-block font-mono" />
+                <span className="h-4 w-48 bg-muted/20 rounded animate-pulse inline-block font-mono" />
               </div>
 
               {/* Header Section */}
@@ -1266,16 +1288,16 @@ function NodeDetailContent() {
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                     <div className="flex-1 space-y-3">
                       <div className="flex items-center gap-3 flex-wrap">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted/40 text-foreground/60 border border-border/30">
-                          <span className="h-3 w-12 bg-muted/40 rounded animate-pulse inline-block" />
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted/20 text-foreground/40 border border-border/30 animate-pulse">
+                          Status
                         </span>
                         <div>
                           <h1 className="text-xl sm:text-2xl font-bold font-mono text-foreground">
-                            <span className="h-7 w-64 bg-muted/40 rounded animate-pulse inline-block" />
+                            <span className="h-7 w-64 bg-muted/20 rounded animate-pulse inline-block" />
                           </h1>
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-xs text-foreground/60">Version</span>
-                            <span className="h-4 w-20 bg-muted/40 rounded animate-pulse inline-block" />
+                            <span className="h-4 w-20 bg-muted/20 rounded animate-pulse inline-block" />
                           </div>
                         </div>
                       </div>
@@ -1321,7 +1343,7 @@ function NodeDetailContent() {
     return null;
   }
 
-  const pubkey = node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '';
+  const pubkey = node.pubkey || node.publicKey || node.id || (node.address ? node.address.split(':')[0] : '') || '';
   const gossipAddress = node.address || '—';
 
   return (
@@ -1470,6 +1492,46 @@ function NodeDetailContent() {
                             )}
                           </button>
                         </div>
+
+                        {/* Manager & Registrar Info */}
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Manager (Buyer) */}
+                          <div className="p-3 bg-background/40 border border-border/40 rounded-lg backdrop-blur-sm">
+                            <div className="text-xs text-foreground/40 mb-1 uppercase font-semibold tracking-wider">Manager (Mainnet Buyer)</div>
+                            <div className="flex items-center gap-2">
+                              {node.managerWallet ? (
+                                <>
+                                  <Link href={`/managers/${node.managerWallet}`} className="font-mono text-sm text-[#F0A741] hover:underline underline-offset-4 decoration-[#F0A741]/40">
+                                    {node.managerWallet.slice(0, 6)}...{node.managerWallet.slice(-4)}
+                                  </Link>
+                                  <a href={`https://solscan.io/account/${node.managerWallet}`} target="_blank" rel="noopener noreferrer" className="text-foreground/20 hover:text-foreground/60 transition-colors">
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                </>
+                              ) : (
+                                <span className="text-sm text-foreground/40 italic">Unknown (Purchased on Mainnet)</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Registrar (Devnet) */}
+                          {node.registrarWallet && (
+                            <div className="p-3 bg-background/40 border border-border/40 rounded-lg backdrop-blur-sm">
+                              <div className="text-xs text-foreground/40 mb-1 uppercase font-semibold tracking-wider">Registrar (Devnet)</div>
+                              <div className="flex items-center gap-2">
+                                <a href={`https://explorer.xandeum.com/address/${node.registrarWallet}`} target="_blank" rel="noopener noreferrer" className="font-mono text-sm text-blue-400 hover:underline underline-offset-4 decoration-blue-400/40">
+                                  {node.registrarWallet.slice(0, 6)}...{node.registrarWallet.slice(-4)}
+                                </a>
+                                <a href={`https://explorer.xandeum.com/address/${node.registrarWallet}`} target="_blank" rel="noopener noreferrer" className="text-foreground/20 hover:text-foreground/60 transition-colors">
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                                <div className="text-xs bg-muted/40 px-1.5 py-0.5 rounded text-foreground/50">
+                                  {node.managerWallet === node.registrarWallet ? 'SAME AS BUYER' : 'REGISTRAR'}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1478,7 +1540,7 @@ function NodeDetailContent() {
             ) : (
               <>
                 {/* Fallback Header (no location) */}
-                <Link href="/nodes" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6 transition-all duration-300 hover:translate-x-[-4px] group">
+                < Link href="/nodes" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6 transition-all duration-300 hover:translate-x-[-4px] group">
                   <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
                   <span>Back to pNodes</span>
                 </Link>
@@ -1511,6 +1573,45 @@ function NodeDetailContent() {
                       <span className="font-semibold text-foreground">{node.version}</span>
                     </div>
                   )}
+                  {/* Manager & Registrar Info */}
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Manager (Buyer) */}
+                    <div className="p-3 bg-background/40 border border-border/40 rounded-lg backdrop-blur-sm">
+                      <div className="text-xs text-foreground/40 mb-1 uppercase font-semibold tracking-wider">Manager (Mainnet Buyer)</div>
+                      <div className="flex items-center gap-2">
+                        {node.managerWallet ? (
+                          <>
+                            <Link href={`/managers/${node.managerWallet}`} className="font-mono text-sm text-[#F0A741] hover:underline underline-offset-4 decoration-[#F0A741]/40">
+                              {node.managerWallet.slice(0, 6)}...{node.managerWallet.slice(-4)}
+                            </Link>
+                            <a href={`https://solscan.io/account/${node.managerWallet}`} target="_blank" rel="noopener noreferrer" className="text-foreground/20 hover:text-foreground/60 transition-colors">
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </>
+                        ) : (
+                          <span className="text-sm text-foreground/40 italic">Unknown (Purchased on Mainnet)</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Registrar (Devnet) */}
+                    {node.registrarWallet && (
+                      <div className="p-3 bg-background/40 border border-border/40 rounded-lg backdrop-blur-sm">
+                        <div className="text-xs text-foreground/40 mb-1 uppercase font-semibold tracking-wider">Registrar (Devnet)</div>
+                        <div className="flex items-center gap-2">
+                          <a href={`https://explorer.xandeum.com/address/${node.registrarWallet}`} target="_blank" rel="noopener noreferrer" className="font-mono text-sm text-blue-400 hover:underline underline-offset-4 decoration-blue-400/40">
+                            {node.registrarWallet.slice(0, 6)}...{node.registrarWallet.slice(-4)}
+                          </a>
+                          <a href={`https://explorer.xandeum.com/address/${node.registrarWallet}`} target="_blank" rel="noopener noreferrer" className="text-foreground/20 hover:text-foreground/60 transition-colors">
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                          <div className="text-xs bg-muted/40 px-1.5 py-0.5 rounded text-foreground/50">
+                            {node.managerWallet === node.registrarWallet ? 'SAME AS BUYER' : 'REGISTRAR'}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </>
             )}
@@ -1612,6 +1713,47 @@ function NodeDetailContent() {
                         </div>
                       )}
                     </div>
+                  </div>
+                </div>
+
+                {/* Manager & Registrar Info Card (Private View) */}
+                <div className="card animate-slide-in-right" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Award className="w-4 h-4 text-[#F0A741]" />
+                    <h3 className="text-sm font-semibold text-foreground">Ownership</h3>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="text-xs text-foreground/60 mb-1">Manager (Buyer)</div>
+                      <div className="flex items-center gap-2">
+                        {node.managerWallet ? (
+                          <>
+                            <Link href={`/managers/${node.managerWallet}`} className="font-mono text-sm text-[#F0A741] hover:underline underline-offset-4 decoration-[#F0A741]/40">
+                              {node.managerWallet.slice(0, 6)}...{node.managerWallet.slice(-4)}
+                            </Link>
+                            <a href={`https://solscan.io/account/${node.managerWallet}`} target="_blank" rel="noopener noreferrer" className="text-foreground/20 hover:text-foreground/60 transition-colors">
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </>
+                        ) : (
+                          <span className="text-sm text-foreground/40 italic">Unknown</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {node.registrarWallet && (
+                      <div>
+                        <div className="text-xs text-foreground/60 mb-1">Registrar</div>
+                        <div className="flex items-center gap-2">
+                          <a href={`https://explorer.xandeum.com/address/${node.registrarWallet}`} target="_blank" rel="noopener noreferrer" className="font-mono text-sm text-blue-400 hover:underline underline-offset-4 decoration-blue-400/40">
+                            {node.registrarWallet.slice(0, 6)}...{node.registrarWallet.slice(-4)}
+                          </a>
+                          <a href={`https://explorer.xandeum.com/address/${node.registrarWallet}`} target="_blank" rel="noopener noreferrer" className="text-foreground/20 hover:text-foreground/60 transition-colors">
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </>
@@ -1908,7 +2050,10 @@ function NodeDetailContent() {
                       )}
                     </div>
                   </div>
+                </div>
 
+                {/* Location / Ownership / Status Grid - 3 columns */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-12">
                   {/* Location */}
                   <div className="card">
                     <div className="flex items-center gap-2 mb-3">
@@ -1943,6 +2088,52 @@ function NodeDetailContent() {
                         <div className="flex justify-between">
                           <span className="text-foreground/60">Data Center</span>
                           <span className="text-foreground/80">{detectDataCenter(node.address.split(':')[0]) || '—'}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Ownership */}
+                  <div className="card">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Server className="w-4 h-4 text-foreground/40" />
+                      <h2 className="text-base font-semibold text-foreground">Ownership</h2>
+                    </div>
+                    <div className="space-y-3 text-sm">
+                      {/* Manager (Buyer) */}
+                      <div>
+                        <div className="text-foreground/40 text-xs uppercase font-semibold tracking-wider mb-1">Manager (Mainnet Buyer)</div>
+                        <div className="flex items-center gap-2">
+                          {node.managerWallet ? (
+                            <>
+                              <Link href={`/managers/${node.managerWallet}`} className="font-mono text-sm text-[#F0A741] hover:underline underline-offset-4 decoration-[#F0A741]/40">
+                                {node.managerWallet.slice(0, 6)}...{node.managerWallet.slice(-4)}
+                              </Link>
+                              <a href={`https://solscan.io/account/${node.managerWallet}`} target="_blank" rel="noopener noreferrer" className="text-foreground/20 hover:text-foreground/60 transition-colors">
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </>
+                          ) : (
+                            <span className="text-foreground/40 italic">Unknown</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Registrar (Devnet) */}
+                      {node.registrarWallet && (
+                        <div>
+                          <div className="text-foreground/40 text-xs uppercase font-semibold tracking-wider mb-1">Registrar (Devnet)</div>
+                          <div className="flex items-center gap-2">
+                            <a href={`https://explorer.xandeum.com/address/${node.registrarWallet}`} target="_blank" rel="noopener noreferrer" className="font-mono text-sm text-blue-400 hover:underline underline-offset-4 decoration-blue-400/40">
+                              {node.registrarWallet.slice(0, 6)}...{node.registrarWallet.slice(-4)}
+                            </a>
+                            <a href={`https://explorer.xandeum.com/address/${node.registrarWallet}`} target="_blank" rel="noopener noreferrer" className="text-foreground/20 hover:text-foreground/60 transition-colors">
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                            <div className="text-xs bg-muted/40 px-1.5 py-0.5 rounded text-foreground/50">
+                              {node.managerWallet === node.registrarWallet ? 'SAME AS BUYER' : 'REGISTRAR'}
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -2443,9 +2634,9 @@ function NodeDetailContent() {
               <ActivityLogList pubkey={node.pubkey || node.publicKey} limit={20} />
             </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </div >
+      </main >
+    </div >
   );
 }
 

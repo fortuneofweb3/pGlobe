@@ -410,7 +410,7 @@ function HomeContent() {
   // If loading and no data, show the loading skeleton
   if (isLoading && nodes.length === 0) {
     return (
-      <div className="fixed inset-0 w-full h-full flex flex-col" style={{ backgroundColor: '#000000' }}>
+      <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
         <Header
           activePage="overview"
           loading={true}
@@ -428,28 +428,28 @@ function HomeContent() {
                 <div className="space-y-2 sm:space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs sm:text-sm text-foreground/70">Total pNodes</span>
-                    <span className="h-4 w-12 bg-muted/40 rounded animate-pulse" />
+                    <span className="h-4 w-12 bg-muted/20 rounded animate-pulse" />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5">
                       Online
                       <InfoTooltip content="Seen in gossip network within last 5 minutes" />
                     </span>
-                    <span className="h-4 w-12 bg-muted/40 rounded animate-pulse" />
+                    <span className="h-4 w-12 bg-muted/20 rounded animate-pulse" />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5">
                       Syncing
                       <InfoTooltip content="Seen within last hour, still synchronizing with network" />
                     </span>
-                    <span className="h-4 w-12 bg-muted/40 rounded animate-pulse" />
+                    <span className="h-4 w-12 bg-muted/20 rounded animate-pulse" />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5">
                       Offline
                       <InfoTooltip content="Not seen in gossip network for over an hour" />
                     </span>
-                    <span className="h-4 w-12 bg-muted/40 rounded animate-pulse" />
+                    <span className="h-4 w-12 bg-muted/20 rounded animate-pulse" />
                   </div>
                 </div>
               </div>
@@ -458,25 +458,25 @@ function HomeContent() {
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Performance</h2>
                   <InfoTooltip content="Stats from pNodes with public pRPC only (~10 of 135 pNodes). Most operators keep pRPC private (localhost-only) for security.">
-                    <span className="h-3 w-16 bg-muted/40 rounded animate-pulse hidden sm:inline-block" />
+                    <span className="h-3 w-16 bg-muted/20 rounded animate-pulse hidden sm:inline-block" />
                   </InfoTooltip>
                 </div>
                 <div className="space-y-2 sm:space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground/70">Avg Uptime</span>
-                    <span className="h-4 w-16 bg-muted/40 rounded animate-pulse" />
+                    <span className="h-4 w-16 bg-muted/20 rounded animate-pulse" />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground/70">Avg CPU</span>
-                    <span className="h-4 w-16 bg-muted/40 rounded animate-pulse" />
+                    <span className="h-4 w-16 bg-muted/20 rounded animate-pulse" />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground/70">Avg RAM</span>
-                    <span className="h-4 w-16 bg-muted/40 rounded animate-pulse" />
+                    <span className="h-4 w-16 bg-muted/20 rounded animate-pulse" />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground/70">Avg Latency</span>
-                    <span className="h-4 w-16 bg-muted/40 rounded animate-pulse" />
+                    <span className="h-4 w-16 bg-muted/20 rounded animate-pulse" />
                   </div>
                 </div>
               </div>
@@ -488,19 +488,19 @@ function HomeContent() {
                 <div className="space-y-2 sm:space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground/70">Total Storage</span>
-                    <span className="h-4 w-20 bg-muted/40 rounded animate-pulse" />
+                    <span className="h-4 w-20 bg-muted/20 rounded animate-pulse" />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground/70">Total RAM</span>
-                    <span className="h-4 w-20 bg-muted/40 rounded animate-pulse" />
+                    <span className="h-4 w-20 bg-muted/20 rounded animate-pulse" />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground/70">Used RAM</span>
-                    <span className="h-4 w-20 bg-muted/40 rounded animate-pulse" />
+                    <span className="h-4 w-20 bg-muted/20 rounded animate-pulse" />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground/70">Avg RAM Usage</span>
-                    <span className="h-4 w-16 bg-muted/40 rounded animate-pulse" />
+                    <span className="h-4 w-16 bg-muted/20 rounded animate-pulse" />
                   </div>
                 </div>
               </div>
@@ -509,29 +509,29 @@ function HomeContent() {
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Network Activity</h2>
                   <InfoTooltip content="From pNodes with public pRPC only. Most pNodes keep pRPC private.">
-                    <span className="h-3 w-16 bg-muted/40 rounded animate-pulse hidden sm:inline-block" />
+                    <span className="h-3 w-16 bg-muted/20 rounded animate-pulse hidden sm:inline-block" />
                   </InfoTooltip>
                 </div>
                 <div className="space-y-2 sm:space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground/70">Active Streams</span>
-                    <span className="h-4 w-20 bg-muted/40 rounded animate-pulse" />
+                    <span className="h-4 w-20 bg-muted/20 rounded animate-pulse" />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground/70">Packets Received</span>
-                    <span className="h-4 w-24 bg-muted/40 rounded animate-pulse" />
+                    <span className="h-4 w-24 bg-muted/20 rounded animate-pulse" />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground/70">Packets Sent</span>
-                    <span className="h-4 w-24 bg-muted/40 rounded animate-pulse" />
+                    <span className="h-4 w-24 bg-muted/20 rounded animate-pulse" />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground/70">Avg Packet Rate</span>
-                    <span className="h-4 w-20 bg-muted/40 rounded animate-pulse" />
+                    <span className="h-4 w-20 bg-muted/20 rounded animate-pulse" />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground/70">Total Credits</span>
-                    <span className="h-4 w-20 bg-muted/40 rounded animate-pulse" />
+                    <span className="h-4 w-20 bg-muted/20 rounded animate-pulse" />
                   </div>
                 </div>
               </div>

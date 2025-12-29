@@ -1,0 +1,1718 @@
+[
+  {
+    "nodeId": "2LkFCD5vpBcgch1LHbNd8vZmNpFMsgtaTDvzLLBYc7Uj",
+    "registrarWallet": "FcFFrN61D1bX6YNQGSJFomZP6XRCyouju2h8wm6yjDr7",
+    "discoveredAt": "2025-12-28T20:29:55.467Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "BA5TWqCA9zTCHNfoWSmH8E9izHtpnXRT9wFgk9Ceod3o",
+    "registrarWallet": "DyZrYyMCgQeBPvxA17CGoe3NVnYCDEB8fZB282LKLEij",
+    "discoveredAt": "2025-12-28T20:29:56.000Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "Cncj9NVQCGVhW6j8pxBJz1tBDAVJ5ZFMdYWAcZxAk8BA",
+    "registrarWallet": "4yGbr2qAxUnbuD4MJ5TAEFPHHH3hUPpHQBvCznkcumSw",
+    "discoveredAt": "2025-12-28T20:29:56.503Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "5RgAQwFuEkWZbmhoBmC9VHG8sDbPJcZvfN6EiZZLWnW6",
+    "registrarWallet": "GbXdqEo512tSscL3mJKFh7bS2MePPESSV48P7gvjX9y",
+    "discoveredAt": "2025-12-28T20:29:56.908Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "8RQG6E3jimAmvWNLecLCTvFJapsra7SiYuFQ3wqTQVz1",
+    "registrarWallet": "4kWzH9aKJSYFPkPeFnCbv6zh25xUskySqTdKy2bv8Guu",
+    "discoveredAt": "2025-12-28T20:29:58.354Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "Aj6AqP7xvmBNuPF5v4zNB3SYxBe3yP6rsqK6KsaKVXKM",
+    "registrarWallet": "9j1PQo5a4P8C5dSjXbUbkMAZqyURQvPSJ8pfVP5i3h3D",
+    "discoveredAt": "2025-12-28T20:29:58.740Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "HjeRsvpPX4CnJAXW3ua2y1qrRA7t9nf8s4dYgJnavQnC",
+    "registrarWallet": "8BM52oD8BW6wNNxpc3VSzAh8AxTvdTdZFwCptJUc9bd",
+    "discoveredAt": "2025-12-28T20:29:59.172Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "CGJBCM9GFc8yfAa9wbtziT4FmQ3NDCftEShwpJ6Mbe3c",
+    "registrarWallet": "2QhXEhrTUvfy2ykUhdQ2nwgTq1ppDHnM1iCBSBwDj5Fu",
+    "discoveredAt": "2025-12-28T20:29:59.578Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "6ybUMguoGB9KfedEqP2ZeAEXr2mj1MuY29E65iwyz1Hf",
+    "registrarWallet": "Buh3TTHXy262Z6YBaC8gRt6NDEF1eKeWhRDNNs8HR7EP",
+    "discoveredAt": "2025-12-28T20:29:59.961Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "FHcQdejQ8NncaSGQ6j5zrUuANxdVjnkDnLnwQPJfLLfL",
+    "registrarWallet": "7bnpqvPuaS7rcajSgRqcJAxaYeGBCY1kJysVocQGAqDH",
+    "discoveredAt": "2025-12-28T20:30:01.243Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "BAVKGWBzWnD5XDvcLW5C86eLcadksJQ5kL97wKzgFm1p",
+    "registrarWallet": "CdYQB6cWtuDWV5cKTsvp1uJUN7mgsuXjcXDjhfF9Msh9",
+    "discoveredAt": "2025-12-28T20:30:01.679Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "4JSzXQznJyezCtMGDkp2aRKfZAtN7GNB2dvRV5u7iK1e",
+    "registrarWallet": "HfhgzYY5JKNgG7vKF27wmRgWQeyeMcX1WmRQdwh9bcWs",
+    "discoveredAt": "2025-12-28T20:30:02.088Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "CxCtJpwQPQixQY8cP1gV6LpjhZBChCKv1KJe4JxYLMLc",
+    "registrarWallet": "4hpZo17GX9aTvCkvviwh5r9vzMAUzu9yXHowTw3LxGLF",
+    "discoveredAt": "2025-12-28T20:30:02.480Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "5guf8siNWFiS2jY2FKTLWQH6vhMUABe55kLxubCP9BjY",
+    "registrarWallet": "9r1YDaHbkMFpwwVJ9jwvyi5QEK7FVaUdbLhPGWHBfZd9",
+    "discoveredAt": "2025-12-28T20:30:03.609Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "6GHK9rJ9Fh7PRJAmkWSwExRxLsUvbHhAXqjqixsh3xHH",
+    "registrarWallet": "9jXZJaeCYBrMSuPRHhYzxk1FQ86SV1yJqsVKfTyAuyuh",
+    "discoveredAt": "2025-12-28T20:30:03.968Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "43aMGo5Gqn3bma6hKMDppTcYJK4YgEMTby9Ez9MjVLyx",
+    "registrarWallet": "5bq12dQqAfBYaXNS1BYdCx26998YRPP2tqyXQsEQnoNo",
+    "discoveredAt": "2025-12-28T20:30:04.354Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "A4afVuRkYantwx1su9r2XGs6yUxthLVrSFoYcjBckrEW",
+    "registrarWallet": "4Jy1SVGqwTgraWmKAYJosYpZLJeJTd2CL5UxffxCZAUF",
+    "discoveredAt": "2025-12-28T20:30:05.886Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "CP9S9NMUqMjXCPMjNdiNmA1ywidZHWrAEskXRzv8xo7v",
+    "registrarWallet": "7AJmBTei3LW5mcpfHvo6Enja6ivj5p2Kt63Ui97eBHaf",
+    "discoveredAt": "2025-12-28T20:30:06.224Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "3L3oLZBHaZXWVE1UKj3Bp5gXfo4DTMVKdKVuo7JTS6b3",
+    "registrarWallet": "Aeued3THYPx7CYYpSQ9a3UDmRsVEY1SoDDyP5rdxRFh9",
+    "discoveredAt": "2025-12-28T20:30:06.565Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "CnArhvaeS8YhEpXZ5jZzkmix7PDfGKtQZbPe8dj75Rc3",
+    "registrarWallet": "9Z3KER2SsFaW94eVsQ5RSjFrA7ATQYTaV5VUVJwmLo4b",
+    "discoveredAt": "2025-12-28T20:30:06.921Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "A2kNos5FzpDHusHYS2SbKLb1sKKyi3go7LBHY18p1nt",
+    "registrarWallet": "HNteBbBdHSAcgTKdVCakR5WtGFLDtRbuyCiWqFhmqT3d",
+    "discoveredAt": "2025-12-28T20:30:07.265Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "FwdVE6Ac7Xep3aykVkwEXNDN66cARr4pK5zYtvQWLFAK",
+    "registrarWallet": "3xPKwJdispmLJZB2AMb5A7T8NUArpm4ncPiwH368qi8P",
+    "discoveredAt": "2025-12-28T20:30:08.669Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "7UNK4pm7zziAUz8XrnfxeS5z2P4aqyq6b6C2pWjMEWF9",
+    "registrarWallet": "AHbHFRn81QvxTqZ9SpywX1hhfa8GRhgN9Jnc2PZdG2FR",
+    "discoveredAt": "2025-12-28T20:30:08.972Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "4HkwdCpSbK4ypbQS1rbZ9tbnKUTQcptQNDrWbZQ8xPhG",
+    "registrarWallet": "HKBZ1Xxdd6RtUi9HFUMP6fx3NCyimZBCfuFtBMpmB26B",
+    "discoveredAt": "2025-12-28T20:30:09.310Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "7UMjZoSQpFY2QYq2FxAAFLyis6D8wrtnuGTPh97iWnXv",
+    "registrarWallet": "3C4PkE3PxMUm3izbwwYi5hrtSAfMDwgiihVnreF6qAsR",
+    "discoveredAt": "2025-12-28T20:30:09.694Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "7dhiz2URAj84PA439YP9Na5gv36ArWMRctgW6vazPmhd",
+    "registrarWallet": "6quxp1BtWXJkQmaSen5jeHgXjWrVeFCEDCZDLMpAMqHH",
+    "discoveredAt": "2025-12-28T20:30:11.002Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "7Q2qbwukMHX6roJ6BKWbQp5MVs5oR2HjXSjJvAsaKxQd",
+    "registrarWallet": "MySTy1tYdKRLU4qxdphVWNk2Typ2arpVFHTqSYF8HrF",
+    "discoveredAt": "2025-12-28T20:30:11.368Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "AbSHSrkYYe5h5v6AEs22JjQsDtHdEVYczX5ttHEvLxuw",
+    "registrarWallet": "2bbWzG4HVxYGaRkFRGW4wtjpnQ87cPkZBGvg3Uj75gj1",
+    "discoveredAt": "2025-12-28T20:30:11.968Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "8XL6zwDiU6ykuGyVWb6R5BfDN4jToHEfyZdQHjwsadSA",
+    "registrarWallet": "Hj774CZbX78L313aGnfp5W7ZmduZCguVXPjggMKNPb4B",
+    "discoveredAt": "2025-12-28T20:30:12.367Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "GSejkQFPnwxpK8RQTVqLd3dLFtPZ8eevGWSCuJFpefp9",
+    "registrarWallet": "FSyadrXwh56oYHpMfF1HBa48jXH4v8F98MRh2XHmXV3m",
+    "discoveredAt": "2025-12-28T20:30:13.792Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "DmU1N8PvxZo5fHyibqYLmJe1wde5zzQjra2yYoqNbKcL",
+    "registrarWallet": "49yCGiPfWE7RCJGMRyw4XiQ8c6EiN4CbJbXecWSf4RG3",
+    "discoveredAt": "2025-12-28T20:30:14.166Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "GxmaEed5LMRNhkt25iMScocnSnRs9bfH2HpPyMQoiK7C",
+    "registrarWallet": "DWuQCSg1rnc9xnYtvp51CRh2ZbzbLzwgTvjLdN5MGzWK",
+    "discoveredAt": "2025-12-28T20:30:14.564Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "Hj5owPSHVAxbcvDSrukN4MtLf4Sw34uskyXMdBtTUfTu",
+    "registrarWallet": "3s4TQr6fm55PitDTvRCXguXcMRR3SwPXdw13X5gPDXEw",
+    "discoveredAt": "2025-12-28T20:30:14.928Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "FKv8AarYNkTCTzEfEUB3nYHDyTnF5JKh6hQyLYKbSBSM",
+    "registrarWallet": "ChwNZKyM79tL7RZevhcRi7yF5EsgUmqzu8iWzFXw7HS7",
+    "discoveredAt": "2025-12-28T20:30:15.292Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "5EnxQ57qzzqiXSuY7BbCXLucKevqZG4cFbnLjnVztutY",
+    "registrarWallet": "6LQLScwhGR1sUg5NREsWzw3FsRXchq3zjoiXFJAD81wD",
+    "discoveredAt": "2025-12-28T20:30:15.614Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "8cJCY4hbA9ZndcpRf5fLKzoGcarvRmbYRnhVs5uXnKQe",
+    "registrarWallet": "E3JBAvpKoin1F4F9Y7PesvKdePoYXmkmVENdk652p4qD",
+    "discoveredAt": "2025-12-28T20:30:15.973Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "EjyBTxCBBXdtBa8DmyUWoD6f1JGJ5J3sdcDQh7tCDHwt",
+    "registrarWallet": "D55bSEL7tEV5nptgXQvLqYoQjuP2snVExETdFurXzipo",
+    "discoveredAt": "2025-12-28T20:30:17.012Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "HuZRcrMmG7zavc6TXCbpSLkTkCJnxYHZYJvqNeCtiuSF",
+    "registrarWallet": "9EjjYsYJwbgSCQXp5eYqyW88jKA5unvGjP3UmJomtgfq",
+    "discoveredAt": "2025-12-28T20:30:18.400Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "C9xtezTAuvMRBZowpbdEkbsZ2tppjTvMd5yzikLYP381",
+    "registrarWallet": "BhUBfQeWNzdFXzCWCf7nwbcBT6jLgz7m8bJj9DST6Wyu",
+    "discoveredAt": "2025-12-28T20:30:18.824Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "3cbZ14UNp358Zs4mWDDSTGNKepbdvUgPEdWw5jjaruQf",
+    "registrarWallet": "nEAb18hk5M4zoSdewJAK6aXoaWWgu6GeYhTJv32oNNB",
+    "discoveredAt": "2025-12-28T20:30:20.053Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "H7nJFPkKhQzPCtsz81Q7SkM8Q8iNaMvZ7Qfu59ZVovDu",
+    "registrarWallet": "77c649Rv9ZS2qnECLjFo9Dtq7Ltn8JoenxLZSUagjFPm",
+    "discoveredAt": "2025-12-28T20:30:20.422Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "BdpHetTcidNao9FEUdtu9uNu8WvGXauevLFXZQuUdvSD",
+    "registrarWallet": "7vRSJWdBwfPEQfLvaBATQHrWFXvbXBKGRHNo48KWaEpF",
+    "discoveredAt": "2025-12-28T20:30:20.852Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "81LxBcwxpdo7va7AZYkWahWt8mo7yxtwA58qWoXhdBJW",
+    "registrarWallet": "FGio9S3SKfziqJFCbGhDfDZE8joRZbojummz6ShkX4GF",
+    "discoveredAt": "2025-12-28T20:30:21.261Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "CARBzqr4m6HLoKQkkUfwVFf9SRzk1UY3dk17UzAaW48H",
+    "registrarWallet": "Cbzr8XcptyokUXyUjmigCqfBmpW1dHp1whVVkVLeU8zs",
+    "discoveredAt": "2025-12-28T20:30:21.654Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "GDNtYmLce8iHpmmSG9M4QaGD4xBxyEBDkpqcoWiZgADG",
+    "registrarWallet": "7YVA6ZxXa7gvc1Sptn6mRKBzAazQrKBJNoDL3R1MBMdy",
+    "discoveredAt": "2025-12-28T20:30:21.999Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "G6uo53MmYaM9GmQysDLsTt3ppY89CwTmEuj6JoYb5XNt",
+    "registrarWallet": "DBVM8Vkr2TkaMuKvsLNAmeNCrrHKQDVCSs4V9pLukxCo",
+    "discoveredAt": "2025-12-28T20:30:22.358Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "GTfRxhCMPe4mAhPN6hB74nJasBCEQduJLfx5MFV1GhyY",
+    "registrarWallet": "EiaLkJtc6cVmyntGb8vz7P8Z4dk9MD1LiaC2JUAZZRMy",
+    "discoveredAt": "2025-12-28T20:30:22.673Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "6hNpdshq9w1m2D7YwYgWHgtxyhSmwbTAhaddCbxkhqj6",
+    "registrarWallet": "DaPgMGpEQABHAkPXNrKvBohHoWFGvxguK6e5z9D2qEoq",
+    "discoveredAt": "2025-12-28T20:30:23.006Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "EasiV2wAcC4DR685UFj5VHgnqHtX8QVhJ8pywH4T6m51",
+    "registrarWallet": "2AfXAP7PR3jqVvzSe77cjeRnveKALKp2VHNxkxAF97AX",
+    "discoveredAt": "2025-12-28T20:30:23.326Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "7Lysd74bi84C5ZFS7ibj4WB6srKfvGAq1B6e7Qv4j71i",
+    "registrarWallet": "Dn8fM7cNBgK9xFctrkowKMgwRW9o8Jr6GMXLtQphgAxF",
+    "discoveredAt": "2025-12-28T20:30:23.726Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "9LKyuJ38VT4QTSTX9o2Kb6gf4w34gxpVi69pT1KBSLaQ",
+    "registrarWallet": "D2PxWxbiM5SY6Wcpa5xqNzFnWyNs9purWT2etCgsFAbR",
+    "discoveredAt": "2025-12-28T20:30:24.085Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "62QC9qh8bYPN5A6YMhR8VAysUcQDSV3KzJrY4aT6Zkad",
+    "registrarWallet": "DTtxCXJzhrHtLjdxmkyXj42FY7QWjZhRsC38wWpTJf4K",
+    "discoveredAt": "2025-12-28T20:30:24.402Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "8fzYNAHZNKj3VPhExoJZm8rdKbRHYsMhLzwG28sPBU9x",
+    "registrarWallet": "4JwGuoBAvgNjaNY3SQJhhoW3DpCDbrozg3gBA8XBVawZ",
+    "discoveredAt": "2025-12-28T20:30:24.767Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "39oZfP7VQbepDxXUz3g7sbopgxyHWzzmk7WYbfLtjP2X",
+    "registrarWallet": "FDm2JdspzjC7q9Vt2YWTDK9e3R3QDP9zQZgTfRWMusio",
+    "discoveredAt": "2025-12-28T20:30:25.156Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "5RiV11dH8f1ne6y4AF1qubN8oaVqDjc7v6vETfiypo26",
+    "registrarWallet": "D6WwPx7zLVWVer3dFKKjh2QLpf1Yg41Fn3akc65BayK5",
+    "discoveredAt": "2025-12-28T20:30:25.499Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "5j7VjXN466RiQnW84pMQDKHkEqDBpMv2HJh3RTtDbrFU",
+    "registrarWallet": "q9uANttyZVh7CZstC5p8thwqpLjsvqHUJoznuXDy1FM",
+    "discoveredAt": "2025-12-28T20:30:25.887Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "7ruaEQ4nv8RAfh5wQ7KpL1r5PAZKkhLHCmgtJGiPzPR3",
+    "registrarWallet": "Fxkn8up3GBdrjudurdQahiUqt5zbPbHQWDmx86qk4wxB",
+    "discoveredAt": "2025-12-28T20:30:26.885Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "EWH3b7BTCoT5tUycGjsx9D6w65ZRmrYjnq7pe9YHzHLq",
+    "registrarWallet": "BvWfUbLqSkZFNBq2PqUHroWmq72QNHmtUYPXET8roSJ3",
+    "discoveredAt": "2025-12-28T20:30:27.251Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "DFsMmMAg5C6HLdbwYvUY3so2SkgvrNQcFkvio2r234n8",
+    "registrarWallet": "ER61Gsq754kZNnQYNSejMPWKTdLCRxdH1FydmrtF9xmD",
+    "discoveredAt": "2025-12-28T20:30:27.976Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "3nq1aGdCEKGZqiV85CvC7wyTkjsxonET8KzE7DudE2Q3",
+    "registrarWallet": "2s8qsrjQtCYH7hUuftPQFnUbQQsZnrTjiNTZ2mzWVd8B",
+    "discoveredAt": "2025-12-28T20:30:28.373Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "9NeFq2X5axwtaqdcioHpnW1NPU4aZxBvDZE19dVSfgD6",
+    "registrarWallet": "Fh6gWzpMqm26RraxDZZF8bRYqK8KZkAzynbtHBrDZUUw",
+    "discoveredAt": "2025-12-28T20:30:29.611Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "G4kUxZeDuFpjz2e2GkQuyDkyYcizCGwmqpjjWym9Nzrs",
+    "registrarWallet": "CKKkTJjoGcf9X9CXwKpYJkCzSqLNJbyo2XHobWx9b2G7",
+    "discoveredAt": "2025-12-28T20:30:30.023Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "2Xw683jW9vErbksnujDDE5FkNeJTdFM94GHpqGHfy4bH",
+    "registrarWallet": "7x45QJQpG9mWgFhJDqof7FhxSnped1pkVSvzUXH1wHi7",
+    "discoveredAt": "2025-12-28T20:30:30.406Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "DuLGyAtfki7PfVAqXhGeLv2UZiPeSAzVUukW4PSWiqEm",
+    "registrarWallet": "BJ5cdn6ZeKSotYUpY4p4KMtBYf7LAWtyWCzDXqyr4tZD",
+    "discoveredAt": "2025-12-28T20:30:30.786Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "5dkCbBDsWrvHQtcRAr3C2a3LSGoVe22ar7558oY4JxYE",
+    "registrarWallet": "BizhcN5K82YQcXfhkbLhF11YF66xrhkngZ5RRSLrpVaF",
+    "discoveredAt": "2025-12-28T20:30:31.139Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "3LR686crvS7AjRb75EzQc9DiRqdsVXmKNkUzdyjNJz4E",
+    "registrarWallet": "EaZUwGfsE7NEmXBcsYnTxKbys14VhUdZMD4DJSaJJyEP",
+    "discoveredAt": "2025-12-28T20:30:31.481Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "27V3s7gCKHiACfNHnrnzr3HZ2ogQLTeWoiWCxMzxjy5T",
+    "registrarWallet": "572y2YPRhE5TKZcUSaaGXmDCTxfH61h8ebASFYMjuidM",
+    "discoveredAt": "2025-12-28T20:30:31.820Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "FzwK13DMfSCmHtzeBZyoLhgGWHAPfm75EKiiNUoDqiAo",
+    "registrarWallet": "Dw1ka2fu1X7qXnqcc4ngvtJ2AESsb1H2rkpifbWRWWhu",
+    "discoveredAt": "2025-12-28T20:30:32.184Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "6wU9W5dmhE7e4eWiH1QW4hGYCA5eSKKHcmCiwZrdyzjB",
+    "registrarWallet": "Du9VNY3AcDPgVuKRRvvEnceu7xiCqyhHq4S5QiUYpjAf",
+    "discoveredAt": "2025-12-28T20:30:32.538Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "6eLbt3V5HNo7EJy9iRBDHy4cBL7LQTTyJhL74DqDnFDj",
+    "registrarWallet": "QoYUUoGwCGc62Ws1bD1NXdGL75mqHNGN56qZbw6Gbi7",
+    "discoveredAt": "2025-12-28T20:30:32.860Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "4J56urR2RpiHtue2oChdXHCLt7JPV71k1MgCKxmkK8M1",
+    "registrarWallet": "6Qn3ncCPC4PmU1FhySoKQo85hJgDjfidzmsAwJEVL7EX",
+    "discoveredAt": "2025-12-28T20:30:33.151Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "CXDzKedk9unSYdZG7xMRw6ahSuuztX7ZDHh83vNqekm1",
+    "registrarWallet": "GymwASiP3Hp8iDwQ2XFmEBaNws8Y4gnSe5r1ZswKby7M",
+    "discoveredAt": "2025-12-28T20:30:34.626Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "4PUtNA8JsxWuigYbkZ6MMvTz5QDzR9QXuf7mSbti14c2",
+    "registrarWallet": "B2YpfUZwVWiVzWw5JBcaWRVN57q4tViUrv6dQSHm5W8w",
+    "discoveredAt": "2025-12-28T20:30:34.968Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "GYWtEasP7YNfvk1V8VieEGWEJ7hYwUeptrAPrsw2x43h",
+    "registrarWallet": "3GEJoAMqqsh33ErG4MUDLLzDLRSGH1Q88fPQeXppH9EX",
+    "discoveredAt": "2025-12-28T20:30:35.288Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "8BJTxVRS73MUKRTXTmgFGkyzM6K9PREus1NJXEYfajDr",
+    "registrarWallet": "BsSNMwhXMWSSJ2Gs2SFhr9KFS1xLKS12e2iAVeaxVUxF",
+    "discoveredAt": "2025-12-28T20:30:35.603Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "Gas1DUJKsFJbWGq9pboDiEfkF5nCpTeR11bkXuEnQHiG",
+    "registrarWallet": "BQ6kSrgvbba1B567JZPZbXtmFJaKfR6CgT4hQLsFoGiB",
+    "discoveredAt": "2025-12-28T20:30:35.918Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "39aptv9yoygAdZ9DKLce9GPnNQwTqbx8RB9XN2yaT3hp",
+    "registrarWallet": "B3666qp3x3amwwhrayGsmcYiveox5cjdjmtAF4wbAPq1",
+    "discoveredAt": "2025-12-28T20:30:36.230Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "CQCHAFWRfAVRiG6paL11HWtRtT8XwbwYwSCzY5oRzBE2",
+    "registrarWallet": "2VsifFD3TqVmSmJUkDBVj2VBpPZB757VhHaZKd47pjGT",
+    "discoveredAt": "2025-12-28T20:30:36.565Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "GRWqE1D5yaPA4o35rUeyNt8wz6SB9cvscRL28gpgh5gA",
+    "registrarWallet": "7iV5KUdiuGr3XZM4z3dPxLjt65Nmy9N2rXJw6hJCtFKm",
+    "discoveredAt": "2025-12-28T20:30:36.900Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "49dkSK1391MuDW6EL25V9CBK2dEjpZodz5QbiwatyNB5",
+    "registrarWallet": "GuEwCtGnR9QrWWdKRrm91kapycQ4SgkxkEizs68rGaFh",
+    "discoveredAt": "2025-12-28T20:30:37.852Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "DYogpF6yigicxwfHqrmF3T3L2ye2s4neiBqN4H1ZPydJ",
+    "registrarWallet": "CSMCCzmVTKiU7JyXwkiKfgQJvSUuLrfaq9mat885kdnf",
+    "discoveredAt": "2025-12-28T20:30:38.151Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "FMqseTpP8FVG1W9JXXayd3e3Ub39E8DqE3iJgbN94bC8",
+    "registrarWallet": "BUt8stVSeT5QMS21d6XjdgxkzhkCuASrM2idQVBpesVh",
+    "discoveredAt": "2025-12-28T20:30:39.362Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "GCoCP7CLvVivuWUH1sSA9vMi9jjaJcXpMwVozMVA6yBg",
+    "registrarWallet": "5iV9AJyGoSTRxLyB8PBpFZiKccdYTt5Bf68R4LfPzQ7Z",
+    "discoveredAt": "2025-12-28T20:30:39.689Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "7cuRcs14otE81u1ViehN6dvkE1ajZZLhvYqGeinAGqf5",
+    "registrarWallet": "5LS5mvR7YB8BoGMtN5bce4hWAT2JVWaLb4ViJwaxy8Aj",
+    "discoveredAt": "2025-12-28T20:30:40.034Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "3whnb9BCKSYHNiiQSq2B7jjnzA9xUeihH72KqqFLfCQR",
+    "registrarWallet": "8caQvQRVYmZzEJx5qukVoUsAdoTEZphhDtnK8qEnHcYX",
+    "discoveredAt": "2025-12-28T20:30:40.954Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "8mrCULaJHWMsdyokh7nr2VUkxjLGsFYFgDdrvrBfuZzH",
+    "registrarWallet": "3bJadUMAUpA4B4Dk8hpPsW64RHDQwoZRn3jFrqB9Avq5",
+    "discoveredAt": "2025-12-28T20:30:41.289Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "EHwNg8NA4Juk3DSzkeZtmWQAM6NZNrpPvCoK5qNX6zEV",
+    "registrarWallet": "CNKdY4UMZFwi5RHnsLWReCjaE51zL8ZydeCK3acyatqm",
+    "discoveredAt": "2025-12-28T20:30:41.628Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "2JHPTQWYoMoneWRD9cnXW1JevJooeNoXSRCNV9U8ErUr",
+    "registrarWallet": "A4LjB3La43uHYK76qWu5MBrPSKVqCrbHWzBiMAphfuxj",
+    "discoveredAt": "2025-12-28T20:30:41.984Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "5FTjEc9cunjqonYAXWQgQBWAQNJxuSjUHQJsfkgqxybG",
+    "registrarWallet": "EjfAAzmuXRh6RzxQa9jQkJMS7o4vwTgUZ9RpWDhHAQkX",
+    "discoveredAt": "2025-12-28T20:30:42.288Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "7g43sBPnZWtAL7gyZ25qtxfJ7zfFB3xi6XjbJJtyUr2h",
+    "registrarWallet": "67Hw2swFDibEVEfN5QRbSEAiXgYevvLJjoHkpsTW6JbH",
+    "discoveredAt": "2025-12-28T20:30:42.609Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "C5K7AnTgVhZ2mvQNRrwJ16K7Fq5E5TCuTtBckg8vP1T9",
+    "registrarWallet": "8Xp6t5L1kUxYkUMWjkWb2Ent8Qsnj5cLAXHAeEhpk6JB",
+    "discoveredAt": "2025-12-28T20:30:42.933Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "Gs2eNqJxDRwmJD5Gmh33PidyDNtnySkzLw5XeV2xVnwZ",
+    "registrarWallet": "FgAg1e67V9fLcEmwtos4KXPCzf8hvHjDnKECh6zThHEF",
+    "discoveredAt": "2025-12-28T20:30:43.261Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "AordT9Z7gDCgy34i8ubwxocd6KGpCSY1dsM9usYfZFpc",
+    "registrarWallet": "8sD7xc9sDrouXQpsjtn6nR4sm5AkrMcFcqQynV5yuERV",
+    "discoveredAt": "2025-12-28T20:30:43.696Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "8hYohqvLZHnBSzYGS7yR4RqVdA9hZU48KmEsycY4qcCk",
+    "registrarWallet": "ANzgvdtJhJHZHxJpkxrFaWnszSFmdQk3pKBgyu5gqeBR",
+    "discoveredAt": "2025-12-28T20:30:45.261Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "7u2vPk5x4ymTTGFrDYJoTGGn8o3LuAMPQD3hMPweTSyd",
+    "registrarWallet": "5bZXWjREFqGFzmZ3BBJmBXWMCnBnTeWbiHVyWS92fvX",
+    "discoveredAt": "2025-12-28T20:30:46.718Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "H4B1YQd8Rv6EGtXBdarsPCZX8JNjNnckK9bkhHZhfq91",
+    "registrarWallet": "92qjX8aEFWVSfgQcRzqZvqd7qmw2WfQcsXHz7e3X5c5m",
+    "discoveredAt": "2025-12-28T20:30:48.867Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "BFvbsSGUAhPzhiZhK1PVQvX5fd1Prhog7Dpkgbo9QpQV",
+    "registrarWallet": "CCLJg75oTRwZFyz2BDfWB5EXGkCmya5T8ocQ36ekUtM5",
+    "discoveredAt": "2025-12-28T20:30:49.186Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "CMK7KFQbRd1k6zsvihgDwPhvh4kab2wRiu95mkpn7mtf",
+    "registrarWallet": "GiGcpHddNWHh2tVg9Fr4VWNG5K25dq8QChBLVo9Vmg79",
+    "discoveredAt": "2025-12-28T20:30:49.519Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "74h474xGaHCeJdofjdGU12oNuBYf8oQRvBAkReQ2K8L6",
+    "registrarWallet": "42uXRzJPBBqbF2m5QCw99zdUopd3AHS4mdBTeFoWpFEo",
+    "discoveredAt": "2025-12-28T20:30:50.450Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "BVArYVKHFFrcSPLub8sy3cty3eNtjveSrC6ZBBG2nqds",
+    "registrarWallet": "8BUx1yNBQtMS4EjvfYBqWEgVs9qcDs9XCgUAhAhAfwp3",
+    "discoveredAt": "2025-12-28T20:30:50.792Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "5hHxp2uvJg7JyG6oMHUcneuiwY8HM2T4Kf2PfEtVZDRo",
+    "registrarWallet": "8tAmTCK6xjq3X2E8tHUbmg3tdXNpDXGMQHupWUFaASTZ",
+    "discoveredAt": "2025-12-28T20:30:51.102Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "6Dcj4dKp2NHRawgyzDPjJ3kzbN4iy3tE6ZSNFckw77pD",
+    "registrarWallet": "45KgTW7fk1ZRvyuaj6twv9ZWEeKH7LyrS3N6bE42E5vw",
+    "discoveredAt": "2025-12-28T20:30:51.418Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "GJrzUjh1y8s8KU8rDGAioZwC4KYmE7EZcXErJQFBxZWi",
+    "registrarWallet": "GfL7whufgdYbzTA6fP2RZHF8JPhHCs1exhTHzo1FzLoZ",
+    "discoveredAt": "2025-12-28T20:30:51.727Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "HRfbUXFwqiec1GSTctRNx6eEsrrXJL3T8qd3FmZVdo5x",
+    "registrarWallet": "EMPbaoBfaDkzF99bzqbxBWbR4XcnxR81cRCbtrnjJzDV",
+    "discoveredAt": "2025-12-28T20:30:52.087Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "DkCfVNbHjTT3aG6UXx1KpKJVsgiaNcTqatkjnmtzCTPq",
+    "registrarWallet": "z79NoLNkEf4vxiJZyjxRCPnrNi7aNFVDA1X8wrqjFkT",
+    "discoveredAt": "2025-12-28T20:30:52.963Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "DGQzctAVF7Becf19NUpDGpJj4xjgmVd2hY1aQMt22Vid",
+    "registrarWallet": "4E1X93KyWmgNY3HnuzkHtxRfEgcQSd94d76UsB1MaeNb",
+    "discoveredAt": "2025-12-28T20:30:53.288Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "F5zCNTjGPn8gfDEu9ppgNYLBafqSExzA68MfgHAYoF81",
+    "registrarWallet": "E6pydHpzQgRBhN7s1xqxoW5DQRCaA956QDZYYC6AGsHH",
+    "discoveredAt": "2025-12-28T20:30:53.627Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "6ZFjPzWHCNuUwD5h3wh7cVGPTUNLdY9jS8vMy2wCe5xF",
+    "registrarWallet": "3vEJ2e2HQof3qkvxBWYiyUe6BE8DC9SeWk4D4BMiwT99",
+    "discoveredAt": "2025-12-28T20:30:54.016Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "FrJGWqX4t7tZcT5o3mysCmTk41okbbCz2ZHxBaUyuYwk",
+    "registrarWallet": "DCPvPJqYpAyHVBrvWEeqHv4CKrPHjZSiqUD64FZWteP9",
+    "discoveredAt": "2025-12-28T20:30:59.669Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "3VzP3kig5KGsbjSQMor65fzbfCcUtFHeDXs4u8KGsyVx",
+    "registrarWallet": "7V6hV2Ag4zDmpogwBT4DtMgWsYtA7x8b64ij3SYH2at7",
+    "discoveredAt": "2025-12-28T20:31:01.709Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "9faUshVgYVPBLhNXd5gR2Ecb3cMKFH8uLEoAFh4WduqE",
+    "registrarWallet": "DYwLi3sD5P226L3cWoa9FpZ7X5hwVMsAPGf8WvYeD4B1",
+    "discoveredAt": "2025-12-28T20:31:02.080Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "GCRhwPGMStrrnDZSWhNRPpaU5HsmEmdPPxAigxYs5KRi",
+    "registrarWallet": "EgmDwfbHR24D4pKbN75EhYdyPYDxtE5pkKu83gYF4nPy",
+    "discoveredAt": "2025-12-28T20:31:02.411Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "8XSJYVmDhqAVrRw7b2MJkTToQ9sm8A2gE6wnHaZKhtw2",
+    "registrarWallet": "HvYTbpqFdCr8RMaT3oSjyYuoHMGEKZAZ2gJvwsn4VXCT",
+    "discoveredAt": "2025-12-28T20:31:02.840Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "4rHuBZmJzQMehLWqkzxFnmmg7KReCsxtiQm8BPdeJLpC",
+    "registrarWallet": "6ozChYhBvahvdEMdTftSmsEVA4EDd6ciS2qq13RM7fqR",
+    "discoveredAt": "2025-12-28T20:31:03.779Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "E3iUC5N7BwYey8YiY1P7984f7RhZ33QdGznUanFUPXH7",
+    "registrarWallet": "EZEP2xQCKDq1Fsm9Qr87eeotCW1oiKrb3AZJKZ7P8AaB",
+    "discoveredAt": "2025-12-28T20:31:05.258Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "GQa1gq9H45Gmr1DbZAD7ezd476Y9cPpg2LTn8nbmxLWz",
+    "registrarWallet": "66pmGgBjwghyfAakfXzEEtgvngw4qng1YVxACsPFR8oy",
+    "discoveredAt": "2025-12-28T20:31:05.572Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "4mVM7MVKPEbuWfo5sNeAs4oC8itCYq9EagBHX5yvj2QP",
+    "registrarWallet": "DiJCTiezgNFnXvyzXaNjGvP8YCMXpNCvbwutwAPC41Hy",
+    "discoveredAt": "2025-12-28T20:31:05.883Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "73Z9mp6aGh7GjHKRK8Ghi2QiThmLUkVjNDC9wNTbhJ9h",
+    "registrarWallet": "5VgykcDm6nmrcikkNEC2gfJ3m1UiYdMTfkNFmDoVEurF",
+    "discoveredAt": "2025-12-28T20:31:06.211Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "4Fg8kv6TQAG8WGyv4LNFfJDiYtCwk1FL5fVpqNEeEy9H",
+    "registrarWallet": "CsarRUSGMtBBthMSaauiGQDP4ehn1q7txXse5rAeKZiw",
+    "discoveredAt": "2025-12-28T20:31:06.550Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "4xn5Arybc42d5zmrWAQLc7Y1pWQcParCAxAubUs2ejzW",
+    "registrarWallet": "H2gb5QRTfJvN33TkQu1G35B62jKCuhWxGfNNcTBDKX5H",
+    "discoveredAt": "2025-12-28T20:31:06.881Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "5ZCLLhzKjdiU1vHpDkW3LmYNJFkyTu3D5AMixGSFbZmM",
+    "registrarWallet": "HyEtuon2Lo6wuF8wrqdDPrHsrnRkqTAz56Huccobs3fm",
+    "discoveredAt": "2025-12-28T20:31:07.234Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "A4zDZUsN4ew4eTRM9rP7DN7couQfPG8Kp7keu2RTAXtc",
+    "registrarWallet": "FkNgsikNzyvhBB7Wa5K7FjfFeKwJzxzPLfkBKz6K415Z",
+    "discoveredAt": "2025-12-28T20:31:07.582Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "GBo81drSDfgE6Q22nGc9NbfzBF44UeJpgAq1qK4ZPRmq",
+    "registrarWallet": "6B3g6suTLBQhpKQX2BcoXpN8boEsoQnLvBPhW5B3ZfbM",
+    "discoveredAt": "2025-12-28T20:31:07.950Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "FCCqbT8k3pwa3MqurTbN7Qy8BA3VFxq1nxcJzQaoPSQT",
+    "registrarWallet": "GoLuH8PsWqeudNJ46cib9qejz5ZbSiDPbZctS6eSvKts",
+    "discoveredAt": "2025-12-28T20:31:08.302Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "FKzGCDqkJCYm7e2dmUQitStYXzbDNcLaTxgFwKhSX7dN",
+    "registrarWallet": "6Zn6Bhhmh2SVP1LBmQr7LPntk7VViskA5uhrn1CuwBj5",
+    "discoveredAt": "2025-12-28T20:31:09.607Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "Ajd5HeZUU5KRgHQ9RzLTe8EKfX6LneoPYwaAXVCmxYMm",
+    "registrarWallet": "7a1QkAoSegh5N27pAnMEN2jbGMP4UfubQST1nZNrZHA7",
+    "discoveredAt": "2025-12-28T20:31:10.002Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "83wd93BkjJhkyZaF6XfHJBgxkFC4vnMia73Q7MhDATjK",
+    "registrarWallet": "EpLnoDVCnNRugLqr3eacfmNSva5PQEkuFQkWfWRVUW47",
+    "discoveredAt": "2025-12-28T20:31:10.370Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "7pRC189s7vDAb5HwN4RxmQbtnfbcoEFR2JUp9Smx3Mpm",
+    "registrarWallet": "5eVh6CxGKoQQm1woKfWT21JQwYbYWjoQB9tyxawLvNK",
+    "discoveredAt": "2025-12-28T20:31:10.723Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "FDU6NoJY1VHuQqupEBvftrpp5SFcunxjv8GCQo4hGNCV",
+    "registrarWallet": "55QaRb7pRqXQDPzPZpuCTg4ZNGcbctyYPY5aeosMbiLX",
+    "discoveredAt": "2025-12-28T20:31:11.092Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "71wUjoX8BqeKKPCj3UgDCafFi61Ckvn9ZAVhfuq8UdDq",
+    "registrarWallet": "86PynvxZRhCVWUd5FcHiYxXPnMugukGExmtVuzvk4Nj1",
+    "discoveredAt": "2025-12-28T20:31:11.451Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "5jqDRvDgR86wMQhACF1jzTYkbRaL5WP3Y4trzEu2H8GA",
+    "registrarWallet": "J9BGPMm1obEf3GyFuwwMxS9pSEmr43K8h45k7n3XcC87",
+    "discoveredAt": "2025-12-28T20:31:11.790Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "612gK1MFHHb3vgUEQaJic3ngVANGfWezJgkM2yQLLAog",
+    "registrarWallet": "76DRXyAJLEkYDFkt95Vj7tsn3JM9XxAUYFsNxdMEcJZM",
+    "discoveredAt": "2025-12-28T20:31:12.133Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "AF1nYhMBVyh644Cnf1UihiNpjQAZCiuLmpBzAHUHUjAL",
+    "registrarWallet": "3QpEhvHEhzXkG5UoQY2VjkqNqv31tk19mgCQC4hC8kud",
+    "discoveredAt": "2025-12-28T20:31:12.458Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "7vR6uJSsgYdeA5pMDHxmi6gQdzLUyxELwsxXcqFPisDi",
+    "registrarWallet": "8cMiPRf8KRDiMcysPX1eFWiPZjGqC1oGKwims6HB8jmh",
+    "discoveredAt": "2025-12-28T20:31:12.827Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "8z8yhGUYMFVJ3pFkoRRRPTedrL3HUtYeYf5trBFXCfzQ",
+    "registrarWallet": "C2Y7T2BMrLJ54293K2USTjQisaJYCdqE8sM7qGQYnmpK",
+    "discoveredAt": "2025-12-28T20:31:13.233Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "87gyhnKRxWTY1mowkwixMZdhu4K1buRyLzBi7wG2T4P9",
+    "registrarWallet": "9DWjnoCMNYqzpH6y4wYJGZJvit1YaV5hVAJLo3SDFnf1",
+    "discoveredAt": "2025-12-28T20:31:13.618Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "8bb2Dpxvr8Poa72hdxwmL9dLFDUSqA7aVfnDBufAYw7S",
+    "registrarWallet": "EUkSSFfkpU6Cjrvq3bYn3H6SGH9ziKiLciGNQZ74WTno",
+    "discoveredAt": "2025-12-28T20:31:13.972Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "7UjrGX2eKRZwnVE3tJMFgySvTzXh6THaiGhynS5ra6bi",
+    "registrarWallet": "HRe9gBTq8pB7wmWMGJSB8znDksgx3y6pFFpxzT6CZQE3",
+    "discoveredAt": "2025-12-28T20:31:14.328Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "3cY9NgMa6f8FqT2F5YH6n1345y5ysgsZSCMEhcz3GnRb",
+    "registrarWallet": "3NRYTLt8hYBhWjK6KSN3tHDeorz4TurDG5CwqhnMou5y",
+    "discoveredAt": "2025-12-28T20:31:14.675Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "EZjQf56wVftWU3er9CpLQT6yJcvRzhGnpnQxy9dKsUqu",
+    "registrarWallet": "89LpdHZPGRpqZq2J25Wn8hpmW8rjHK7a714k1EGZDcjH",
+    "discoveredAt": "2025-12-28T20:31:15.086Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "45Att2oLNqewT7ph6riNsYAwZuTLjtKUJS7Ht2BGWqZm",
+    "registrarWallet": "FofrhiZZEewswsE9HTN6De2A7RKwA6RebdxDc3iejrjR",
+    "discoveredAt": "2025-12-28T20:31:15.484Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "33h5JDCQCRdPmRW8faY2KBsKaH5AUa9LszzxSzNaXuuM",
+    "registrarWallet": "HandpyayMbMbFGZfQaujzh6RV2DwaVrdAtZYzLZcW6nb",
+    "discoveredAt": "2025-12-28T20:31:15.888Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "DN137GTioZjxdLqXDbWYZkisSNrB5erD3BFTM3Jx44Dt",
+    "registrarWallet": "FQdysY4i2WkRqp16b5n2htWoyPfzMuPexJ7EJ6kS4AvK",
+    "discoveredAt": "2025-12-28T20:31:16.269Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "D4gKdHqyUFL1SjmZUTRoCmmCJHpP5CQAVKdyZGsHAGLK",
+    "registrarWallet": "AZ6XTd4ywynPXRocDQBshSX1RU4hnKEFqdvNssQBgB11",
+    "discoveredAt": "2025-12-28T20:31:16.627Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "xFtqDbUQkZrAW5dKwhkFJBMdsbFpfNNZEZz7jtHXUCZ",
+    "registrarWallet": "3ZXEAcdWSovhwAAucicuyyRRqePkfHN93ryBTzrRFuU3",
+    "discoveredAt": "2025-12-28T20:31:17.577Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "BrcdMQ2dWH2HX2sMQWC7LXPAg9wGrfjbJinKFu6dT8Gs",
+    "registrarWallet": "HtRtUn9EFhTiqH1ieakhev4dfxhkWXjZgutCYEB8KiEB",
+    "discoveredAt": "2025-12-28T20:31:17.946Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "5bBpL29938GDTZpJQmLdhhtWVfNCFX7bVGwZza3bMNLX",
+    "registrarWallet": "AxB2f2qdEoUmuQdpq6zMFoLFGpkdphr7BGc4oBnKUDiF",
+    "discoveredAt": "2025-12-28T20:31:18.333Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "7ngSwEcpCe9h9qo4wp2wtuWF2g4eMUseVuSCHkqWmWFH",
+    "registrarWallet": "4anCrdmFUxqzHq8uyfFqwdaRsyLfVQzHVpbmMEGry1Gj",
+    "discoveredAt": "2025-12-28T20:31:18.694Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "GR1CLyoVumDtHENyfdGcLVXMWn9mWwpeqYEyXiGYUm2G",
+    "registrarWallet": "ACpgtG1PgfEgZmpphaELnkbxn45WpMFEJZWhHBLqTcRu",
+    "discoveredAt": "2025-12-28T20:31:19.027Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "Hsxoj9aPduSWZmhhx4qKQofgVGKWKJfUnNbH3eidGgY6",
+    "registrarWallet": "Gzdcey295cDem3xydpnhFAP4BgJXd1mCsMWj5Rpfy9iP",
+    "discoveredAt": "2025-12-28T20:31:20.326Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "DSZfbeHPQ62woiPZesXCivnMVYxhxpSEd8tjTfKBzYhQ",
+    "registrarWallet": "4ijvsrYgT1W18sZTdDbxs1cbwPDoPPVLqvKtkr8auPaX",
+    "discoveredAt": "2025-12-28T20:31:21.338Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "AYnvcG1CMGyBokia2hMzDCJ5PtGFCLHDzmcu96qWM1Cm",
+    "registrarWallet": "F6VvjAdSo8BsqfqWBPDVkWk94ATvmGMHLzpYyjVK6dcT",
+    "discoveredAt": "2025-12-28T20:31:21.776Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "GpWDY3qpHBQBGLMQNYkXFajq9otEdDfHJ1xCLAVcECqZ",
+    "registrarWallet": "3ziXfgkpgN1wm4paxmZWUJhtP2Fa8riRSiQUEDAqQFdh",
+    "discoveredAt": "2025-12-28T20:31:22.158Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "3s5AHx5fyTVdcu5B9U36XMpK3Zo8yQLBZESkawDoP6Wr",
+    "registrarWallet": "2p92RGTE4A6CmsvBnKKMeQQWZuvU79DgEfMjWJJbXM11",
+    "discoveredAt": "2025-12-28T20:31:22.577Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "2MxpDSY1pnLxGabrZQdNrdUr7fYi6CnBCZSK4MpXDMcx",
+    "registrarWallet": "4yZ4BCB17J3NfdTTxu5rYQfhrmeqnJ3PCCtRTfcMMhMR",
+    "discoveredAt": "2025-12-28T20:31:23.613Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "DJ48SPmf7AkFmt1oWEqyqQkAziwMGMPFBBMhXcNit1D",
+    "registrarWallet": "BtNx16g6GbZR4nnjTU5ywtCtbxU3dtJWaDyXkkwntGEj",
+    "discoveredAt": "2025-12-28T20:31:24.048Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "BJpfm26wMhL7uJzznHLpnMXC74kb2GDUgtrjzrqPX4NT",
+    "registrarWallet": "2HLV1d8HdFanmG8WsPhKAJaEEeZ981E7xG1C25ThLXRZ",
+    "discoveredAt": "2025-12-28T20:31:24.473Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "A8vm47SkQ1MwS1MKgY8qnjoCwNHS2dPbTHcJXWRvgENn",
+    "registrarWallet": "5zkEzGPwcB1dAf9zsT4Xh1euaweNLvJ58LtJXEvR7fyh",
+    "discoveredAt": "2025-12-28T20:31:24.891Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "FuCRyA88f9h6c5XSiWx8xNCYUpNg69Ph4eVLz2MqHQsJ",
+    "registrarWallet": "GzXYfyGFj28Hmai5iKkJknfFLo8rm6waMFd3SPhwkXy1",
+    "discoveredAt": "2025-12-28T20:31:25.318Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "6Daq8KUF3xe1kTaTTe6wsZipA2cfeG9FiNhef9AqW5PW",
+    "registrarWallet": "6vP2jURMKN1SLGsMogo8QGAFZd9ijxVBdJ3iMaaKJK4b",
+    "discoveredAt": "2025-12-28T20:31:25.760Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "HRhouD2SLvGLUCVNP83NZSekMqL2d8D6sLvZQNoJrxmA",
+    "registrarWallet": "BEm5UhyfutNVqjy9j4Jnov86GpUznrykTx4ASVAiBKrX",
+    "discoveredAt": "2025-12-28T20:31:26.190Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "Bfn2sfa9yaDkShq4Mq2eMmdTw35yJxPyzCiytNiqSxCX",
+    "registrarWallet": "9tJR1rvvZZgr4t4oYq8fveegAUKouWRMN5Y5NzD8U5aF",
+    "discoveredAt": "2025-12-28T20:31:27.693Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "3uXU37DsaVqZ493n7zbFMD3SCAHLguAF9EkUtU83Mm9X",
+    "registrarWallet": "EULHbGiW4pCPQ4T9zGS4tFi3u12PZaZSExwqVsgvAhfm",
+    "discoveredAt": "2025-12-28T20:31:29.177Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "4mdmbePoBNWBJVBq69DeXjdeoTZBfi9nWWmeCzKcyfpq",
+    "registrarWallet": "2ZjZkm25PmFC9JeXoBCQ6V11KGwJJENhDuGUzFx51gXR",
+    "discoveredAt": "2025-12-28T20:31:29.570Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "HtqqnUuGSM21C2PNQLDjevcmmGY38CupNAGWcJi48pr8",
+    "registrarWallet": "9CidnALVJHsHsAwVHqjYZwZr4VA5sMa2BbdDX2EKjjv7",
+    "discoveredAt": "2025-12-28T20:31:29.930Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "FbqU9um5MVSbdHDMSwCxEtJwcgWQBNxVj8pQ4yTwpbqy",
+    "registrarWallet": "ENwjimnQvJJEamSR5eY3SrSoFfCqMAGXT8xwjV3DezF9",
+    "discoveredAt": "2025-12-28T20:31:30.333Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "4aaoVTC4XNHtfpVhSiBEwWisqGi2RWL33QbAH3ckEJXB",
+    "registrarWallet": "4kpxwk8o2to1LF6yvktHEBoYKPcYdW5thLywG6MasJVd",
+    "discoveredAt": "2025-12-28T20:31:30.769Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "AsiEBUFkhDh7igEKbb2D5PNm6buFGuGFYG3jqTi86231",
+    "registrarWallet": "AKfRjHri78KjNtYeinHSEAW2wVdAruGQVsvU5cWfkTdy",
+    "discoveredAt": "2025-12-28T20:31:32.222Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "X7CduqmTf3To8btcCuKcUwJBTsxr5oSH84n3Jg5pzLu",
+    "registrarWallet": "EMo2JjPMhzhvgiReBDf8FZASwrbxQmzkV46ComwMExQ7",
+    "discoveredAt": "2025-12-28T20:31:32.648Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "E1rgJg185MKz54veFTBFfgzFSy5hax24BfswHHYpNwaL",
+    "registrarWallet": "7fUcFuBAYW7JKWu52aQwz5EaXjg7fkLyeH4EfXropPaP",
+    "discoveredAt": "2025-12-28T20:31:33.108Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "BcEvo9sWXTJZuxh8sbnEu9jeNMzcySstMkrvfVig88v3",
+    "registrarWallet": "G1sjKCxsUPXDGwwgsV2DLh7g7FAcBZCJKQB314Wt7YjZ",
+    "discoveredAt": "2025-12-28T20:31:33.497Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "EZaJBPtECsKiC9ypXYumjAPVocAra5hxUPGRb4Q46vGL",
+    "registrarWallet": "9SBfam1n5DP4tzyt3aXmvTN1BXKtKocgRU4p69X5xduH",
+    "discoveredAt": "2025-12-28T20:31:33.888Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "D1kgcowoC2gz34gzGVRmiyv3M6fEk34dZVfzdDLzrnat",
+    "registrarWallet": "DWujPwQhE3YqBmAVEyX8sBeNtRPXGhTFRuTTvbgN4yNw",
+    "discoveredAt": "2025-12-28T20:31:34.307Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "8PjjPkizL4JZ54sPzNdXP99XyegcXrayv7rpfAY8EdzB",
+    "registrarWallet": "2UkgvR6sthsf9HjanaPsV8FbnoAKn3tLs4Xhvfns8aEK",
+    "discoveredAt": "2025-12-28T20:31:34.768Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "GdBFxawSFFet8qm8SjMoAmXzTRNqXwuT6KCs69vSbThd",
+    "registrarWallet": "5aN9JYm6t7SafmgazczY1BREq4hta3CzvGtLnGJKNf75",
+    "discoveredAt": "2025-12-28T20:31:36.186Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "E6xcDhyHDVBVeMWQyHxuT2Yr9L4zR2iFEHEHYiyCn27h",
+    "registrarWallet": "5VuY9EGCJGZMcKXHRbLB89E2d7pXSXKRdVDJTKLuEpSK",
+    "discoveredAt": "2025-12-28T20:31:36.601Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "4HJBsZ7Ci9mPS8G852d2cbTKwP6sF8mMq7K7N1FUA2eT",
+    "registrarWallet": "ARNuNz1cjSdsn4ZybT9wXfLzBJJrCNHttqJcyAo2eNrT",
+    "discoveredAt": "2025-12-28T20:31:37.024Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "6ChaE31GtUFZt1bSQtem3YgFsohgjL8kdZrEgjL64oTs",
+    "registrarWallet": "96eSGWYDX1WHYcEwYjLXS2WMckkny4BFWNpjLttCUBjD",
+    "discoveredAt": "2025-12-28T20:31:37.427Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "S1YiKV8Hcb1VfuLREDbVDmxhNFqRTAp4EosCMZQvb4Z",
+    "registrarWallet": "5UE1QkgsWvz8JEhwLjouxGbsDYU6LqPyZ3jnqyHNAzw9",
+    "discoveredAt": "2025-12-28T20:31:37.838Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "2UBKnThsDweXQGSgsovCAawRJtnQ1VGW7oBJ3pzDyp6E",
+    "registrarWallet": "GwnZ6ioPBJhD2sEThuUSU9dfjqQceinHArzhnWGUr9LT",
+    "discoveredAt": "2025-12-28T20:31:38.951Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "Gca82oEYyzxw4gpc98GejMGMGhD7m4SGjEDMLJZepcWT",
+    "registrarWallet": "4KBaSLbV6Ega9xHxr6J5rxrxWh3HF8QJxLrdtTZ9gL8f",
+    "discoveredAt": "2025-12-28T20:31:39.310Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "ErLHKpaYMyGfRd5rq2F27Bb6s1zwXE78HHdyJ6ccXjbs",
+    "registrarWallet": "61TUdSAYUYVmUhkPeAt72txpC4kmBqBxR8YwiLSThSHV",
+    "discoveredAt": "2025-12-28T20:31:39.731Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "Dg5Djdb8w4HAAxeVvHLgQf2GeKDBEwmGmxsfM9JNMFe3",
+    "registrarWallet": "5EVZytcbssGJQerZAhANRy53GBtbHBsBh5dn1skdyGxF",
+    "discoveredAt": "2025-12-28T20:31:40.162Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "AtngnETYtSWTH8Wat6xUYcQQDj2KQody8euT6H2wTvJm",
+    "registrarWallet": "23R9rR5DgD3bHAMHLrDVFQiPxcKp3PXsCQVEZE65DytK",
+    "discoveredAt": "2025-12-28T20:31:41.259Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "8QH63zWSTHGwv6fETGPvS4ptUsXfkuCtW85dbm9qudz9",
+    "registrarWallet": "2Buo7UcQXb89krFgGrUg1UEzZBwwb5xEXBewGuxAx1JX",
+    "discoveredAt": "2025-12-28T20:31:42.672Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "EyPY2KQQoLAjmrtC9gmQxSDzXTZPKTTtzRQGKvY8Magr",
+    "registrarWallet": "C1ie8TG6H9GoRRbrMS6cRPgDUqCurvzvSiTKi7aoiiwR",
+    "discoveredAt": "2025-12-28T20:31:43.076Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "2JTnCX3Y6Y4hYDak9zUmF6c9noSqkJVHrKqysx6hMnwZ",
+    "registrarWallet": "7uj9QuViNMqdKGt1xR4Rfnq49bheT4QaHtQGjK2kwrSs",
+    "discoveredAt": "2025-12-28T20:31:43.469Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "CxqdcsmVQFWanPvbYMVKBC9LTHgUnPiZW1xB1WSqhQ34",
+    "registrarWallet": "Bw46U8YrffsGEpPmLdhrPMw1T1qXYUqNMKNZ33Wqzby1",
+    "discoveredAt": "2025-12-28T20:31:43.891Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "FQ1ryXDRNJBkvDWarfMAXBrc34vQzHsEF6CzNe6iP8vp",
+    "registrarWallet": "Ece1abDSGhoUpZZyqcZmEk6Fc8aKu6V6w1smP2LdsLvb",
+    "discoveredAt": "2025-12-28T20:31:44.302Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "J4gKhHPWskrrqjWDexKWPWdp5M3mUKYAPWk68WvNzAbJ",
+    "registrarWallet": "6e6W13B47n2ekzhcMgBxHS48XYPNTw3uzVEBBdEWfPqh",
+    "discoveredAt": "2025-12-28T20:31:44.718Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "EmiQwJYVGRmjR16aYYrf1B81QCS6frjN6QKNJxyRTmaC",
+    "registrarWallet": "61Eq1prTAFE3stFyphBfQn5XtANtMcmdm8ND8gG2Rcaj",
+    "discoveredAt": "2025-12-28T20:31:45.174Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "qnH2P6rdGD7BmR2nJa4yVCVvJMDcAza3pduzNYuAyKr",
+    "registrarWallet": "DkjTbLqsBAbTiKfVBYx2LfzcbxVefdKzaEpCFG1fmidM",
+    "discoveredAt": "2025-12-28T20:31:45.591Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "4mSYVehNtCwFQme3Px7YGfva27Ysy5NfjKX5L2gDyUL7",
+    "registrarWallet": "8ti64pRVURgayaGqmsKsTWstd4w2PXyjmaEqYqFUYjUs",
+    "discoveredAt": "2025-12-28T20:31:46.014Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "G7EvPwi8xhhRncfnrgicjQoBBV2fVGCHfBRGjB72vXWP",
+    "registrarWallet": "3BJb5ckUUjYaucZfH6VCfAVoiyQ6NDuabMH9ENUC3Sbh",
+    "discoveredAt": "2025-12-28T20:31:46.452Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "FCpcGCiagPgz3z1xQNoAuQYHZZMM7S8fehiD7CarNsjp",
+    "registrarWallet": "EuYiZ3mbXrfyUeKDtsnDSoAuu5iXTUgFSQnPCiqYM2PH",
+    "discoveredAt": "2025-12-28T20:31:46.879Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "8nnT3PCsaHQpGE4iC3rsCCWiZHjq427uXAyaZrWWT1Ay",
+    "registrarWallet": "76SsyVi5yHDFMuXqfywzmjEeTh2ZgFmfwSJeVAspVEdu",
+    "discoveredAt": "2025-12-28T20:31:48.012Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "541x4yoEytv63XmSyg51VS2HSF7nRVJxim8E461uyMm1",
+    "registrarWallet": "GUsj79np3Di1rpQKfarnjeEFLjisveeEWz8BkFhBz2QX",
+    "discoveredAt": "2025-12-28T20:31:48.453Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "HKtSJYfxo4VxcyEZERELdebv2uoLPtDq2hyLKtSq1wtG",
+    "registrarWallet": "9jMuK42T78oDsVnVb8yoPEUoex8QaNLKGLbkLiPT3s3M",
+    "discoveredAt": "2025-12-28T20:31:48.889Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "6kiVh6n3nK2vZAe7n9fcxGmLvKLRYRBunki8t898aJQX",
+    "registrarWallet": "7ZqP7g5CysA1irxnd7rui3Sq8xsBHgFEdxwprfEmaAtf",
+    "discoveredAt": "2025-12-28T20:31:49.327Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "AWmawUWzdBo4HR7J8hks5zrFpNj6PpTCwirGUb9GQuNn",
+    "registrarWallet": "8pv2i3s2EALnkVjeRBcZVKNa2rhy1PSLCR94SrxZcXYj",
+    "discoveredAt": "2025-12-28T20:31:49.755Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "GhiAKCQeHvA4chDhxsRhyoHn3oNFZf9AgLmK9NjNJSRK",
+    "registrarWallet": "483QVwUGQGVwzq3DTMfv9Wfin2hf52qa7zmXN49mtEn3",
+    "discoveredAt": "2025-12-28T20:31:51.693Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "HeYMATQMHuFwDBbJqmwu5PHB7zx2GyhaN3PiCw2w35bc",
+    "registrarWallet": "CQLQ84xC9HNvWm48nqNdpPbyF71rwMBCZjfHq4Y3uJhm",
+    "discoveredAt": "2025-12-28T20:31:52.083Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "EfuyNb75JQ7jvGhrgPhrRUbrWSt5xrJiWiwehubPdKry",
+    "registrarWallet": "G2thC8BwxWYrekWGZ2fHVftXUtBqmW56TdSF9Prz7wu",
+    "discoveredAt": "2025-12-28T20:31:52.520Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "EcTqXgB6VJStAtBZAXcjLHf5ULj41H1PFZQ17zKosbhL",
+    "registrarWallet": "6iABQ7kVxG1KMaj4sCwWjabEbADDSShsnZmrWKhywc63",
+    "discoveredAt": "2025-12-28T20:31:52.920Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "EJXe4QpPnCw6MMrD2UoFqrNRSKhMvngReeZJKUQxkHEi",
+    "registrarWallet": "BKPFkX67Amr9fmY471bfqF8Nm9EYAxcugp751PLgjTm1",
+    "discoveredAt": "2025-12-28T20:31:54.337Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "2UPXgGizp9cCea7SFUeSTxLJ47aKfnUUXt1Pr3GGk4fp",
+    "registrarWallet": "ETvP1q5KxYsYpPdzJVgwzfZPWgFmXZvf9zCJ9vNBtrrB",
+    "discoveredAt": "2025-12-28T20:31:54.726Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "Ex3n3PV4cGyAfLaNvqkS9WYFgWnDSgcXxP5NFc2tEwiK",
+    "registrarWallet": "8UMGk1tEioT1bwAS5B9Kp25uDRNgvuj2E8Tcp6UDoWFq",
+    "discoveredAt": "2025-12-28T20:31:55.133Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "7gVyZzXhbwPvjJkijcUDdWfdaCPYyrrJKsHrRzRenGch",
+    "registrarWallet": "7yPNjPCmGSyukxEmqTJgWDij5YoJyGFXHQJ7CgDTJtpf",
+    "discoveredAt": "2025-12-28T20:31:55.551Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "HESdYK2cVpRYrUjMb3EFy9zeXGsCMgniGkZj6nEty9W",
+    "registrarWallet": "JBoid9kTqCG434XaBYFWTQr946EcXH6XJPNr8chUpL1D",
+    "discoveredAt": "2025-12-28T20:31:55.990Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "Dy8ssCKYydJc3b64swrfLP2Yeiv6EpjJRzd3roPoFXT2",
+    "registrarWallet": "Fo6rHDswfQrRkWL5YwzrSi4fKKQXsb5gMYQ7haEjXHPM",
+    "discoveredAt": "2025-12-28T20:31:56.458Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "B9RYx26we5QmKcVFr7HYuTVtYNWkSHV7Z7PwF5fdmqu5",
+    "registrarWallet": "G6S59isqVMJTjxLbKcxKXYJcKHBMeLxi6YGXy3vee6es",
+    "discoveredAt": "2025-12-28T20:31:56.891Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "GjGWX32qcfbe1Zp4f3UiKU231VJ1qtnTg5WuM6wCM4JK",
+    "registrarWallet": "Hh6yQtA1cXnSURh3yGizgFuVvVaScUjKiW1wwzQSTcX9",
+    "discoveredAt": "2025-12-28T20:31:57.326Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "HoAsaKSWFg7fELdCiiwvT48qFjRLagKVRvdQJXZ9o2XY",
+    "registrarWallet": "6QqbgZGmXp9Aps1Ugw3MLpNoos21KC29WVq4D2AdoXoD",
+    "discoveredAt": "2025-12-28T20:31:57.809Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "E9UW697xb3TEomCzcHAJHmkaqdYQfexjUbGV4qajRmkD",
+    "registrarWallet": "CcXFkbJ2jsACSTWstfazeMqLNwPU3ndWzzzz966ApHx3",
+    "discoveredAt": "2025-12-28T20:31:59.997Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "HDxSFNpFsSHMgmtQMfpu1ET3zmBE6oBc2yQ3Ro3hquTb",
+    "registrarWallet": "4HTdR43ZmsaGfgMATsfFXtf884ELB6sBkvTwYe6i92rK",
+    "discoveredAt": "2025-12-28T20:32:00.472Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "BKz3VEhr58XGDJZf2EnHg6VcwAVHG9hSGoX61QrpcPBx",
+    "registrarWallet": "AQyMtEC7et35U2DoWGn5SZz4AVtRh1BReWbbzWhLJ4P1",
+    "discoveredAt": "2025-12-28T20:32:00.899Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "RNtGvNwFU13eAgD2gKvcwQDHHTdgUCMxupMwEsrKevH",
+    "registrarWallet": "3Vh1jadBAwrgDrErKV7k5X3xXwNQmP73HR8cywg1jx4f",
+    "discoveredAt": "2025-12-28T20:32:01.336Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "GCUaRu9NpPjWJczL2nKFa4Mv6PKA8e5i4s3qzFrqye6s",
+    "registrarWallet": "Cs5cKwc89FPauJR8Xvzr5cWCjfxnifqApF7mJgnkdbVq",
+    "discoveredAt": "2025-12-28T20:32:01.760Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "8Z7cJQgZBX4ahugxU7RjJvVJq6TeK9tCLxd9EDjT3RDy",
+    "registrarWallet": "3Edvee4LDSygS2nYiAzUxGmMiumt8S4u9rJRtNrNhtNb",
+    "discoveredAt": "2025-12-28T20:32:02.168Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "5YJv9VfoY23912g4HkG1A4PmhUVFiHm8ZcNBDGXE31N7",
+    "registrarWallet": "6i5BwE34GYGandfHqWiEdDKRx5YRMfeMpRy6cnfxLchV",
+    "discoveredAt": "2025-12-28T20:32:02.550Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "TaHTLsCDcYrWZgwSq8tcaB2qaxGocrwu16SDEKKoezV",
+    "registrarWallet": "9FGCZfJcLSkwtwDQzJ7om5E5K8vy63nDpN4RH75rZLrj",
+    "discoveredAt": "2025-12-28T20:32:02.948Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "GZfrtt9xcYxrANjkBxyCMPSdYdrCe9hNF47oBs7vh9sB",
+    "registrarWallet": "9qzh1ckE2fPcwQW9tHpsHFrpiCHvriw27LmWnwdEkanb",
+    "discoveredAt": "2025-12-28T20:32:03.401Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "3HWbVYXqwpHfSGveEax8dYyjAkfRFMnWL4if5fB7iesj",
+    "registrarWallet": "2ybCyEzgVtX5VWhRXKZwadeBsUYKZ8HH6LnzBvJvpi47",
+    "discoveredAt": "2025-12-28T20:32:04.827Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "G6pCyVYaWEnAPLkoHbei3Jyx4RHwE1Dj9ZiEPM5KfjYN",
+    "registrarWallet": "3NhGfghKgBmzrLrPdwR3t5Jc6Zs2Bzbyuk2ddw9H4awh",
+    "discoveredAt": "2025-12-28T20:32:05.258Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "AsXrobcR1QzdBGSDjJ5hGPjtgsspFhyS6KgDYFsJiDct",
+    "registrarWallet": "8LM2ieLskFLw5bMoaC2fwz3XqL517xUMxwEGmdNwRmCK",
+    "discoveredAt": "2025-12-28T20:32:06.170Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "5rnZBSTSTAWfSYxRZWLjiLGdXUqGymPuExbXi1m4S5Bq",
+    "registrarWallet": "DqhbpuHraUfgjPzW7kS3sKDYRo5pHWZqAJqKj1dsiJ7y",
+    "discoveredAt": "2025-12-28T20:32:06.634Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "3p18yZHfRUggRRkjpGxxbFJLZmeL3L9Xs5sSAUkrweRV",
+    "registrarWallet": "Fme7tkcnS26FyvgbSoU4MjqQJwH4czPaqCoSKS1B9KQb",
+    "discoveredAt": "2025-12-28T20:32:07.105Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "BeBSTk3TqqciC8LqCp273EszjZLiv7wPuXMx572B24d4",
+    "registrarWallet": "GZwqz9jZ3qcgj83PNJUksMZK4CoXceTAhVyrQzuLNZDH",
+    "discoveredAt": "2025-12-28T20:32:07.587Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "AL2gmANzqKA2mztP31XF17ea2VE1AEJ1je4XP86Z3xvZ",
+    "registrarWallet": "bFePXCjkYqBGEFmV4wF8SXRURcHqiVzDeFzw83EsWUo",
+    "discoveredAt": "2025-12-28T20:32:08.002Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "9b9EGvd3sRLUZ4o8wsQfc78HedDrX8xypZewPfz9AqfC",
+    "registrarWallet": "FesPoe6W18ec793cAv1sc1ye7tcETVdvaQTRkhHE74nb",
+    "discoveredAt": "2025-12-28T20:32:08.401Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "9ahc24Lek84MWnWXfog4v2FKVCtDsPnPUeMDXhrqHbGU",
+    "registrarWallet": "HUKapTLPPaACymgQPZMo7vfzV87zDajFyo8fCWgfbpMD",
+    "discoveredAt": "2025-12-28T20:32:08.813Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "HRNYZVibPfUDmSkBZWsgZPTSg3UfJZ7DhcydzHFqm7Ch",
+    "registrarWallet": "5Kc75MBGtNY5ctNy8viXL14CXY7v5Bm1r5sg9arrpHZy",
+    "discoveredAt": "2025-12-28T20:32:09.212Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "AQS4x9mAEBGrm3FDiwGKVYPJBHb5WYsbe5qxUKYS9Zqy",
+    "registrarWallet": "J3si6QeVHkppVvhiy2YNnn98BQNCpq428UuCsdnrKZC3",
+    "discoveredAt": "2025-12-28T20:32:09.650Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "7qquGLNSQpXiR1cr8HKeZ8auRAoT2pqtFxYhVnSieLZN",
+    "registrarWallet": "GuudHyuE3KX5u5Yt42NAphWELvdAKJPZsu4b2bKQYEjZ",
+    "discoveredAt": "2025-12-28T20:32:10.118Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "8qtDqsLPMnYkHoDEHYNnu8DWowWxUvYWsUQKdFM8AJ2A",
+    "registrarWallet": "7cg1s7tGag2mQRxrBWALe31serPYDWRqo6j3bLC8nY3R",
+    "discoveredAt": "2025-12-28T20:32:10.622Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "9d4T3on9yy8XGqKvhZYqiApTzceUNdqrMkZnjWGm9X9E",
+    "registrarWallet": "9P6EMsGUNK3Wa5TqHTBy2auuViUcTp8TyNBgxmFzVv2b",
+    "discoveredAt": "2025-12-28T20:32:11.013Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "9JcEvyHcnBJF5S7b86bepGBqUiRYKg4zTeWePbSRJo5j",
+    "registrarWallet": "78torSRdyHu1UmSbFSBsE98VuapBHw92aaxuUah4buGB",
+    "discoveredAt": "2025-12-28T20:32:11.368Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "4XGTeNEshAK8ewEC8aXWvXytrD8cnmAQkbpaEGgRkk1p",
+    "registrarWallet": "H55sq7hr4ignqRb2MbetXTYGhhptfYgBkjrPbLd8S5uH",
+    "discoveredAt": "2025-12-28T20:32:12.392Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "A88Qwf6s6xchaxnKNPxN3mnhheZYauFVzd4rxtyUNGbT",
+    "registrarWallet": "8KXGA7tWDzv2oCUfSH4jiFtut2kkuHW4ihrKwkgwnzR5",
+    "discoveredAt": "2025-12-28T20:32:12.797Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "DTZWcVBqFzPRReQcuMUj79MhMa5mmrE64vCKDG34HXxg",
+    "registrarWallet": "CCEsLM17oVMb47oeJhj1ERXDu29yqYHFZbLmnSP1CGfH",
+    "discoveredAt": "2025-12-28T20:32:13.150Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "DAuHVLGH65y1zis1heEubdZvnH3DczrMMDYZcy1nkRsp",
+    "registrarWallet": "3P6mnMTcp5vWtF25mULJPGVDRupGy2UyA286aTLP7Rif",
+    "discoveredAt": "2025-12-28T20:32:13.472Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "SdPzbBg72XRiWUKtVCyMoPFjK3KqfGuEL87iZvT96M2",
+    "registrarWallet": "7c5WZJRuvUq4gdSY2dsxXu8xmH8KiGG8wWPijBF7HXRy",
+    "discoveredAt": "2025-12-28T20:32:13.808Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "3GTEaGQLm7d62fERHHAyCwsH2Cc1DUN1aLx7zXhRFrVq",
+    "registrarWallet": "8pb1gLt8WZj5wmqTxnG4oxku1rbjk8RGerxtN9FHNJcf",
+    "discoveredAt": "2025-12-28T20:32:14.116Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "9dFZHYNg89RoKfccGJspm62Za2K7dTDd6fmmgTG3p2Sa",
+    "registrarWallet": "9G8r1zhgCx9ooMPoo7y77NasyrR1NGE8nXGRN958w4SB",
+    "discoveredAt": "2025-12-28T20:32:14.491Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "BFeqHbds14swgm4hpcZST2eESUbfbQmXQ5zzVZQs6vK1",
+    "registrarWallet": "DUfV6t4QVBsKxxvMDPmERP5eP441HJT1jr7EGMuvF3Ys",
+    "discoveredAt": "2025-12-28T20:32:15.606Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "DmkNKc2w73fP8whjty2UkgfNb2kLzUro3SE45tPyEX3e",
+    "registrarWallet": "DGLHBiGJ6AsAFdeNF2D4Xfq3sBAJmZaw1WA5CdA2VfmZ",
+    "discoveredAt": "2025-12-28T20:32:15.920Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "BpyTXAh9JR9E4gwVYpj4YT39YASSWeQdBdeEcSA39khq",
+    "registrarWallet": "Fq97DGtFEFE7pqQSxPKRKXXjf27j748qUXjziJStnMGs",
+    "discoveredAt": "2025-12-28T20:32:16.241Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "Gd6poXdM3wKuM1ayv7njZbqvZr7QyF4uqPZ8PEke54bC",
+    "registrarWallet": "88vSaCbk8v8jnFe5zpidh7ehGKyXRDBAfV8pEtomW9CT",
+    "discoveredAt": "2025-12-28T20:32:17.611Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "v6yyazCPbPWnufAwovYNbPPEaUqdg1zvPtRcV26G6NQ",
+    "registrarWallet": "6Rg7cknzVZMDpzyjN3sYD7yYSeyfJ96q9BVep3pCc1R9",
+    "discoveredAt": "2025-12-28T20:32:17.978Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "F9eCzVeSGXSdXqbhY3FmTNQFoGgHvwmPN2LTtnFXRxD2",
+    "registrarWallet": "9ZRePQvmfw4tNvVsyZgs51WczHDUYRSa91hh5deAdma7",
+    "discoveredAt": "2025-12-28T20:32:18.333Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "4jcsnLYmaAakPVW2ZNbvpKBrTGHHTSAE7zQnqCEpjSFd",
+    "registrarWallet": "HtGhZNeqvAvT5bbJhMcf5HCohMg5emDna9rKFEnri7rw",
+    "discoveredAt": "2025-12-28T20:32:18.720Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "BGHfNhFEhfLRmcirHCB6e4qyFiCGTAzJ4PGdKtnqGWiA",
+    "registrarWallet": "4iF7UoquPfR9UrqGA3MMp9aeYrya8xGR34ur4fN2b2LF",
+    "discoveredAt": "2025-12-28T20:32:19.094Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "HDnaY7NvpfW3ouRhLv4Zm22xVhLViaf2At2MQYEcwmJ4",
+    "registrarWallet": "AB8yVQKX7tN5nqys8Z6kC3pHcfSJeaF5PoBsnnH4B6bR",
+    "discoveredAt": "2025-12-28T20:32:19.449Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "3h2ZedsFwRMvv95ktzTPzkbGqZWuKhpPWY2s91d98dAV",
+    "registrarWallet": "H6pjyV281TuushoDwx6UB5c4rdqw1kWTosm6PunNg1GK",
+    "discoveredAt": "2025-12-28T20:32:19.818Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "AEeXoa1d47hJLycvaZtrdgSxv8Up18jrY1sPpYKLb4t8",
+    "registrarWallet": "DKoUm4653Z9q5ViMtQPfyX6iRDTB8ijjeWiRA5mrGGRD",
+    "discoveredAt": "2025-12-28T20:32:20.195Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "36wWN4xw1ShKK8CYt9vBYQMqvjQEwurwrneK8XVU1j4d",
+    "registrarWallet": "5cA9HfJBXbeMXapaRAwXDJ6QeV8daCPAD55kyNmjp2YX",
+    "discoveredAt": "2025-12-28T20:32:20.568Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "3t6rzvoP8WUQMFfaEowR3xBEeN5Pwppp5stHojdhEhNc",
+    "registrarWallet": "2UHvKYzGgrd4pBPHKmTjrMqkKaqjMT8JbKd2i9LRwzfH",
+    "discoveredAt": "2025-12-28T20:32:20.962Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "78JQGPgwjL38TDpki9zgQFXXjZJmAbdXoFi4E9mbodPD",
+    "registrarWallet": "CPWmkFHi9bhyJmMGCQ9am3QEzFHZYTXjBFx6KEQgAcf",
+    "discoveredAt": "2025-12-28T20:32:21.977Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "ALY4mB2XANbtnuxd7XGRsvFhsnLkHhyTtTNbbtPNLL3V",
+    "registrarWallet": "3G6eqCZFhVKg7qb8tjfdqerbzUayHJkwauNMZr4fcmg3",
+    "discoveredAt": "2025-12-28T20:32:22.334Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "FoTYxPMmUM68BeThrZ4LSD4CUYyz6X3HNJ2vHvk3pTEF",
+    "registrarWallet": "DEi3iqgx3Rc5mkL5w3jwScAFioRfoUt8rJfvskqtUSUw",
+    "discoveredAt": "2025-12-28T20:32:22.687Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "E5Ghx38s2RxVJ6UBJF9JkHhxNN1kPWfsdAfNdmEwp4wG",
+    "registrarWallet": "FcWqeZL8Z4TMCXCQbk3jZ6nuNDezqSwbXnMtZATXa3Pu",
+    "discoveredAt": "2025-12-28T20:32:23.066Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "BQS5TZhHSNYbeDhGC1n1XswY4kKTQ7hnXh14PdRUnnrj",
+    "registrarWallet": "4dXVCrjVhAni8tUuhBhJ9HjzMayXQ2jL2UTnbYA4ThMy",
+    "discoveredAt": "2025-12-28T20:32:23.391Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "9sBFPjJH4RTjqntEg8pZbTiCXkWRPbr8w8VauQ19wg5u",
+    "registrarWallet": "DLHcUKcsLgbqDYLv9eJWwxuRa9BYpScFRAWnQ2nhv3h",
+    "discoveredAt": "2025-12-28T20:32:23.730Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "BLgYa4JZfagB4xEF2hEpb9EH2a4cjyrKduueNcPYyGRE",
+    "registrarWallet": "86YR1fwPPE6VtHTo734VmPoiTJJPThiRonDzwtzM36iK",
+    "discoveredAt": "2025-12-28T20:32:24.087Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "XKZpmT4LzCspeZjmjjBEbwy8HKfBYdMakUmZHEnaaSx",
+    "registrarWallet": "5i7kcZD3uxaVAUTKeqPhSENp4zi5bz5wbcuDCgkrfoe7",
+    "discoveredAt": "2025-12-28T20:32:24.429Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "6SH89WAZne4RUtgvn18K1wHhTYujX7tYF7yiD37qvLFf",
+    "registrarWallet": "GrMP3NugfSAamF97zzYuovvas7wJTBMEEx31x2gjpEcf",
+    "discoveredAt": "2025-12-28T20:32:24.783Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "2FrB4NYAeMDu16SG2nbigc1xEunRy6UWWgaqV9ss6wGt",
+    "registrarWallet": "6RLViA4MWqpS9qzi7kJGWWf7sEARRD5j455A5cERS18b",
+    "discoveredAt": "2025-12-28T20:32:25.116Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "Cfbha3M6eBpCBfZAVadt9eMGWBcbn78ePcEAHSHyGCY9",
+    "registrarWallet": "AjoBY6uFxQR5fZbzRSzskx2rbQkzigZHstUx4KQes9Qj",
+    "discoveredAt": "2025-12-28T20:32:26.433Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "5ybmUwfvUfG1xvNqVorfeoZoeWc1fEmAeuftLmvQzHWv",
+    "registrarWallet": "6CiyGtAHgn2KgMwdZjUgj6mHtQURobMpxtVKTfKhe4M5",
+    "discoveredAt": "2025-12-28T20:32:26.792Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "76pinviivrGdJN9w8RaHLSm1REYB3QXwriaruHF4yHWB",
+    "registrarWallet": "Da6uzmdMKSr58mAckYZbfFcDC9PfwvnF24uiWY481GZM",
+    "discoveredAt": "2025-12-28T20:32:27.154Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "8FPZwbd53q9wQbUGsiBdeALA7pwWxu91TcmS3rkw6oWP",
+    "registrarWallet": "E38QykE33iJQSY697iy52nKQQV6KMcPmuRPkDMeg5aUF",
+    "discoveredAt": "2025-12-28T20:32:27.512Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "F6fxX1e7HbWG9Lc4mMbiTUT6JAKptureKaiU5Qxy9i1X",
+    "registrarWallet": "CkFNNqSJKJrGD1sjzDZMUHpHKRLjR28k14xNnrpeTbtj",
+    "discoveredAt": "2025-12-28T20:32:27.861Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "ia9XYTtcowCfGrzKeCzdcz5gDpPw5fFvBrzDxoFs2br",
+    "registrarWallet": "9zAR7Hb4Y41GLGnKVmVhqqXWuzc2JLxx7AndRfYkJSZ5",
+    "discoveredAt": "2025-12-28T20:32:28.247Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "Gknb28H1JL8DyL9RkSshkS8UxQhKGJLFdtfybdtUXc2E",
+    "registrarWallet": "91PHCeFsSWc2sdf3wTQELN4ys48PeUU1GdSvTf6zbpDm",
+    "discoveredAt": "2025-12-28T20:32:28.609Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "BNhfUaS1QbAbCUFswZJGZ6ZpqAPyJcjd8NnAiHjhsruS",
+    "registrarWallet": "BsVi1q4YzdJFY34b9vURUn75WDGgyy93BZNiY1rwRiuu",
+    "discoveredAt": "2025-12-28T20:32:28.983Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "2venKrnNwGU83QL9eP43dNwqjWP6RPocKc44guWWVLRg",
+    "registrarWallet": "7CZkotEMMJi59kS3vbx37Q66EUWv2Uebh9s6XeLmgwif",
+    "discoveredAt": "2025-12-28T20:32:29.335Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "EQef3pqYzhNf1LnoYAi65SpcfR6q1wcrv16RXzcWw5Nn",
+    "registrarWallet": "CBELt7gUygrBcuGjkUc2tVqDHNnSRZRmP3jru1unsJRD",
+    "discoveredAt": "2025-12-28T20:32:30.297Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "9NnwnfgJMtGsvaoRiYnEEgixQqabE9WmpH3xs8rhW6ZK",
+    "registrarWallet": "FEgvk9CJcq2qazyxmGLvUmA3Ggjk6M2VK8s23okBtrvb",
+    "discoveredAt": "2025-12-28T20:32:30.627Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "3Uhs3y6qL3hcgyHZZLtuAohuWWtYRXZTjpBDxEyv7mY7",
+    "registrarWallet": "HPktPh1Y22CdyvURbNCE6oBkJph85pfHxUhvQHVwREJs",
+    "discoveredAt": "2025-12-28T20:32:30.943Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "HFSR2u4U4KaLhYsDqMD2m6rrXxmn3GA7o2edCfHunoW2",
+    "registrarWallet": "B5YXHnnBYcbpijt97qYxVkAgSFcwWmXYLuaBg6pW38bH",
+    "discoveredAt": "2025-12-28T20:32:31.289Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "3T3PXgZeLDtzvbvBQi5Y9vVNG52cz5TUKYK47ToVZN3A",
+    "registrarWallet": "Gv3bnHWrqfFdxjjb7wKSnSvfnSypTkDCJt43hRHES5tj",
+    "discoveredAt": "2025-12-28T20:32:32.626Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "7T4zPNNDAT7rwkQ6Rf2QyMvLwowQ4KDSxKRXF9qEtYvR",
+    "registrarWallet": "2E7ByzivQohV14XgqXmptycZD4otDXTxJ3WERPwP1UjH",
+    "discoveredAt": "2025-12-28T20:32:33.011Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "GCcv42psMJCTYnwT5UsD4A1rE8sXmRnpGLTioL6T5k5k",
+    "registrarWallet": "9Jns6As86AmBoXQ3SxGoFEwFowNV5AMU1BbMppod2NRu",
+    "discoveredAt": "2025-12-28T20:32:33.401Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "5ym6r1E4e7ksgwxSUi3kUbTPJ5hJnSxiMg4tK23JVBb7",
+    "registrarWallet": "Af3CpfmkmsCFERxE9BVCJrKzLRSQusbukc2586n5r9h9",
+    "discoveredAt": "2025-12-28T20:32:33.826Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "C388KaQY4EpEHcKutHYEMRx2a4zDZbLqkCQ4DdZENxvd",
+    "registrarWallet": "BRNK4jjkgNowEqVHW1E6LrTYuLQkJXU3bP7uku2RmjjM",
+    "discoveredAt": "2025-12-28T20:32:34.727Z",
+    "method": "registry_pda_offset_8"
+  },
+  {
+    "nodeId": "6PbJSbfG4pMneMoizZFNEfNkmBrL6frenKmDbqbBDcKq",
+    "registrarWallet": "EDaR5LcGzbyUPVFB8xDkobQQevpMCQMpfdCAFyVsz7tK",
+    "discoveredAt": "2025-12-28T20:32:35.092Z",
+    "method": "registry_pda_offset_8"
+  }
+]

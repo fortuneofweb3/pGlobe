@@ -12,6 +12,49 @@ export default function ActivityLogsPage() {
 
     const [activeTab, setActiveTab] = React.useState<'racing' | 'feed'>('feed');
 
+    if (loading && nodes.length === 0) {
+        return (
+            <div className="h-[100dvh] w-full fixed inset-0 flex flex-col bg-black text-foreground overflow-hidden">
+                <Header activePage="activity" loading={true} onRefresh={() => { }} />
+                <main className="flex-1 flex flex-col overflow-hidden">
+                    <div className="w-full px-3 sm:px-6 pt-4 sm:pt-6 flex-shrink-0">
+                        <div className="max-w-7xl mx-auto">
+                            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                                <div>
+                                    <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
+                                        <Activity className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
+                                        <span>Live Network Feed</span>
+                                    </h1>
+                                    <p className="text-foreground/60 text-sm sm:text-base">
+                                        Real-time monitoring of network events, status changes, and performance updates
+                                    </p>
+                                </div>
+                                <div className="h-9 w-40 bg-muted/20 border border-border/40 rounded-xl animate-pulse xl:hidden" />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex-1 px-3 sm:px-6 pb-6 sm:pb-8 overflow-hidden">
+                        <div className="max-w-7xl mx-auto h-full flex flex-col overflow-hidden">
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 h-full overflow-hidden">
+                                <div className="card h-full bg-muted/5 animate-pulse flex items-center justify-center">
+                                    <div className="text-foreground/20 italic">Initializing Racing Visualization...</div>
+                                </div>
+                                <div className="card h-full bg-muted/5 animate-pulse flex flex-col p-4">
+                                    <div className="h-6 w-32 bg-muted/20 rounded mb-4" />
+                                    <div className="space-y-3">
+                                        {[...Array(10)].map((_, i) => (
+                                            <div key={i} className="h-12 w-full bg-muted/10 rounded" />
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        );
+    }
+
     return (
         <div className="h-[100dvh] w-full fixed inset-0 flex flex-col bg-black text-foreground overflow-hidden">
             <Header

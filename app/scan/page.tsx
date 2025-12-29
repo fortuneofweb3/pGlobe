@@ -306,9 +306,10 @@ export default function ScanPage() {
                 </div>
               </div>
 
-              {/* Placeholder for results */}
+              {/* Results Placeholder with Static Labels */}
               <div>
-                <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-2">
+                <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-foreground/40" />
                   Closest pNodes
                 </h3>
                 <div className="space-y-1.5">
@@ -318,8 +319,8 @@ export default function ScanPage() {
                       className="p-2 bg-muted/30 rounded-lg border border-border animate-pulse"
                     >
                       <div className="flex items-start justify-between mb-1">
-                        <div className="h-3 w-32 bg-muted/40 rounded flex-1" />
-                        <div className="h-3 w-12 bg-muted/40 rounded ml-2" />
+                        <div className="h-3 w-32 bg-muted/40 rounded" />
+                        <div className="h-3 w-12 bg-muted/40 rounded" />
                       </div>
                       <div className="h-3 w-24 bg-muted/30 rounded mb-1.5" />
                       <div className="flex items-center gap-2">

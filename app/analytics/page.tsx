@@ -253,31 +253,43 @@ export default function AnalyticsPage() {
               </p>
             </div>
 
-            {/* Summary Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              {[
-                { label: 'Total pNodes', icon: Server },
-                { label: 'Online pNodes', icon: TrendingUp },
-                { label: 'Total Storage', icon: HardDrive },
-                { label: 'Network Health', icon: Activity },
-              ].map((stat) => (
-                <StatsCard
-                  key={stat.label}
-                  title={stat.label}
-                  value={0}
-                  icon={<stat.icon className="w-4 h-4" />}
-                  loading={true}
-                />
-              ))}
+            {/* Summary Stats (Static Labels) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-4">
+              <StatsCard title="Total pNodes" value={0} icon={<Server className="w-4 h-4" />} loading={true} />
+              <StatsCard title="Online" value={0} icon={<Activity className="w-4 h-4" />} color="green" loading={true} />
+              <StatsCard title="Storage" value={0} icon={<HardDrive className="w-4 h-4" />} loading={true} />
+              <StatsCard title="RAM" value={0} icon={<MemoryStick className="w-4 h-4" />} loading={true} />
             </div>
 
-            {/* Charts Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="card">
-                  <ChartSkeleton height={300} />
-                </div>
-              ))}
+            {/* pNode Comparison Skeleton */}
+            <div className="card h-[72px] mt-4 sm:mt-6 flex items-center px-4 gap-3 border-border/40 bg-muted/5 animate-pulse">
+              <div className="p-1.5 rounded-lg bg-muted/40 text-foreground/20">
+                <Server className="w-4 h-4" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-4 w-32 bg-muted/30 rounded" />
+                <div className="h-3 w-64 bg-muted/20 rounded" />
+              </div>
+            </div>
+
+            {/* Charts Grid Skeleton */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mt-4 sm:mt-6">
+              <div className="card h-[400px]">
+                <div className="h-6 w-40 bg-muted/20 rounded mb-6" />
+                <ChartSkeleton height={300} />
+              </div>
+              <div className="lg:col-span-2 card h-[400px]">
+                <div className="h-6 w-64 bg-muted/20 rounded mb-6" />
+                <ChartSkeleton height={300} />
+              </div>
+              <div className="card h-[400px]">
+                <div className="h-6 w-40 bg-muted/20 rounded mb-6" />
+                <ChartSkeleton height={300} />
+              </div>
+              <div className="lg:col-span-2 card h-[400px]">
+                <div className="h-6 w-64 bg-muted/20 rounded mb-6" />
+                <ChartSkeleton height={300} />
+              </div>
             </div>
           </div>
         </main>

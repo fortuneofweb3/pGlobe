@@ -14,6 +14,7 @@ interface NodesContextType {
   availableNetworks: NetworkConfig[];
   currentNetwork: NetworkConfig | null;
   refreshNodes: () => Promise<void>;
+  managerCount: number;
 }
 
 const NodesContext = createContext<NodesContextType | undefined>(undefined);
@@ -448,10 +449,24 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     });
   }, [nodes, podCredits]);
 
+  // Derive manager count
+  const managerCount = useMemo(() => {
+    const managers = new Set<string>();
+    nodes.forEach(node => {
+      if (node.managerWallet) {
+        managers.add(node.managerWallet);
+      } else if (node.registrarWallet) {
+        managers.add(node.registrarWallet);
+      }
+    });
+    return managers.size;
+  }, [nodes]);
+
   return (
     <NodesContext.Provider
       value={{
         nodes: nodesWithCredits,
+        managerCount,
         loading,
         error,
         lastUpdate,

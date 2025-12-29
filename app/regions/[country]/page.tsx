@@ -12,6 +12,7 @@ import { formatPacketRate } from '@/lib/utils/packet-rates';
 import { calculateNetworkHealth } from '@/lib/utils/network-health';
 import { ArrowLeft, MapPin, Server, TrendingUp, Activity, HardDrive, Award, Clock, Zap, ChevronDown, ChevronUp, Search, BarChart3, Info, Globe, Cpu, Coins, Layers, MousePointer2 } from 'lucide-react';
 import AnimatedNumber from '@/components/AnimatedNumber';
+import StatsCard from '@/components/StatsCard';
 import PNodeTable from '@/components/PNodeTable';
 import { PNode } from '@/lib/types/pnode';
 import ActivityLogList from '@/components/ActivityLogList';
@@ -1246,44 +1247,56 @@ function CountryDetailContent() {
                 );
               })()}
 
-              {/* Stats grid skeleton */}
+              {/* Stats grid skeleton (Static Labels) */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                  <div key={i} className="card-stat">
-                    <div className="h-4 w-24 bg-muted/30 rounded animate-pulse mb-3" />
-                    <div className="h-8 w-16 bg-muted/40 rounded animate-pulse mb-2" />
-                    <div className="h-3 w-20 bg-muted/20 rounded animate-pulse" />
-                  </div>
-                ))}
+                <StatsCard title="Total pNodes" value={0} icon={<Server className="w-4 h-4" />} loading={true} />
+                <StatsCard title="Online pNodes" value={0} icon={<Activity className="w-4 h-4" />} color="green" loading={true} />
+                <StatsCard title="Total Storage" value={0} icon={<HardDrive className="w-4 h-4" />} color="blue" loading={true} />
+                <StatsCard title="Total Credits" value={0} icon={<Coins className="w-4 h-4" />} color="emerald" loading={true} />
+                <StatsCard title="Avg Uptime" value={0} icon={<Clock className="w-4 h-4" />} color="purple" loading={true} />
+                <StatsCard title="Network Health" value={0} icon={<Zap className="w-4 h-4" />} color="red" loading={true} />
+                <StatsCard title="Packets Rx" value={0} icon={<Activity className="w-4 h-4" />} color="blue" loading={true} />
+                <StatsCard title="Packets Tx" value={0} icon={<Activity className="w-4 h-4" />} color="purple" loading={true} />
               </div>
 
-              {/* Historical Performance skeleton */}
+              {/* Historical Performance skeleton (Fixed structure) */}
               <div className="mb-4 sm:mb-6 space-y-4">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="h-6 w-48 bg-muted/30 rounded animate-pulse" />
-                  <div className="h-8 w-64 bg-muted/20 rounded animate-pulse" />
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-[#F0A741]" />
+                    <h2 className="text-xl font-bold text-foreground">Historical Performance</h2>
+                  </div>
+                  <div className="h-9 w-40 bg-muted/20 border border-border/40 rounded-lg animate-pulse" />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-                  {[1, 2].map((i) => (
-                    <div key={i} className="card p-6">
-                      <div className="animate-pulse space-y-3">
-                        <div className="h-4 w-48 bg-muted/30 rounded" />
-                        <div className="h-[250px] bg-muted/20 rounded" />
-                      </div>
+                  <div className="card p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-medium text-foreground">Online pNodes</h3>
                     </div>
-                  ))}
+                    <div className="h-[250px] bg-muted/5 rounded-lg animate-pulse border border-border/10" />
+                  </div>
+                  <div className="card p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-medium text-foreground">Total Credits</h3>
+                    </div>
+                    <div className="h-[250px] bg-muted/5 rounded-lg animate-pulse border border-border/10" />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {[1, 2].map((i) => (
-                    <div key={i} className="card p-6">
-                      <div className="animate-pulse space-y-3">
-                        <div className="h-4 w-48 bg-muted/30 rounded" />
-                        <div className="h-[250px] bg-muted/20 rounded" />
-                      </div>
+                  <div className="card p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-medium text-foreground">Packet Traffic</h3>
                     </div>
-                  ))}
+                    <div className="h-[250px] bg-muted/5 rounded-lg animate-pulse border border-border/10" />
+                  </div>
+                  <div className="card p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-medium text-foreground">Resource Utilization</h3>
+                    </div>
+                    <div className="h-[250px] bg-muted/5 rounded-lg animate-pulse border border-border/10" />
+                  </div>
                 </div>
               </div>
 

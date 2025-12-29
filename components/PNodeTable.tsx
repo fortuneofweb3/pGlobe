@@ -590,6 +590,9 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                       Storage
                     </th>
                     <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      RAM
+                    </th>
+                    <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                       Location
                     </th>
                     <th className="px-3 sm:px-5 py-4 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
