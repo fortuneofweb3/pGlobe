@@ -121,7 +121,7 @@ function ManagersPageContent() {
                                     <Users className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
                                     Manager Wallets
                                 </h1>
-                                <p className="text-foreground/60">pNode operators who purchased or registered nodes</p>
+                                <p className="text-foreground/60">pNode operators who run registered nodes</p>
                             </div>
 
                             {/* Stats Cards Skeleton */}
@@ -175,7 +175,7 @@ function ManagersPageContent() {
                                 <Users className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
                                 Manager Wallets
                             </h1>
-                            <p className="text-foreground/60">pNode operators who purchased and registered nodes</p>
+                            <p className="text-foreground/60">pNode operators who run registered nodes</p>
                         </div>
 
                         {/* Stats */}

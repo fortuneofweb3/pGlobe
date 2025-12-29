@@ -175,16 +175,10 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                 <span>Back to Managers</span>
                             </Link>
 
-                            {/* Header Card Skeleton (Badges are static) */}
                             <div className="rounded-2xl border border-border/40 bg-card p-6 mb-8 overflow-hidden relative">
                                 <div className="flex items-center gap-3 flex-wrap mb-4">
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#F0A741]/20 text-[#F0A741] border border-[#F0A741]/30">
-                                        <Users className="w-3.5 h-3.5" />
-                                        Manager
-                                    </span>
-                                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                                        pNodes
-                                    </span>
+                                    <div className="h-6 w-24 bg-muted/20 rounded-full animate-pulse" />
+                                    <div className="h-6 w-16 bg-muted/20 rounded-full animate-pulse" />
                                 </div>
                                 <div className="h-8 w-full max-w-md bg-muted/20 rounded mb-6 animate-pulse" />
                                 <div className="flex gap-2 mb-6">
@@ -192,12 +186,12 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                     <div className="h-8 w-16 bg-muted/20 rounded-lg animate-pulse" />
                                 </div>
                                 <div className="space-y-3">
-                                    <div className="flex items-center gap-2 text-foreground/40">
-                                        <MapPin className="w-4 h-4" />
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-4 h-4 bg-muted/10 rounded-full animate-pulse" />
                                         <div className="h-4 w-48 bg-muted/10 rounded animate-pulse" />
                                     </div>
-                                    <div className="flex items-center gap-2 text-foreground/40">
-                                        <Clock className="w-4 h-4" />
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-4 h-4 bg-muted/10 rounded-full animate-pulse" />
                                         <div className="h-4 w-36 bg-muted/10 rounded animate-pulse" />
                                     </div>
                                 </div>

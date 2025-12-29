@@ -26,8 +26,9 @@ dotenv.config({ path: '.env' });
 import { batchFetchLocations } from './lib/server/location-cache';
 
 // Reusable HTTP agents with keep-alive to reduce connection overhead
-const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 100 });
-const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 100 });
+// Increased limits to allow for higher parallel throughput (up to 1000 connections)
+const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 1000, maxFreeSockets: 1000 });
+const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 1000, maxFreeSockets: 1000 });
 
 // Handle unhandled rejections to prevent server crashes
 process.on('unhandledRejection', (reason, promise) => {
@@ -61,7 +62,7 @@ const DIRECT_PRPC_ENDPOINTS = [
     '173.212.220.65:6000',
     '161.97.97.41:6000',
     '192.190.136.36:6000',
-    '192.190.136.37:6000',
+    // '192.190.136.37:6000', // consistently failing/hanging up
     '192.190.136.38:6000',
     '192.190.136.28:6000',
     '192.190.136.29:6000',
@@ -104,6 +105,10 @@ interface PreviousState {
 // ============================================================================
 
 const previousNodeStates = new Map<string, PreviousState>();
+const failingNodes = new Map<string, { expiry: number, count: number }>(); // host:port -> { cooldown expiry, failure streak }
+const BASE_COOLDOWN_MS = 60000; // 1 minute base
+const MAX_COOLDOWN_MS = 3600000; // 1 hour max
+
 let isPolling = false;
 let lastPollTime = Date.now();
 
@@ -150,8 +155,30 @@ function httpPost(url: string, data: object, timeoutMs: number): Promise<Record<
                 });
             });
 
-            req.on('error', (err) => {
-                console.error(`[HTTP] Connection error for ${url}:`, err.message);
+            req.on('error', (err: any) => {
+                const hostPort = `${urlObj.hostname}:${urlObj.port || (isHttps ? 443 : 80)}`;
+
+                // Robust silence: check both error code AND message
+                const msg = (err.message || '').toLowerCase();
+                const isCommonError =
+                    ['ECONNREFUSED', 'ETIMEDOUT', 'EHOSTUNREACH', 'ENETUNREACH', 'ECONNRESET'].includes(err.code) ||
+                    msg.includes('socket hang up') ||
+                    msg.includes('connection reset') ||
+                    msg.includes('timeout');
+
+                if (isCommonError) {
+                    const prev = failingNodes.get(hostPort) || { expiry: 0, count: 0 };
+                    const newCount = prev.count + 1;
+                    // Exponential backoff: 1m, 2m, 4m, 8m... up to 1h
+                    const newCooldown = Math.min(BASE_COOLDOWN_MS * Math.pow(2, newCount - 1), MAX_COOLDOWN_MS);
+
+                    failingNodes.set(hostPort, {
+                        expiry: Date.now() + newCooldown,
+                        count: newCount
+                    });
+                } else {
+                    console.error(`[HTTP] Connection error for ${url}:`, err.message);
+                }
                 resolve(null);
             });
             req.on('timeout', () => {
@@ -172,6 +199,16 @@ function httpPost(url: string, data: object, timeoutMs: number): Promise<Record<
 // ============================================================================
 
 async function fetchPodsFromEndpoint(endpoint: string): Promise<RawPod[]> {
+    const urlObj = new URL(endpoint);
+    const hostPort = `${urlObj.hostname}:${urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80)}`;
+    const now = Date.now();
+
+    // Skip if in cooldown
+    const failureState = failingNodes.get(hostPort);
+    if (failureState && now < failureState.expiry) {
+        return [];
+    }
+
     try {
         // Try get-pods-with-stats first, fallback to get-pods
         let payload: Record<string, unknown> = { jsonrpc: '2.0', method: 'get-pods-with-stats', id: 1, params: [] };
@@ -183,7 +220,11 @@ async function fetchPodsFromEndpoint(endpoint: string): Promise<RawPod[]> {
         }
 
         if (!response?.result) {
-            console.log(`[Realtime] ❌ No result from ${endpoint} - response:`, JSON.stringify(response).slice(0, 200));
+            // Only log if we got a response but it's missing the result (truly malformed)
+            // If response is null, it was a connection error already handled/silenced in httpPost
+            if (response !== null) {
+                console.log(`[Realtime] ⚠️ Malformed result from ${endpoint}`);
+            }
             return [];
         }
 
@@ -232,11 +273,22 @@ async function fetchNodeStats(address: string): Promise<{ packets_received?: num
     const ip = address.split(':')[0];
     if (!ip) return null;
 
+    // Fast check if any port on this IP is in cooldown
+    const now = Date.now();
+
     // Try port 6000 and 9000 with short timeouts for speed
     const ports = [6000, 9000];
 
     for (const port of ports) {
         const url = `http://${ip}:${port}/rpc`;
+        const hostPort = `${ip}:${port}`;
+
+        // Skip if in cooldown
+        const failureState = failingNodes.get(hostPort);
+        if (failureState && now < failureState.expiry) {
+            continue;
+        }
+
         const payload = { jsonrpc: '2.0', method: 'get-stats', id: 1, params: [] };
 
         const result = await httpPost(url, payload, 2000); // 2 second timeout per port
@@ -308,6 +360,21 @@ async function pollAndEmitActivity(io: SocketIOServer) {
             return;
         }
 
+        // Periodically cleanup failingNodes map to prevent memory leaks
+        if (Math.random() < 0.1) {
+            const now = Date.now();
+            for (const [key, state] of failingNodes.entries()) {
+                if (now > state.expiry) {
+                    // Reset failure count after expiry to allow a "fresh" retry eventually
+                    // Or keep the count if you want it to be even more aggressive on repeat failures
+                    // For now, let's keep the count so it gets harder to come back if flaky
+                    if (now > state.expiry + (MAX_COOLDOWN_MS * 2)) {
+                        failingNodes.delete(key);
+                    }
+                }
+            }
+        }
+
         //        console.log(`[Realtime] ✅ Got ${pods.length} pods from ${successfulEndpoints}/${allEndpoints.length} endpoints`);
 
         // Enrich with GeoIP data
@@ -340,26 +407,29 @@ async function pollAndEmitActivity(io: SocketIOServer) {
             return pubkey && pubkey.length >= 32 && pod.address;
         });
 
-        // Fetch stats for ALL nodes in ONE parallel batch
-        // With 1.5s timeout and true parallelism, this should complete in ~2 seconds
+        // Fetch stats for nodes in moderate batches (polite and stable)
         const enrichedStats = new Map<string, { packets_received?: number, packets_sent?: number, active_streams?: number }>();
-
+        const BATCH_SIZE = 50;
         const enrichStart = Date.now();
-        const enrichResults = await Promise.allSettled(
-            nodesToEnrich.map(pod => fetchNodeStats(pod.address || ''))
-        );
 
-        // Yield to event loop again after massive parallel enrichment
-        await new Promise(resolve => setImmediate(resolve));
+        for (let i = 0; i < nodesToEnrich.length; i += BATCH_SIZE) {
+            const batch = nodesToEnrich.slice(i, i + BATCH_SIZE);
+            const enrichResults = await Promise.allSettled(
+                batch.map(pod => fetchNodeStats(pod.address || ''))
+            );
 
-        for (let j = 0; j < enrichResults.length; j++) {
-            const result = enrichResults[j];
-            const pod = nodesToEnrich[j];
-            const pubkey = pod.pubkey || pod.publicKey || '';
+            for (let j = 0; j < enrichResults.length; j++) {
+                const result = enrichResults[j];
+                const pod = batch[j];
+                const pubkey = pod.pubkey || pod.publicKey || '';
 
-            if (result.status === 'fulfilled' && result.value && pubkey) {
-                enrichedStats.set(pubkey, result.value);
+                if (result.status === 'fulfilled' && result.value && pubkey) {
+                    enrichedStats.set(pubkey, result.value);
+                }
             }
+
+            // Yield to event loop between batches
+            await new Promise(resolve => setImmediate(resolve));
         }
 
         console.log(`[Realtime] 📊 Enriched ${enrichedStats.size}/${nodesToEnrich.length} nodes in ${Date.now() - enrichStart}ms`);
