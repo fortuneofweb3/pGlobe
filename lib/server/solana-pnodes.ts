@@ -4,6 +4,7 @@
  */
 
 import { Connection, PublicKey } from '@solana/web3.js';
+import * as bs58 from 'bs58';
 import { PNode } from '../types/pnode';
 import { XANDEUM_NFT_COLLECTIONS } from '../constants/nft';
 import {
@@ -15,13 +16,13 @@ import {
 
 const DEVNET_PROGRAM = new PublicKey('6Bzz3KPvzQruqBg2vtsvkuitd6Qb4iCcr5DViifCwLsL');
 const DEVNET_RPC = 'https://api.devnet.xandeum.com:8899';
+const MAINNET_RPC = 'https://api.mainnet-beta.solana.com'; // For XAND tokens, NFTs, DAO stake
 const INDEX_ACCOUNT = new PublicKey('GHTUesiECzPRHTShmBGt9LiaA89T8VAzw8ZWNE6EvZRs');
 const XAND_MINT = new PublicKey('XANDuUoVoUqniKkpcKhrxmvYJybpJvUxJLr21Gaj3Hx');
-// Xandeum DAO Realm ID from user
 const XANDEUM_REALM_ID = new PublicKey('5JpYydB2VFcxbPGr8xmpefmJw86GQELCk7cB132wRXCa');
-// SPL Governance Program ID (Devnet/Mainnet typically the same for standard deployments, but verifying for Xandeum)
-// Assuming standard SPL Governance v2 or v3
 const GOVERNANCE_PROGRAM_ID = new PublicKey('GovER5Lthms3bLBqWub97yVrMmEogzX7xNdXwpXH7sj');
+const CUSTOM_GOV_PROGRAM = new PublicKey('4ruGZqLoPVKX27Qm91Qjsqt5AzCtLrhmjKT8ubwHiVZu');
+const STAKE_ACCOUNT_DISCRIMINATOR = Buffer.from('0cb8a1410fd63b6e', 'hex');
 
 /**
  * Fetch all pNode pubkeys from the on-chain index account
@@ -90,46 +91,40 @@ export async function getOnChainPNodeCount(
 
 /**
  * Fetch staked XAND in the DAO for a given owner
+ * This queries custom Xandeum Governance accounts on MAINNET
  */
 async function fetchDAOStake(
   connection: Connection,
   ownerPubkey: PublicKey
 ): Promise<number> {
   try {
-    // Try to find the TokenOwnerRecord for this owner in the Xandeum Realm
-    // The TokenOwnerRecord holds the amount of governing tokens (XAND) deposited
+    // Search for custom stake accounts owned by Xandeum DAO
+    // Discriminator at 0, Owner at 33, Stake (u64) at 66
+    const accounts = await connection.getProgramAccounts(CUSTOM_GOV_PROGRAM, {
+      filters: [
+        { memcmp: { offset: 0, bytes: bs58.encode(STAKE_ACCOUNT_DISCRIMINATOR) } },
+        { memcmp: { offset: 33, bytes: ownerPubkey.toBase58() } }
+      ]
+    });
 
-    // We need to derive the address of the TokenOwnerRecord
-    // Seed: ['governance', realm, token_mint, token_owner]
-    // However, spl-governance SDK provides helper
+    if (accounts.length > 0) {
+      // If multiple accounts exist (one per pNode?), they seem to reflect the same total stake value
+      // We'll take the max found
+      let maxStake = 0;
+      for (const acc of accounts) {
+        const stake = Number(acc.account.data.readBigUInt64LE(66)) / 1e9;
+        if (stake > maxStake) maxStake = stake;
+      }
 
-    // Since we don't have the SDK fully configured with all IDLs in this lightweight script, 
-    // we'll try to fetch program accounts or use the address derivation if possible.
-    // For robust 'get', we can use the helper if the package exports it cleanly.
-
-    // Note: XAND_MINT is likely the governing token mint for the Realm
-
-    try {
-      const tokenOwnerRecordAddress = await getTokenOwnerRecordAddress(
-        GOVERNANCE_PROGRAM_ID,
-        XANDEUM_REALM_ID,
-        XAND_MINT,
-        ownerPubkey
-      );
-
-      const tokenOwnerRecord = await getTokenOwnerRecord(connection, tokenOwnerRecordAddress);
-
-      // governingTokenDepositAmount is a BN
-      // We'll convert to number (careful with precision, but XAND decimals usually 9)
-      const amount = Number(tokenOwnerRecord.account.governingTokenDepositAmount.toString());
-      return amount / 1e9; // Assuming 9 decimals for XAND
-    } catch (e) {
-      // If record not found, stake is 0
-      return 0;
+      if (maxStake > 0) {
+        console.log(`[OnChain] Found custom DAO Stake for ${ownerPubkey.toBase58().slice(0, 8)}...: ${maxStake.toLocaleString()} XAND`);
+      }
+      return maxStake;
     }
 
+    return 0;
   } catch (err) {
-    console.warn('[OnChain] Failed to fetch DAO stake:', err);
+    console.warn('[OnChain] Failed to fetch custom DAO stake:', (err as Error).message);
     return 0;
   }
 }
@@ -249,24 +244,36 @@ export async function enrichPNodeWithOnChainData(
     let managerPDA: string | undefined;
     let managerWallet: string | undefined;
     let registrarWallet: string | undefined;
+    let eraBoost = 1;
+    let eraLabel = 'Standard';
+
+    // Debug: Log registry fetch result
+    if (registryAddress) {
+      const regStatus = registryAccountResult.status;
+      const regValue = regStatus === 'fulfilled' ? registryAccountResult.value : null;
+      const regDataLen = regValue?.data?.length || 0;
+      if (regDataLen > 0) {
+        console.log(`[OnChain] ${pubkey.slice(0, 8)}...: Registry PDA found, data length=${regDataLen}`);
+      }
+    }
 
     if (registryAddress && registryAccountResult.status === 'fulfilled' && registryAccountResult.value) {
       registryPDA = registryAddress.toBase58();
       isRegistered = true;
 
-      // Extract wallets from Registry PDA
-      // Offset 8: Registrar Wallet (32 bytes)
-      // Offset 42: Manager/Buyer Wallet (32 bytes)
       const data = registryAccountResult.value.data;
+
+      // Extract wallets discovered via on-chain analysis:
+      // Offset 8: Registrar Wallet (32 bytes)
+      // Offset 40: Potential Era/Version (2 bytes)
+      // Offset 42: Manager/Buyer Wallet (32 bytes) - Verified via Bx1aH... lookup
       if (data.length >= 40) {
         try {
           registrarWallet = new PublicKey(data.slice(8, 40)).toBase58();
           if (registrarWallet === '11111111111111111111111111111111') {
             registrarWallet = undefined;
           }
-        } catch (e) {
-          console.warn(`[OnChain] Failed to parse registrar wallet from registry PDA for ${pubkey}`);
-        }
+        } catch (e) { }
       }
 
       if (data.length >= 74) {
@@ -275,9 +282,7 @@ export async function enrichPNodeWithOnChainData(
           if (managerWallet === '11111111111111111111111111111111') {
             managerWallet = undefined;
           }
-        } catch (e) {
-          console.warn(`[OnChain] Failed to parse buyer/manager wallet from registry PDA for ${pubkey}`);
-        }
+        } catch (e) { }
       }
     }
 
@@ -295,38 +300,24 @@ export async function enrichPNodeWithOnChainData(
       }
     }
 
-    // Determine the "Owner" wallet for DAO checks
-    // If we found the managerWallet (Buyer), use that! 
-    // Otherwise fallback to node pubkey (which is likely wrong for holding stake, but a fallback)
+    // Determine the "Owner" wallet for asset checks (XAND, NFTs, DAO stake)
+    // These assets are on MAINNET, not devnet!
+    // If we found the managerWallet (Buyer), use that for mainnet lookups
     const ownerForStake = managerWallet ? new PublicKey(managerWallet) : nodePubkey;
 
-    // Fetch DAO stake for the Owner
-    const daoStake = await fetchDAOStake(connection, ownerForStake);
+    // Create mainnet connection for asset lookups
+    const mainnetConnection = new Connection(MAINNET_RPC, 'confirmed');
 
-    // Fetch XAND token balance (liquid stake)
-    let xandStake = 0;
-    try {
-      const tokenAccounts = await connection.getTokenAccountsByOwner(ownerForStake, {
-        mint: XAND_MINT
-      });
+    // Fetch DAO stake for the Owner (on MAINNET)
+    // This is the "XAND Stake" the user cares about (staked in DAO)
+    const xandStake = await fetchDAOStake(mainnetConnection, ownerForStake);
 
-      if (tokenAccounts.value.length > 0) {
-        // Sum balances of all XAND token accounts
-        for (const account of tokenAccounts.value) {
-          const accountInfo = await connection.getTokenAccountBalance(account.pubkey);
-          xandStake += Number(accountInfo.value.uiAmount || 0);
-        }
-      }
-    } catch (e) {
-      // Failed to fetch token balance
-    }
-
-    // Fetch NFT Multiplier (scan for Xandeum NFTs)
+    // Fetch NFT Multiplier (scan for Xandeum NFTs) - ON MAINNET
     let nftBoost = 1;
     const nftDetails: { name: string; multiplier: number; icon: string }[] = [];
     try {
-      // Scan owner for NFTs
-      const parsedTokenAccounts = await connection.getParsedTokenAccountsByOwner(ownerForStake, {
+      // Scan owner for NFTs on mainnet
+      const parsedTokenAccounts = await mainnetConnection.getParsedTokenAccountsByOwner(ownerForStake, {
         programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA')
       });
 
@@ -353,11 +344,33 @@ export async function enrichPNodeWithOnChainData(
       // console.warn(`[OnChain] Failed to scan NFTs for ${pubkey}:`, e);
     }
 
-    // Determine Era Boost (simplified estimation based on existence)
-    // In a real scenario, this would check the registration timestamp or contract state
-    // For now, we'll implement a stub that can be refined
-    let eraBoost = 1;
-    let eraLabel = 'Standard';
+    // Assign Era Boost (moved from logic above for cleaner flow)
+    // Extract Purchase Price for Era calculation at offset 40 in registry PDA
+    if (registryAccountResult.status === 'fulfilled' && registryAccountResult.value) {
+      const data = registryAccountResult.value.data;
+      if (data.length >= 48) {
+        try {
+          const purchasePriceLamports = Number(data.readBigUInt64LE(40));
+          const purchasePriceSOL = purchasePriceLamports / 1e9;
+
+          // Map purchase price to Era
+          // DeepSouth (16x), South (10x), Main (7x), Coal (3.5x), Central (2x), North (1.25x)
+          if (purchasePriceSOL < 1.0) {
+            eraBoost = 16; eraLabel = 'Deep South Era (1,500% boost)';
+          } else if (purchasePriceSOL < 2.5) {
+            eraBoost = 10; eraLabel = 'South Era (900% boost)';
+          } else if (purchasePriceSOL < 3.5) {
+            eraBoost = 7; eraLabel = 'Main Era (600% boost)';
+          } else if (purchasePriceSOL < 4.5) {
+            eraBoost = 3.5; eraLabel = 'Coal Era (250% boost)';
+          } else if (purchasePriceSOL < 5.5) {
+            eraBoost = 2; eraLabel = 'Central Era (100% boost)';
+          } else {
+            eraBoost = 1.25; eraLabel = 'North Era (25% boost)';
+          }
+        } catch (e) { }
+      }
+    }
 
     if (isRegistered) {
       // Default to Standard for now unless we have more specific era data
@@ -373,7 +386,6 @@ export async function enrichPNodeWithOnChainData(
       registrarWallet,
       validatorInfo,
       xandStake,
-      daoStake,
       nftBoost,
       nftDetails,
       eraBoost,
@@ -404,7 +416,6 @@ export async function enrichPNodesWithOnChainData(
   registrarWallet?: string;
   validatorInfo?: unknown;
   xandStake?: number;
-  daoStake?: number;
   nftBoost?: number;
   nftDetails?: { name: string; multiplier: number; icon: string }[];
   eraBoost?: number;
@@ -487,7 +498,6 @@ export async function fetchAndEnrichOnChainPNodes(
         registrarWallet: onChainData.registrarWallet,
         validatorInfo: onChainData.validatorInfo,
         xandStake: onChainData.xandStake,
-        daoStake: onChainData.daoStake,
         nftBoost,
         nftDetails: onChainData.nftDetails,
         eraBoost,

@@ -20,7 +20,9 @@ export interface BalanceData {
   validatorInfo?: ValidatorInfo;
   isRegistered: boolean;
   managerPDA?: string;
-  xandStake?: number;
+  xandStake?: number; // Staked XAND in the DAO (governance)
+  nftBoost?: number;
+  nftDetails?: { name: string; multiplier: number; icon: string }[];
   eraBoost?: number;
   eraLabel?: string;
   managerWallet?: string;
@@ -78,6 +80,8 @@ export async function fetchBalanceForPubkey(
       isRegistered: !!onChainData.isRegistered,
       managerPDA: onChainData.managerPDA,
       xandStake: onChainData.xandStake,
+      nftBoost: onChainData.nftBoost,
+      nftDetails: onChainData.nftDetails,
       eraBoost: onChainData.eraBoost,
       eraLabel: onChainData.eraLabel,
       managerWallet: onChainData.managerWallet,

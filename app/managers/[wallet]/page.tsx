@@ -25,6 +25,7 @@ interface ManagerDetails {
     totalStorageCapacity: number;
     totalStorageUsed: number;
     avgUptime: number;
+    totalXandStake: number; // Staked in DAO
     associatedWallets?: string[];
 }
 
@@ -104,6 +105,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                     ramTotal: n.ramTotal,
                     packetsReceived: n.packetsReceived,
                     packetsSent: n.packetsSent,
+                    xandStake: n.xandStake,
                     createdAt: n.createdAt,
                 }));
                 setNodes(pnodes);
@@ -363,7 +365,17 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                 </div>
                                 <div className="text-2xl font-bold text-[#F0A741]">{manager.totalCredits.toLocaleString()}</div>
                             </div>
-                            <div className="card p-4">
+                            <div className="card p-4 border-[#F0A741]/20 bg-[#F0A741]/5 group hover:bg-[#F0A741]/10 transition-all duration-300">
+                                <div className="flex items-center gap-2 text-[#F0A741]/60 text-xs uppercase tracking-wider mb-1 font-semibold">
+                                    <TrendingUp className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
+                                    XAND Stake
+                                </div>
+                                <div className="text-2xl font-bold text-[#F0A741]">
+                                    {manager.totalXandStake?.toLocaleString() || '0'}
+                                    <span className="text-xs text-[#F0A741]/50 ml-1 font-normal uppercase">XAND</span>
+                                </div>
+                            </div>
+                            <div className="card p-4 transition-all duration-300 hover:bg-white/5">
                                 <div className="flex items-center gap-2 text-foreground/50 text-xs uppercase tracking-wider mb-1">
                                     <HardDrive className="w-3.5 h-3.5 text-purple-400" />
                                     Total Storage

@@ -22,9 +22,13 @@ interface Manager {
         credits?: number;
         location?: string;
         role?: 'buyer' | 'registrar';
+        xandStake?: number;
+        eraLabel?: string;
+        eraBoost?: number;
     }[];
 
     totalCredits: number;
+    totalXandStake: number; // Staked in DAO
     onlineCount: number;
     source: 'mainnet' | 'devnet' | 'both';
 }
@@ -52,6 +56,7 @@ export async function GET() {
                     purchasedNodes: 0,
                     knownNodes: [],
                     totalCredits: 0,
+                    totalXandStake: 0,
                     onlineCount: 0,
                     source: 'devnet' // Default, will update
                 });
@@ -104,7 +109,10 @@ export async function GET() {
                     version: node.version,
                     credits: node.credits,
                     location: node.location,
-                    role
+                    role,
+                    xandStake: node.xandStake,
+                    eraLabel: node.eraLabel,
+                    eraBoost: node.eraBoost
                 });
 
                 manager.registeredNodes++;
@@ -114,6 +122,12 @@ export async function GET() {
                 }
 
                 manager.totalCredits += node.credits || 0;
+
+                // Aggregate DAO Stake (it's per-manager, so take max if nodes have it)
+                if (node.xandStake && node.xandStake > manager.totalXandStake) {
+                    manager.totalXandStake = node.xandStake;
+                }
+
                 if (node.status === 'online') manager.onlineCount++;
             }
         }

@@ -30,6 +30,9 @@ export async function getActivityCollection(): Promise<Collection<ActivityLog>> 
 }
 
 export async function storeActivityLog(log: Omit<ActivityLog, 'timestamp'>): Promise<void> {
+    // Disabled to save storage space - realtime only
+    return;
+    /*
     try {
         const collection = await getActivityCollection();
         await collection.insertOne({
@@ -40,6 +43,7 @@ export async function storeActivityLog(log: Omit<ActivityLog, 'timestamp'>): Pro
         const error = err as Error;
         console.error('[Activity] ❌ Failed to store activity log:', error.message);
     }
+    */
 }
 
 export async function getActivityLogs(options: {

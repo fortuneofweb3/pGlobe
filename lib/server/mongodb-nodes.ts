@@ -159,6 +159,14 @@ export interface NodeDocument {
   managerPDA?: string;
   managerWallet?: string; // Mainnet reward wallet (discovered via tx history)
   registrarWallet?: string; // Devnet wallet that registered the node
+  // STOINC & Rewards (from on-chain enrichment)
+  xandStake?: number; // Staked XAND in the DAO (governance)
+  daoStake?: number; // Legacy, will use xandStake instead
+  nftBoost?: number; // Individual NFT boost multiplier
+  nftDetails?: string; // JSON stringified array of { name, multiplier, icon }
+  eraBoost?: number; // Individual Era boost multiplier
+  eraLabel?: string; // Which era the node belongs to (e.g., "Deep South")
+  boostFactor?: number; // Combined boost multiplier (NFTs × Era)
   accountCreatedAt?: Date;
   firstSeenSlot?: number;
   seenInGossip?: boolean;
@@ -229,6 +237,13 @@ function nodeToDocument(node: PNode): Partial<NodeDocument> {
     managerPDA: node.managerPDA,
     managerWallet: node.managerWallet,
     registrarWallet: node.registrarWallet,
+    // STOINC & Rewards fields
+    xandStake: node.xandStake,
+    nftBoost: node.nftBoost,
+    nftDetails: node.nftDetails ? JSON.stringify(node.nftDetails) : undefined,
+    eraBoost: node.eraBoost,
+    eraLabel: node.eraLabel,
+    boostFactor: node.boostFactor,
     accountCreatedAt: node.accountCreatedAt,
     firstSeenSlot: node.firstSeenSlot,
     seenInGossip: node.seenInGossip,
@@ -239,6 +254,16 @@ function nodeToDocument(node: PNode): Partial<NodeDocument> {
 export function documentToNode(doc: NodeDocument): PNode {
   const status: 'online' | 'offline' | 'syncing' =
     doc.seenInGossip === false ? 'offline' : (doc.status || 'offline');
+
+  // Parse nftDetails from JSON string
+  let nftDetails: { name: string; multiplier: number; icon: string }[] | undefined;
+  if (doc.nftDetails) {
+    try {
+      nftDetails = JSON.parse(doc.nftDetails);
+    } catch {
+      nftDetails = undefined;
+    }
+  }
 
   const node: PNode = {
     id: doc._id || '',
@@ -271,6 +296,13 @@ export function documentToNode(doc: NodeDocument): PNode {
     managerPDA: doc.managerPDA,
     managerWallet: doc.managerWallet,
     registrarWallet: doc.registrarWallet,
+    // STOINC & Rewards fields
+    xandStake: doc.xandStake || doc.daoStake,
+    nftBoost: doc.nftBoost,
+    nftDetails,
+    eraBoost: doc.eraBoost,
+    eraLabel: doc.eraLabel,
+    boostFactor: doc.boostFactor,
     accountCreatedAt: doc.accountCreatedAt,
     firstSeenSlot: doc.firstSeenSlot,
     seenInGossip: doc.seenInGossip,
@@ -341,7 +373,8 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
 
       // Preserved fields - only set if provided (don't overwrite with undefined)
       const preservedFields = ['balance', 'isRegistered', 'managerPDA', 'managerWallet', 'registrarWallet', 'accountCreatedAt', 'firstSeenSlot',
-        'location', 'locationLat', 'locationLon', 'locationCity', 'locationCountry', 'locationCountryCode'];
+        'location', 'locationLat', 'locationLon', 'locationCity', 'locationCountry', 'locationCountryCode',
+        'xandHoldings', 'daoStake', 'nftBoost', 'nftDetails', 'eraBoost', 'eraLabel', 'boostFactor'];
 
       for (const field of preservedFields) {
         const value = (doc as unknown as Record<string, unknown>)[field];

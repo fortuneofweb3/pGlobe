@@ -435,10 +435,16 @@ export async function enrichWithBalance(
           walletAssignedCount++;
         }
         if (balanceData.registrarWallet) node.registrarWallet = balanceData.registrarWallet;
+        // STOINC & Rewards fields
         node.xandStake = balanceData.xandStake;
+        node.nftBoost = balanceData.nftBoost;
+        node.nftDetails = balanceData.nftDetails;
         node.eraBoost = balanceData.eraBoost;
         node.eraLabel = balanceData.eraLabel;
-        node.boostFactor = balanceData.eraBoost || 1;
+        // Calculate combined boost factor (NFT × Era)
+        const nftMultiplier = balanceData.nftBoost || 1;
+        const eraMultiplier = balanceData.eraBoost || 1;
+        node.boostFactor = nftMultiplier * eraMultiplier;
         enrichedCount++;
       }
     } catch {
@@ -481,7 +487,10 @@ export function deduplicateNodes(nodesMap: Map<string, PNode>): PNode[] {
       // Preserve balance if not in new data
       balance: node.balance ?? existing.balance,
       managerPDA: node.managerPDA || existing.managerPDA,
+      // STOINC & Rewards - preserve if not in new data
       xandStake: node.xandStake ?? existing.xandStake,
+      nftBoost: node.nftBoost ?? existing.nftBoost,
+      nftDetails: node.nftDetails || existing.nftDetails,
       eraBoost: node.eraBoost ?? existing.eraBoost,
       eraLabel: node.eraLabel || existing.eraLabel,
       boostFactor: node.boostFactor ?? existing.boostFactor,

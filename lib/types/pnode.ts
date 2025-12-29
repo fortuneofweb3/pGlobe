@@ -69,8 +69,7 @@ export interface PNode {
   validatorInfo?: unknown; // Validator info (from on-chain)
 
   // STOINC & Rewards (from Xandeum program)
-  xandStake?: number; // Total XAND staked (raw amount from liquid stake)
-  daoStake?: number; // Staked XAND in the DAO (governance)
+  xandStake?: number; // Staked XAND in the DAO (governance)
   activatedStakeXAND?: number; // Activated XAND stake (for reward calculation)
   boostFactor?: number; // Combined boost multiplier (NFTs × Era)
   eraLabel?: string; // Which era the node belongs to (e.g., "Deep South")

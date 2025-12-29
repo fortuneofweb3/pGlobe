@@ -1441,7 +1441,6 @@ function NodeDetailContent() {
                           )}
                           {node.createdAt && (
                             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-background/50 text-foreground/70 border border-border/30 backdrop-blur-sm" title="First detected by database. Actual network join time may vary.">
-                              <Clock className="w-3 h-3 text-[#F0A741]" />
                               Joined {new Date(node.createdAt).toLocaleString()}
                             </span>
                           )}
@@ -1508,6 +1507,12 @@ function NodeDetailContent() {
                                     <a href={`https://solscan.io/account/${node.managerWallet}`} target="_blank" rel="noopener noreferrer" className="text-foreground/20 hover:text-foreground/60 transition-colors">
                                       <ExternalLink className="w-3 h-3" />
                                     </a>
+                                    {node.xandStake !== undefined && (
+                                      <div className="ml-auto flex items-center gap-1">
+                                        <div className="text-[10px] text-foreground/40 uppercase font-bold">Stake:</div>
+                                        <div className="text-xs font-bold text-[#F0A741]">{node.xandStake.toLocaleString()} XAND</div>
+                                      </div>
+                                    )}
                                   </>
                                 ) : (
                                   <span className="text-sm text-foreground/40 italic">Unknown (Purchased on Mainnet)</span>
@@ -1757,6 +1762,12 @@ function NodeDetailContent() {
                           )}
                         </div>
                       </div>
+                      {node.eraLabel && (
+                        <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                          <span className="text-sm text-foreground/80">Era</span>
+                          <span className="text-sm font-semibold text-[#F0A741]">{node.eraLabel}</span>
+                        </div>
+                      )}
                       {node.balance !== undefined && node.balance !== null && (
                         <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
                           <span className="text-sm text-foreground/80">Balance</span>
@@ -2177,6 +2188,12 @@ function NodeDetailContent() {
                           )}
                         </div>
                       </div>
+                      {node.eraLabel && (
+                        <div className="flex justify-between">
+                          <span className="text-foreground/60">Era</span>
+                          <span className="text-[#F0A741] font-semibold">{node.eraLabel}</span>
+                        </div>
+                      )}
                       {node.credits !== undefined && node.credits !== null && (
                         <div className="flex justify-between">
                           <span className="text-foreground/60">Credits</span>

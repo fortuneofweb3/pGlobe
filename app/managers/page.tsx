@@ -23,6 +23,7 @@ interface Manager {
         credits?: number;
     }[];
     totalCredits: number;
+    totalXandStake: number;
     onlineCount: number;
     source: 'mainnet' | 'devnet' | 'both';
 }
@@ -303,6 +304,12 @@ function ManagersPageContent() {
                                                     <span className="text-lg font-bold">{manager.purchasedNodes}</span>
                                                 </div>
                                                 <div className="text-[10px] text-foreground/50">Purchased</div>
+                                            </div>
+                                            <div className="col-span-2 bg-[#F0A741]/10 rounded-lg p-2 text-center border border-[#F0A741]/20">
+                                                <div className="text-lg font-bold text-[#F0A741]">
+                                                    {manager.totalXandStake?.toLocaleString() || '0'}
+                                                </div>
+                                                <div className="text-[10px] text-[#F0A741]/50 uppercase font-semibold">XAND Stake</div>
                                             </div>
                                         </div>
 
