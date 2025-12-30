@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
+import { useXandPrice } from '@/lib/hooks/useXandPrice';
 import { CardSkeleton } from '@/components/Skeletons';
 import PNodeTable from '@/components/PNodeTable';
 import StatsCard from '@/components/StatsCard';
@@ -66,6 +67,9 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
     const [copied, setCopied] = useState(false);
     const [sortBy, setSortBy] = useState<string>('credits');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+    // XAND price from Jupiter
+    const { formatUsd } = useXandPrice();
 
     const handleSort = (field: string) => {
         if (sortBy === field) {
@@ -314,6 +318,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                             <StatsCard
                                 title="pNodes"
                                 value={manager.nodeCount}
+                                subValue={`${manager.offlineCount} offline`}
                                 icon={<Server className="w-4 h-4" />}
                             />
 
@@ -328,6 +333,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                             <StatsCard
                                 title="DAO Stake"
                                 value={<><span>{formatXandValue(manager.daoStake || 0)}</span><span className="text-xs ml-1 opacity-50 font-normal">XAND</span></>}
+                                subValue={formatUsd(manager.daoStake || 0)}
                                 icon={<Award className="w-4 h-4" />}
                                 color="orange"
                             />
@@ -335,6 +341,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                             <StatsCard
                                 title="Vesting Rewards"
                                 value={<><span>{formatXandValue(manager.vestingStake || 0)}</span><span className="text-xs ml-1 opacity-50 font-normal">XAND</span></>}
+                                subValue={formatUsd(manager.vestingStake || 0)}
                                 icon={<Zap className="w-4 h-4" />}
                                 color="blue"
                             />
@@ -342,6 +349,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                             <StatsCard
                                 title="Storage"
                                 value={formatStorageBytes(manager.totalStorageCapacity)}
+                                subValue={`${formatStorageBytes(manager.totalStorageUsed)} used`}
                                 icon={<HardDrive className="w-4 h-4" />}
                                 color="purple"
                             />
@@ -459,8 +467,9 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                                             <div className="flex flex-col">
                                                                                 <span className="text-xl font-black text-foreground tabular-nums">
                                                                                     {formatXandValue(tranche.amount)}
+                                                                                    <span className="text-xs ml-1 opacity-50 font-normal">XAND</span>
                                                                                 </span>
-                                                                                <span className="text-[10px] text-foreground/40 font-bold uppercase tracking-tighter">XAND Reward</span>
+                                                                                <span className="text-[10px] text-foreground/40 font-bold">{formatUsd(tranche.amount)}</span>
                                                                             </div>
                                                                         </div>
                                                                     </td>
