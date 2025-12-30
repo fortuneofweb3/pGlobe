@@ -76,6 +76,8 @@ export interface PNode {
   nftBoost?: number; // Individual NFT boost multiplier
   nftDetails?: { name: string; multiplier: number; icon: string }[]; // Details of NFTs held
   eraBoost?: number; // Individual Era boost multiplier
+  daoStake?: number; // Governance stake (DAO)
+  vestingStake?: number; // Locked/Claimable vesting rewards (unclaimed vault balance)
 
   // On-chain account tracking (from Solana blockchain)
   accountCreatedAt?: Date; // When the Solana account was created (approximate, from first transaction)

@@ -3,7 +3,7 @@ import { getAllNodes } from '@/lib/server/mongodb-nodes';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { SimpleCache } from '@/lib/server/cache-utils';
 
-const managerDetailCache = new SimpleCache<any>(2); // 2 minute cache
+const managerDetailCache = new SimpleCache<any>(0.5); // 30 second cache for quick navigation
 
 export async function GET(
     request: NextRequest,
@@ -20,32 +20,62 @@ export async function GET(
         const nodes = await getAllNodes();
 
         // 1. Identify all nodes "owned" by this wallet
-        // Ownership definitions:
-        // - Direct Manager: node.managerWallet === wallet
-        // - Direct Registrar: node.registrarWallet === wallet
-        // - Linked Manager: node.registrarWallet points to this wallet via some other link (we can try to infer this)
-
-        // For the details view, we want to show everything associated with this wallet.
-        // We also need to know if this wallet is a "Mainnet Buyer" or "Devnet Registrar" or both.
-
-        // Let's first find the matching nodes
         const managerNodes = nodes.filter(n =>
             n.managerWallet === wallet ||
             n.registrarWallet === wallet
         );
 
         if (managerNodes.length === 0) {
-            // It might be a wallet that hasn't registered any nodes yet, but exists as a Buyer or Registrar?
-            // For now, if no nodes, return 404 (or we could fetch from chain to verify existence)
             return NextResponse.json(
                 { success: false, error: 'Manager not found' },
                 { status: 404 }
             );
         }
 
-        // 2. Identify associated wallets
-        // If this wallet is a Buyer, find its Registrars.
-        // If this wallet is a Registrar, find its Buyer? (Ideally we redirect to Buyer, but for now just show what we have)
+        // 2. Perform REAL-TIME REFETCH for stake/rewards
+        let freshDaoStake = 0;
+        let freshVestingStake = 0;
+        try {
+            const { Connection } = await import('@solana/web3.js');
+            // We use the Helius-powered functions from solana-pnodes
+            const { fetchAndEnrichOnChainPNodes } = await import('@/lib/server/solana-pnodes');
+
+            // To keep it simple and fast, we'll manually invoke the stake fetchers for this wallet
+            // instead of a full node scan if we just want the manager's total
+            const { Connection: SolanaConn, PublicKey: SolanaPK } = await import('@solana/web3.js');
+            // We need to reach into the internal fetchers or use the enrichment flow
+            // For now, let's use the exported enrichPNodeWithOnChainData if we treat the wallet as a pubkey
+            const { enrichPNodeWithOnChainData } = await import('@/lib/server/solana-pnodes');
+
+            // We use a dummy connection because enrichment function creates its own internal Helius connection
+            const dummyConn = new Connection('https://api.devnet.solana.com');
+            const freshData = await enrichPNodeWithOnChainData(wallet, dummyConn);
+
+            if (freshData && !freshData.error) {
+                freshDaoStake = freshData.daoStake || 0;
+                freshVestingStake = freshData.vestingStake || 0;
+
+                // Trigger background DB update for all nodes of this manager
+                const { getDb } = await import('@/lib/server/mongodb-nodes');
+                const db = await getDb();
+                db.collection('nodes').updateMany(
+                    { managerWallet: wallet },
+                    {
+                        $set: {
+                            daoStake: freshDaoStake,
+                            vestingStake: freshVestingStake,
+                            xandStake: freshDaoStake,
+                            updatedAt: new Date()
+                        }
+                    }
+                ).catch(e => console.error('[API] Background DB update failed:', e));
+            }
+        } catch (e) {
+            console.error('[API] Real-time refetch failed, falling back to DB values:', e);
+            // Fallback to what we have in DB
+            freshDaoStake = managerNodes.reduce((max, n) => Math.max(max, n.daoStake || 0), 0);
+            freshVestingStake = managerNodes.reduce((max, n) => Math.max(max, n.vestingStake || 0), 0);
+        }
 
         const associatedWallets = new Set<string>();
         for (const n of managerNodes) {
@@ -57,7 +87,6 @@ export async function GET(
             }
         }
 
-        // Calculate stats
         const stats = {
             wallet,
             nodeCount: managerNodes.length,
@@ -70,6 +99,9 @@ export async function GET(
             avgUptime: managerNodes.filter(n => n.uptime).length > 0
                 ? managerNodes.reduce((sum, n) => sum + (n.uptime || 0), 0) / managerNodes.filter(n => n.uptime).length
                 : 0,
+            totalXandStake: freshDaoStake,
+            daoStake: freshDaoStake,
+            vestingStake: freshVestingStake,
             associatedWallets: Array.from(associatedWallets)
         };
 
@@ -98,7 +130,7 @@ export async function GET(
                 packetsSent: n.packetsSent,
                 balance: n.balance,
             })),
-            associatedWallets: Array.from(associatedWallets) // Send to top level too
+            associatedWallets: Array.from(associatedWallets)
         };
 
         managerDetailCache.set(wallet, response);

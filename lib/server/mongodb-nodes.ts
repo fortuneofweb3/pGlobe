@@ -332,7 +332,7 @@ export function documentToNode(doc: NodeDocument): PNode {
  * Upsert multiple nodes
  * Simple: pubkey is the primary key, overwrite stats, preserve balance if not provided
  */
-export async function upsertNodes(nodes: PNode[]): Promise<void> {
+export async function upsertNodes(nodes: PNode[], skipMarkOffline: boolean = false): Promise<void> {
   if (nodes.length === 0) return;
 
   try {
@@ -374,7 +374,7 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
       // Preserved fields - only set if provided (don't overwrite with undefined)
       const preservedFields = ['balance', 'isRegistered', 'managerPDA', 'managerWallet', 'registrarWallet', 'accountCreatedAt', 'firstSeenSlot',
         'location', 'locationLat', 'locationLon', 'locationCity', 'locationCountry', 'locationCountryCode',
-        'xandHoldings', 'daoStake', 'nftBoost', 'nftDetails', 'eraBoost', 'eraLabel', 'boostFactor'];
+        'xandHoldings', 'xandStake', 'daoStake', 'vestingStake', 'nftBoost', 'nftDetails', 'eraBoost', 'eraLabel', 'boostFactor'];
 
       for (const field of preservedFields) {
         const value = (doc as unknown as Record<string, unknown>)[field];
@@ -396,14 +396,16 @@ export async function upsertNodes(nodes: PNode[]): Promise<void> {
       const result = await collection.bulkWrite(operations);
       console.log(`[MongoDB] ✅ Upserted ${result.upsertedCount} new, ${result.modifiedCount} updated`);
 
-      // Mark nodes NOT in this sync as offline
-      const markOfflineResult = await collection.updateMany(
-        { _id: { $nin: Array.from(incomingPubkeys) as unknown as ObjectId[] } },
-        { $set: { seenInGossip: false, status: 'offline', updatedAt: now } }
-      );
+      // Mark nodes NOT in this sync as offline (skip if requested)
+      if (!skipMarkOffline) {
+        const markOfflineResult = await collection.updateMany(
+          { _id: { $nin: Array.from(incomingPubkeys) as unknown as ObjectId[] } },
+          { $set: { seenInGossip: false, status: 'offline', updatedAt: now } }
+        );
 
-      if (markOfflineResult.modifiedCount > 0) {
-        console.log(`[MongoDB] 📍 Marked ${markOfflineResult.modifiedCount} nodes as offline`);
+        if (markOfflineResult.modifiedCount > 0) {
+          console.log(`[MongoDB] 📍 Marked ${markOfflineResult.modifiedCount} nodes as offline`);
+        }
       }
     }
   } catch (err) {

@@ -26,6 +26,7 @@
   "description": "Analytics platform for Xandeum pNodes",
   "dependencies": {
     "@solana/spl-governance": "^0.3.28",
+    "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.4",
     "@types/cesium": "^1.67.14",
     "@types/d3": "^7.4.3",
@@ -43,6 +44,7 @@
     "@visx/shape": "^3.12.0",
     "@visx/tooltip": "^3.12.0",
     "@visx/visx": "^3.12.0",
+    "bn.js": "^5.2.2",
     "clsx": "^2.0.0",
     "d3": "^7.9.0",
     "d3-time-format": "^4.1.0",

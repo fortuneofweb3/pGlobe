@@ -9,15 +9,17 @@ import path from 'path';
 // Load environment variables
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
-const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+const HELIUS_API_KEY = '2aca1e9b-9f51-44a0-938b-89dc6c23e9b4';
+const RPC_URL = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
 const CUSTOM_GOV_PROGRAM = new PublicKey('4ruGZqLoPVKX27Qm91Qjsqt5AzCtLrhmjKT8ubwHiVZu');
+const VESTING_PROGRAM = new PublicKey('HBZ5oXbFBFbr8Krt2oMU7ApHFeukdRS8Rye1f3T66vg5');
 const STAKE_ACCOUNT_DISCRIMINATOR = Buffer.from('0cb8a1410fd63b6e', 'hex');
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function fetchDAOStake(connection: Connection, ownerPubkey: PublicKey): Promise<number> {
     let retries = 5;
-    let delay = 1000;
+    let delay = 2000; // Start with 2s delay for rate limits
 
     while (retries > 0) {
         try {
@@ -36,138 +38,174 @@ async function fetchDAOStake(connection: Connection, ownerPubkey: PublicKey): Pr
                 }
                 return maxStake;
             }
-            return 0; // No account found, this is a valid result (0 stake)
+            return 0;
         } catch (err: any) {
             const msg = err.message || '';
-            if (msg.includes('429') || msg.includes('limit')) {
-                console.log(`  Rate limit (fetchStake). Waiting ${delay}ms...`);
+            if (msg.includes('429') || msg.includes('limit') || msg.includes('fetch failed')) {
+                console.log(`  [fetchDAOStake] Rate limit. Waiting ${delay}ms...`);
                 await sleep(delay);
-                delay *= 2; // Exponential backoff
+                delay *= 2;
                 retries--;
             } else {
-                console.warn(`Error fetching stake for ${ownerPubkey.toBase58()}:`, msg);
-                return 0; // Other error, assume 0
+                throw err;
             }
         }
     }
-    console.warn(`Failed to fetch stake for ${ownerPubkey.toBase58()} after retries.`);
-    return 0;
+    return 0; // Return 0 if we can't fetch after retries
+}
+
+async function fetchVestingHistory(connection: Connection, managerWallet: PublicKey) {
+    let retries = 5;
+    let delay = 2000;
+
+    while (retries > 0) {
+        try {
+            const result = { totalVested: 0, schedule: [] as any[] };
+            const grantAccounts = await connection.getProgramAccounts(VESTING_PROGRAM, {
+                filters: [{ memcmp: { offset: 8, bytes: managerWallet.toBase58() } }]
+            });
+
+            for (const { pubkey: grantAccount, account } of grantAccounts) {
+                const data = account.data;
+                const START = 104;
+                const STRIDE = 80;
+
+                const tokenAccounts = await connection.getParsedTokenAccountsByOwner(grantAccount, {
+                    programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA')
+                });
+
+                let vaultBalance = 0;
+                for (const ta of tokenAccounts.value) {
+                    const info = ta.account.data.parsed.info;
+                    if (info.mint === 'XANDuUoVoUqniKkpcKhrxmvYJybpJvUxJLr21Gaj3Hx') {
+                        vaultBalance += info.tokenAmount.uiAmount || 0;
+                    }
+                }
+
+                let grantTotal = 0;
+                const tranches: any[] = [];
+                for (let i = START; i <= data.length - STRIDE; i += STRIDE) {
+                    const amount = Number(data.readBigUInt64LE(i)) / 1e9;
+                    if (amount === 0) break;
+                    const tStart = Number(data.readBigUInt64LE(i + 56));
+                    tranches.push({ amount, unlockDate: new Date(tStart * 1000), timestamp: tStart });
+                    grantTotal += amount;
+                }
+
+                for (const t of tranches) {
+                    const status = (t.timestamp < Date.now() / 1000) ? 'Claimable' : 'Locked';
+
+                    result.schedule.push({
+                        amount: t.amount,
+                        unlockDate: t.unlockDate,
+                        status,
+                        isGenesis: t.timestamp === 0
+                    });
+                }
+                result.totalVested += vaultBalance; // vestingStake = what's left in vault
+            }
+            return result;
+        } catch (err: any) {
+            const msg = err.message || '';
+            if (msg.includes('429') || msg.includes('limit') || msg.includes('fetch failed')) {
+                console.log(`  [fetchVesting] Rate limit. Waiting ${delay}ms...`);
+                await sleep(delay);
+                delay *= 2;
+                retries--;
+            } else {
+                throw err;
+            }
+        }
+    }
+    return { totalVested: 0, schedule: [] };
 }
 
 async function enrichManagers() {
-    console.log('Starting Manager Enrichment...');
-    console.log('RPC URL:', RPC_URL);
-
+    console.log('Starting Optimized Full Backfill...');
     const connection = new Connection(RPC_URL, 'confirmed');
     const db = await getDb();
-    const collection = db.collection('nodes');
+    const nodesCollection = db.collection('nodes');
+    const rewardsCollection = db.collection('manager_rewards');
 
-    // 1. Get all nodes with a managerWallet
-    const nodes = await collection.find({ managerWallet: { $exists: true, $ne: null } }).toArray();
-    console.log(`Found ${nodes.length} nodes with manager wallets.`);
+    // Get all nodes that have a manager wallet
+    const nodes = await nodesCollection.find({ managerWallet: { $exists: true, $ne: null } }).toArray();
+    const uniqueManagers = Array.from(new Set(nodes.map((n: any) => n.managerWallet)));
+    console.log(`Processing ${uniqueManagers.length} unique managers.`);
 
-    // 2. Group by managerWallet
-    const managers = new Set<string>();
-    nodes.forEach((n: any) => {
-        if (n.managerWallet) managers.add(n.managerWallet);
-    });
-
-    const uniqueManagers = Array.from(managers);
-    console.log(`Found ${uniqueManagers.length} unique managers.`);
-
-    // 3. Process each manager
-    let processed = 0;
-
+    let processedCount = 0;
     for (const managerWallet of uniqueManagers) {
-        processed++;
-        console.log(`[${processed}/${uniqueManagers.length}] Processing Manager: ${managerWallet}`);
+        processedCount++;
+        console.log(`[${processedCount}/${uniqueManagers.length}] Manager: ${managerWallet}`);
 
         try {
             const ownerPubkey = new PublicKey(managerWallet);
 
-            // Fetch Stake
-            const xandStake = await fetchDAOStake(connection, ownerPubkey);
+            // 1. Fetch Stake & Vesting
+            const daoStake = await fetchDAOStake(connection, ownerPubkey);
+            const vestingData = await fetchVestingHistory(connection, ownerPubkey);
 
-            // Fetch NFTs
+            // Redefine metrics as per user request:
+            // xandStake = daoStake
+            // vestingStake = unclaimed rewards (vault balance)
+            // claimedStake = already moved to wallet
+            const xandStake = daoStake;
+            const vestingStake = vestingData.totalVested;
+
+            // 2. Fetch NFT Boost
             let nftBoost = 1;
-            const nftDetails: any[] = [];
-
             try {
                 const parsedTokenAccounts = await connection.getParsedTokenAccountsByOwner(ownerPubkey, {
                     programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA')
                 });
-
                 for (const account of parsedTokenAccounts.value) {
                     const info = account.account.data.parsed.info;
-                    const mint = info.mint;
-                    const amount = info.tokenAmount.uiAmount;
-
-                    if (amount >= 1) {
-                        const collectionMatch = XANDEUM_NFT_COLLECTIONS.find(c => c.collectionId === mint);
-                        if (collectionMatch) {
-                            nftBoost = Math.max(nftBoost, collectionMatch.multiplier);
-                            nftDetails.push({
-                                name: collectionMatch.name,
-                                multiplier: collectionMatch.multiplier,
-                                icon: collectionMatch.icon
-                            });
-                        }
+                    if (info.tokenAmount.uiAmount >= 1) {
+                        const match = XANDEUM_NFT_COLLECTIONS.find(c => c.collectionId === info.mint);
+                        if (match) nftBoost = Math.max(nftBoost, match.multiplier);
                     }
                 }
-            } catch (e) {
-                console.warn(`Failed to fetch NFTs for ${managerWallet}`);
-            }
+            } catch (e) { }
 
-            // Update all nodes for this manager
-            // We update xandStake, nftBoost, nftDetails, AND recalculate boostFactor
-            // boostFactor = nftBoost * eraBoost (we need to preserve existing eraBoost)
-
-            // Since eraBoost varies per node, we can't do a single bulk update for boostFactor perfectly
-            // BUT, strictly speaking, boostFactor = nftBoost * eraBoost.
-            // Use an aggregation pipeline update to multiply existing eraBoost by new nftBoost?
-            // Or simpler: update xandStake/nftBoost first.
-            // THEN, update boostFactor: boostFactor = nftBoost * (eraBoost || 1)
-
-            // 1. Set the common fields
-            await collection.updateMany(
+            // 3. Update Database
+            await nodesCollection.updateMany(
                 { managerWallet: managerWallet },
                 {
                     $set: {
                         xandStake,
+                        daoStake,
+                        vestingStake,
                         nftBoost,
-                        nftDetails
+                        updatedAt: new Date()
                     }
                 }
             );
 
-            // 2. Update boostFactor using aggregation pipeline (requires MongoDB 4.2+)
-            await collection.updateMany(
+            await rewardsCollection.updateOne(
                 { managerWallet: managerWallet },
-                [
-                    {
-                        $set: {
-                            boostFactor: {
-                                $multiply: [
-                                    { $ifNull: ["$nftBoost", 1] },
-                                    { $ifNull: ["$eraBoost", 1] }
-                                ]
-                            }
-                        }
+                {
+                    $set: {
+                        managerWallet,
+                        daoStake,
+                        vestingStake,
+                        totalStake: daoStake, // Keeping totalStake aligned with xandStake
+                        history: vestingData.schedule,
+                        updatedAt: new Date()
                     }
-                ]
+                },
+                { upsert: true }
             );
 
-            console.log(`  > Updated ${managerWallet}: Stake=${xandStake}, NFTBoost=${nftBoost}x`);
+            console.log(`  ✅ Updated: DAO=${daoStake.toLocaleString()}, Vesting=${vestingStake.toLocaleString()}`);
 
-        } catch (err) {
-            console.error(`Failed to process manager ${managerWallet}:`, err);
+        } catch (err: any) {
+            console.error(`  ❌ Failed ${managerWallet}:`, err.message);
         }
 
-        // Rate limit protection
-        await sleep(500);
+        // Delay between managers to avoid RPC anger
+        await sleep(1500);
     }
 
-    console.log('Manager Enrichment Complete.');
+    console.log('Backfill Complete.');
     process.exit(0);
 }
 

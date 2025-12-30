@@ -368,8 +368,8 @@ export async function enrichWithBalance(
   // 1. New nodes (no existing record in DB)
   // 2. Existing nodes without balance data
   // 3. Registered nodes missing managerWallet or registrarWallet
-  // 4. Unregistered nodes that haven't been checked in 24 hours (to detect new registrations)
-  const REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+  // 4. Unregistered nodes that haven't been checked in 6 hours (to detect new registrations)
+  const REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
   const now = Date.now();
 
   const nodesNeedingBalance = Array.from(nodesMap.values()).filter(node => {
@@ -387,10 +387,12 @@ export async function enrichWithBalance(
       return true;
     }
 
-    // Case 3: Registered node missing wallet info (backfill scenario)
+    // Case 3: Registered node missing wallet info, era info, or stake info (backfill scenario)
     const isRegistered = existing.isRegistered || (existing.balance && existing.balance > 0);
     const missingWalletInfo = !existing.managerWallet || !existing.registrarWallet;
-    if (isRegistered && missingWalletInfo) {
+    const missingEraInfo = !existing.eraLabel || existing.eraLabel === 'Standard';
+    const missingStakeInfo = existing.daoStake === undefined || existing.vestingStake === undefined;
+    if (isRegistered && (missingWalletInfo || missingEraInfo || missingStakeInfo)) {
       return true;
     }
 
@@ -437,6 +439,8 @@ export async function enrichWithBalance(
         if (balanceData.registrarWallet) node.registrarWallet = balanceData.registrarWallet;
         // STOINC & Rewards fields
         node.xandStake = balanceData.xandStake;
+        node.daoStake = balanceData.daoStake;
+        node.vestingStake = balanceData.vestingStake;
         node.nftBoost = balanceData.nftBoost;
         node.nftDetails = balanceData.nftDetails;
         node.eraBoost = balanceData.eraBoost;
@@ -489,6 +493,8 @@ export function deduplicateNodes(nodesMap: Map<string, PNode>): PNode[] {
       managerPDA: node.managerPDA || existing.managerPDA,
       // STOINC & Rewards - preserve if not in new data
       xandStake: node.xandStake ?? existing.xandStake,
+      daoStake: node.daoStake ?? existing.daoStake,
+      vestingStake: node.vestingStake ?? existing.vestingStake,
       nftBoost: node.nftBoost ?? existing.nftBoost,
       nftDetails: node.nftDetails || existing.nftDetails,
       eraBoost: node.eraBoost ?? existing.eraBoost,

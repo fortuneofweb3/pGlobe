@@ -24,7 +24,7 @@ export const XANDEUM_NFT_COLLECTIONS: NFTCollection[] = [
         name: 'Dragon',
         multiplier: 4, // 300% boost
         icon: '🐉',
-        collectionId: undefined
+        collectionId: 'AevD1ypsjQxdn9CV34pKh8qbSChYuVaLDReeaCg18mv1' // DeepSouth Dragon
     },
     {
         name: 'Coyote',
@@ -36,7 +36,7 @@ export const XANDEUM_NFT_COLLECTIONS: NFTCollection[] = [
         name: 'Rabbit',
         multiplier: 1.5, // 50% boost
         icon: '🐰',
-        collectionId: undefined
+        collectionId: '2jwFQbyVxAbx9vZAH8AAPTNw9R955ELfEJUB9H6JNyke' // DeepSouth Rabbit
     },
     {
         name: 'Cricket',
