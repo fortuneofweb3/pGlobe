@@ -490,6 +490,7 @@ export async function getAllNodes(): Promise<PNode[]> {
 
 /**
  * Get nodes for a specific manager
+ * Throws on connection error so callers can distinguish from "not found"
  */
 export async function getNodesByManager(wallet: string): Promise<PNode[]> {
   try {
@@ -510,7 +511,8 @@ export async function getNodesByManager(wallet: string): Promise<PNode[]> {
   } catch (err) {
     const error = err as Error;
     console.error(`[MongoDB] Error fetching nodes for manager ${wallet}:`, error.message);
-    return [];
+    // Throw the error so the API can return 500 instead of 404
+    throw new Error(`Database connection error: ${error.message}`);
   }
 }
 

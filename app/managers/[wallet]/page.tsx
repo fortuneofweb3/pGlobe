@@ -7,6 +7,7 @@ import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
 import { CardSkeleton } from '@/components/Skeletons';
 import PNodeTable from '@/components/PNodeTable';
+import StatsCard from '@/components/StatsCard';
 import { PNode } from '@/lib/types/pnode';
 import { getFlagForCountry } from '@/lib/utils/country-flags';
 import { formatStorageBytes } from '@/lib/utils/storage';
@@ -14,6 +15,17 @@ import {
     Server, TrendingUp, ArrowLeft, ExternalLink, Copy, Check,
     Award, HardDrive, Users, Zap, Activity, MapPin, Clock, ShieldCheck
 } from 'lucide-react';
+
+// Format XAND values with M/K notation and 2 decimal places
+const formatXandValue = (value: number): string => {
+    if (value >= 1000000) {
+        return `${(value / 1000000).toFixed(2)}M`;
+    }
+    if (value >= 1000) {
+        return `${(value / 1000).toFixed(2)}K`;
+    }
+    return value.toFixed(2);
+};
 
 interface ManagerDetails {
     wallet: string;
@@ -35,6 +47,7 @@ interface ManagerResponse {
     success: boolean;
     manager: ManagerDetails;
     nodes: PNode[];
+    rewards?: { history: any[] };
     associatedWallets?: string[];
     error?: string;
 }
@@ -48,7 +61,6 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
     const [nodes, setNodes] = useState<PNode[]>([]);
     const [rewards, setRewards] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [rewardsLoading, setRewardsLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<'nodes' | 'rewards'>('nodes');
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
@@ -78,21 +90,6 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
             return 0;
         });
     }, [nodes, sortBy, sortOrder]);
-
-    const fetchRewards = async () => {
-        try {
-            setRewardsLoading(true);
-            const res = await fetch(`/api/managers/${wallet}/rewards`);
-            if (res.ok) {
-                const data = await res.json();
-                setRewards(data);
-            }
-        } catch (err) {
-            console.error('Failed to fetch rewards:', err);
-        } finally {
-            setRewardsLoading(false);
-        }
-    };
 
     const fetchManagerDetails = async () => {
         try {
@@ -128,6 +125,10 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                     vestingStake: n.vestingStake,
                 }));
                 setNodes(pnodes);
+                // Set rewards from the same API response
+                if (data.rewards) {
+                    setRewards(data.rewards);
+                }
             } else {
                 setError(data.error || 'Failed to fetch manager details');
             }
@@ -140,7 +141,6 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
 
     useEffect(() => {
         fetchManagerDetails();
-        fetchRewards();
     }, [wallet]);
 
     const copyWallet = () => {
@@ -216,13 +216,28 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
     }
 
     if (error || !manager) {
+        const isTemporaryError = error?.includes('temporarily') || error?.includes('Database') || error?.includes('connect');
         return (
             <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
                 <Header activePage="managers" nodeCount={allNodes.length} lastUpdate={lastUpdate} loading={nodesLoading} onRefresh={refreshNodes} />
                 <main className="flex-1 overflow-hidden">
                     <div className="h-full w-full p-3 sm:p-6 overflow-y-auto text-center">
                         <div className="max-w-7xl mx-auto py-12">
-                            <p className="text-red-400 text-lg mb-4">{error || 'Manager not found'}</p>
+                            <p className={`text-lg mb-4 ${isTemporaryError ? 'text-yellow-400' : 'text-red-400'}`}>
+                                {error || 'Manager not found'}
+                            </p>
+                            {isTemporaryError ? (
+                                <button
+                                    onClick={() => {
+                                        setError(null);
+                                        setLoading(true);
+                                        fetchManagerDetails();
+                                    }}
+                                    className="px-4 py-2 bg-[#F0A741] text-black font-bold rounded-lg hover:bg-[#F0A741]/80 transition-colors mr-4"
+                                >
+                                    Retry
+                                </button>
+                            ) : null}
                             <Link href="/managers" className="text-blue-400 hover:underline">Return to Managers</Link>
                         </div>
                     </div>
@@ -294,62 +309,42 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                             </div>
                         </div>
 
-                        {/* Stats Row - 6 Columns */}
+                        {/* Stats Row - 5 Columns */}
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-                            <div className="card p-5 group hover:border-white/20 transition-all">
-                                <div className="text-[10px] uppercase text-foreground/40 font-bold tracking-widest mb-2 flex items-center gap-1.5">
-                                    <Server className="w-3 h-3" />
-                                    pNodes
-                                </div>
-                                <div className="text-3xl font-bold font-mono">{manager.nodeCount}</div>
-                            </div>
+                            <StatsCard
+                                title="pNodes"
+                                value={manager.nodeCount}
+                                icon={<Server className="w-4 h-4" />}
+                            />
 
-                            <div className="card p-5 group hover:border-green-500/20 transition-all">
-                                <div className="text-[10px] uppercase text-foreground/40 font-bold tracking-widest mb-2 flex items-center gap-1.5">
-                                    <Activity className="w-3 h-3 text-green-400" />
-                                    Online
-                                </div>
-                                <div className="text-3xl font-bold text-green-400 font-mono">{manager.onlineCount} <span className="text-xs font-normal text-foreground/30 ml-1">({uptimePercent}%)</span></div>
-                            </div>
+                            <StatsCard
+                                title="Online"
+                                value={manager.onlineCount}
+                                subValue={`${uptimePercent}% uptime`}
+                                icon={<Activity className="w-4 h-4" />}
+                                color="green"
+                            />
 
-                            {/* DAO Stake Card */}
-                            <div className="card p-5 border-[#F0A741]/20 bg-[#F0A741]/5 hover:border-[#F0A741]/40 transition-all relative overflow-hidden group">
-                                <div className="absolute -right-4 -top-4 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
-                                    <Users className="w-24 h-24 text-[#F0A741]" />
-                                </div>
-                                <div className="text-[10px] uppercase text-[#F0A741]/70 font-black tracking-widest mb-2 flex items-center gap-1.5">
-                                    <Award className="w-3 h-3" />
-                                    DAO Stake
-                                </div>
-                                <div className="text-3xl font-bold text-[#F0A741] font-mono">
-                                    {(manager.daoStake || 0).toLocaleString()}
-                                    <span className="text-xs ml-1 opacity-50 font-normal">XAND</span>
-                                </div>
-                            </div>
+                            <StatsCard
+                                title="DAO Stake"
+                                value={<><span>{formatXandValue(manager.daoStake || 0)}</span><span className="text-xs ml-1 opacity-50 font-normal">XAND</span></>}
+                                icon={<Award className="w-4 h-4" />}
+                                color="orange"
+                            />
 
-                            {/* Vesting Rewards Card (Locked/Claimable) */}
-                            <div className="card p-5 border-blue-500/20 bg-blue-500/5 hover:border-blue-500/40 transition-all relative overflow-hidden group">
-                                <div className="absolute -right-4 -top-4 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
-                                    <TrendingUp className="w-24 h-24 text-blue-400" />
-                                </div>
-                                <div className="text-[10px] uppercase text-blue-400/70 font-black tracking-widest mb-2 flex items-center gap-1.5">
-                                    <Zap className="w-3 h-3" />
-                                    Vesting Rewards
-                                </div>
-                                <div className="text-3xl font-bold text-blue-400 font-mono">
-                                    {(manager.vestingStake || 0).toLocaleString()}
-                                    <span className="text-xs ml-1 opacity-50 font-normal">XAND</span>
-                                </div>
-                            </div>
+                            <StatsCard
+                                title="Vesting Rewards"
+                                value={<><span>{formatXandValue(manager.vestingStake || 0)}</span><span className="text-xs ml-1 opacity-50 font-normal">XAND</span></>}
+                                icon={<Zap className="w-4 h-4" />}
+                                color="blue"
+                            />
 
-
-                            <div className="card p-5 group hover:border-purple-500/20 transition-all">
-                                <div className="text-[10px] uppercase text-foreground/40 font-bold tracking-widest mb-2 flex items-center gap-1.5">
-                                    <HardDrive className="w-3 h-3 text-purple-400" />
-                                    Storage
-                                </div>
-                                <div className="text-3xl font-bold text-purple-400 font-mono">{formatStorageBytes(manager.totalStorageCapacity)}</div>
-                            </div>
+                            <StatsCard
+                                title="Storage"
+                                value={formatStorageBytes(manager.totalStorageCapacity)}
+                                icon={<HardDrive className="w-4 h-4" />}
+                                color="purple"
+                            />
                         </div>
 
                         {/* Tabs Navigation */}
@@ -388,12 +383,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                 )
                             ) : (
                                 <div className="space-y-6">
-                                    {rewardsLoading ? (
-                                        <div className="card p-20 text-center animate-pulse border-white/5 bg-white/[0.02]">
-                                            <div className="loading-spinner mb-4" />
-                                            <p className="text-foreground/60">Fetching latest reward schedules...</p>
-                                        </div>
-                                    ) : !rewards || !rewards.history || rewards.history.length === 0 ? (
+                                    {!rewards || !rewards.history || rewards.history.length === 0 ? (
                                         <div className="card p-20 text-center border-dashed border-white/10 bg-white/[0.01]">
                                             <Award className="w-16 h-16 mx-auto mb-6 text-[#F0A741] opacity-20" />
                                             <h3 className="text-xl font-bold mb-2">No Vesting Data</h3>
@@ -415,7 +405,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                     <div className="bg-black/60 border border-white/5 rounded-2xl px-5 py-3 flex flex-col items-end shadow-inner">
                                                         <span className="text-[10px] text-foreground/30 font-black uppercase tracking-widest mb-1">Locked/Vesting</span>
                                                         <div className="flex items-baseline gap-2">
-                                                            <span className="text-2xl font-black text-[#F0A741]">{(manager.vestingStake || 0).toLocaleString()}</span>
+                                                            <span className="text-2xl font-black text-[#F0A741]">{formatXandValue(manager.vestingStake || 0)}</span>
                                                             <span className="text-[10px] text-foreground/40 font-bold">XAND</span>
                                                         </div>
                                                     </div>
@@ -468,7 +458,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                                             </div>
                                                                             <div className="flex flex-col">
                                                                                 <span className="text-xl font-black text-foreground tabular-nums">
-                                                                                    {tranche.amount.toLocaleString()}
+                                                                                    {formatXandValue(tranche.amount)}
                                                                                 </span>
                                                                                 <span className="text-[10px] text-foreground/40 font-bold uppercase tracking-tighter">XAND Reward</span>
                                                                             </div>
