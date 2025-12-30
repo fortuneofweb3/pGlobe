@@ -1222,6 +1222,7 @@ async function startServer() {
       console.log(`[RenderAPI] Background refresh active - data updates every minute`);
 
       // Secondary index creation (async)
+      import('./lib/server/mongodb-nodes').then(m => m.createIndexes()).catch(console.error);
       import('./lib/server/mongodb-activity').then(m => m.createActivityIndexes()).catch(console.error);
     });
 

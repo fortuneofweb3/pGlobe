@@ -489,6 +489,32 @@ export async function getAllNodes(): Promise<PNode[]> {
 }
 
 /**
+ * Get nodes for a specific manager
+ */
+export async function getNodesByManager(wallet: string): Promise<PNode[]> {
+  try {
+    await getClient();
+    const collection = await getNodesCollection();
+
+    // Query by managerWallet OR registrarWallet
+    const cursor = collection.find({
+      $or: [
+        { managerWallet: wallet },
+        { registrarWallet: wallet }
+      ]
+    }).sort({ updatedAt: -1 });
+
+    const docs = await cursor.toArray();
+    console.log(`[MongoDB] ✅ Retrieved ${docs.length} nodes for manager ${wallet}`);
+    return docs.map(doc => documentToNode(doc as unknown as NodeDocument));
+  } catch (err) {
+    const error = err as Error;
+    console.error(`[MongoDB] Error fetching nodes for manager ${wallet}:`, error.message);
+    return [];
+  }
+}
+
+/**
  * Get nodes optimized for Manager view (projection)
  */
 export async function getAllNodesForManagers(): Promise<PNode[]> {
@@ -623,6 +649,8 @@ export async function createIndexes(): Promise<void> {
     await collection.createIndex({ pubkey: 1 });
     await collection.createIndex({ address: 1 });
     await collection.createIndex({ status: 1 });
+    await collection.createIndex({ managerWallet: 1 });
+    await collection.createIndex({ registrarWallet: 1 });
     await collection.createIndex({ updatedAt: -1 });
     console.log('[MongoDB] ✅ Created indexes');
   } catch (err) {

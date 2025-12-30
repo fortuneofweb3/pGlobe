@@ -1,8 +1,11 @@
-
+import dotenv from 'dotenv';
+import path from 'path';
 import { Connection, PublicKey } from '@solana/web3.js';
 
-const MAINNET_RPC = 'https://api.mainnet-beta.solana.com';
-const TARGET_WALLET = new PublicKey('5qRv3m3xfrpHQZsrNuoam78j7BZ5eWgzRsvkdRbrhK7W');
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+
+const MAINNET_RPC = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+const TARGET_WALLET = new PublicKey('3gnisfmyxw8Bch1SHZZ16UDtRG853vv52sPb726jgdbu'); // 0 stake manager
 const XAND_MINT = 'XANDuUoVoUqniKkpcKhrxmvYJybpJvUxJLr21Gaj3Hx';
 
 async function traceRewards() {

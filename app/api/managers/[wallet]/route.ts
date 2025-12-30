@@ -17,13 +17,8 @@ export async function GET(
             return NextResponse.json(cached);
         }
 
-        const nodes = await getAllNodes();
-
-        // 1. Identify all nodes "owned" by this wallet
-        const managerNodes = nodes.filter(n =>
-            n.managerWallet === wallet ||
-            n.registrarWallet === wallet
-        );
+        const { getNodesByManager } = await import('@/lib/server/mongodb-nodes');
+        const managerNodes = await getNodesByManager(wallet);
 
         if (managerNodes.length === 0) {
             return NextResponse.json(

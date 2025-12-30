@@ -35,11 +35,10 @@ interface Manager {
 
 export async function GET() {
     try {
-        // Cache temporarily disabled to ensure fresh data during enrichment
-        // const cached = managerListCache.get('all_managers');
-        // if (cached) {
-        //     return NextResponse.json(cached);
-        // }
+        const cached = managerListCache.get('all_managers');
+        if (cached) {
+            return NextResponse.json(cached);
+        }
 
         // Fetch all nodes (lightweight)
         const nodes = await getAllNodesForManagers();
@@ -136,7 +135,7 @@ export async function GET() {
         // Convert to array and sort
         const managers = Array.from(managerMap.values())
             .filter(m => m.knownNodes.length > 0) // Only show managers with nodes
-            .sort((a, b) => b.knownNodes.length - a.knownNodes.length);
+            .sort((a, b) => (b.totalXandStake || 0) - (a.totalXandStake || 0) || b.knownNodes.length - a.knownNodes.length);
 
         const response = {
             success: true,

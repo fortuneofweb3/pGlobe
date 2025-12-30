@@ -257,21 +257,34 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-r from-card via-card/70 to-transparent" />
                                 <div className="relative px-6 py-10">
-                                    <div className="flex items-center gap-3 flex-wrap mb-4">
-                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#F0A741]/20 text-[#F0A741] border border-[#F0A741]/30">
-                                            <Users className="w-3.5 h-3.5" />
-                                            Manager
-                                        </span>
-                                        <h1 className="text-xl sm:text-2xl font-bold font-mono text-foreground break-all tracking-tight leading-none">{wallet}</h1>
-                                    </div>
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <button onClick={copyWallet} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 text-sm transition-all active:scale-95">
-                                            {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-foreground/60" />}
-                                            {copied ? 'Copied' : 'Copy Address'}
-                                        </button>
-                                        <a href={`https://solscan.io/account/${wallet}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 text-sm transition-all hover:border-[#F0A741]/20">
-                                            <ExternalLink className="w-3.5 h-3.5 text-foreground/60" /> Solscan
-                                        </a>
+                                    <div className="mb-6">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#F0A741]/20 text-[#F0A741] border border-[#F0A741]/30">
+                                                <Users className="w-3.5 h-3.5" />
+                                                Manager
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-4 flex-wrap">
+                                            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold font-mono text-foreground break-all tracking-tight leading-none">{wallet}</h1>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={copyWallet}
+                                                    className="p-2 hover:bg-white/5 rounded-full transition-all active:scale-90 group/copy"
+                                                    title="Copy Address"
+                                                >
+                                                    {copied ? <Check className="w-5 h-5 text-green-400" /> : <Copy className="w-5 h-5 text-foreground/30 group-hover/copy:text-foreground transition-colors" />}
+                                                </button>
+                                                <a
+                                                    href={`https://solscan.io/account/${wallet}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-2 hover:bg-white/5 rounded-full transition-all group/solscan"
+                                                    title="View on Solscan"
+                                                >
+                                                    <ExternalLink className="w-5 h-5 text-foreground/30 group-hover/solscan:text-foreground transition-colors" />
+                                                </a>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4 text-sm text-foreground/60 border-t border-white/5 pt-4">
                                         {topLocationData && <div className="flex items-center gap-2 hover:text-foreground transition-colors"><MapPin className="w-4 h-4 text-[#F0A741]" /> {topLocationData.location}</div>}
