@@ -55,20 +55,11 @@ export function useXandPrice() {
         fetchPrice();
     }, []);
 
-    // Helper to format USD values
+    // Helper to format USD values - full amount with 2 decimal places
     const formatUsd = (xandAmount: number): string => {
         if (!price || price === 0) return '';
         const usdValue = xandAmount * price;
-        if (usdValue >= 1000000) {
-            return `$${(usdValue / 1000000).toFixed(2)}M`;
-        }
-        if (usdValue >= 1000) {
-            return `$${(usdValue / 1000).toFixed(2)}K`;
-        }
-        if (usdValue >= 1) {
-            return `$${usdValue.toFixed(2)}`;
-        }
-        return `$${usdValue.toFixed(4)}`;
+        return `$${usdValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
     return { price, loading, error, formatUsd };
