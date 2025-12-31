@@ -241,7 +241,6 @@ export default function ScanPage() {
         <Header
           showNetworkSelector={false}
           activePage="scan"
-          nodeCount={0}
           lastUpdate={null}
           loading={true}
           onRefresh={() => { }}
@@ -370,7 +369,6 @@ export default function ScanPage() {
       <Header
         showNetworkSelector={false}
         activePage="scan"
-        nodeCount={nodes.length}
         lastUpdate={lastUpdate}
         loading={loading}
         onRefresh={() => {

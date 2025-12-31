@@ -49,3 +49,6 @@ prisma/dev.db-journal
 # Temporary investigation data
 tmp/
 local-pnodes.json
+
+# Xandeum Repos
+XandeumRepos/

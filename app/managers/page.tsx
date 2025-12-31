@@ -3,65 +3,21 @@
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
-import { useNodes } from '@/lib/context/NodesContext';
+import { useNodes, Manager } from '@/lib/context/NodesContext';
 import { startProgress } from '@/lib/nprogress';
 import { TableSkeleton } from '@/components/Skeletons';
 import StatsCard from '@/components/StatsCard';
 import {
     Users, Server, TrendingUp, Search, X,
     ChevronRight, ExternalLink, Copy, Check,
-    Award, ShoppingCart, FileCheck
+    Award, ShoppingCart, FileCheck, RefreshCw, UserX
 } from 'lucide-react';
-
-interface Manager {
-    wallet: string;
-    registeredNodes: number;
-    purchasedNodes: number;
-    knownNodes: {
-        pubkey: string;
-        status: string;
-        credits?: number;
-    }[];
-    totalCredits: number;
-    totalXandStake: number;
-    onlineCount: number;
-    source: 'mainnet' | 'devnet' | 'both';
-}
 
 function ManagersPageContent() {
     const router = useRouter();
-    const { nodes, loading: nodesLoading, lastUpdate, refreshNodes } = useNodes();
-    const [managers, setManagers] = useState<Manager[]>([]);
-    const [totalRegistered, setTotalRegistered] = useState(0);
-    const [totalPurchased, setTotalPurchased] = useState(0);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const { nodes, managers, loading: nodesLoading, lastUpdate, refreshNodes, deadManagerCount } = useNodes();
     const [searchQuery, setSearchQuery] = useState('');
     const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
-
-    useEffect(() => {
-        fetchManagers();
-    }, []);
-
-    async function fetchManagers() {
-        try {
-            setLoading(true);
-            const res = await fetch('/api/managers');
-            const data = await res.json();
-
-            if (data.success) {
-                setManagers(data.managers);
-                setTotalRegistered(data.totalRegisteredNodes || 0);
-                setTotalPurchased(data.totalPurchasedNodes || 0);
-            } else {
-                setError(data.error || 'Failed to fetch managers');
-            }
-        } catch (err) {
-            setError('Failed to connect to server');
-        } finally {
-            setLoading(false);
-        }
-    }
 
     const filteredManagers = useMemo(() => {
         if (!searchQuery) return managers;
@@ -110,7 +66,7 @@ function ManagersPageContent() {
         }
     };
 
-    if (loading) {
+    if (nodesLoading && managers.length === 0) {
         return (
             <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
                 <Header activePage="managers" loading={true} onRefresh={() => { }} />
@@ -126,11 +82,12 @@ function ManagersPageContent() {
                             </div>
 
                             {/* Stats Cards Skeleton */}
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                                 <StatsCard title="Managers" value={0} icon={<Users className="w-4 h-4" />} loading={true} />
                                 <StatsCard title="Registered" value={0} icon={<FileCheck className="w-4 h-4" />} loading={true} />
                                 <StatsCard title="Purchased" value={0} icon={<ShoppingCart className="w-4 h-4" />} loading={true} />
                                 <StatsCard title="Linked" value={0} icon={<Server className="w-4 h-4" />} loading={true} />
+                                <StatsCard title="Dead" value={0} icon={<UserX className="w-4 h-4" />} loading={true} />
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -165,7 +122,7 @@ function ManagersPageContent() {
 
     return (
         <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
-            <Header activePage="managers" nodeCount={nodes.length} lastUpdate={lastUpdate} loading={nodesLoading} onRefresh={refreshNodes} />
+            <Header activePage="managers" lastUpdate={lastUpdate} loading={nodesLoading} onRefresh={refreshNodes} />
 
             <main className="flex-1 flex flex-col overflow-hidden">
                 <div className="flex-1 w-full p-3 sm:p-6 overflow-y-auto">
@@ -182,28 +139,32 @@ function ManagersPageContent() {
                         {/* Stats */}
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                             <StatsCard
-                                title="Total Managers"
+                                title="Active Managers"
                                 value={stats.totalManagers}
+                                subValue="Buyer & Registrar wallets"
                                 icon={<Users className="w-4 h-4" />}
                                 color="orange"
                             />
                             <StatsCard
-                                title="All pNodes"
-                                value={stats.allNodes}
-                                icon={<Server className="w-4 h-4" />}
-                                color="blue"
-                            />
-                            <StatsCard
                                 title="Registered"
                                 value={stats.registeredNodes}
+                                subValue="Nodes with on-chain identity"
                                 icon={<FileCheck className="w-4 h-4" />}
                                 color="green"
                             />
                             <StatsCard
                                 title="Unregistered"
                                 value={stats.unregisteredNodes}
+                                subValue="Nodes without on-chain identity"
                                 icon={<ShoppingCart className="w-4 h-4" />}
                                 color="purple"
+                            />
+                            <StatsCard
+                                title="Dead Managers"
+                                value={deadManagerCount}
+                                subValue="Managers with only offline nodes"
+                                icon={<UserX className="w-4 h-4" />}
+                                color="red"
                             />
                         </div>
 
@@ -229,9 +190,10 @@ function ManagersPageContent() {
                             </div>
                         </div>
 
-                        {error && (
-                            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
-                                <p className="text-red-400">{error}</p>
+                        {nodesLoading && (
+                            <div className="mb-6 flex items-center gap-2 text-[#F0A741] animate-pulse">
+                                <RefreshCw className="w-4 h-4" />
+                                <span className="text-xs font-medium uppercase tracking-wider">Refreshing Data...</span>
                             </div>
                         )}
 

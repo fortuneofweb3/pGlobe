@@ -34,7 +34,7 @@ interface HistoricalDataPoint {
 
 export default function AnalyticsPage() {
   // Use shared nodes data from context (fetched once, updated passively)
-  const { nodes, loading, error, lastUpdate, selectedNetwork, setSelectedNetwork, availableNetworks, currentNetwork, refreshNodes } = useNodes();
+  const { nodes, activeNodes, loading, error, lastUpdate, selectedNetwork, setSelectedNetwork, availableNetworks, currentNetwork, refreshNodes } = useNodes();
 
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
   const [isComparisonOpen, setIsComparisonOpen] = useState(false);
@@ -163,27 +163,29 @@ export default function AnalyticsPage() {
 
   // Calculate summary stats
   const stats = useMemo(() => {
-    const onlineNodes = nodes.filter(n => n.status === 'online').length;
-    const offlineNodes = nodes.filter(n => n.status === 'offline').length;
-    const syncingNodes = nodes.filter(n => n.status === 'syncing').length;
-    const totalStorageCapacity = nodes.reduce((sum, n) => sum + (n.storageCapacity || 0), 0);
-    const totalStorageUsed = nodes.reduce((sum, n) => sum + (n.storageUsed || 0), 0);
-    const nodesWithStorage = nodes.filter(n => n.storageCapacity && n.storageCapacity > 0).length;
-    const nodesWithStorageUsage = nodes.filter(n => n.storageCapacity && n.storageUsed !== undefined && n.storageCapacity > 0);
+    const onlineNodes = activeNodes.filter(n => n.status === 'online').length;
+    const syncingNodes = activeNodes.filter(n => n.status === 'syncing').length;
+    const totalStorageCapacity = activeNodes.reduce((sum, n) => sum + (n.storageCapacity || 0), 0);
+    const totalStorageUsed = activeNodes.reduce((sum, n) => sum + (n.storageUsed || 0), 0);
+    const nodesWithStorage = activeNodes.filter(n => n.storageCapacity && n.storageCapacity > 0).length;
+    const nodesWithStorageUsage = activeNodes.filter(n => n.storageCapacity && n.storageUsed !== undefined && n.storageCapacity > 0);
+
     const avgStorageUsage = nodesWithStorageUsage.length > 0
       ? nodesWithStorageUsage.reduce((sum, n) => {
         const usage = n.storageCapacity && n.storageUsed ? (n.storageUsed / n.storageCapacity) * 100 : 0;
         return sum + usage;
       }, 0) / nodesWithStorageUsage.length
       : 0;
-    const avgUptime = nodes
-      .filter(n => n.uptime && n.uptime > 0)
-      .reduce((sum, n) => sum + (n.uptime || 0), 0) / nodes.filter(n => n.uptime && n.uptime > 0).length || 0;
+
+    const nodesWithUptime = activeNodes.filter(n => n.uptime && n.uptime > 0);
+    const avgUptime = nodesWithUptime.length > 0
+      ? nodesWithUptime.reduce((sum, n) => sum + (n.uptime || 0), 0) / nodesWithUptime.length
+      : 0;
 
     // RAM metrics
-    const totalRAM = nodes.reduce((sum, n) => sum + (n.ramTotal || 0), 0);
-    const usedRAM = nodes.reduce((sum, n) => sum + (n.ramUsed || 0), 0);
-    const nodesWithRAM = nodes.filter(n => n.ramTotal !== undefined);
+    const totalRAM = activeNodes.reduce((sum, n) => sum + (n.ramTotal || 0), 0);
+    const usedRAM = activeNodes.reduce((sum, n) => sum + (n.ramUsed || 0), 0);
+    const nodesWithRAM = activeNodes.filter(n => n.ramTotal !== undefined);
     const avgRAMUsage = nodesWithRAM.length > 0
       ? nodesWithRAM.reduce((sum, n) => {
         const usage = n.ramTotal && n.ramUsed ? (n.ramUsed / n.ramTotal) * 100 : 0;
@@ -192,23 +194,23 @@ export default function AnalyticsPage() {
       : 0;
 
     // CPU metrics
-    const nodesWithCPU = nodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null);
+    const nodesWithCPU = activeNodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null);
     const avgCPU = nodesWithCPU.length > 0
       ? nodesWithCPU.reduce((sum, n) => sum + (n.cpuPercent || 0), 0) / nodesWithCPU.length
       : 0;
 
     // Credits metrics
-    const nodesWithCredits = nodes.filter(n => n.credits !== undefined && n.credits !== null);
+    const nodesWithCredits = activeNodes.filter(n => n.credits !== undefined && n.credits !== null);
     const totalCredits = nodesWithCredits.reduce((sum, n) => sum + (n.credits || 0), 0);
 
     // Active Streams
-    const totalActiveStreams = nodes.reduce((sum, n) => sum + (n.activeStreams || 0), 0);
-    const nodesWithStreams = nodes.filter(n => n.activeStreams !== undefined && n.activeStreams !== null && n.activeStreams > 0).length;
+    const totalActiveStreams = activeNodes.reduce((sum, n) => sum + (n.activeStreams || 0), 0);
+    const nodesWithStreams = activeNodes.filter(n => n.activeStreams !== undefined && n.activeStreams !== null && n.activeStreams > 0).length;
 
     return {
-      totalNodes: nodes.length,
+      totalDiscovered: nodes.length,
+      activeCount: activeNodes.length,
       onlineNodes,
-      offlineNodes,
       syncingNodes,
       totalStorageCapacity,
       totalStorageUsed,
@@ -227,7 +229,7 @@ export default function AnalyticsPage() {
       totalActiveStreams,
       nodesWithStreams,
     };
-  }, [nodes]);
+  }, [nodes, activeNodes]);
 
   // Show loading skeleton when loading and no data
   if (loading && nodes.length === 0) {
@@ -302,7 +304,6 @@ export default function AnalyticsPage() {
       {/* Header */}
       <Header
         activePage="analytics"
-        nodeCount={nodes.length}
         lastUpdate={lastUpdate}
         loading={loading}
         onRefresh={() => refreshNodes()}
@@ -392,7 +393,7 @@ export default function AnalyticsPage() {
               {/* Content - Simple Conditional Render for Clean Layout */}
               {isComparisonOpen && (
                 <div className="px-4 pb-4 pt-2 animate-fade-in">
-                  <NodeComparison nodes={nodes} />
+                  <NodeComparison nodes={activeNodes} />
                 </div>
               )}
             </div>
@@ -407,10 +408,10 @@ export default function AnalyticsPage() {
             {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-4 sm:mt-6 stagger-children">
               <StatsCard
-                title="Total pNodes"
-                value={stats.totalNodes}
+                title="Active pNodes"
+                value={stats.activeCount}
                 icon={<Server className="w-4 h-4" />}
-                subValue="Across all discovered networks"
+                subValue={`Total discovered: ${stats.totalDiscovered}`}
               />
 
               <StatsCard
@@ -419,9 +420,9 @@ export default function AnalyticsPage() {
                 icon={<Activity className="w-4 h-4" />}
                 color="green"
                 subValue={
-                  stats.totalNodes > 0 ? (
+                  stats.activeCount > 0 ? (
                     <>
-                      <AnimatedNumber value={Math.round((stats.onlineNodes / stats.totalNodes) * 100)} suffix="%" /> <span className="ml-1">of network</span>
+                      <AnimatedNumber value={Math.round((stats.onlineNodes / stats.activeCount) * 100)} suffix="%" /> <span className="ml-1">of active network</span>
                     </>
                   ) : (
                     '0% of network'
@@ -483,7 +484,7 @@ export default function AnalyticsPage() {
                 icon={<TrendingUp className="w-4 h-4" />}
                 subValue={
                   <>
-                    <AnimatedNumber value={nodes.filter(n => n.uptime && n.uptime > 0).length} className="align-baseline" /> <span className="align-baseline">pNodes reporting</span>
+                    <AnimatedNumber value={activeNodes.filter(n => n.uptime && n.uptime > 0).length} className="align-baseline" /> <span className="align-baseline">pNodes reporting</span>
                   </>
                 }
               />
@@ -513,16 +514,15 @@ export default function AnalyticsPage() {
               />
             </div>
 
-            {/* World Map Heatmap */}
             <div className="mt-4 sm:mt-6">
-              <WorldMapHeatmap nodes={nodes} />
+              <WorldMapHeatmap nodes={activeNodes} />
             </div>
 
             {/* Main Analytics Sections */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mt-4 sm:mt-6 mb-0">
               {/* Row 1: Health Score */}
               <div className="card flex flex-col">
-                <NetworkHealthScoreDetailed nodes={nodes} />
+                <NetworkHealthScoreDetailed nodes={activeNodes} />
               </div>
               {/* Row 1: Network Health Trend Chart */}
               <div className="lg:col-span-2 card flex flex-col">
@@ -554,9 +554,8 @@ export default function AnalyticsPage() {
                 </div>
               </div>
 
-              {/* Row 2: Version Distribution */}
               <div className="card flex flex-col">
-                <VersionDistribution nodes={nodes} />
+                <VersionDistribution nodes={activeNodes} />
               </div>
               {/* Row 2: Performance Metrics */}
               <div className="lg:col-span-2 card flex flex-col">
@@ -565,8 +564,8 @@ export default function AnalyticsPage() {
                   <h2 className="text-base font-semibold text-foreground">Performance Metrics</h2>
                 </div>
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                  <LatencyDistribution nodes={nodes} />
-                  <ResourceUtilization nodes={nodes} />
+                  <LatencyDistribution nodes={activeNodes} />
+                  <ResourceUtilization nodes={activeNodes} />
                 </div>
               </div>
 
@@ -578,7 +577,7 @@ export default function AnalyticsPage() {
                 </div>
                 <div className="flex-1">
                   <NodeRankings
-                    nodes={nodes}
+                    nodes={activeNodes}
                     onNodeClick={(node) => {
                       const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';
                       if (nodeId) {
@@ -589,9 +588,8 @@ export default function AnalyticsPage() {
                   />
                 </div>
               </div>
-              {/* Row 3: Geographic Metrics */}
               <div className="lg:col-span-2 card flex flex-col">
-                <GeographicMetrics nodes={nodes} />
+                <GeographicMetrics nodes={activeNodes} />
               </div>
             </div>
           </div>

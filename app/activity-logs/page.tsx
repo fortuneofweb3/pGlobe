@@ -59,7 +59,6 @@ export default function ActivityLogsPage() {
         <div className="h-[100dvh] w-full fixed inset-0 flex flex-col bg-black text-foreground overflow-hidden">
             <Header
                 activePage="activity"
-                nodeCount={nodes.length}
                 lastUpdate={lastUpdate}
                 loading={loading}
                 onRefresh={() => refreshNodes()}

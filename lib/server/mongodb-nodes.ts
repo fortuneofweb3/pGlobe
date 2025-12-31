@@ -374,12 +374,27 @@ export async function upsertNodes(nodes: PNode[], skipMarkOffline: boolean = fal
       // Preserved fields - only set if provided (don't overwrite with undefined)
       const preservedFields = ['balance', 'isRegistered', 'managerPDA', 'managerWallet', 'registrarWallet', 'accountCreatedAt', 'firstSeenSlot',
         'location', 'locationLat', 'locationLon', 'locationCity', 'locationCountry', 'locationCountryCode',
-        'xandHoldings', 'xandStake', 'daoStake', 'vestingStake', 'nftBoost', 'nftDetails', 'eraBoost', 'eraLabel', 'boostFactor'];
+        'xandHoldings', 'xandStake', 'daoStake', 'vestingStake', 'nftBoost', 'nftDetails'];
 
       for (const field of preservedFields) {
         const value = (doc as unknown as Record<string, unknown>)[field];
         if (value !== undefined && value !== null) {
           setFields[field] = value;
+        }
+      }
+
+      // Era fields - explicitly allow unsetting (null) if node is unregistered
+      const eraFields = ['eraBoost', 'eraLabel', 'boostFactor'];
+      for (const field of eraFields) {
+        const value = (doc as unknown as Record<string, unknown>)[field];
+        if (value !== undefined) {
+          // If value is null and node is unregistered, we unset in DB
+          if (value === null) {
+            // MongoDB $unset is better but for simplicity in this upsert structure we set to null
+            setFields[field] = null;
+          } else {
+            setFields[field] = value;
+          }
         }
       }
 

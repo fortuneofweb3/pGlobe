@@ -234,11 +234,12 @@ export async function storeRegionSnapshots(
         versionDistribution[version] = (versionDistribution[version] || 0) + 1;
       });
 
-      // Calculate network health score using the same formula as analytics
+      // Calculate network health score using the same formula as analytics - using ONLY active nodes
       // (40% availability, 35% version, 25% distribution)
       // Cast to PNode[] as calculateNetworkHealth expects PNodes, but we only have subset of fields
       // This is safe because calculateNetworkHealth only checks status, version & location
-      const networkHealth = calculateNetworkHealth(nodes as unknown as PNode[]);
+      const activeRegionNodes = nodes.filter(n => n.status === 'online' || n.status === 'syncing');
+      const networkHealth = calculateNetworkHealth((activeRegionNodes.length > 0 ? activeRegionNodes : nodes) as unknown as PNode[]);
 
       // Capture per-node credits for accurate credit earned calculations
       // This allows tracking true earned credits independent of nodes joining/leaving

@@ -767,7 +767,7 @@ function HistoricalLineChart({
 function CountryDetailContent() {
   const params = useParams();
   const router = useRouter();
-  const { nodes, loading, error, lastUpdate, refreshNodes } = useNodes();
+  const { nodes, activeNodes, loading, error, lastUpdate, refreshNodes } = useNodes();
 
   const countryName = decodeURIComponent(params.country as string);
 
@@ -873,8 +873,8 @@ function CountryDetailContent() {
     return countryName.trim().toLowerCase();
   }, [countryName]);
 
-  // Filter nodes by country with robust matching
-  const countryNodes = useMemo(() => {
+  // Filter nodes by country with robust matching - ALL nodes (including offline)
+  const allCountryNodes = useMemo(() => {
     const filtered = nodes.filter(node => {
       const nodeCountry = node.locationData?.country?.trim().toLowerCase();
 
@@ -903,6 +903,29 @@ function CountryDetailContent() {
 
     return filtered;
   }, [nodes, normalizedCountryName]);
+
+  // Filter ONLY active nodes for stats and charts
+  const countryNodes = useMemo(() => {
+    const filtered = activeNodes.filter(node => {
+      const nodeCountry = node.locationData?.country?.trim().toLowerCase();
+      return nodeCountry === normalizedCountryName;
+    });
+
+    const countryCode = filtered[0]?.locationData?.countryCode?.trim().toLowerCase();
+
+    if (countryCode) {
+      const additionalNodes = activeNodes.filter(node => {
+        const nodeCountry = node.locationData?.country?.trim().toLowerCase();
+        if (nodeCountry === normalizedCountryName) return false;
+        const nodeCountryCode = node.locationData?.countryCode?.trim().toLowerCase();
+        return nodeCountryCode === countryCode;
+      });
+
+      return [...filtered, ...additionalNodes];
+    }
+
+    return filtered;
+  }, [activeNodes, normalizedCountryName]);
 
   // Stabilize node count to prevent flickering
   const stabilizedNodeCount = useMemo(() => {
@@ -1139,9 +1162,9 @@ function CountryDetailContent() {
   // Get country code from first node
   const countryCode = countryNodes[0]?.locationData?.countryCode;
 
-  // Sort and filter nodes
+  // Sort and filter nodes - using ALL nodes to show comprehensive list
   const filteredAndSortedNodes = useMemo(() => {
-    let filtered = [...countryNodes];
+    let filtered = [...allCountryNodes];
 
     // Apply search filter
     if (searchQuery) {
@@ -1315,7 +1338,7 @@ function CountryDetailContent() {
   if (error) {
     return (
       <div className="min-h-screen bg-black text-foreground">
-        <Header activePage="regions" nodeCount={nodes.length} lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
+        <Header activePage="regions" lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
             <p className="text-red-400">{error}</p>
@@ -1328,7 +1351,7 @@ function CountryDetailContent() {
   if (countryNodes.length === 0 && !loading) {
     return (
       <div className="min-h-screen bg-black text-foreground">
-        <Header activePage="regions" nodeCount={nodes.length} lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
+        <Header activePage="regions" lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <Link href="/regions" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6">
             <ArrowLeft className="w-4 h-4" />
@@ -1344,7 +1367,7 @@ function CountryDetailContent() {
 
   return (
     <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
-      <Header activePage="regions" nodeCount={nodes.length} lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
+      <Header activePage="regions" lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
 
       <main className="flex-1 overflow-hidden">
         <div className="h-full w-full p-3 sm:p-6 pt-5 sm:pt-8 overflow-y-auto">

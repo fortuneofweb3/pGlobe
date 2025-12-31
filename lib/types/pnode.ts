@@ -118,3 +118,28 @@ export interface PNodeGossipResponse {
   totalNodes: number;
 }
 
+/**
+ * Determines if a node is considered "dead"
+ * A node is dead if:
+ * - It's offline
+ * - It hasn't been seen in gossip
+ * - It hasn't been seen for 7+ days
+ */
+export function isNodeDead(node: PNode): boolean {
+  // Must be offline and not in gossip
+  if (node.status !== 'offline' || node.seenInGossip !== false) {
+    return false;
+  }
+
+  // Check if last seen is older than 7 days
+  if (!node.lastSeen) {
+    return true; // No last seen timestamp = very old, consider dead
+  }
+
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const lastSeenTime = typeof node.lastSeen === 'number' ? node.lastSeen : new Date(node.lastSeen).getTime();
+  const timeSinceLastSeen = Date.now() - lastSeenTime;
+
+  return timeSinceLastSeen > SEVEN_DAYS_MS;
+}
+

@@ -15,7 +15,6 @@ export default function HelpPage() {
     <div className="fixed inset-0 w-full h-full flex flex-col bg-[#0a0a0a] text-foreground">
       <Header
         activePage="help"
-        nodeCount={nodes.length}
         lastUpdate={lastUpdate}
         loading={loading}
         onRefresh={() => refreshNodes()}

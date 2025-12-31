@@ -37,8 +37,10 @@ export default function Header({
 }: HeaderProps) {
   // Get values from context as fallback to prevent header from clearing on page transitions
   const context = useNodes();
-  const nodeCount = propNodeCount ?? context?.nodes.length ?? 0;
-  const managerCount = propManagerCount ?? context?.managerCount ?? 0;
+  // Always use context values for counts in the header to ensure consistency
+  // pNodes = active only, managers = total (active + dead)
+  const nodeCount = context?.activeNodes.length ?? 0;
+  const managerCount = (context?.managerCount ?? 0) + (context?.deadManagerCount ?? 0);
   const lastUpdate = propLastUpdate ?? context?.lastUpdate ?? null;
   const loading = propLoading || context?.loading || false;
   const networks = propNetworks.length > 0 ? propNetworks : (context?.availableNetworks ?? []);
@@ -90,12 +92,17 @@ export default function Header({
               <Link
                 href="/nodes"
                 prefetch={true}
-                className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'nodes'
+                className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 relative ${activePage === 'nodes'
                   ? 'text-[#F0A741] bg-[#F0A741]/10 shadow-sm'
                   : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                   }`}
               >
-                pNodes {nodeCount > 0 && `(${nodeCount})`}
+                <span className="relative">
+                  pNodes {nodeCount > 0 && `(${nodeCount})`}
+                  {nodeCount > 0 && (
+                    <span className="absolute -top-1 -right-2 w-2 h-2 bg-green-500 rounded-full animate-pulse border border-black shadow-[0_0_6px_rgba(34,197,94,0.6)]" />
+                  )}
+                </span>
               </Link>
               <Link
                 href="/analytics"
@@ -265,7 +272,12 @@ export default function Header({
                 : 'text-[#F0A741]/60 hover:text-[#F0A741] hover:bg-[#F0A741]/5'
                 }`}
             >
-              pNodes {nodeCount > 0 && `(${nodeCount})`}
+              <span className="relative">
+                pNodes {nodeCount > 0 && `(${nodeCount})`}
+                {nodeCount > 0 && (
+                  <span className="absolute -top-1 -right-2 w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse border border-black shadow-[0_0_6px_rgba(34,197,94,0.6)]" />
+                )}
+              </span>
             </Link>
             <Link
               href="/analytics"

@@ -387,24 +387,27 @@ export async function enrichWithBalance(
       return true;
     }
 
-    // Case 3: Registered node missing wallet info, era info, or stake info (backfill scenario)
-    const isRegistered = existing.isRegistered || (existing.balance && existing.balance > 0);
+    // Case 3: Registered node missing vital info (backfill or new registration)
+    const isRegistered = !!existing.isRegistered;
+    const missingEraInfo = !existing.eraLabel || !existing.eraBoost;
     const missingWalletInfo = !existing.managerWallet || !existing.registrarWallet;
-    const missingEraInfo = !existing.eraLabel || existing.eraLabel === 'Standard';
     const missingStakeInfo = existing.daoStake === undefined || existing.vestingStake === undefined;
-    if (isRegistered && (missingWalletInfo || missingEraInfo || missingStakeInfo)) {
+
+    if (isRegistered && (missingEraInfo || missingWalletInfo || missingStakeInfo)) {
       return true;
     }
 
     // Case 4: Unregistered node - periodically re-check to detect new registrations
-    // Only re-check if updatedAt is older than REFRESH_INTERVAL_MS
+    // We re-check every 6 hours to see if they've registered since last discovery
     if (!isRegistered) {
-      const updatedAt = existing.createdAt instanceof Date
+      const createdAtTimestamp = existing.createdAt instanceof Date
         ? existing.createdAt.getTime()
         : (typeof existing.createdAt === 'string' ? new Date(existing.createdAt).getTime() : 0);
 
-      // If no updatedAt or it's old enough, refresh
-      if (!updatedAt || (now - updatedAt > REFRESH_INTERVAL_MS)) {
+      if (!createdAtTimestamp || (now - createdAtTimestamp > REFRESH_INTERVAL_MS)) {
+        // To avoid re-checking every single sync after 6 hours, we'd ideally 
+        // have a lastOnChainCheck field, but using createdAt with a modulo 
+        // or just accepting the periodic check is okay for 370 nodes.
         return true;
       }
     }
@@ -446,9 +449,13 @@ export async function enrichWithBalance(
         node.eraBoost = balanceData.eraBoost;
         node.eraLabel = balanceData.eraLabel;
         // Calculate combined boost factor (NFT × Era)
-        const nftMultiplier = balanceData.nftBoost || 1;
-        const eraMultiplier = balanceData.eraBoost || 1;
-        node.boostFactor = nftMultiplier * eraMultiplier;
+        if (node.isRegistered) {
+          const nftMultiplier = (balanceData.nftBoost as number) || 1;
+          const eraMultiplier = (balanceData.eraBoost as number) || 1;
+          node.boostFactor = nftMultiplier * eraMultiplier;
+        } else {
+          node.boostFactor = null as any;
+        }
         enrichedCount++;
       }
     } catch {

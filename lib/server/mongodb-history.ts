@@ -152,9 +152,10 @@ export async function storeHistoricalSnapshot(
     const interval = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}-${String(date.getUTCHours()).padStart(2, '0')}-${String(minutes).padStart(2, '0')}`;
     const dateStr = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
 
-    // Calculate network health score (40% availability, 35% version, 25% distribution)
-    const networkHealth = calculateNetworkHealth(nodes);
-    console.log(`[MongoDB History] 🏥 Calculated health - Overall: ${networkHealth.overall}, Availability: ${networkHealth.availability}, Version: ${networkHealth.versionHealth}, Distribution: ${networkHealth.distribution}`);
+    // Calculate network health score using only ACTIVE nodes (online + syncing)
+    const activeNodes = nodes.filter(n => n.status === 'online' || n.status === 'syncing');
+    const networkHealth = calculateNetworkHealth(activeNodes.length > 0 ? activeNodes : nodes); // Fallback to all nodes if none are active to avoid 0 scores if the whole network is "offline" (unlikely but safe)
+    console.log(`[MongoDB History] 🏥 Calculated health from ${activeNodes.length} active nodes - Overall: ${networkHealth.overall}, Availability: ${networkHealth.availability}, Version: ${networkHealth.versionHealth}, Distribution: ${networkHealth.distribution}`);
 
     // Check if we already have a snapshot for this 10-minute interval
     const existing = await collection.findOne({ interval });

@@ -7,7 +7,7 @@ import { PNode } from '@/lib/types/pnode';
 import PNodeTable from '@/components/PNodeTable';
 import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
-import { RefreshCw, Server, TrendingUp, Search, Filter, X, Activity, ChevronLeft, ChevronRight } from 'lucide-react';
+import { RefreshCw, Server, TrendingUp, Search, Filter, X, Activity, ChevronLeft, ChevronRight, Skull } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 import { TableSkeleton, CardSkeleton } from '@/components/Skeletons';
 import AnimatedNumber from '@/components/AnimatedNumber';
@@ -16,7 +16,7 @@ import StatsCard from '@/components/StatsCard';
 function NodesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { nodes, loading, error, lastUpdate, refreshNodes } = useNodes();
+  const { nodes, activeNodes, offlineNodes, offlineNodeCount, loading, error, lastUpdate, refreshNodes } = useNodes();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -31,8 +31,8 @@ function NodesPageContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 50;
 
-
   const filteredAndSortedNodes = useMemo(() => {
+    // Show all nodes in the table (including offline)
     let filtered = [...nodes];
 
     if (searchQuery) {
@@ -135,50 +135,51 @@ function NodesPageContent() {
 
   const versions = useMemo(() => {
     const versionSet = new Set<string>();
-    nodes.forEach((node) => {
+    activeNodes.forEach((node) => {
       if (node.version) versionSet.add(node.version);
     });
     return Array.from(versionSet).sort();
-  }, [nodes]);
+  }, [activeNodes]);
 
+  // Stats based on active nodes only (excludes offline nodes)
   const statusCounts = useMemo(() => {
     return {
-      all: nodes.length,
-      online: nodes.filter(n => n.status === 'online').length,
-      syncing: nodes.filter(n => n.status === 'syncing').length,
-      offline: nodes.filter(n => n.status === 'offline' || !n.status).length,
+      all: activeNodes.length,
+      online: activeNodes.filter(n => n.status === 'online').length,
+      syncing: activeNodes.filter(n => n.status === 'syncing').length,
+      offline: offlineNodeCount,
     };
-  }, [nodes]);
+  }, [activeNodes, offlineNodeCount]);
 
   const creditsCounts = useMemo(() => {
     return {
-      all: nodes.length,
-      with: nodes.filter(n => n.credits !== undefined && n.credits !== null && n.credits > 0).length,
-      without: nodes.filter(n => n.credits === undefined || n.credits === null || n.credits === 0).length,
+      all: activeNodes.length,
+      with: activeNodes.filter(n => n.credits !== undefined && n.credits !== null && n.credits > 0).length,
+      without: activeNodes.filter(n => n.credits === undefined || n.credits === null || n.credits === 0).length,
     };
-  }, [nodes]);
+  }, [activeNodes]);
 
   const packetsCounts = useMemo(() => {
     return {
-      all: nodes.length,
-      with: nodes.filter(n =>
+      all: activeNodes.length,
+      with: activeNodes.filter(n =>
         (n.packetsReceived !== undefined && n.packetsReceived !== null && n.packetsReceived > 0) ||
         (n.packetsSent !== undefined && n.packetsSent !== null && n.packetsSent > 0)
       ).length,
-      without: nodes.filter(n =>
+      without: activeNodes.filter(n =>
         (!n.packetsReceived || n.packetsReceived === 0) &&
         (!n.packetsSent || n.packetsSent === 0)
       ).length,
     };
-  }, [nodes]);
+  }, [activeNodes]);
 
   const registeredCounts = useMemo(() => {
     return {
-      all: nodes.length,
-      registered: nodes.filter(n => n.isRegistered || (n.balance !== undefined && n.balance > 0)).length,
-      unregistered: nodes.filter(n => !n.isRegistered && (!n.balance || n.balance === 0)).length,
+      all: activeNodes.length,
+      registered: activeNodes.filter(n => n.isRegistered || (n.balance !== undefined && n.balance > 0)).length,
+      unregistered: activeNodes.filter(n => !n.isRegistered && (!n.balance || n.balance === 0)).length,
     };
-  }, [nodes]);
+  }, [activeNodes]);
 
   const hasActiveFilters = statusFilter !== 'all' || versionFilter !== 'all' || joinedFilter !== 'all' || creditsFilter !== 'all' || packetsFilter !== 'all' || registeredFilter !== 'all' || searchQuery;
 
@@ -200,7 +201,7 @@ function NodesPageContent() {
   if (error) {
     return (
       <div className="min-h-screen bg-black text-foreground">
-        <Header activePage="nodes" nodeCount={nodes.length} lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
+        <Header activePage="nodes" lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
             <p className="text-red-400">{error}</p>
@@ -268,7 +269,7 @@ function NodesPageContent() {
 
   return (
     <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
-      <Header activePage="nodes" nodeCount={nodes.length} lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
+      <Header activePage="nodes" lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
 
       <main className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 w-full p-3 sm:p-6 overflow-y-auto">
@@ -287,8 +288,9 @@ function NodesPageContent() {
             {/* Summary Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6 stagger-children">
               <StatsCard
-                title="Total pNodes"
-                value={nodes.length}
+                title="Active pNodes"
+                value={activeNodes.length}
+                subValue={`Total discovered: ${nodes.length}`}
                 icon={<Server className="w-4 h-4" />}
                 color="orange"
               />
@@ -296,6 +298,7 @@ function NodesPageContent() {
               <StatsCard
                 title="Online pNodes"
                 value={statusCounts.online}
+                subValue="Currently reachable"
                 icon={<TrendingUp className="w-4 h-4" />}
                 color="green"
               />
@@ -303,14 +306,16 @@ function NodesPageContent() {
               <StatsCard
                 title="Syncing"
                 value={statusCounts.syncing}
+                subValue="Updating data"
                 icon={<Activity className="w-4 h-4" />}
                 color="blue"
               />
 
               <StatsCard
-                title="Offline pNodes"
+                title="Offline"
                 value={statusCounts.offline}
-                icon={<Server className="w-4 h-4" />}
+                subValue="Connection lost"
+                icon={<Skull className="w-4 h-4" />}
                 color="red"
               />
             </div>

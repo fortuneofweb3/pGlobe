@@ -139,9 +139,10 @@ function CountryCard({ country, flagUrl }: {
           </div>
           <div className="text-right">
             <div className="text-2xl font-bold text-foreground">
-              <AnimatedNumber value={country.nodeCount} />
+              <AnimatedNumber value={(country as any).activeCount ?? 0} />
             </div>
-            <div className="text-xs text-foreground/60">pNodes</div>
+            <div className="text-xs text-foreground/60">Active pNodes</div>
+            <div className="text-[10px] text-foreground/40 mt-0.5">Total: {country.nodeCount}</div>
           </div>
         </div>
 
@@ -200,7 +201,7 @@ function CountryCard({ country, flagUrl }: {
 }
 
 function RegionsPageContent() {
-  const { nodes, loading, error, lastUpdate, refreshNodes } = useNodes();
+  const { nodes, activeNodes, loading, error, lastUpdate, refreshNodes } = useNodes();
   const searchParams = useSearchParams();
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
 
@@ -289,7 +290,9 @@ function RegionsPageContent() {
     return Object.values(countries).map(country => ({
       ...country,
       cities: Array.from(country.cities),
-    })).sort((a, b) => b.nodeCount - a.nodeCount);
+      // Set nodeCount to active count (online + syncing) for consistency with focus
+      activeCount: country.online + country.syncing,
+    })).sort((a, b) => (b.online + b.syncing) - (a.online + a.syncing));
   }, [nodes]);
 
   // Calculate continents, countries, and cities
@@ -298,7 +301,7 @@ function RegionsPageContent() {
     const countriesSet = new Set<string>();
     const citiesSet = new Set<string>();
 
-    nodes.forEach((node) => {
+    activeNodes.forEach((node) => {
       if (node.locationData?.country) {
         countriesSet.add(node.locationData.country);
       }
@@ -318,7 +321,7 @@ function RegionsPageContent() {
       countries: countriesSet.size,
       cities: citiesSet.size,
     };
-  }, [nodes]);
+  }, [activeNodes]);
 
 
 
@@ -365,7 +368,7 @@ function RegionsPageContent() {
   if (error) {
     return (
       <div className="min-h-screen bg-black text-foreground">
-        <Header activePage="regions" nodeCount={nodes.length} lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
+        <Header activePage="regions" lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
             <p className="text-red-400">{error}</p>
@@ -377,7 +380,7 @@ function RegionsPageContent() {
 
   return (
     <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
-      <Header activePage="regions" nodeCount={nodes.length} lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
+      <Header activePage="regions" lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
 
       <main className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 w-full p-3 sm:p-6 overflow-y-auto">
@@ -417,7 +420,7 @@ function RegionsPageContent() {
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 stagger-children">
               <StatsCard
                 title="Total pNodes"
-                value={nodes.length}
+                value={activeNodes.length}
                 icon={<Server className="w-4 h-4" />}
               />
 

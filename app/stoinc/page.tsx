@@ -140,7 +140,6 @@ export default function StoincPage() {
         <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
             <Header
                 activePage="stoinc"
-                nodeCount={nodes.length}
                 lastUpdate={lastUpdate}
                 loading={loading}
                 onRefresh={() => refreshNodes()}

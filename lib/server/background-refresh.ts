@@ -10,6 +10,7 @@
 
 // Lazy import to avoid module resolution issues with tsx
 let syncNodesFn: (() => Promise<{ success: boolean; count: number; error?: string }>) | null = null;
+let syncRewardsFn: (() => Promise<{ success: boolean; count: number; error?: string }>) | null = null;
 
 async function getSyncNodes() {
   if (!syncNodesFn) {
@@ -22,16 +23,29 @@ async function getSyncNodes() {
   return syncNodesFn;
 }
 
+async function getSyncRewards() {
+  if (!syncRewardsFn) {
+    const mod = await import('./sync-rewards');
+    if (typeof mod.syncRewardsForAllManagers !== 'function') {
+      throw new Error('syncRewardsForAllManagers export is not a function');
+    }
+    syncRewardsFn = mod.syncRewardsForAllManagers;
+  }
+  return syncRewardsFn;
+}
+
 let refreshInterval: NodeJS.Timeout | null = null;
 let heartbeatInterval: NodeJS.Timeout | null = null;
 let isRunning = false;
 let lastRefreshStart = 0;
 let lastRefreshComplete = 0;
+let lastRewardSyncComplete = 0;
 let consecutiveSkips = 0;
 
 // Maximum time before force-resetting isRunning
 const MAX_REFRESH_TIME_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_CONSECUTIVE_SKIPS = 3;
+const REWARD_SYNC_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
 /**
  * Check if refresh is currently running
@@ -74,6 +88,22 @@ export async function performRefresh(): Promise<void> {
 
     if (result.success) {
       console.log(`[BackgroundRefresh] ✅ Synced ${result.count} nodes`);
+
+      // Check if it's time for a reward sync (every hour)
+      const now = Date.now();
+      if (now - lastRewardSyncComplete > REWARD_SYNC_INTERVAL_MS) {
+        console.log('[BackgroundRefresh] 🎁 Starting scheduled reward sync...');
+        const syncRewards = await getSyncRewards();
+        if (syncRewards) {
+          const rewardResult = await syncRewards();
+          if (rewardResult.success) {
+            lastRewardSyncComplete = now;
+            console.log(`[BackgroundRefresh] ✅ Rewards synced for ${rewardResult.count} managers`);
+          } else {
+            console.error(`[BackgroundRefresh] ⚠️ Reward sync failed: ${rewardResult.error}`);
+          }
+        }
+      }
     } else {
       console.error(`[BackgroundRefresh] ⚠️ Sync failed: ${result.error}`);
     }

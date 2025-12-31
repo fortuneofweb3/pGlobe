@@ -568,7 +568,6 @@ function HomeContent() {
       {/* Header - Fixed at top */}
       <Header
         activePage="overview"
-        nodeCount={nodes.length}
         lastUpdate={lastUpdate}
         loading={loading}
         onRefresh={() => refreshNodes()}

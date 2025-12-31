@@ -66,7 +66,7 @@ export default function NetworkHealthScoreDetailed({ nodes }: NetworkHealthScore
             />
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            <AnimatedNumber value={nodes.filter(n => n.status === 'online').length} /> / <AnimatedNumber value={nodes.length} /> pNodes online
+            <AnimatedNumber value={nodes.filter(n => n.status === 'online').length} /> / <AnimatedNumber value={nodes.length} /> active pNodes online
           </div>
         </div>
 

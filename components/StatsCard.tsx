@@ -8,7 +8,8 @@ interface StatsCardProps {
   loading?: boolean;
   className?: string; // Additional classes
   subValue?: React.ReactNode;
-  color?: 'orange' | 'green' | 'blue' | 'red' | 'emerald' | 'purple'; // Theme color
+  color?: 'orange' | 'green' | 'blue' | 'red' | 'emerald' | 'purple' | 'gray'; // Theme color
+  onClick?: () => void; // Optional click handler
 }
 
 export default function StatsCard({
@@ -18,7 +19,8 @@ export default function StatsCard({
   loading = false,
   className,
   subValue,
-  color = 'orange'
+  color = 'orange',
+  onClick
 }: StatsCardProps) {
   // Color mappings based on app/regions/[country]/page.tsx
   const colorStyles = {
@@ -63,6 +65,13 @@ export default function StatsCard({
       iconColor: 'text-[#a855f7]',
       blurBg: 'bg-[#a855f7]/5',
       blurGroupHoverBg: 'group-hover:bg-[#a855f7]/10'
+    },
+    gray: {
+      hoverBorder: 'hover:border-[#6b7280]/20',
+      groupHoverText: 'group-hover:text-[#6b7280]',
+      iconColor: 'text-[#6b7280]',
+      blurBg: 'bg-[#6b7280]/5',
+      blurGroupHoverBg: 'group-hover:bg-[#6b7280]/10'
     }
   };
 
@@ -83,7 +92,10 @@ export default function StatsCard({
   }
 
   return (
-    <div className={`card-stat bg-[#0a0a0a] border-white/5 backdrop-blur-md overflow-hidden group hover:bg-[#111] ${theme.hoverBorder} transition-all duration-300 ${className || ''}`}>
+    <div
+      onClick={onClick}
+      className={`card-stat bg-[#0a0a0a] border-white/5 backdrop-blur-md overflow-hidden group hover:bg-[#111] ${theme.hoverBorder} transition-all duration-300 ${onClick ? 'cursor-pointer hover:scale-105' : ''} ${className || ''}`}
+    >
       <div className="flex flex-col relative">
         <div className="flex items-center justify-between mb-2">
           <span className={`text-[10px] uppercase tracking-widest text-foreground/40 font-bold ${theme.groupHoverText} transition-colors`}>

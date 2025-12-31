@@ -69,32 +69,6 @@ async function fetchDAOStake(connection: Connection, ownerPubkey: PublicKey): Pr
   }
 }
 
-/**
- * Fetch Vesting Stake for a manager
- */
-async function fetchVestingStake(connection: Connection, managerWallet: PublicKey): Promise<number> {
-  try {
-    let totalVesting = 0;
-    const grantAccounts = await connection.getProgramAccounts(VESTING_PROGRAM, {
-      filters: [{ memcmp: { offset: 8, bytes: managerWallet.toBase58() } }]
-    });
-    for (const { pubkey: grantAccount } of grantAccounts) {
-      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(grantAccount, {
-        programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA')
-      });
-      for (const ta of tokenAccounts.value) {
-        const info = ta.account.data.parsed.info;
-        if (info.mint === 'XANDuUoVoUqniKkpcKhrxmvYJybpJvUxJLr21Gaj3Hx') {
-          totalVesting += info.tokenAmount.uiAmount || 0;
-        }
-      }
-    }
-    return totalVesting;
-  } catch (err) {
-    if ((err as Error).message?.includes('429')) throw err;
-    return 0;
-  }
-}
 
 /**
  * Enrich a pNode with on-chain data
@@ -125,25 +99,82 @@ export async function enrichPNodeWithOnChainData(pubkey: string, connection: Con
 
     let managerWallet: string | undefined;
     let registrarWallet: string | undefined;
-    let eraBoost = 1;
-    let eraLabel = 'Standard';
+    let eraBoost: number | null = null;
+    let eraLabel: string | null = null;
     let isRegistered = false;
 
     if (regRes.status === 'fulfilled' && regRes.value) {
       isRegistered = true;
       const data = regRes.value.data;
-      if (data.length >= 40) registrarWallet = new PublicKey(data.slice(8, 40)).toBase58();
-      if (data.length >= 74) managerWallet = new PublicKey(data.slice(42, 74)).toBase58();
-      if (data.length >= 82) {
-        const price = Number(data.readBigUInt64LE(34)) / 1e9;
-        if (price > 0) {
-          if (price < 2.0) { eraBoost = 16; eraLabel = 'Deep South Era'; }
-          else if (price < 3.0) { eraBoost = 10; eraLabel = 'South Era'; }
-          else if (price < 4.0) { eraBoost = 7; eraLabel = 'Main Era'; }
-          else if (price < 5.0) { eraBoost = 3.5; eraLabel = 'Coal Era'; }
-          else if (price < 6.0) { eraBoost = 2; eraLabel = 'Central Era'; }
-          else { eraBoost = 1.25; eraLabel = 'North Era'; }
+
+      // Determine Era from Registry Data
+      // Source 1: Offset 32 (u16) - Likely the authoritative "Initial Version" / Era Index
+      // Source 2: Offset 8 (Byte) - Fallback for New Gen nodes
+
+      const regEraId = data.readUInt16LE(32);
+      const byte8 = data[8];
+
+      let eraId = 1;
+      let isNewGen = false;
+
+      // Check Registry Offset 32 first (if valid range 2-14)
+      if (regEraId > 1 && regEraId <= 14) {
+        eraId = regEraId;
+        isNewGen = true;
+        // If we found a valid era at 32, we assume it's a new gen node structure
+        if (data.length >= 41) registrarWallet = new PublicKey(data.slice(9, 41)).toBase58();
+      }
+      // Fallback to Byte 8 if Offset 32 is 1 (default) or invalid, but Byte 8 looks like a valid Item Index
+      else if (byte8 > 0 && byte8 <= 14) {
+        eraId = byte8;
+        isNewGen = true;
+        if (data.length >= 41) registrarWallet = new PublicKey(data.slice(9, 41)).toBase58();
+      } else {
+        // Legacy Node or unknown structure
+        if (data.length >= 40) registrarWallet = new PublicKey(data.slice(8, 40)).toBase58();
+      }
+
+      if (data.length >= 74) {
+        const potentialOwner = new PublicKey(data.slice(42, 74)).toBase58();
+        if (potentialOwner !== '11111111111111111111111111111111') {
+          managerWallet = potentialOwner;
         }
+      }
+
+      // Priority 2: Use Era ID from Manager PDA if it exists
+      if (manRes.status === 'fulfilled' && manRes.value && manRes.value.data.length >= 33) {
+        const mEraId = manRes.value.data[32];
+        if (mEraId > 0 && mEraId <= 30) eraId = mEraId;
+      }
+
+      // Map Era ID (Item Index) to Label and Boost based on Xandeum roadmap ranges
+      if (eraId >= 1 && eraId <= 2) {
+        eraLabel = 'Deep South Era';
+        eraBoost = 16;
+      } else if (eraId >= 3 && eraId <= 9) {
+        eraLabel = 'South Era';
+        eraBoost = 10;
+      } else if (eraId >= 10 && eraId <= 14) {
+        eraLabel = 'Main Era';
+        eraBoost = 7;
+      } else if (eraId >= 15 && eraId <= 20) {
+        eraLabel = 'Central Era';
+        eraBoost = 2;
+      } else if (eraId >= 21 && eraId <= 25) {
+        eraLabel = 'Coal Era';
+        eraBoost = 3.5;
+      } else if (eraId >= 26) {
+        eraLabel = 'North Era';
+        eraBoost = 1.25;
+      } else {
+        // Fallback for 0 or invalid
+        eraLabel = 'Deep South Era';
+        eraBoost = 16;
+      }
+
+      // Append Milestone Item for clarity if New Gen
+      if (isNewGen) {
+        eraLabel += ` (Item ${eraId})`;
       }
     }
 
@@ -154,10 +185,11 @@ export async function enrichPNodeWithOnChainData(pubkey: string, connection: Con
     const ownerPubkey = managerWallet ? new PublicKey(managerWallet) : nodePubkey;
     const mainnetConn = new Connection(MAINNET_RPC, 'confirmed');
 
-    const [daoStake, vestingStake] = await Promise.all([
-      fetchDAOStake(mainnetConn, ownerPubkey),
-      fetchVestingStake(mainnetConn, ownerPubkey)
+    const [daoStake] = await Promise.all([
+      fetchDAOStake(mainnetConn, ownerPubkey)
     ]);
+
+    const vestingStake = 0; // We no longer fetch unclaimed balance here. Handled by sync-rewards.
 
     let nftBoost = 1;
     try {

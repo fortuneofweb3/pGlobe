@@ -95,49 +95,74 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
         });
     }, [nodes, sortBy, sortOrder]);
 
+    // Immediate hydration from NodesContext
+    useEffect(() => {
+        if (!allNodes.length) return;
+
+        const filtered = allNodes.filter(n =>
+            n.managerWallet === wallet || n.registrarWallet === wallet
+        );
+
+        if (filtered.length > 0) {
+            const pnodes: PNode[] = filtered.map(n => ({
+                ...n,
+                id: n.pubkey || n.publicKey || '',
+                role: n.managerWallet === wallet ? 'buyer' : 'registrar',
+            }));
+            setNodes(pnodes);
+
+            // Initial stats from context
+            const totalCredits = pnodes.reduce((sum, n) => sum + (n.credits || 0), 0);
+            const totalCapacity = pnodes.reduce((sum, n) => sum + (n.storageCapacity || 0), 0);
+            const totalUsed = pnodes.reduce((sum, n) => sum + (n.storageUsed || 0), 0);
+            const onlineCount = pnodes.filter(n => n.status === 'online').length;
+
+            setManager(prev => {
+                const daoStake = Math.max(...pnodes.map(n => n.daoStake || 0), 0);
+                const vestingStake = Math.max(...pnodes.map(n => n.vestingStake || 0), 0);
+
+                return {
+                    wallet,
+                    nodeCount: pnodes.length,
+                    onlineCount,
+                    syncingCount: pnodes.filter(n => n.status === 'syncing').length,
+                    offlineCount: pnodes.filter(n => n.status === 'offline' || !n.status).length,
+                    totalCredits,
+                    totalStorageCapacity: totalCapacity,
+                    totalStorageUsed: totalUsed,
+                    avgUptime: pnodes.reduce((sum, n) => sum + (n.uptime || 0), 0) / pnodes.length || 0,
+                    totalXandStake: daoStake,
+                    daoStake: daoStake,
+                    vestingStake: vestingStake,
+                    ...prev
+                };
+            });
+            setLoading(false);
+        } else if (!nodesLoading) {
+            // If nodes loaded but none found for this wallet, we still wait for the specific API
+            // but we might want to show an error if that fails too.
+        }
+    }, [allNodes, wallet, nodesLoading]);
+
     const fetchManagerDetails = async () => {
         try {
-            setLoading(true);
+            // Don't set loading to true if we already have some data
+            if (nodes.length === 0) setLoading(true);
+
             const res = await fetch(`/api/managers/${wallet}`);
             const data: ManagerResponse = await res.json();
 
             if (data.success) {
                 setManager(data.manager);
-                const pnodes: PNode[] = data.nodes.map((n: any) => ({
-                    id: n.pubkey || n.id,
-                    address: n.address || '',
-                    publicKey: n.pubkey || n.publicKey || '',
-                    pubkey: n.pubkey,
-                    version: n.version,
-                    status: n.status,
-                    uptime: n.uptime,
-                    credits: n.credits,
-                    storageCapacity: n.storageCapacity,
-                    storageUsed: n.storageUsed,
-                    locationData: n.locationData,
-                    location: n.location,
-                    balance: n.balance,
-                    isPublic: n.isPublic,
-                    cpuPercent: n.cpuPercent,
-                    ramUsed: n.ramUsed,
-                    ramTotal: n.ramTotal,
-                    packetsReceived: n.packetsReceived,
-                    packetsSent: n.packetsSent,
-                    xandStake: n.xandStake,
-                    createdAt: n.createdAt,
-                    daoStake: n.daoStake,
-                    vestingStake: n.vestingStake,
-                }));
-                setNodes(pnodes);
-                // Set rewards from the same API response
+                setNodes(data.nodes);
                 if (data.rewards) {
                     setRewards(data.rewards);
                 }
-            } else {
+            } else if (nodes.length === 0) {
                 setError(data.error || 'Failed to fetch manager details');
             }
         } catch (err) {
-            setError('Failed to connect to server');
+            if (nodes.length === 0) setError('Failed to connect to server');
         } finally {
             setLoading(false);
         }
@@ -223,7 +248,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
         const isTemporaryError = error?.includes('temporarily') || error?.includes('Database') || error?.includes('connect');
         return (
             <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
-                <Header activePage="managers" nodeCount={allNodes.length} lastUpdate={lastUpdate} loading={nodesLoading} onRefresh={refreshNodes} />
+                <Header activePage="managers" lastUpdate={lastUpdate} loading={nodesLoading} onRefresh={refreshNodes} />
                 <main className="flex-1 overflow-hidden">
                     <div className="h-full w-full p-3 sm:p-6 overflow-y-auto text-center">
                         <div className="max-w-7xl mx-auto py-12">
@@ -252,7 +277,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
 
     return (
         <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
-            <Header activePage="managers" nodeCount={allNodes.length} lastUpdate={lastUpdate} loading={nodesLoading} onRefresh={refreshNodes} />
+            <Header activePage="managers" lastUpdate={lastUpdate} loading={nodesLoading} onRefresh={refreshNodes} />
 
             <main className="flex-1 flex flex-col overflow-hidden">
                 <div className="flex-1 w-full p-3 sm:p-6 overflow-y-auto">
@@ -313,19 +338,12 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                             </div>
                         </div>
 
-                        {/* Stats Row - 5 Columns */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+                        {/* Stats Row - 4 Columns */}
+                        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                             <StatsCard
-                                title="pNodes"
-                                value={manager.nodeCount}
-                                subValue={`${manager.offlineCount} offline`}
-                                icon={<Server className="w-4 h-4" />}
-                            />
-
-                            <StatsCard
-                                title="Online"
+                                title="Online pNodes"
                                 value={manager.onlineCount}
-                                subValue={`${uptimePercent}% uptime`}
+                                subValue={`${uptimePercent}% Manager availability`}
                                 icon={<Activity className="w-4 h-4" />}
                                 color="green"
                             />
@@ -333,7 +351,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                             <StatsCard
                                 title="DAO Stake"
                                 value={<><span>{formatXandValue(manager.daoStake || 0)}</span><span className="text-xs ml-1 opacity-50 font-normal">XAND</span></>}
-                                subValue={formatUsd(manager.daoStake || 0)}
+                                subValue={<><span>{formatUsd(manager.daoStake || 0)}</span> <span className="opacity-60 ml-1">in DAO Governance</span></>}
                                 icon={<Award className="w-4 h-4" />}
                                 color="orange"
                             />
@@ -341,15 +359,15 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                             <StatsCard
                                 title="Vesting Rewards"
                                 value={<><span>{formatXandValue(manager.vestingStake || 0)}</span><span className="text-xs ml-1 opacity-50 font-normal">XAND</span></>}
-                                subValue={formatUsd(manager.vestingStake || 0)}
+                                subValue={<><span>{formatUsd(manager.vestingStake || 0)}</span> <span className="opacity-60 ml-1">Unclaimed balance</span></>}
                                 icon={<Zap className="w-4 h-4" />}
                                 color="blue"
                             />
 
                             <StatsCard
-                                title="Storage"
+                                title="Total Storage"
                                 value={formatStorageBytes(manager.totalStorageCapacity)}
-                                subValue={`${formatStorageBytes(manager.totalStorageUsed)} used`}
+                                subValue={<><span>{formatStorageBytes(manager.totalStorageUsed)}</span> <span className="opacity-60 ml-1">currently used</span></>}
                                 icon={<HardDrive className="w-4 h-4" />}
                                 color="purple"
                             />
@@ -431,11 +449,18 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                     <tbody className="divide-y divide-white/5">
                                                         {rewards.history.map((tranche: any, idx: number) => {
                                                             const isUnlocked = new Date(tranche.unlockDate) < new Date();
+                                                            const hasProposal = !!tranche.proposalId;
+                                                            const proposalUrl = hasProposal ? `https://dao.xandeum.network/dao/XAND/proposal/${tranche.proposalId}` : null;
+
                                                             return (
-                                                                <tr key={idx} className="hover:bg-white/[0.03] transition-all duration-300 group">
+                                                                <tr
+                                                                    key={idx}
+                                                                    onClick={() => proposalUrl && window.open(proposalUrl, '_blank')}
+                                                                    className={`transition-all duration-300 group ${hasProposal ? 'cursor-pointer hover:bg-white/[0.05]' : 'hover:bg-white/[0.03]'}`}
+                                                                >
                                                                     <td className="px-8 py-6">
                                                                         <div className="flex flex-col">
-                                                                            <span className="text-foreground font-bold tracking-tight text-lg">
+                                                                            <span className="text-foreground font-bold tracking-tight text-lg flex items-center gap-2">
                                                                                 {tranche.isGenesis ? (
                                                                                     <span className="flex items-center gap-2 text-[#F0A741]">
                                                                                         <ShieldCheck className="w-4 h-4" />
@@ -447,6 +472,9 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                                                         day: 'numeric',
                                                                                         year: 'numeric'
                                                                                     })
+                                                                                )}
+                                                                                {hasProposal && (
+                                                                                    <ExternalLink className="w-3.5 h-3.5 opacity-0 group-hover:opacity-40 transition-opacity" />
                                                                                 )}
                                                                             </span>
                                                                             {!tranche.isGenesis && (
