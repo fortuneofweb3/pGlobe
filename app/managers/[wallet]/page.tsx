@@ -359,7 +359,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                             <StatsCard
                                 title="Vesting Rewards"
                                 value={<><span>{formatXandValue(manager.vestingStake || 0)}</span><span className="text-xs ml-1 opacity-50 font-normal">XAND</span></>}
-                                subValue={<><span>{formatUsd(manager.vestingStake || 0)}</span> <span className="opacity-60 ml-1">Unclaimed balance</span></>}
+                                subValue={<><span>{formatUsd(manager.vestingStake || 0)}</span> <span className="opacity-60 ml-1">Cumulative rewards</span></>}
                                 icon={<Zap className="w-4 h-4" />}
                                 color="blue"
                             />
