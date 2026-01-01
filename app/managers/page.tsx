@@ -128,7 +128,7 @@ function ManagersPageContent() {
                 <div className="flex-1 w-full p-3 sm:p-6 overflow-y-auto">
                     <div className="max-w-7xl mx-auto">
                         {/* Header */}
-                        <div className="mb-6">
+                        <div className="mb-6 animate-slide-in-bottom">
                             <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
                                 <Users className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
                                 Manager Wallets
@@ -137,7 +137,7 @@ function ManagersPageContent() {
                         </div>
 
                         {/* Stats */}
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 stagger-children">
                             <StatsCard
                                 title="Active Managers"
                                 value={stats.totalManagers}
@@ -169,7 +169,7 @@ function ManagersPageContent() {
                         </div>
 
                         {/* Search */}
-                        <div className="mb-6">
+                        <div className="mb-6 animate-slide-in-bottom" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-foreground/40" />
                                 <input
@@ -203,11 +203,12 @@ function ManagersPageContent() {
                                 {searchQuery ? 'No managers found matching your search' : 'No managers found.'}
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                {filteredManagers.map((manager) => (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-fade-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
+                                {filteredManagers.map((manager, idx) => (
                                     <div
                                         key={manager.wallet}
                                         className="card p-4 hover:border-[#F0A741]/40 cursor-pointer transition-all duration-300 hover:scale-[1.02] group"
+                                        style={{ animationDelay: `${0.2 + (idx * 0.05)}s` }}
                                         onClick={() => {
                                             startProgress();
                                             router.push(`/managers/${manager.wallet}`);

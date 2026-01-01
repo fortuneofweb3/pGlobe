@@ -14,6 +14,9 @@ import { PNode } from '../types/pnode';
 // ============================================================================
 
 let client: MongoClient | null = null;
+let connectionPromise: Promise<MongoClient> | null = null;
+let lastPingTime: number = 0;
+const PING_INTERVAL = 30000; // Ping every 30 seconds
 
 function getMongoUri(): string | undefined {
   return process.env.MONGODB_URI;
@@ -27,83 +30,81 @@ function getDbName(): string {
 }
 
 async function getClient(retries: number = 3): Promise<MongoClient> {
+  // If a connection attempt is already in progress, wait for it
+  if (connectionPromise) {
+    return connectionPromise;
+  }
+
   // Check if existing client is still valid
   if (client) {
+    const now = Date.now();
+    if (now - lastPingTime < PING_INTERVAL) {
+      return client;
+    }
+
     try {
-      // Use a fresh db reference to avoid stale connections
       const testDb = client.db(getDbName());
       await Promise.race([
         testDb.admin().command({ ping: 1 }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Ping timeout')), 2000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Ping timeout')), 5000))
       ]);
+      lastPingTime = now;
       return client;
     } catch (err) {
       const error = err as Error;
-      console.log(`[MongoDB] Connection lost, reconnecting... (${error?.message || 'ping failed'})`);
+      console.log(`[MongoDB] Connection stale, reconnecting... (${error?.message || 'ping failed'})`);
       try {
         await client.close();
-      } catch (closeError) {
-        // Ignore close errors
-      }
+      } catch (closeError) { }
       client = null;
     }
   }
 
-  let lastError: unknown = null;
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const uri = getMongoUri();
-      if (!uri) throw new Error('MONGODB_URI not set');
+  // Create connection promise to prevent concurrent attempts
+  connectionPromise = (async () => {
+    let lastError: unknown = null;
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const uri = getMongoUri();
+        if (!uri) throw new Error('MONGODB_URI not set');
 
-      const isVercel = !!process.env.VERCEL;
-      const isLocalDev = process.env.NODE_ENV === 'development' && !isVercel;
+        const isVercel = !!process.env.VERCEL;
+        const isLocalDev = process.env.NODE_ENV === 'development' && !isVercel;
 
-      // Use smaller connection pool for local dev to avoid competing with production
-      // Production Render server should use more connections, local dev uses fewer
-      client = new MongoClient(uri, {
-        serverSelectionTimeoutMS: isVercel ? 15000 : 20000, // Longer timeout for local dev
-        connectTimeoutMS: isVercel ? 15000 : 20000,
-        socketTimeoutMS: 45000,
-        maxPoolSize: isVercel ? 1 : (isLocalDev ? 3 : 10), // Local dev: 3, production: 10
-        minPoolSize: 0,
-        retryWrites: true,
-        retryReads: true,
-        // Add heartbeat to keep connection alive
-        heartbeatFrequencyMS: 10000,
-        // For local dev, be more aggressive about closing idle connections
-        maxIdleTimeMS: isLocalDev ? 30000 : 60000, // Close idle connections faster in dev
-      });
+        const newClient = new MongoClient(uri, {
+          serverSelectionTimeoutMS: isVercel ? 15000 : 5000,
+          connectTimeoutMS: isVercel ? 15000 : 5000,
+          socketTimeoutMS: 45000,
+          maxPoolSize: isVercel ? 1 : (isLocalDev ? 3 : 10),
+          minPoolSize: 0,
+          retryWrites: true,
+          retryReads: true,
+          heartbeatFrequencyMS: 10000,
+          maxIdleTimeMS: isLocalDev ? 30000 : 60000,
+        });
 
-      await client.connect();
-      await Promise.race([
-        client.db(getDbName()).admin().command({ ping: 1 }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Connect timeout')), 3000))
-      ]);
-
-      console.log(`[MongoDB] ✅ Connected to ${getDbName()}`);
-      return client;
-    } catch (err) {
-      const error = err as Error;
-      lastError = error;
-      if (attempt < retries) {
-        const delay = 1000 * attempt;
-        console.warn(`[MongoDB] Attempt ${attempt}/${retries} failed: ${error?.message || error}. Retrying in ${delay}ms...`);
-        await new Promise(r => setTimeout(r, delay));
-      } else {
-        console.error(`[MongoDB] All ${retries} connection attempts failed. Last error: ${error?.message || error}`);
-        if (error?.message?.includes('timeout')) {
-          console.error('[MongoDB] 💡 Tip: If production server is connected, it may be using connection pool. Try:');
-          console.error('[MongoDB]   1. Wait a few seconds and retry');
-          console.error('[MongoDB]   2. Check MongoDB Atlas connection limits');
-          console.error('[MongoDB]   3. Use separate database for local dev (set MONGODB_DB_NAME)');
+        await newClient.connect();
+        lastPingTime = Date.now();
+        console.log(`[MongoDB] ✅ Connected to ${getDbName()}`);
+        client = newClient;
+        return newClient;
+      } catch (err) {
+        const error = err as Error;
+        lastError = error;
+        if (attempt < retries) {
+          const delay = 1000 * attempt;
+          console.warn(`[MongoDB] Attempt ${attempt}/${retries} failed: ${error?.message || error}. Retrying in ${delay}ms...`);
+          await new Promise(r => setTimeout(r, delay));
+        } else {
+          console.error(`[MongoDB] All ${retries} connection attempts failed.`);
         }
       }
-      if (client) { try { await client.close(); } catch { } }
-      client = null;
     }
-  }
+    connectionPromise = null; // Reset on failure so next call can try again
+    throw lastError;
+  })();
 
-  throw lastError;
+  return connectionPromise;
 }
 
 export async function getDb(): Promise<Db> {

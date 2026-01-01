@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllNodes } from '@/lib/server/mongodb-nodes';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { SimpleCache } from '@/lib/server/cache-utils';
 import { getProposalMapping } from '@/lib/server/proposal-scanner';
+import { getNodesByManager, getDb } from '@/lib/server/mongodb-nodes';
+import { enrichPNodeWithOnChainData } from '@/lib/server/solana-pnodes';
+import { syncRewardsForManager } from '@/lib/server/sync-rewards';
 
 const managerDetailCache = new SimpleCache<any>(0.5); // 30 second cache for quick navigation
 
@@ -10,50 +12,6 @@ const HELIUS_API_KEY = '2aca1e9b-9f51-44a0-938b-89dc6c23e9b4';
 const RPC_URL = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
 const VESTING_PROGRAM = new PublicKey('HBZ5oXbFBFbr8Krt2oMU7ApHFeukdRS8Rye1f3T66vg5');
 
-// Fetch vesting schedule directly from chain
-async function fetchVestingHistoryFromChain(walletStr: string) {
-    const connection = new Connection(RPC_URL, 'confirmed');
-    const managerWallet = new PublicKey(walletStr);
-
-    // Fetch proposal mapping
-    const proposalMap = await getProposalMapping();
-
-    const schedule: any[] = [];
-    const grantAccounts = await connection.getProgramAccounts(VESTING_PROGRAM, {
-        filters: [{ memcmp: { offset: 8, bytes: managerWallet.toBase58() } }]
-    });
-
-    for (const { account } of grantAccounts) {
-        const data = account.data;
-        const START = 104;
-        const STRIDE = 80;
-
-        for (let i = START; i <= data.length - STRIDE; i += STRIDE) {
-            const amount = Number(data.readBigUInt64LE(i)) / 1e9;
-            if (amount === 0) break;
-            const tStart = Number(data.readBigUInt64LE(i + 56));
-            const status = (tStart < Date.now() / 1000) ? 'Claimable' : 'Locked';
-
-            // Find matching proposal
-            const mappingKey = `${walletStr}:${amount.toFixed(0)}:${tStart}`;
-            let proposalId = proposalMap.get(mappingKey);
-
-            // Fallback for older grants without strict startTs match
-            if (!proposalId) {
-                proposalId = proposalMap.get(`${walletStr}:${amount.toFixed(0)}`);
-            }
-
-            schedule.push({
-                amount,
-                unlockDate: new Date(tStart * 1000),
-                status,
-                isGenesis: tStart === 0,
-                proposalId
-            });
-        }
-    }
-    return schedule;
-}
 
 export async function GET(
     request: NextRequest,
@@ -65,14 +23,14 @@ export async function GET(
         // 1. FAST PATH: Check cache first
         const cached = managerDetailCache.get(wallet);
         if (cached) {
+            console.log(`[API] 🚀 Cache hit for ${wallet}`);
             return NextResponse.json(cached);
         }
-
-        const { getNodesByManager, getDb } = await import('@/lib/server/mongodb-nodes');
 
         // 2. Fetch all data from DB FIRST
         let managerNodes;
         try {
+            console.log(`[API] 📥 Fetching nodes for ${wallet}...`);
             managerNodes = await getNodesByManager(wallet);
         } catch (dbError: any) {
             console.error('[API] Database error:', dbError.message);
@@ -175,14 +133,16 @@ export async function GET(
         const lastUpdated = dbRewards?.updatedAt || managerNodes[0]?.updatedAt || new Date(0);
         const isStale = Date.now() - new Date(lastUpdated).getTime() > 15 * 60 * 1000;
 
-        if (isStale) {
-            // Background refresh - fire and forget
-            (async () => {
-                try {
-                    console.log(`[API] Triggering background refresh for manager: ${wallet}`);
-                    const { enrichPNodeWithOnChainData } = await import('@/lib/server/solana-pnodes');
+        managerDetailCache.set(wallet, response);
 
-                    // Use a node pubkey if we have one, otherwise dummy it with the wallet (fallback in enrich works)
+        if (isStale) {
+            // Truly FIRE AND FORGET background refresh
+            setTimeout(async () => {
+                const startRefresh = Date.now();
+                try {
+                    console.log(`[API] 🔄 Starting background refresh for manager: ${wallet}`);
+
+                    // 1. Refresh node metadata (DAO Stake, Eras, etc)
                     const targetPubkey = managerNodes[0]?.pubkey || wallet;
                     const dummyConn = new Connection('https://api.devnet.solana.com');
                     const freshData = await enrichPNodeWithOnChainData(targetPubkey, dummyConn);
@@ -200,29 +160,20 @@ export async function GET(
                                 }
                             }
                         );
+                        console.log(`[API] ✅ Node metadata refreshed for ${wallet}`);
                     }
 
-                    // Background sync rewards using the formal syncRewards module
-                    const { getProposalMapping } = await import('@/lib/server/proposal-scanner');
-                    const mainnetConn = new Connection(RPC_URL, 'confirmed');
-                    const proposalMap = await getProposalMapping();
+                    // 2. Targeted Rewards Sync
+                    await syncRewardsForManager(wallet);
 
-                    // We can't easily import fetchVestingHistory because it's local to sync-rewards.ts
-                    // But we can import it if we exported it, or just use the same logic.
-                    // For now, let's just use the logic from solana-pnodes for totalStake
-                    // and keep the history sync to the hourly background job or improve it.
-
-                    // Actually, let's just trigger the formal sync module for this manager
-                    const { syncRewardsForAllManagers } = await import('@/lib/server/sync-rewards');
-                    // (This will sync ALL managers, which is a bit much for a background trigger)
-                    // TODO: create syncRewardsForOneManager(wallet)
+                    const duration = Date.now() - startRefresh;
+                    console.log(`[API] ✨ Background refresh for ${wallet} completed in ${duration}ms`);
                 } catch (e) {
-                    console.error('[API] Background refresh failed:', e);
+                    console.error(`[API] ❌ Background refresh failed for ${wallet}:`, e);
                 }
-            })();
+            }, 0);
         }
 
-        managerDetailCache.set(wallet, response);
         return NextResponse.json(response);
 
     } catch (error) {

@@ -23,6 +23,7 @@ import * as http from 'http';
 const PROXY_RPC_ENDPOINTS: string[] = [];
 
 const DIRECT_PRPC_ENDPOINTS = [
+  '89.123.115.81:6000', // Highly reliable per community
   '173.212.203.145:6000',
   '173.212.220.65:6000',
   '161.97.97.41:6000',
@@ -34,6 +35,8 @@ const DIRECT_PRPC_ENDPOINTS = [
   '207.244.255.1:6000',
   '173.249.59.66:6000',
   '173.249.54.191:6000',
+  '84.21.171.111:6000',
+  '152.53.236.91:6000',
 ];
 
 const POD_CREDITS_API = 'https://podcredits.xandeum.network/api/pods-credits';

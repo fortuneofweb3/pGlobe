@@ -101,3 +101,47 @@ export async function syncRewardsForAllManagers() {
         return { success: false, count: 0, error: (err as Error).message };
     }
 }
+
+export async function syncRewardsForManager(wallet: string) {
+    console.log(`[SyncRewards] Starting targeted sync for ${wallet}...`);
+    try {
+        const db = await getDb();
+        const connection = new Connection(RPC_URL, 'confirmed');
+        const proposalMap = await getProposalMapping();
+
+        const { history, totalVestingStake } = await fetchVestingHistory(connection, wallet, proposalMap);
+
+        if (history.length > 0) {
+            await db.collection('manager_rewards').updateOne(
+                { managerWallet: wallet },
+                {
+                    $set: {
+                        managerWallet: wallet,
+                        history,
+                        totalRewards: totalVestingStake,
+                        updatedAt: new Date()
+                    }
+                },
+                { upsert: true }
+            );
+
+            // Also update the nodes collection
+            await db.collection('nodes').updateMany(
+                { $or: [{ managerWallet: wallet }, { registrarWallet: wallet }] },
+                {
+                    $set: {
+                        vestingStake: totalVestingStake,
+                        updatedAt: new Date()
+                    }
+                }
+            );
+            console.log(`[SyncRewards] ✅ Target sync complete for ${wallet}`);
+        } else {
+            console.log(`[SyncRewards] ℹ️ No rewards found for ${wallet}`);
+        }
+        return { success: true };
+    } catch (err) {
+        console.error(`[SyncRewards] ❌ Target sync failed for ${wallet}:`, err);
+        return { success: false, error: (err as Error).message };
+    }
+}

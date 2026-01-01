@@ -283,7 +283,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                 <div className="flex-1 w-full p-3 sm:p-6 overflow-y-auto">
                     <div className="max-w-7xl mx-auto">
                         {/* Back Button */}
-                        <Link href="/managers" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6 transition-all duration-300 hover:translate-x-[-4px] group">
+                        <Link href="/managers" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6 transition-all duration-300 hover:translate-x-[-4px] group animate-slide-in-bottom">
                             <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
                             <span>Back to Managers</span>
                         </Link>
@@ -339,7 +339,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                         </div>
 
                         {/* Stats Row - 4 Columns */}
-                        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 stagger-children">
                             <StatsCard
                                 title="Online pNodes"
                                 value={manager.onlineCount}
@@ -374,25 +374,26 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                         </div>
 
                         {/* Tabs Navigation */}
-                        <div className="flex gap-2 mb-8 bg-black/40 backdrop-blur-md p-1 rounded-xl border border-white/5 w-fit">
+                        <div className="flex gap-1 sm:gap-2 mb-8 bg-black/40 backdrop-blur-md p-1 rounded-xl border border-white/5 w-fit max-w-full overflow-x-auto no-scrollbar animate-slide-in-bottom" style={{ animationDelay: '0.15s', opacity: 0, animationFillMode: 'forwards' }}>
                             <button
                                 onClick={() => setActiveTab('nodes')}
-                                className={`flex items-center gap-2.5 px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 ${activeTab === 'nodes' ? 'bg-[#F0A741] text-black shadow-[0_4px_12px_rgba(240,167,65,0.3)]' : 'text-foreground/50 hover:text-foreground'}`}
+                                className={`flex items-center gap-1.5 sm:gap-2.5 px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all duration-300 shrink-0 ${activeTab === 'nodes' ? 'bg-[#F0A741] text-black shadow-[0_4px_12px_rgba(240,167,65,0.3)]' : 'text-foreground/50 hover:text-foreground'}`}
                             >
-                                <Server className={`w-4 h-4 ${activeTab === 'nodes' ? 'opacity-100' : 'opacity-50'}`} />
+                                <Server className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${activeTab === 'nodes' ? 'opacity-100' : 'opacity-50'}`} />
                                 pNodes ({nodes.length})
                             </button>
                             <button
                                 onClick={() => setActiveTab('rewards')}
-                                className={`flex items-center gap-2.5 px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 ${activeTab === 'rewards' ? 'bg-[#F0A741] text-black shadow-[0_4px_12px_rgba(240,167,65,0.3)]' : 'text-foreground/50 hover:text-foreground'}`}
+                                className={`flex items-center gap-1.5 sm:gap-2.5 px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all duration-300 shrink-0 ${activeTab === 'rewards' ? 'bg-[#F0A741] text-black shadow-[0_4px_12px_rgba(240,167,65,0.3)]' : 'text-foreground/50 hover:text-foreground'}`}
                             >
-                                <Zap className={`w-4 h-4 ${activeTab === 'rewards' ? 'opacity-100' : 'opacity-50'}`} />
-                                Rewards & Vesting
+                                <Zap className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${activeTab === 'rewards' ? 'opacity-100' : 'opacity-50'}`} />
+                                <span className="hidden xs:inline">Rewards & Vesting</span>
+                                <span className="xs:hidden">Rewards</span>
                             </button>
                         </div>
 
                         {/* Content Area */}
-                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-700 fill-mode-both">
+                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-700 fill-mode-both" style={{ animationDelay: '0.2s' }}>
                             {activeTab === 'nodes' ? (
                                 nodes.length === 0 ? (
                                     <div className="card p-20 text-center border-dashed border-white/10">
@@ -427,12 +428,12 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                         <p className="text-xs text-foreground/40 font-mono">{rewards.history.length} Tranches Identified</p>
                                                     </div>
                                                 </div>
-                                                <div className="flex gap-4">
-                                                    <div className="bg-black/60 border border-white/5 rounded-2xl px-5 py-3 flex flex-col items-end shadow-inner">
-                                                        <span className="text-[10px] text-foreground/30 font-black uppercase tracking-widest mb-1">Locked/Vesting</span>
-                                                        <div className="flex items-baseline gap-2">
-                                                            <span className="text-2xl font-black text-[#F0A741]">{formatXandValue(manager.vestingStake || 0)}</span>
-                                                            <span className="text-[10px] text-foreground/40 font-bold">XAND</span>
+                                                <div className="flex gap-2 sm:gap-4 shrink-0">
+                                                    <div className="bg-black/60 border border-white/5 rounded-2xl px-3 sm:px-5 py-2 sm:py-3 flex flex-col items-end shadow-inner">
+                                                        <span className="text-[9px] sm:text-[10px] text-foreground/30 font-black uppercase tracking-widest mb-0.5 sm:mb-1">Locked/Vesting</span>
+                                                        <div className="flex items-baseline gap-1 sm:gap-2">
+                                                            <span className="text-xl sm:text-2xl font-black text-[#F0A741]">{formatXandValue(manager.vestingStake || 0)}</span>
+                                                            <span className="text-[9px] sm:text-[10px] text-foreground/40 font-bold">XAND</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -440,10 +441,10 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                             <div className="overflow-x-auto">
                                                 <table className="w-full text-left text-sm">
                                                     <thead>
-                                                        <tr className="bg-black/40 text-foreground/30 uppercase text-[10px] font-black tracking-[0.2em] border-b border-white/5">
-                                                            <th className="px-8 py-5">Unlock Date & Time</th>
-                                                            <th className="px-8 py-5">Amount</th>
-                                                            <th className="px-8 py-5 text-right">Progress Status</th>
+                                                        <tr className="bg-black/40 text-foreground/30 uppercase text-[9px] sm:text-[10px] font-black tracking-[0.1em] sm:tracking-[0.2em] border-b border-white/5">
+                                                            <th className="px-4 sm:px-8 py-4 sm:py-5">Date & Time</th>
+                                                            <th className="px-4 sm:px-8 py-4 sm:py-5">Amount</th>
+                                                            <th className="px-4 sm:px-8 py-4 sm:py-5 text-right">Status</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-white/5">
@@ -458,9 +459,9 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                                     onClick={() => proposalUrl && window.open(proposalUrl, '_blank')}
                                                                     className={`transition-all duration-300 group ${hasProposal ? 'cursor-pointer hover:bg-white/[0.05]' : 'hover:bg-white/[0.03]'}`}
                                                                 >
-                                                                    <td className="px-8 py-6">
+                                                                    <td className="px-4 sm:px-8 py-4 sm:py-6">
                                                                         <div className="flex flex-col">
-                                                                            <span className="text-foreground font-bold tracking-tight text-lg flex items-center gap-2">
+                                                                            <span className="text-foreground font-bold tracking-tight text-sm sm:text-lg flex items-center gap-1.5 sm:gap-2">
                                                                                 {tranche.isGenesis ? (
                                                                                     <span className="flex items-center gap-2 text-[#F0A741]">
                                                                                         <ShieldCheck className="w-4 h-4" />
@@ -487,23 +488,23 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                                             )}
                                                                         </div>
                                                                     </td>
-                                                                    <td className="px-8 py-6">
+                                                                    <td className="px-4 sm:px-8 py-4 sm:py-6">
                                                                         <div className="flex items-center gap-2.5">
                                                                             <div className={`p-1.5 rounded-md ${isUnlocked ? 'bg-green-500/10' : 'bg-white/5'}`}>
                                                                                 <Zap className={`w-3.5 h-3.5 ${isUnlocked ? 'text-green-400' : 'text-foreground/20'}`} />
                                                                             </div>
                                                                             <div className="flex flex-col">
-                                                                                <span className="text-xl font-black text-foreground tabular-nums">
+                                                                                <span className="text-base sm:text-xl font-black text-foreground tabular-nums">
                                                                                     {formatXandValue(tranche.amount)}
-                                                                                    <span className="text-xs ml-1 opacity-50 font-normal">XAND</span>
+                                                                                    <span className="text-[10px] ml-1 opacity-50 font-normal">XAND</span>
                                                                                 </span>
-                                                                                <span className="text-[10px] text-foreground/40 font-bold">{formatUsd(tranche.amount)}</span>
+                                                                                <span className="text-[9px] sm:text-[10px] text-foreground/40 font-bold">{formatUsd(tranche.amount)}</span>
                                                                             </div>
                                                                         </div>
                                                                     </td>
-                                                                    <td className="px-8 py-6 text-right">
+                                                                    <td className="px-4 sm:px-8 py-4 sm:py-6 text-right">
                                                                         <div className="inline-flex flex-col items-end gap-2">
-                                                                            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm ring-1 ring-inset ${tranche.status === 'Claimed' ? 'bg-green-500/20 text-green-300 ring-green-500/30' :
+                                                                            <span className={`px-2 sm:px-4 py-1 sm:py-1.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest shadow-sm ring-1 ring-inset ${tranche.status === 'Claimed' ? 'bg-green-500/20 text-green-300 ring-green-500/30' :
                                                                                 tranche.status === 'Partially Claimed' ? 'bg-blue-500/20 text-blue-300 ring-blue-500/30' :
                                                                                     isUnlocked ? 'bg-[#F0A741]/20 text-[#F0A741] ring-[#F0A741]/40' :
                                                                                         'bg-white/5 text-foreground/20 ring-white/10'

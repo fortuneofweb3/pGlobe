@@ -1449,7 +1449,7 @@ function NodeDetailContent() {
                         {/* Title */}
                         <div className="flex items-center gap-3 mb-3">
                           <Server className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
-                          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-mono text-foreground">
+                          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-mono text-foreground break-all">
                             {gossipAddress}
                           </h1>
                         </div>
@@ -1471,8 +1471,8 @@ function NodeDetailContent() {
                         </div>
 
                         {/* Public Key */}
-                        <div className="mt-4 inline-flex items-center gap-2 p-2 bg-background/40 border border-border/40 rounded-lg backdrop-blur-sm">
-                          <p className="text-sm font-mono text-foreground/80 truncate max-w-md">{pubkey}</p>
+                        <div className="mt-4 inline-flex items-center gap-2 p-2 bg-background/40 border border-border/40 rounded-lg backdrop-blur-sm max-w-full overflow-hidden">
+                          <p className="text-sm font-mono text-foreground/80 truncate max-w-[200px] xs:max-w-xs sm:max-w-md">{pubkey}</p>
                           <button
                             onClick={async () => {
                               if (pubkey) {
@@ -1570,7 +1570,7 @@ function NodeDetailContent() {
                   </div>
                   <div className="flex items-center gap-3 mb-2">
                     <Server className="w-6 h-6 text-[#F0A741]" />
-                    <h1 className="text-2xl sm:text-3xl font-bold font-mono text-foreground">
+                    <h1 className="text-2xl sm:text-3xl font-bold font-mono text-foreground break-all">
                       {gossipAddress}
                     </h1>
                   </div>
