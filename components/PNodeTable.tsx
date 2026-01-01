@@ -16,8 +16,9 @@ import BalanceDisplay from './BalanceDisplay';
 import { formatBytes, formatStorageBytes } from '@/lib/utils/storage';
 import { formatRelativeTime } from '@/lib/utils/time';
 import { getFlagForCountry } from '@/lib/utils/country-flags';
-import { Check, X, ArrowUp, ArrowDown, Globe, Lock } from 'lucide-react';
+import { Check, X, ArrowUp, ArrowDown, Globe, Lock, Star } from 'lucide-react';
 import InfoTooltip from './InfoTooltip';
+import { useWatchlist } from '@/lib/context/WatchlistContext';
 
 interface PNodeTableProps {
   nodes: PNode[];
@@ -162,6 +163,7 @@ function VersionTooltip({ version, abbreviated }: { version: string; abbreviated
 
 export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSort }: PNodeTableProps) {
   const router = useRouter();
+  const { isWatched, toggleWatchlist } = useWatchlist();
   const [balances, setBalances] = useState<Record<string, number | null>>({});
   const [fetchingBalances, setFetchingBalances] = useState<Set<string>>(new Set());
   // Load cached latencies immediately (synchronous)
@@ -393,7 +395,8 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
         <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0 bg-card" style={{ margin: 0, padding: 0, marginTop: '-1px' }}>
           <table className="min-w-full border-collapse m-0 border-spacing-0" style={{ minWidth: '800px', borderCollapse: 'collapse', margin: 0, padding: 0 }}>
             <colgroup>
-              <col className="w-[8%]" />
+              <col className="w-[3%]" />
+              <col className="w-[7%]" />
               <col className="w-[4%]" />
               <col className="w-[6%]" />
               <col className="w-[6%]" />
@@ -413,6 +416,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
             </colgroup>
             <thead className="sticky top-0 z-10 bg-muted border-b border-border/60" style={{ margin: 0, padding: 0 }}>
               <tr>
+                <th className="px-2 py-4"></th>
                 <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   IP Address
                 </th>
@@ -655,6 +659,18 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         ${isTrynet ? 'bg-orange-500/[0.02]' : ''}
                       `}
                     >
+                      <td className="px-2 py-5 text-center" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => toggleWatchlist(node.pubkey || node.publicKey || node.id)}
+                          className={`p-1 rounded-full transition-all duration-200 ${isWatched(node.pubkey || node.publicKey || node.id)
+                            ? 'text-yellow-500 fill-yellow-500 bg-yellow-500/10'
+                            : 'text-foreground/20 hover:text-foreground/40 hover:bg-muted'
+                            }`}
+                          title={isWatched(node.pubkey || node.publicKey || node.id) ? 'Remove from Watchlist' : 'Add to Watchlist'}
+                        >
+                          <Star className="w-4 h-4" />
+                        </button>
+                      </td>
                       <td className="px-3 sm:px-5 py-5 whitespace-nowrap relative">
                         {/* Interactive Accent Bar */}
                         <div className="absolute left-0 inset-y-0 w-0.5 bg-[#F0A741] opacity-0 group-hover:opacity-100 transition-opacity" />

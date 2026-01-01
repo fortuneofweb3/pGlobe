@@ -5,14 +5,16 @@ import Link from 'next/link';
 import io from 'socket.io-client';
 import { ActivityLog } from '@/lib/server/mongodb-activity';
 import { formatDistanceToNow } from 'date-fns';
-import { Activity, Zap, CheckCircle2, XCircle, RefreshCw, MapPin, Globe, Filter, ChevronDown, Pause, Play } from 'lucide-react';
+import { Activity, Zap, CheckCircle2, XCircle, RefreshCw, MapPin, Globe, Filter, ChevronDown, Pause, Play, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useWatchlist } from '@/lib/context/WatchlistContext';
 
 interface ActivityLogListProps {
     pubkey?: string;
     countryCode?: string;
     limit?: number;
     showFilters?: boolean;
+    watchlistOnly?: boolean;
 }
 
 const ACTIVITY_TYPES = [
@@ -232,6 +234,8 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
     const isPausedRef = useRef(isPaused);
     const [showFilterDropdown, setShowFilterDropdown] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const { watchlist } = useWatchlist();
+    const [localWatchlistOnly, setLocalWatchlistOnly] = useState(watchlistOnly || false);
 
     const fetchLogs = async (skip: number = 0, append: boolean = false) => {
         if (append) {
@@ -246,6 +250,11 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
             if (pubkey) query.set('pubkey', pubkey);
             if (countryCode) query.set('countryCode', countryCode);
             if (typeFilter) query.set('type', typeFilter);
+
+            // If we're in watchlist only mode and have a watchlist, we ideally want to fetch only those.
+            // But since the backend only supports one pubkey, we fetch all and filter client-side for now
+            // or we could fetch in parallel but that's expensive.
+
             query.set('limit', limit.toString());
             query.set('skip', skip.toString());
 
@@ -363,6 +372,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
         socket.on('activity', (newLog: ActivityLog) => {
             if (pubkey && newLog.pubkey !== pubkey) return;
             if (countryCode && newLog.countryCode !== countryCode) return;
+            if (localWatchlistOnly && newLog.pubkey && !watchlist.includes(newLog.pubkey)) return;
 
             const logWithId = {
                 ...newLog,
@@ -395,8 +405,12 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
     }, [isPaused]);
 
     const filteredLogs = useMemo(() => {
-        return logs.filter(log => !typeFilter || log.type === typeFilter).slice(0, 50);
-    }, [logs, typeFilter]);
+        return logs.filter(log => {
+            const matchesType = !typeFilter || log.type === typeFilter;
+            const matchesWatchlist = !localWatchlistOnly || (log.pubkey && watchlist.includes(log.pubkey));
+            return matchesType && matchesWatchlist;
+        }).slice(0, 50);
+    }, [logs, typeFilter, localWatchlistOnly, watchlist]);
 
     return (
         <div className="w-full h-full flex flex-col gap-2 sm:gap-4">
@@ -425,35 +439,48 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                     </button>
                 </div>
 
-                {/* Filter dropdown */}
-                <div className="relative">
+                <div className="flex items-center gap-2">
+                    {/* Watchlist Toggle */}
                     <button
-                        onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                        className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-0.5 sm:py-1 bg-muted/20 hover:bg-muted/30 border border-border/40 rounded-lg transition-colors text-[10px] sm:text-xs font-semibold text-foreground/70 hover:text-foreground"
+                        onClick={() => setLocalWatchlistOnly(!localWatchlistOnly)}
+                        className={`flex items-center gap-1.5 px-3 py-1 bg-muted/20 hover:bg-muted/30 border border-border/40 rounded-lg transition-all text-[10px] sm:text-xs font-semibold ${localWatchlistOnly ? 'text-yellow-500 border-yellow-500/30 bg-yellow-500/10' : 'text-foreground/70 hover:text-foreground'}`}
                     >
-                        <span>Filter pNodes...</span>
-                        <ChevronDown className={`w-2.5 h-2.5 sm:w-3 sm:h-3 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
+                        <Star className={`w-3 h-3 ${localWatchlistOnly ? 'fill-yellow-500' : ''}`} />
+                        <span className="hidden lg:inline">Watchlist Only</span>
+                        <span className="lg:hidden">Watch</span>
                     </button>
 
-                    {showFilterDropdown && (
-                        <div className="absolute top-full mt-1 right-0 z-50 bg-card border border-border/40 rounded-lg shadow-xl min-w-[140px] overflow-hidden">
-                            {ACTIVITY_TYPES.map((type) => (
-                                <button
-                                    key={type.value}
-                                    onClick={() => {
-                                        setTypeFilter(type.value);
-                                        setShowFilterDropdown(false);
-                                    }}
-                                    className={`w-full px-3 py-1.5 text-left text-[10px] sm:text-xs transition-colors ${typeFilter === type.value
-                                        ? 'bg-[#F0A741]/10 text-[#F0A741] font-bold'
-                                        : 'hover:bg-muted/20 text-foreground/70 hover:text-foreground'
-                                        }`}
-                                >
-                                    {type.label}
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                    {/* Filter dropdown */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                            className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 bg-muted/20 hover:bg-muted/30 border border-border/40 rounded-lg transition-colors text-[10px] sm:text-xs font-semibold text-foreground/70 hover:text-foreground"
+                        >
+                            <Filter className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                            <span className="hidden xs:inline">{typeFilter ? ACTIVITY_TYPES.find(t => t.value === typeFilter)?.label : 'All Activities'}</span>
+                            <ChevronDown className={`w-2.5 h-2.5 sm:w-3 sm:h-3 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {showFilterDropdown && (
+                            <div className="absolute top-full mt-1 right-0 z-50 bg-card border border-border/40 rounded-lg shadow-xl min-w-[140px] overflow-hidden">
+                                {ACTIVITY_TYPES.map((type) => (
+                                    <button
+                                        key={type.value}
+                                        onClick={() => {
+                                            setTypeFilter(type.value);
+                                            setShowFilterDropdown(false);
+                                        }}
+                                        className={`w-full px-3 py-1.5 text-left text-[10px] sm:text-xs transition-colors ${typeFilter === type.value
+                                            ? 'bg-[#F0A741]/10 text-[#F0A741] font-bold'
+                                            : 'hover:bg-muted/20 text-foreground/70 hover:text-foreground'
+                                            }`}
+                                    >
+                                        {type.label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -462,21 +489,21 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                 <div className="absolute inset-0 bg-gradient-to-br from-[#F0A741]/[0.02] via-transparent to-transparent pointer-events-none" />
 
                 {loading && logs.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-[300px] gap-4">
+                    <div className="flex flex-col items-center justify-center h-full gap-4">
                         <RefreshCw className="w-8 h-8 text-foreground/10 animate-spin" />
                         <div className="text-center space-y-1">
                             <p className="text-foreground/40 text-xs font-semibold">Loading Activity</p>
                         </div>
                     </div>
-                ) : logs.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-[300px] gap-4">
+                ) : filteredLogs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-4">
                         <Activity className="w-8 h-8 text-foreground/10" />
                         <div className="text-center space-y-1">
-                            <p className="text-foreground/40 text-xs font-semibold">No Activity Yet</p>
+                            <p className="text-foreground/40 text-xs font-semibold">No Matching Activity</p>
                         </div>
                     </div>
                 ) : (
-                    <div className="space-y-1 relative flex-1 overflow-y-auto">
+                    <div className="space-y-1 relative flex-1 overflow-y-auto custom-scrollbar">
                         <AnimatePresence mode="popLayout">
                             {filteredLogs.map((log) => (
                                 <LogItem

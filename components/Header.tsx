@@ -2,24 +2,17 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, X, Activity, HelpCircle } from 'lucide-react';
-import NetworkSelector from './NetworkSelector';
-import NetToggle from './NetToggle';
-import { NetworkConfig } from '@/lib/server/network-config';
+import { Menu, X, Activity, HelpCircle, Star } from 'lucide-react';
 import { useNodes } from '@/lib/context/NodesContext';
+import { useWatchlist } from '@/lib/context/WatchlistContext';
 
 interface HeaderProps {
-  activePage?: 'overview' | 'nodes' | 'analytics' | 'stoinc' | 'help' | 'scan' | 'regions' | 'activity' | 'managers';
+  activePage?: 'overview' | 'nodes' | 'analytics' | 'stoinc' | 'help' | 'scan' | 'regions' | 'activity' | 'managers' | 'watchlist';
   nodeCount?: number;
   managerCount?: number;
   lastUpdate?: Date | null;
   loading?: boolean;
   onRefresh?: () => void;
-  networks?: NetworkConfig[];
-  currentNetwork?: NetworkConfig | null;
-  switchingNetwork?: string | null;
-  onNetworkChange?: (networkId: string) => void;
-  showNetworkSelector?: boolean;
 }
 
 export default function Header({
@@ -29,30 +22,19 @@ export default function Header({
   lastUpdate: propLastUpdate,
   loading: propLoading = false,
   onRefresh,
-  networks: propNetworks = [],
-  currentNetwork: propCurrentNetwork,
-  switchingNetwork,
-  onNetworkChange,
-  showNetworkSelector = false,
 }: HeaderProps) {
   // Get values from context as fallback to prevent header from clearing on page transitions
   const context = useNodes();
+  const { watchlist } = useWatchlist();
   // Always use context values for counts in the header to ensure consistency
   // pNodes = active only, managers = total (active + dead)
   const nodeCount = context?.activeNodes.length ?? 0;
   const managerCount = context?.managerCount ?? 0;
   const lastUpdate = propLastUpdate ?? context?.lastUpdate ?? null;
   const loading = propLoading || context?.loading || false;
-  const networks = propNetworks.length > 0 ? propNetworks : (context?.availableNetworks ?? []);
-  const currentNetwork = propCurrentNetwork ?? context?.currentNetwork ?? null;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [selectedNet, setSelectedNet] = useState<'devnet' | 'mainnet'>('devnet');
 
-  const handleNetChange = (net: 'devnet' | 'mainnet') => {
-    setSelectedNet(net);
-    // TODO: Implement actual network switching logic
-    console.log('Network changed to:', net);
-  };
+
 
   const formatTimeAgo = (date: Date | null) => {
     if (!date) return 'Never';
@@ -161,23 +143,23 @@ export default function Header({
               >
                 Scan
               </Link>
+              <Link
+                href="/watchlist"
+                prefetch={true}
+                className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'watchlist'
+                  ? 'text-yellow-500 bg-yellow-500/10 shadow-sm'
+                  : 'text-yellow-500/60 hover:text-yellow-500 hover:bg-yellow-500/5'
+                  }`}
+              >
+                Watchlist {watchlist.length > 0 && `(${watchlist.length})`}
+              </Link>
 
             </nav>
           </div>
 
           {/* Right side - Controls */}
           <div className="flex items-center gap-2 sm:gap-3 bg-black">
-            {showNetworkSelector && networks.length > 0 && (
-              <div className="hidden sm:block px-3 py-1.5 bg-muted">
-                <NetworkSelector
-                  networks={networks}
-                  currentNetwork={currentNetwork ?? null}
-                  switchingNetwork={switchingNetwork}
-                  loading={loading}
-                  onNetworkChange={onNetworkChange || (() => { })}
-                />
-              </div>
-            )}
+
             {lastUpdate && (
               <div className="hidden sm:block px-3 py-1.5 bg-muted/20">
                 <span className="text-xs text-foreground/60 font-mono">
@@ -222,10 +204,7 @@ export default function Header({
               </div>
             </Link>
 
-            {/* Network Toggle (DevNet/MainNet) - Extreme Right */}
-            <div className="hidden sm:block bg-black/90">
-              <NetToggle currentNet={selectedNet} onNetChange={handleNetChange} />
-            </div>
+
 
             {/* Mobile menu button */}
             <button
@@ -247,10 +226,7 @@ export default function Header({
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-[#F0A741]/20 bg-black">
           <nav className="px-4 py-3 space-y-2 bg-black">
-            {/* Network Toggle for Mobile */}
-            <div className="px-4 py-2 bg-muted">
-              <NetToggle currentNet={selectedNet} onNetChange={handleNetChange} />
-            </div>
+
 
             <Link
               href="/"
@@ -353,17 +329,7 @@ export default function Header({
               <HelpCircle className="w-4 h-4" />
               Help & FAQ
             </Link>
-            {showNetworkSelector && networks.length > 0 && (
-              <div className="px-4 py-2 bg-muted">
-                <NetworkSelector
-                  networks={networks}
-                  currentNetwork={currentNetwork ?? null}
-                  switchingNetwork={switchingNetwork}
-                  loading={loading}
-                  onNetworkChange={onNetworkChange || context?.setSelectedNetwork || (() => { })}
-                />
-              </div>
-            )}
+
             {lastUpdate && (
               <div className="px-4 py-2 bg-muted">
                 <span className="text-xs text-foreground/60 font-mono">

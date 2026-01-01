@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import "./globals.css";
 import { NodesProvider } from "@/lib/context/NodesContext";
 import { UserRegionProvider } from "@/lib/context/UserRegionContext";
+import { WatchlistProvider } from "@/lib/context/WatchlistContext";
 import AISupportWidget from "@/components/AISupportWidget";
 import ProgressBar from "@/components/ProgressBar";
 
@@ -56,10 +57,12 @@ export default function RootLayout({
           <ProgressBar />
         </Suspense>
         <NodesProvider>
-          <UserRegionProvider>
-            {children}
-            <AISupportWidget />
-          </UserRegionProvider>
+          <WatchlistProvider>
+            <UserRegionProvider>
+              {children}
+              <AISupportWidget />
+            </UserRegionProvider>
+          </WatchlistProvider>
         </NodesProvider>
       </body>
     </html>

@@ -28,6 +28,8 @@ import Header from '@/components/Header';
 import StatsCard from '@/components/StatsCard';
 import dynamic from 'next/dynamic';
 import { MapContainer, TileLayer, Marker, Tooltip, CircleMarker } from 'react-leaflet';
+import { useWatchlist } from '@/lib/context/WatchlistContext';
+import { Star } from 'lucide-react';
 
 // Dynamically import Leaflet components to avoid SSR issues - import from single module
 const NodeMap = dynamic(
@@ -789,6 +791,7 @@ function NodeDetailContent() {
   const router = useRouter();
   const nodeId = params.id as string;
   const { nodes: allNodes, refreshNodes, lastUpdate, loading } = useNodes();
+  const { isWatched, toggleWatchlist } = useWatchlist();
   const [copied, setCopied] = useState(false);
   const [refreshingStats, setRefreshingStats] = useState(false);
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
@@ -1489,6 +1492,17 @@ function NodeDetailContent() {
                             ) : (
                               <Copy className="w-3.5 h-3.5 text-foreground/60" />
                             )}
+                          </button>
+
+                          <button
+                            onClick={() => toggleWatchlist(pubkey)}
+                            className={`p-1.5 rounded transition-all duration-200 border ${isWatched(pubkey)
+                              ? 'text-yellow-500 fill-yellow-500 bg-yellow-500/10 border-yellow-500/30'
+                              : 'text-foreground/20 hover:text-foreground/40 hover:bg-muted border-border/60'
+                              }`}
+                            title={isWatched(pubkey) ? 'Remove from Watchlist' : 'Add to Watchlist'}
+                          >
+                            <Star className={`w-3.5 h-3.5 ${isWatched(pubkey) ? 'fill-yellow-500' : ''}`} />
                           </button>
                         </div>
 
