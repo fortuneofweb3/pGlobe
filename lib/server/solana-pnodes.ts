@@ -9,7 +9,8 @@ import { PNode } from '../types/pnode';
 import { XANDEUM_NFT_COLLECTIONS } from '../constants/nft';
 
 const DEVNET_PROGRAM = new PublicKey('6Bzz3KPvzQruqBg2vtsvkuitd6Qb4iCcr5DViifCwLsL');
-const DEVNET_RPC = 'https://api.devnet.xandeum.com:8899';
+export const DEVNET_RPC = 'https://api.devnet.xandeum.com:8899';
+export const XANDEUM_MAINNET_RPC = 'https://api.mainnet.xandeum.com';
 const HELIUS_API_KEY = '2aca1e9b-9f51-44a0-938b-89dc6c23e9b4';
 const MAINNET_RPC = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
 const INDEX_ACCOUNT = new PublicKey('GHTUesiECzPRHTShmBGt9LiaA89T8VAzw8ZWNE6EvZRs');
@@ -17,26 +18,67 @@ const CUSTOM_GOV_PROGRAM = new PublicKey('4ruGZqLoPVKX27Qm91Qjsqt5AzCtLrhmjKT8ub
 const VESTING_PROGRAM = new PublicKey('HBZ5oXbFBFbr8Krt2oMU7ApHFeukdRS8Rye1f3T66vg5');
 const STAKE_ACCOUNT_DISCRIMINATOR = Buffer.from('0cb8a1410fd63b6e', 'hex');
 
+// Helper to wrap promise with timeout
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`RPC request timed out after ${timeoutMs}ms`)), timeoutMs))
+  ]);
+}
+
 /**
  * Fetch all pNode pubkeys from the on-chain index account
  */
 export async function fetchPNodesFromOnChain(rpcUrl: string = DEVNET_RPC): Promise<string[]> {
   try {
     const connection = new Connection(rpcUrl, 'confirmed');
-    const accountInfo = await connection.getAccountInfo(INDEX_ACCOUNT);
-    if (!accountInfo || !accountInfo.data) return [];
+    const RPC_TIMEOUT = 30000; // 30 seconds
 
-    const accountData = accountInfo.data;
+    // First, get account data length to see how big it is
+    const accountInfo = await withTimeout(
+      connection.getAccountInfo(INDEX_ACCOUNT, { dataSlice: { offset: 0, length: 0 } }),
+      RPC_TIMEOUT
+    );
+
+    if (!accountInfo) return [];
+
+    // Fetch data in chunks of 32000 bytes (1000 pubkeys) to be safe with RPC limits
+    const dataSize = accountInfo.data.length;
     const pubkeys: string[] = [];
     const DEFAULT_PUBKEY = new PublicKey('11111111111111111111111111111111');
 
-    for (let i = 0; i < accountData.length; i += 32) {
-      if (i + 32 > accountData.length) break;
-      try {
-        const pubkey = new PublicKey(accountData.slice(i, i + 32));
-        if (!pubkey.equals(DEFAULT_PUBKEY)) pubkeys.push(pubkey.toBase58());
-      } catch (e) { continue; }
+    // For smaller accounts, just fetch all
+    if (dataSize <= 128000) {
+      const fullInfo = await withTimeout(connection.getAccountInfo(INDEX_ACCOUNT), RPC_TIMEOUT);
+      if (!fullInfo) return [];
+      const accountData = fullInfo.data;
+      for (let i = 0; i < accountData.length; i += 32) {
+        if (i + 32 > accountData.length) break;
+        const pk = new PublicKey(accountData.slice(i, i + 32));
+        if (!pk.equals(DEFAULT_PUBKEY)) pubkeys.push(pk.toBase58());
+      }
+    } else {
+      // Large account, fetch in chunks
+      for (let offset = 0; offset < dataSize; offset += 32000) {
+        try {
+          const chunkInfo = await withTimeout(
+            connection.getAccountInfo(INDEX_ACCOUNT, { dataSlice: { offset, length: 32000 } }),
+            RPC_TIMEOUT
+          );
+          if (chunkInfo && chunkInfo.data) {
+            const chunkData = chunkInfo.data;
+            for (let i = 0; i < chunkData.length; i += 32) {
+              if (i + 32 > chunkData.length) break;
+              const pk = new PublicKey(chunkData.slice(i, i + 32));
+              if (!pk.equals(DEFAULT_PUBKEY)) pubkeys.push(pk.toBase58());
+            }
+          }
+        } catch (err) {
+          console.warn(`[solana-pnodes] Failed to fetch chunk at offset ${offset}:`, (err as Error).message);
+        }
+      }
     }
+
     return pubkeys;
   } catch (err) {
     throw new Error(`Failed to fetch pNodes from on-chain: ${(err as Error).message}`);
@@ -73,11 +115,17 @@ async function fetchDAOStake(connection: Connection, ownerPubkey: PublicKey): Pr
 /**
  * Enrich a pNode with on-chain data
  */
-export async function enrichPNodeWithOnChainData(pubkey: string, connection: Connection): Promise<any> {
+export async function enrichPNodeWithOnChainData(pubkey: string, connection: Connection, version?: string): Promise<any> {
+  const currentRpcUrl = connection.rpcEndpoint;
+  const isMainnet = currentRpcUrl.includes('mainnet');
+
   try {
     const nodePubkey = new PublicKey(pubkey);
-    const [registryAddress] = PublicKey.findProgramAddressSync([Buffer.from('registry'), nodePubkey.toBuffer()], DEVNET_PROGRAM);
-    const [managerAddress] = PublicKey.findProgramAddressSync([Buffer.from('manager'), nodePubkey.toBuffer()], DEVNET_PROGRAM);
+    // Use the program ID appropriate for the cluster if it ever changes, for now both are same
+    const programId = DEVNET_PROGRAM;
+
+    const [registryAddress] = PublicKey.findProgramAddressSync([Buffer.from('registry'), nodePubkey.toBuffer()], programId);
+    const [managerAddress] = PublicKey.findProgramAddressSync([Buffer.from('manager'), nodePubkey.toBuffer()], programId);
 
     const [balanceRes, voteRes, regRes, manRes] = await Promise.allSettled([
       connection.getBalance(nodePubkey),
@@ -183,6 +231,7 @@ export async function enrichPNodeWithOnChainData(pubkey: string, connection: Con
     }
 
     const ownerPubkey = managerWallet ? new PublicKey(managerWallet) : nodePubkey;
+
     const mainnetConn = new Connection(MAINNET_RPC, 'confirmed');
 
     const [daoStake] = await Promise.all([

@@ -194,6 +194,42 @@ async function fetchNodesFromEndpoint(endpoint: string): Promise<PNode[]> {
   return pods.map((pod) => rawPodToNode(pod)).filter((n): n is PNode => n !== null);
 }
 
+// ============================================================================
+// STEP 1.5: DISCOVER FROM ON-CHAIN INDEX
+// ============================================================================
+
+export async function discoverFromOnChain(nodesMap: Map<string, PNode>): Promise<void> {
+  const { fetchPNodesFromOnChain, DEVNET_RPC, XANDEUM_MAINNET_RPC } = await import('./solana-pnodes');
+
+  console.log('[Sync] Discovering new nodes from on-chain index...');
+
+  const rpcs = [DEVNET_RPC, XANDEUM_MAINNET_RPC];
+  let newFound = 0;
+
+  for (const rpc of rpcs) {
+    try {
+      const onChainPubkeys = await fetchPNodesFromOnChain(rpc);
+      for (const pk of onChainPubkeys) {
+        if (!nodesMap.has(pk)) {
+          // User requested NOT to add placeholder nodes that aren't in gossip
+          // We just track the count for logging
+          newFound++;
+        } else {
+          // Mark as on-chain verified if already in gossip
+          const node = nodesMap.get(pk);
+          if (node) node.seenOnChain = true;
+        }
+      }
+    } catch (err) {
+      console.warn(`[Sync] Failed to fetch index from ${rpc}:`, (err as Error).message);
+    }
+  }
+
+  if (newFound > 0) {
+    console.log(`[Sync] ${newFound} nodes found on-chain that are not currently in gossip (skipping placeholder creation)`);
+  }
+}
+
 export async function fetchAllNodes(): Promise<Map<string, PNode>> {
   const nodesMap = new Map<string, PNode>();
 
@@ -670,6 +706,9 @@ export async function syncNodes(): Promise<{ success: boolean; count: number; er
       return { success: false, count: 0, error: 'No nodes fetched from gossip' };
     }
 
+    // Step 1.5: Discover from on-chain index (nodes that might be offline)
+    await discoverFromOnChain(nodesMap);
+
     // Step 2: Enrich with detailed stats (CPU, RAM, packets)
     await enrichWithStats(nodesMap);
 
@@ -693,6 +732,7 @@ export async function syncNodes(): Promise<{ success: boolean; count: number; er
     }
 
     // Step 6: Enrich with balance (new nodes only)
+    // We fetch from Devnet first (Legacy) and then Mainnet (Main Era)
     await enrichWithBalance(nodesMap, existingNodesMap);
 
     // Step 7: Deduplicate

@@ -474,7 +474,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         if (node.vestingStake && node.vestingStake > manager.vestingStake) {
           manager.vestingStake = node.vestingStake;
         }
-        if (node.status === 'online') manager.onlineCount++;
+        if (node.status === 'online' || node.status === 'syncing') manager.onlineCount++;
       }
     });
 

@@ -114,9 +114,9 @@ export async function getDb(): Promise<Db> {
   return c.db(getDbName());
 }
 
-export async function getNodesCollection(): Promise<Collection> {
+export async function getNodesCollection(): Promise<Collection<NodeDocument>> {
   const database = await getDb();
-  return database.collection('nodes');
+  return database.collection<NodeDocument>('nodes');
 }
 
 // ============================================================================
@@ -199,57 +199,65 @@ export function isValidPubkey(pubkey: string | null | undefined): boolean {
 // CONVERSIONS
 // ============================================================================
 
-function nodeToDocument(node: PNode): Partial<NodeDocument> {
-  const pubkey = node.pubkey || node.publicKey || '';
-  return {
-    _id: pubkey,
-    address: node.address || '',
-    pubkey,
-    publicKey: pubkey,
-    previousAddresses: node.previousAddresses,
-    version: node.version,
-    status: node.status,
-    lastSeen: node.lastSeen,
-    uptime: node.uptime,
-    cpuPercent: node.cpuPercent,
-    ramUsed: node.ramUsed,
-    ramTotal: node.ramTotal,
-    packetsReceived: node.packetsReceived,
-    packetsSent: node.packetsSent,
-    activeStreams: node.activeStreams,
-    storageCapacity: node.storageCapacity,
-    storageUsed: node.storageUsed,
-    totalPages: node.totalPages,
-    dataOperationsHandled: node.dataOperationsHandled,
-    isPublic: node.isPublic,
-    rpcPort: node.rpcPort,
-    peerCount: node.peerCount,
-    peers: node.peers ? JSON.stringify(node.peers) : undefined,
-    location: node.location,
-    locationLat: node.locationData?.lat,
-    locationLon: node.locationData?.lon,
-    locationCity: node.locationData?.city,
-    locationCountry: node.locationData?.country,
-    locationCountryCode: node.locationData?.countryCode,
-    balance: node.balance,
-    credits: node.credits,
-    creditsResetMonth: node.creditsResetMonth,
-    isRegistered: node.isRegistered,
-    managerPDA: node.managerPDA,
-    managerWallet: node.managerWallet,
-    registrarWallet: node.registrarWallet,
-    // STOINC & Rewards fields
-    xandStake: node.xandStake,
-    nftBoost: node.nftBoost,
-    nftDetails: node.nftDetails ? JSON.stringify(node.nftDetails) : undefined,
-    eraBoost: node.eraBoost,
-    eraLabel: node.eraLabel,
-    boostFactor: node.boostFactor,
-    accountCreatedAt: node.accountCreatedAt,
-    firstSeenSlot: node.firstSeenSlot,
-    seenInGossip: node.seenInGossip,
-    onChainError: node.onChainError,
-  };
+function nodeToDocument(node: Partial<PNode>): Partial<NodeDocument> {
+  const doc: any = {};
+  const pubkey = node.pubkey || node.publicKey;
+  if (pubkey) {
+    doc._id = pubkey;
+    doc.pubkey = pubkey;
+    doc.publicKey = pubkey;
+  }
+
+  if (node.address !== undefined) doc.address = node.address;
+  if (node.previousAddresses !== undefined) doc.previousAddresses = node.previousAddresses;
+  if (node.version !== undefined) doc.version = node.version;
+  if (node.status !== undefined) doc.status = node.status;
+  if (node.lastSeen !== undefined) doc.lastSeen = node.lastSeen;
+  if (node.uptime !== undefined) doc.uptime = node.uptime;
+  if (node.cpuPercent !== undefined) doc.cpuPercent = node.cpuPercent;
+  if (node.ramUsed !== undefined) doc.ramUsed = node.ramUsed;
+  if (node.ramTotal !== undefined) doc.ramTotal = node.ramTotal;
+  if (node.packetsReceived !== undefined) doc.packetsReceived = node.packetsReceived;
+  if (node.packetsSent !== undefined) doc.packetsSent = node.packetsSent;
+  if (node.activeStreams !== undefined) doc.activeStreams = node.activeStreams;
+  if (node.storageCapacity !== undefined) doc.storageCapacity = node.storageCapacity;
+  if (node.storageUsed !== undefined) doc.storageUsed = node.storageUsed;
+  if (node.totalPages !== undefined) doc.totalPages = node.totalPages;
+  if (node.dataOperationsHandled !== undefined) doc.dataOperationsHandled = node.dataOperationsHandled;
+  if (node.isPublic !== undefined) doc.isPublic = node.isPublic;
+  if (node.rpcPort !== undefined) doc.rpcPort = node.rpcPort;
+  if (node.peerCount !== undefined) doc.peerCount = node.peerCount;
+  if (node.peers !== undefined) doc.peers = node.peers ? JSON.stringify(node.peers) : undefined;
+  if (node.location !== undefined) doc.location = node.location;
+
+  if (node.locationData) {
+    if (node.locationData.lat !== undefined) doc.locationLat = node.locationData.lat;
+    if (node.locationData.lon !== undefined) doc.locationLon = node.locationData.lon;
+    if (node.locationData.city !== undefined) doc.locationCity = node.locationData.city;
+    if (node.locationData.country !== undefined) doc.locationCountry = node.locationData.country;
+    if (node.locationData.countryCode !== undefined) doc.locationCountryCode = node.locationData.countryCode;
+  }
+
+  if (node.balance !== undefined) doc.balance = node.balance;
+  if (node.credits !== undefined) doc.credits = node.credits;
+  if (node.creditsResetMonth !== undefined) doc.creditsResetMonth = node.creditsResetMonth;
+  if (node.isRegistered !== undefined) doc.isRegistered = node.isRegistered;
+  if (node.managerPDA !== undefined) doc.managerPDA = node.managerPDA;
+  if (node.managerWallet !== undefined) doc.managerWallet = node.managerWallet;
+  if (node.registrarWallet !== undefined) doc.registrarWallet = node.registrarWallet;
+
+  if (node.xandStake !== undefined) doc.xandStake = node.xandStake;
+  if (node.nftBoost !== undefined) doc.nftBoost = node.nftBoost;
+  if (node.nftDetails !== undefined) doc.nftDetails = node.nftDetails ? JSON.stringify(node.nftDetails) : undefined;
+  if (node.eraBoost !== undefined) doc.eraBoost = node.eraBoost;
+  if (node.eraLabel !== undefined) doc.eraLabel = node.eraLabel;
+  if (node.boostFactor !== undefined) doc.boostFactor = node.boostFactor;
+  if (node.accountCreatedAt !== undefined) doc.accountCreatedAt = node.accountCreatedAt;
+  if (node.firstSeenSlot !== undefined) doc.firstSeenSlot = node.firstSeenSlot;
+  if (node.seenInGossip !== undefined) doc.seenInGossip = node.seenInGossip;
+  if (node.onChainError !== undefined) doc.onChainError = node.onChainError;
+
+  return doc;
 }
 
 export function documentToNode(doc: NodeDocument): PNode {
@@ -343,7 +351,7 @@ export async function upsertNodes(nodes: PNode[], skipMarkOffline: boolean = fal
 
     // Collect all pubkeys from incoming nodes
     const incomingPubkeys = new Set<string>();
-    const operations: AnyBulkWriteOperation[] = [];
+    const operations: AnyBulkWriteOperation<NodeDocument>[] = [];
 
     for (const node of nodes) {
       const pubkey = node.pubkey || node.publicKey;
@@ -401,7 +409,7 @@ export async function upsertNodes(nodes: PNode[], skipMarkOffline: boolean = fal
 
       operations.push({
         updateOne: {
-          filter: { _id: pubkey as unknown as ObjectId },
+          filter: { _id: pubkey },
           update: { $set: setFields, $setOnInsert: setOnInsert },
           upsert: true,
         },
@@ -415,7 +423,7 @@ export async function upsertNodes(nodes: PNode[], skipMarkOffline: boolean = fal
       // Mark nodes NOT in this sync as offline (skip if requested)
       if (!skipMarkOffline) {
         const markOfflineResult = await collection.updateMany(
-          { _id: { $nin: Array.from(incomingPubkeys) as unknown as ObjectId[] } },
+          { _id: { $nin: Array.from(incomingPubkeys) } },
           { $set: { seenInGossip: false, status: 'offline', updatedAt: now } }
         );
 
@@ -450,7 +458,17 @@ export async function getAllNodes(): Promise<PNode[]> {
       // Use explicit cursor to ensure we get all results
       // Set batchSize to ensure we get all documents in one batch
       const cursor = collection.find({}).sort({ updatedAt: -1 }).batchSize(1000);
-      const docs = await cursor.toArray();
+      let docs = await cursor.toArray();
+
+      // Sort in-memory to push blank nodes to the end (requested by USER)
+      // Human-readable nodes (with address/location) come first
+      docs.sort((a: any, b: any) => {
+        const aHasData = !!(a.address || a.location || a.locationCity);
+        const bHasData = !!(b.address || b.location || b.locationCity);
+        if (aHasData && !bHasData) return -1;
+        if (!aHasData && bHasData) return 1;
+        return 0; // Maintain secondary sort from DB (updatedAt)
+      });
 
       // Double-check we got all results - if we got exactly 101, it might be a batch limit issue
       if (docs.length === 101) {
@@ -595,7 +613,7 @@ export async function getNodeByPubkey(pubkey: string): Promise<PNode | null> {
   try {
     await getClient();
     const collection = await getNodesCollection();
-    const doc = await collection.findOne({ _id: pubkey as unknown as ObjectId });
+    const doc = await collection.findOne({ _id: pubkey });
     return doc ? documentToNode(doc as unknown as NodeDocument) : null;
   } catch (err) {
     const error = err as Error;
@@ -617,7 +635,7 @@ export async function updateNode(pubkey: string, updates: Partial<PNode>): Promi
     delete doc._id;
 
     await collection.updateOne(
-      { _id: pubkey as unknown as ObjectId },
+      { _id: pubkey },
       {
         $set: {
           ...doc,

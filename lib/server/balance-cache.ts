@@ -6,6 +6,7 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 
 const DEVNET_RPC = 'https://api.devnet.xandeum.com:8899';
+const XANDEUM_MAINNET_RPC = 'https://api.mainnet.xandeum.com';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes (balances can change)
 
 interface ValidatorInfo {
