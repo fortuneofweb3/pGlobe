@@ -422,7 +422,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       return managerMap.get(wallet)!;
     };
 
-    activeNodes.forEach(node => {
+    nodesWithCredits.forEach(node => {
       let primaryWallet: string | undefined;
       let role: 'buyer' | 'registrar' = 'registrar';
 
@@ -480,23 +480,12 @@ export function NodesProvider({ children }: { children: ReactNode }) {
 
     return Array.from(managerMap.values())
       .sort((a, b) => b.totalXandStake - a.totalXandStake || b.registeredNodes - a.registeredNodes);
-  }, [activeNodes]);
+  }, [nodesWithCredits]);
 
   // Calculate dead managers (managers with only offline nodes)
   const deadManagerCount = useMemo(() => {
-    const deadManagerSet = new Set<string>();
-    const activeManagerSet = new Set(managers.map(m => m.wallet));
-
-    // Find managers from offline nodes who are NOT in active managers
-    offlineNodes.forEach(node => {
-      const primaryWallet = node.managerWallet || node.registrarWallet;
-      if (primaryWallet && !activeManagerSet.has(primaryWallet)) {
-        deadManagerSet.add(primaryWallet);
-      }
-    });
-
-    return deadManagerSet.size;
-  }, [managers, offlineNodes]);
+    return managers.filter(m => m.onlineCount === 0).length;
+  }, [managers]);
 
   return (
     <NodesContext.Provider

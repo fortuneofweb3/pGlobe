@@ -40,7 +40,7 @@ export default function Header({
   // Always use context values for counts in the header to ensure consistency
   // pNodes = active only, managers = total (active + dead)
   const nodeCount = context?.activeNodes.length ?? 0;
-  const managerCount = (context?.managerCount ?? 0) + (context?.deadManagerCount ?? 0);
+  const managerCount = context?.managerCount ?? 0;
   const lastUpdate = propLastUpdate ?? context?.lastUpdate ?? null;
   const loading = propLoading || context?.loading || false;
   const networks = propNetworks.length > 0 ? propNetworks : (context?.availableNetworks ?? []);

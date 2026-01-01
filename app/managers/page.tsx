@@ -33,6 +33,7 @@ function ManagersPageContent() {
         const unregisteredNodes = allNodes - registeredNodes;
         return {
             totalManagers: managers.length,
+            activeManagers: managers.filter(m => m.onlineCount > 0).length,
             allNodes,
             registeredNodes,
             unregisteredNodes,
@@ -140,8 +141,8 @@ function ManagersPageContent() {
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 stagger-children">
                             <StatsCard
                                 title="Active Managers"
-                                value={stats.totalManagers}
-                                subValue="Buyer & Registrar wallets"
+                                value={stats.activeManagers}
+                                subValue={`Out of ${stats.totalManagers} total`}
                                 icon={<Users className="w-4 h-4" />}
                                 color="orange"
                             />
@@ -222,8 +223,13 @@ function ManagersPageContent() {
                                                 className="w-12 h-12 rounded-full bg-muted border-2 border-[#F0A741]/20"
                                             />
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-1">
+                                                <div className="flex items-center gap-2">
                                                     <span className="font-mono text-sm truncate">{truncateWallet(manager.wallet)}</span>
+                                                    {manager.onlineCount === 0 && (
+                                                        <span className="text-[10px] font-bold px-1.5 py-0.5 bg-red-500/20 text-red-500 rounded border border-red-500/30">DEAD</span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-1 mt-0.5">
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -248,6 +254,7 @@ function ManagersPageContent() {
                                                     >
                                                         <ExternalLink className="w-3 h-3 text-foreground/40" />
                                                     </a>
+                                                    {getSourceBadge(manager.source)}
                                                 </div>
                                             </div>
                                         </div>
