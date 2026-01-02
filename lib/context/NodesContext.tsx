@@ -51,7 +51,20 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [selectedNetwork, setSelectedNetwork] = useState<string>('devnet1');
+  const [selectedNetwork, setSelectedNetworkState] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('pglobe:network') || 'devnet';
+    }
+    return 'devnet';
+  });
+
+  // Wrapper to persist network selection
+  const setSelectedNetwork = useCallback((network: string) => {
+    setSelectedNetworkState(network);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pglobe:network', network);
+    }
+  }, []);
   const [availableNetworks, setAvailableNetworks] = useState<NetworkConfig[]>([]);
   const [currentNetwork, setCurrentNetwork] = useState<NetworkConfig | null>(null);
   const [podCredits, setPodCredits] = useState<Record<string, number>>({});
@@ -393,12 +406,31 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     });
   }, [nodes, podCredits]);
 
+  // Filter nodes by selected network
+  // 'mainnet' shows nodes where network === 'mainnet' or 'both'
+  // 'devnet' shows nodes where network === 'devnet' or 'both'
+  // 'all' shows all nodes (for future use)
+  const filteredByNetwork = useMemo(() => {
+    if (selectedNetwork === 'all') return nodesWithCredits;
+
+    return nodesWithCredits.filter(node => {
+      const nodeNetwork = node.network || 'unknown';
+      if (selectedNetwork === 'mainnet') {
+        return nodeNetwork === 'mainnet' || nodeNetwork === 'both';
+      }
+      if (selectedNetwork === 'devnet') {
+        return nodeNetwork === 'devnet' || nodeNetwork === 'both' || nodeNetwork === 'unknown';
+      }
+      return true;
+    });
+  }, [nodesWithCredits, selectedNetwork]);
+
   // Separate active nodes (online + syncing) from offline nodes
   const { activeNodes, offlineNodes } = useMemo(() => {
     const active: PNode[] = [];
     const offline: PNode[] = [];
 
-    nodesWithCredits.forEach(node => {
+    filteredByNetwork.forEach(node => {
       if (node.status === 'online' || node.status === 'syncing') {
         active.push(node);
       } else {
@@ -407,7 +439,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     });
 
     return { activeNodes: active, offlineNodes: offline };
-  }, [nodesWithCredits]);
+  }, [filteredByNetwork]);
 
   // Derive managers from active nodes only (exclude offline nodes)
   const managers = useMemo(() => {
@@ -431,7 +463,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       return managerMap.get(wallet)!;
     };
 
-    nodesWithCredits.forEach(node => {
+    filteredByNetwork.forEach(node => {
       let primaryWallet: string | undefined;
       let role: 'buyer' | 'registrar' = 'registrar';
 
@@ -501,7 +533,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
 
     return Array.from(managerMap.values())
       .sort((a, b) => b.totalXandStake - a.totalXandStake || b.registeredNodes - a.registeredNodes);
-  }, [nodesWithCredits, managerStats]);
+  }, [filteredByNetwork, managerStats]);
 
   // Calculate dead managers (managers with only offline nodes)
   const deadManagerCount = useMemo(() => {
@@ -511,7 +543,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   return (
     <NodesContext.Provider
       value={{
-        nodes: nodesWithCredits,
+        nodes: filteredByNetwork,
         activeNodes,
         offlineNodes,
         managers,

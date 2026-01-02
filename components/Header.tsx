@@ -160,6 +160,7 @@ export default function Header({
           {/* Right side - Controls */}
           <div className="flex items-center gap-2 sm:gap-3 bg-black">
 
+
             {lastUpdate && (
               <div className="hidden sm:block px-3 py-1.5 bg-muted/20">
                 <span className="text-xs text-foreground/60 font-mono">
@@ -204,6 +205,26 @@ export default function Header({
               </div>
             </Link>
 
+            {/* Network Dropdown */}
+            <div className="hidden sm:block relative">
+              <select
+                value={context.selectedNetwork}
+                onChange={(e) => context.setSelectedNetwork(e.target.value)}
+                className={`appearance-none cursor-pointer px-3 py-1.5 pr-8 rounded-lg text-xs font-medium border transition-all duration-300 ${context.selectedNetwork === 'mainnet'
+                  ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                  : 'bg-[#F0A741]/20 border-[#F0A741]/50 text-[#F0A741]'
+                  }`}
+                style={{ backgroundImage: 'none' }}
+              >
+                <option value="devnet" className="bg-black text-[#F0A741]">Devnet</option>
+                <option value="mainnet" className="bg-black text-green-400">Mainnet</option>
+              </select>
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg className={`w-3 h-3 ${context.selectedNetwork === 'mainnet' ? 'text-green-400' : 'text-[#F0A741]'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
 
 
             {/* Mobile menu button */}
@@ -227,6 +248,29 @@ export default function Header({
         <div className="md:hidden border-t border-[#F0A741]/20 bg-black">
           <nav className="px-4 py-3 space-y-2 bg-black">
 
+            {/* Mobile Network Dropdown */}
+            <div className="flex items-center justify-between px-4 py-2 bg-black/40 border border-[#F0A741]/20 rounded-xl">
+              <span className="text-sm font-medium text-[#F0A741]">Network</span>
+              <div className="relative">
+                <select
+                  value={context.selectedNetwork}
+                  onChange={(e) => context.setSelectedNetwork(e.target.value)}
+                  className={`appearance-none cursor-pointer px-3 py-1 pr-7 rounded-lg text-xs font-medium border transition-all duration-300 ${context.selectedNetwork === 'mainnet'
+                    ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                    : 'bg-[#F0A741]/20 border-[#F0A741]/50 text-[#F0A741]'
+                    }`}
+                  style={{ backgroundImage: 'none' }}
+                >
+                  <option value="devnet" className="bg-black">Devnet</option>
+                  <option value="mainnet" className="bg-black">Mainnet</option>
+                </select>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <svg className={`w-3 h-3 ${context.selectedNetwork === 'mainnet' ? 'text-green-400' : 'text-[#F0A741]'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
 
             <Link
               href="/"

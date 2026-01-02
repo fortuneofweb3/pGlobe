@@ -40,6 +40,7 @@ const DIRECT_PRPC_ENDPOINTS = [
 ];
 
 const POD_CREDITS_API = 'https://podcredits.xandeum.network/api/pods-credits';
+const DEVNET_POD_CREDITS_API = 'https://podcredits.xandeum.network/api/devnet-pod-credits';
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -361,36 +362,95 @@ export async function enrichWithLocation(nodesMap: Map<string, PNode>): Promise<
 }
 
 // ============================================================================
-// STEP 4: ENRICH WITH CREDITS
+// STEP 4: ENRICH WITH CREDITS (from both mainnet and devnet APIs)
 // ============================================================================
 
 export async function enrichWithCredits(nodesMap: Map<string, PNode>): Promise<void> {
-  console.log('[Sync] Fetching pod credits...');
+  console.log('[Sync] Fetching pod credits from mainnet and devnet APIs...');
 
-  try {
-    const response = await fetch(POD_CREDITS_API, { signal: AbortSignal.timeout(10000) });
-    if (!response.ok) return;
+  const currentMonth = new Date().toISOString().slice(0, 7);
 
-    const data = await response.json();
-    if (data.status !== 'success' || !data.pods_credits) return;
+  // Track which nodes appear in which API
+  const mainnetPods = new Map<string, number>(); // pod_id -> credits
+  const devnetPods = new Map<string, number>(); // pod_id -> credits
 
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    let count = 0;
+  // Fetch both APIs in parallel
+  const [mainnetResult, devnetResult] = await Promise.allSettled([
+    fetch(POD_CREDITS_API, { signal: AbortSignal.timeout(10000) })
+      .then(res => res.ok ? res.json() : null),
+    fetch(DEVNET_POD_CREDITS_API, { signal: AbortSignal.timeout(10000) })
+      .then(res => res.ok ? res.json() : null),
+  ]);
 
-    for (const pod of data.pods_credits) {
-      const node = nodesMap.get(pod.pod_id);
-      if (node) {
-        node.credits = pod.credits;
-        node.creditsResetMonth = currentMonth;
-        count++;
+  // Parse mainnet results
+  if (mainnetResult.status === 'fulfilled' && mainnetResult.value?.status === 'success') {
+    for (const pod of mainnetResult.value.pods_credits || []) {
+      if (pod.pod_id && typeof pod.credits === 'number') {
+        mainnetPods.set(pod.pod_id, pod.credits);
       }
     }
-
-    console.log(`[Sync] Added credits for ${count} nodes`);
-  } catch (err) {
-    const error = err as Error;
-    console.warn(`[Sync] Failed to fetch credits: ${error.message}`);
+    console.log(`[Sync] Mainnet API returned ${mainnetPods.size} pods`);
+  } else {
+    console.warn('[Sync] Failed to fetch mainnet credits');
   }
+
+  // Parse devnet results
+  if (devnetResult.status === 'fulfilled' && devnetResult.value?.status === 'success') {
+    for (const pod of devnetResult.value.pods_credits || []) {
+      if (pod.pod_id && typeof pod.credits === 'number') {
+        devnetPods.set(pod.pod_id, pod.credits);
+      }
+    }
+    console.log(`[Sync] Devnet API returned ${devnetPods.size} pods`);
+  } else {
+    console.warn('[Sync] Failed to fetch devnet credits');
+  }
+
+  // Enrich nodes with credits and determine network
+  let mainnetCount = 0;
+  let devnetCount = 0;
+  let bothCount = 0;
+
+  for (const [pubkey, node] of nodesMap) {
+    const mainnetCredits = mainnetPods.get(pubkey);
+    const devnetCredits = devnetPods.get(pubkey);
+
+    const inMainnet = mainnetCredits !== undefined;
+    const inDevnet = devnetCredits !== undefined;
+
+    // Store credits
+    if (inMainnet) {
+      node.mainnetCredits = mainnetCredits;
+    }
+    if (inDevnet) {
+      node.devnetCredits = devnetCredits;
+    }
+
+    // Use mainnet credits as primary if available, otherwise devnet
+    if (inMainnet) {
+      node.credits = mainnetCredits;
+    } else if (inDevnet) {
+      node.credits = devnetCredits;
+    }
+
+    // Determine network
+    if (inMainnet && inDevnet) {
+      node.network = 'both';
+      bothCount++;
+    } else if (inMainnet) {
+      node.network = 'mainnet';
+      mainnetCount++;
+    } else if (inDevnet) {
+      node.network = 'devnet';
+      devnetCount++;
+    } else {
+      node.network = 'unknown';
+    }
+
+    node.creditsResetMonth = currentMonth;
+  }
+
+  console.log(`[Sync] Credits enrichment complete: ${mainnetCount} mainnet, ${devnetCount} devnet, ${bothCount} both`);
 }
 
 // ============================================================================

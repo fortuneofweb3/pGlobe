@@ -56,6 +56,9 @@ export interface PNode {
   latencyByRegion?: Record<string, number>; // Client-side only: Latency from different regions
   balance?: number; // SOL balance (from Solana on-chain)
   credits?: number; // Credits (from pod credits API at https://podcredits.xandeum.network/api/pods-credits)
+  mainnetCredits?: number; // Credits from mainnet API
+  devnetCredits?: number; // Credits from devnet API
+  network?: 'mainnet' | 'devnet' | 'both' | 'unknown'; // Which network(s) this node participates in (derived from credits APIs)
   // Credit calculation rules:
   // - +1 credit per heartbeat request responded to (~30 second intervals)
   // - -100 credits for failing to respond to a data request
