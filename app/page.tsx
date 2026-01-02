@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { startProgress } from '@/lib/nprogress';
-import { PNode } from '@/lib/types/pnode';
+import { PNode, isNodeDead } from '@/lib/types/pnode';
 import StatsCard from '@/components/StatsCard';
 import dynamic from 'next/dynamic';
 
@@ -30,12 +30,13 @@ import InfoTooltip, { MetricRow } from '@/components/InfoTooltip';
 import { enrichNodesWithGeo } from '@/lib/utils/geo';
 import { formatStorageBytes } from '@/lib/utils/storage';
 import { formatPacketRate } from '@/lib/utils/packet-rates';
-import { Activity, Server, HardDrive, TrendingUp, RefreshCw, BarChart3, Network, Award, Clock, Zap, Info } from 'lucide-react';
+import { Activity, Server, HardDrive, TrendingUp, RefreshCw, BarChart3, Network, Award, Clock, Zap, Info, Crown, Ghost, Eraser, Globe } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 import { NetworkConfig } from '@/lib/server/network-config';
 import { useNodes } from '@/lib/context/NodesContext';
 import { measureNodesLatency, getCachedNodesLatencies } from '@/lib/utils/client-latency';
 import AnimatedNumber from '@/components/AnimatedNumber';
+import MilestoneTracker from '@/components/MilestoneTracker';
 
 // Helper function to format uptime seconds as human-readable duration
 function formatUptimeDuration(seconds: number): string {
@@ -70,6 +71,7 @@ function HomeContent() {
   const [versionFilter, setVersionFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('reputation');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [quickFilter, setQuickFilter] = useState<'all' | 'whale' | 'zombie' | 'public'>('all');
   const [customEndpoint, setCustomEndpoint] = useState<string>('');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(60); // 1 minute (60 seconds)
@@ -233,6 +235,14 @@ function HomeContent() {
 
     if (versionFilter !== 'all') {
       filtered = filtered.filter((node) => node.version === versionFilter);
+    }
+
+    if (quickFilter === 'whale') {
+      filtered = filtered.filter(n => (Number(n.daoStake) || 0) + (Number(n.xandStake) || 0) >= 1000000);
+    } else if (quickFilter === 'zombie') {
+      filtered = filtered.filter(n => isNodeDead(n));
+    } else if (quickFilter === 'public') {
+      filtered = filtered.filter(n => n.isPublic);
     }
 
     filtered.sort((a, b) => {
@@ -422,46 +432,59 @@ function HomeContent() {
         <div className="flex-1 flex overflow-hidden relative">
           {/* Left Sidebar */}
           <aside className="hidden md:block w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-hidden">
-            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+            <div className="pt-1.5 px-3 pb-3 sm:pt-2 sm:px-4 sm:pb-4 space-y-3 sm:space-y-4">
+              {/* Era Card Skeleton */}
+              <div className="relative p-4 rounded-xl bg-[#050505] border border-[#F0A741]/10">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-9 h-9 rounded-lg bg-[#F0A741]/10 animate-pulse" />
+                  <div className="space-y-2">
+                    <div className="h-5 w-24 bg-muted/20 rounded animate-pulse" />
+                    <div className="h-3 w-20 bg-muted/10 rounded animate-pulse" />
+                  </div>
+                </div>
+                <div className="space-y-3 mb-4">
+                  <div className="flex justify-between">
+                    <div className="h-4 w-16 bg-muted/10 rounded animate-pulse" />
+                    <div className="h-4 w-12 bg-muted/20 rounded animate-pulse" />
+                  </div>
+                  <div className="flex justify-between">
+                    <div className="h-4 w-24 bg-muted/10 rounded animate-pulse" />
+                    <div className="h-4 w-16 bg-muted/20 rounded animate-pulse" />
+                  </div>
+                </div>
+                <div className="p-2.5 rounded-lg bg-[#F0A741]/5 border border-[#F0A741]/20">
+                  <div className="h-3 w-20 bg-muted/10 rounded animate-pulse mb-2" />
+                  <div className="h-4 w-32 bg-muted/20 rounded animate-pulse" />
+                </div>
+              </div>
+
+              {/* Network Stats */}
               <div>
-                <h2 className="text-xs font-semibold text-foreground/60 mb-3 sm:mb-4 uppercase tracking-wide">Network Stats</h2>
-                <div className="space-y-2 sm:space-y-3">
+                <h2 className="text-xs font-semibold text-foreground/60 mb-3 uppercase tracking-wide">Network Stats</h2>
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs sm:text-sm text-foreground/70">Total pNodes</span>
+                    <span className="text-sm text-foreground/70">Total pNodes</span>
                     <span className="h-4 w-12 bg-muted/20 rounded animate-pulse" />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5">
-                      Online
-                      <InfoTooltip content="Seen in gossip network within last 5 minutes" />
-                    </span>
+                    <span className="text-sm text-foreground/70">Online</span>
                     <span className="h-4 w-12 bg-muted/20 rounded animate-pulse" />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5">
-                      Syncing
-                      <InfoTooltip content="Seen within last hour, still synchronizing with network" />
-                    </span>
+                    <span className="text-sm text-foreground/70">Syncing</span>
                     <span className="h-4 w-12 bg-muted/20 rounded animate-pulse" />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5">
-                      Offline
-                      <InfoTooltip content="Not seen in gossip network for over an hour" />
-                    </span>
+                    <span className="text-sm text-foreground/70">Offline</span>
                     <span className="h-4 w-12 bg-muted/20 rounded animate-pulse" />
                   </div>
                 </div>
               </div>
 
-              <div className="pt-4 sm:pt-6 border-t border-border">
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Performance</h2>
-                  <InfoTooltip content="Stats from pNodes with public pRPC only (~10 of 135 pNodes). Most operators keep pRPC private (localhost-only) for security.">
-                    <span className="h-3 w-16 bg-muted/20 rounded animate-pulse hidden sm:inline-block" />
-                  </InfoTooltip>
-                </div>
-                <div className="space-y-2 sm:space-y-3">
+              {/* Performance */}
+              <div className="pt-4 border-t border-border">
+                <h2 className="text-xs font-semibold text-foreground/60 mb-3 uppercase tracking-wide">Performance</h2>
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground/70">Avg Uptime</span>
                     <span className="h-4 w-16 bg-muted/20 rounded animate-pulse" />
@@ -474,18 +497,13 @@ function HomeContent() {
                     <span className="text-sm text-foreground/70">Avg RAM</span>
                     <span className="h-4 w-16 bg-muted/20 rounded animate-pulse" />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground/70">Avg Latency</span>
-                    <span className="h-4 w-16 bg-muted/20 rounded animate-pulse" />
-                  </div>
                 </div>
               </div>
 
-              <div className="pt-4 sm:pt-6 border-t border-border">
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Storage & Memory</h2>
-                </div>
-                <div className="space-y-2 sm:space-y-3">
+              {/* Storage & Memory */}
+              <div className="pt-4 border-t border-border">
+                <h2 className="text-xs font-semibold text-foreground/60 mb-3 uppercase tracking-wide">Storage & Memory</h2>
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground/70">Total Storage</span>
                     <span className="h-4 w-20 bg-muted/20 rounded animate-pulse" />
@@ -501,37 +519,6 @@ function HomeContent() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground/70">Avg RAM Usage</span>
                     <span className="h-4 w-16 bg-muted/20 rounded animate-pulse" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4 sm:pt-6 border-t border-border">
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Network Activity</h2>
-                  <InfoTooltip content="From pNodes with public pRPC only. Most pNodes keep pRPC private.">
-                    <span className="h-3 w-16 bg-muted/20 rounded animate-pulse hidden sm:inline-block" />
-                  </InfoTooltip>
-                </div>
-                <div className="space-y-2 sm:space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground/70">Active Streams</span>
-                    <span className="h-4 w-20 bg-muted/20 rounded animate-pulse" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground/70">Packets Received</span>
-                    <span className="h-4 w-24 bg-muted/20 rounded animate-pulse" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground/70">Packets Sent</span>
-                    <span className="h-4 w-24 bg-muted/20 rounded animate-pulse" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground/70">Avg Packet Rate</span>
-                    <span className="h-4 w-20 bg-muted/20 rounded animate-pulse" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground/70">Total Credits</span>
-                    <span className="h-4 w-20 bg-muted/20 rounded animate-pulse" />
                   </div>
                 </div>
               </div>
@@ -590,8 +577,8 @@ function HomeContent() {
         )}
 
         {/* Left Sidebar */}
-        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-y-auto z-50 md:z-40 h-full transition-transform duration-300 ease-in-out`}>
-          <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+        <aside className="hidden md:block md:relative w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-y-auto z-40 h-full">
+          <div className="pt-1.5 px-3 pb-3 sm:pt-2 sm:px-4 sm:pb-4 space-y-3 sm:space-y-4">
             {/* Mobile close button */}
             <div className="flex items-center justify-between mb-2 md:hidden">
               <h2 className="text-sm font-semibold text-foreground/60 uppercase tracking-wide">Network Stats</h2>
@@ -606,7 +593,9 @@ function HomeContent() {
               </button>
             </div>
 
-            <div className="animate-fade-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
+            <MilestoneTracker nodes={nodes} variant="flat" className="pb-4 border-b border-border/30 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }} />
+
+            <div className="pt-4 animate-fade-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
               <h2 className="text-xs font-semibold text-foreground/60 mb-2 uppercase tracking-wide hidden md:block">Network Stats</h2>
               <div className="space-y-1.5 sm:space-y-2">
                 <div className="flex items-center justify-between group">
@@ -675,16 +664,6 @@ function HomeContent() {
                   valueFormatter={(v) => v > 0 ? `${v.toFixed(1)}%` : 'N/A'}
                   tooltip="Average memory (RAM) usage as percentage of total available RAM on each node. Shows how much memory pNode software is consuming."
                 />
-                <MetricRow
-                  label="Avg Latency"
-                  value={stats.avgLatency}
-                  animateValue={true}
-                  valueFormatter={(v) => v > 0 ? `${v.toFixed(0)}ms` : 'N/A'}
-                  tooltip={stats.avgLatency > 0
-                    ? `Average latency: ${stats.avgLatency.toFixed(0)}ms (from ${Object.values(nodeLatencies).filter(lat => lat !== null && lat !== undefined).length} reachable pNodes)`
-                    : 'No latency data available'
-                  }
-                />
               </div>
             </div>
 
@@ -714,57 +693,6 @@ function HomeContent() {
                   animateValue={true}
                   valueFormatter={(v) => v > 0 ? `${v.toFixed(1)}%` : 'N/A'}
                   tooltip="Average RAM usage percentage across all nodes."
-                />
-              </div>
-            </div>
-
-            {/* Network Activity Section */}
-            <div className="pt-4 sm:pt-6 border-t border-border animate-scale-in" style={{ animationDelay: '0.4s', opacity: 0, animationFillMode: 'forwards' }}>
-              <div className="flex items-center justify-between mb-3 sm:mb-4">
-                <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Network Activity</h2>
-                <InfoTooltip content="From pNodes with public pRPC only. Most pNodes keep pRPC private.">
-                  <span className="text-xs text-muted-foreground hidden sm:inline">
-                    {nodes.filter(n => n.packetsReceived !== undefined && n.packetsReceived > 0).length}/{nodes.length}
-                  </span>
-                </InfoTooltip>
-              </div>
-              <div className="space-y-2 sm:space-y-3">
-                <MetricRow
-                  label="Active Streams"
-                  value={stats.totalActiveStreams}
-                  animateValue={true}
-                  valueFormatter={(v) => v > 0 ? v.toLocaleString() : 'N/A'}
-                  valueColor="text-[#3F8277]"
-                  tooltip="Total active network connections across all nodes. Streams are peer-to-peer connections for data transfer."
-                />
-                <MetricRow
-                  label="Packets Received"
-                  value={stats.totalPacketsReceived}
-                  animateValue={true}
-                  valueFormatter={(v) => v > 0 ? v.toLocaleString() : 'N/A'}
-                  tooltip="Total cumulative packets received across all reporting nodes since they started."
-                />
-                <MetricRow
-                  label="Packets Sent"
-                  value={stats.totalPacketsSent}
-                  animateValue={true}
-                  valueFormatter={(v) => v > 0 ? v.toLocaleString() : 'N/A'}
-                  tooltip="Total cumulative packets sent across all reporting nodes since they started."
-                />
-                <MetricRow
-                  label="Avg Packet Rate"
-                  value={stats.avgPacketRate}
-                  animateValue={true}
-                  valueFormatter={(v) => v > 0 ? formatPacketRate(v) : 'N/A'}
-                  valueColor="text-[#F0A741]"
-                  tooltip="Average packet transfer rate (Rx + Tx) across nodes. Estimated from cumulative totals divided by uptime."
-                />
-                <MetricRow
-                  label="Total Credits"
-                  value={stats.totalCredits}
-                  animateValue={true}
-                  valueFormatter={(v) => v > 0 ? v.toLocaleString() : 'N/A'}
-                  tooltip="Total credits earned across all nodes"
                 />
               </div>
             </div>

@@ -73,6 +73,7 @@ export interface PNode {
   activatedStakeXAND?: number; // Activated XAND stake (for reward calculation)
   boostFactor?: number; // Combined boost multiplier (NFTs × Era)
   eraLabel?: string; // Which era the node belongs to (e.g., "Deep South")
+  milestoneItem?: number; // Specific roadmap milestone index (1-30)
   nftBoost?: number; // Individual NFT boost multiplier
   nftDetails?: { name: string; multiplier: number; icon: string }[]; // Details of NFTs held
   eraBoost?: number; // Individual Era boost multiplier

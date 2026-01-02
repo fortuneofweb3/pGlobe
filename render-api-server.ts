@@ -369,6 +369,51 @@ app.get('/api/nodes/:id/stats', authenticate, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/nodes/:id/history
+ * Returns historical data for a specific node
+ */
+app.get('/api/nodes/:id/history', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const period = (req.query.period as string) || '7d';
+
+    // Calculate time range based on period
+    const now = Date.now();
+    let startTime: number;
+
+    switch (period) {
+      case '24h':
+        startTime = now - (24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        startTime = now - (7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startTime = now - (30 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startTime = now - (7 * 24 * 60 * 60 * 1000); // Default to 7d
+    }
+
+    const history = await getNodeHistory(id, startTime, now);
+    res.json({
+      success: true,
+      history,
+      count: history.length,
+      period,
+      timestamp: now
+    });
+  } catch (error: any) {
+    console.error('[RenderAPI] ❌ Failed to get node history:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch node history',
+      message: error?.message || 'Unknown error'
+    });
+  }
+});
+
 // Helper function to format node for API
 function formatNodeForAPI(node: PNode): any {
   return {

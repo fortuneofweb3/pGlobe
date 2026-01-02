@@ -223,7 +223,7 @@ function LogItem({ log }: { log: ActivityLog }) {
     );
 }
 
-export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: ActivityLogListProps) {
+export default function ActivityLogList({ pubkey, countryCode, limit = 50, watchlistOnly = false, showFilters = true }: ActivityLogListProps) {
     const [logs, setLogs] = useState<ActivityLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -439,49 +439,51 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50 }: Act
                     </button>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    {/* Watchlist Toggle */}
-                    <button
-                        onClick={() => setLocalWatchlistOnly(!localWatchlistOnly)}
-                        className={`flex items-center gap-1.5 px-3 py-1 bg-muted/20 hover:bg-muted/30 border border-border/40 rounded-lg transition-all text-[10px] sm:text-xs font-semibold ${localWatchlistOnly ? 'text-yellow-500 border-yellow-500/30 bg-yellow-500/10' : 'text-foreground/70 hover:text-foreground'}`}
-                    >
-                        <Star className={`w-3 h-3 ${localWatchlistOnly ? 'fill-yellow-500' : ''}`} />
-                        <span className="hidden lg:inline">Watchlist Only</span>
-                        <span className="lg:hidden">Watch</span>
-                    </button>
-
-                    {/* Filter dropdown */}
-                    <div className="relative">
+                {showFilters && (
+                    <div className="flex items-center gap-2">
+                        {/* Watchlist Toggle */}
                         <button
-                            onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                            className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 bg-muted/20 hover:bg-muted/30 border border-border/40 rounded-lg transition-colors text-[10px] sm:text-xs font-semibold text-foreground/70 hover:text-foreground"
+                            onClick={() => setLocalWatchlistOnly(!localWatchlistOnly)}
+                            className={`flex items-center gap-1.5 px-3 py-1 bg-muted/20 hover:bg-muted/30 border border-border/40 rounded-lg transition-all text-[10px] sm:text-xs font-semibold ${localWatchlistOnly ? 'text-yellow-500 border-yellow-500/30 bg-yellow-500/10' : 'text-foreground/70 hover:text-foreground'}`}
                         >
-                            <Filter className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                            <span className="hidden xs:inline">{typeFilter ? ACTIVITY_TYPES.find(t => t.value === typeFilter)?.label : 'All Activities'}</span>
-                            <ChevronDown className={`w-2.5 h-2.5 sm:w-3 sm:h-3 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
+                            <Star className={`w-3 h-3 ${localWatchlistOnly ? 'fill-yellow-500' : ''}`} />
+                            <span className="hidden lg:inline">Watchlist Only</span>
+                            <span className="lg:hidden">Watch</span>
                         </button>
 
-                        {showFilterDropdown && (
-                            <div className="absolute top-full mt-1 right-0 z-50 bg-card border border-border/40 rounded-lg shadow-xl min-w-[140px] overflow-hidden">
-                                {ACTIVITY_TYPES.map((type) => (
-                                    <button
-                                        key={type.value}
-                                        onClick={() => {
-                                            setTypeFilter(type.value);
-                                            setShowFilterDropdown(false);
-                                        }}
-                                        className={`w-full px-3 py-1.5 text-left text-[10px] sm:text-xs transition-colors ${typeFilter === type.value
-                                            ? 'bg-[#F0A741]/10 text-[#F0A741] font-bold'
-                                            : 'hover:bg-muted/20 text-foreground/70 hover:text-foreground'
-                                            }`}
-                                    >
-                                        {type.label}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
+                        {/* Filter dropdown */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                                className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 bg-muted/20 hover:bg-muted/30 border border-border/40 rounded-lg transition-colors text-[10px] sm:text-xs font-semibold text-foreground/70 hover:text-foreground"
+                            >
+                                <Filter className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                                <span className="hidden xs:inline">{typeFilter ? ACTIVITY_TYPES.find(t => t.value === typeFilter)?.label : 'All Activities'}</span>
+                                <ChevronDown className={`w-2.5 h-2.5 sm:w-3 sm:h-3 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {showFilterDropdown && (
+                                <div className="absolute top-full mt-1 right-0 z-50 bg-card border border-border/40 rounded-lg shadow-xl min-w-[140px] overflow-hidden">
+                                    {ACTIVITY_TYPES.map((type) => (
+                                        <button
+                                            key={type.value}
+                                            onClick={() => {
+                                                setTypeFilter(type.value);
+                                                setShowFilterDropdown(false);
+                                            }}
+                                            className={`w-full px-3 py-1.5 text-left text-[10px] sm:text-xs transition-colors ${typeFilter === type.value
+                                                ? 'bg-[#F0A741]/10 text-[#F0A741] font-bold'
+                                                : 'hover:bg-muted/20 text-foreground/70 hover:text-foreground'
+                                                }`}
+                                        >
+                                            {type.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* Log list */}

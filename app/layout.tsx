@@ -4,8 +4,11 @@ import "./globals.css";
 import { NodesProvider } from "@/lib/context/NodesContext";
 import { UserRegionProvider } from "@/lib/context/UserRegionContext";
 import { WatchlistProvider } from "@/lib/context/WatchlistContext";
+import { NotificationProvider } from "@/lib/context/NotificationContext";
 import AISupportWidget from "@/components/AISupportWidget";
 import ProgressBar from "@/components/ProgressBar";
+import NotificationContainer from "@/components/NotificationContainer";
+import NotificationListener from "@/components/NotificationListener";
 
 export const metadata: Metadata = {
   title: "pGlobe",
@@ -58,10 +61,14 @@ export default function RootLayout({
         </Suspense>
         <NodesProvider>
           <WatchlistProvider>
-            <UserRegionProvider>
-              {children}
-              <AISupportWidget />
-            </UserRegionProvider>
+            <NotificationProvider>
+              <UserRegionProvider>
+                {children}
+                <AISupportWidget />
+                <NotificationContainer />
+                <NotificationListener />
+              </UserRegionProvider>
+            </NotificationProvider>
           </WatchlistProvider>
         </NodesProvider>
       </body>

@@ -45,7 +45,8 @@ const balanceCache = new Map<string, CachedBalance>();
  */
 export async function fetchBalanceForPubkey(
   publicKey: string,
-  connection?: Connection
+  connection?: Connection,
+  version?: string
 ): Promise<BalanceData | null> {
   // Check cache first
   const cached = balanceCache.get(publicKey);
@@ -66,7 +67,7 @@ export async function fetchBalanceForPubkey(
 
     // Use the comprehensive enrichment function from solana-pnodes
     const { enrichPNodeWithOnChainData } = await import('./solana-pnodes');
-    const onChainData = await enrichPNodeWithOnChainData(publicKey, conn);
+    const onChainData = await enrichPNodeWithOnChainData(publicKey, conn, version);
 
     if (onChainData.error) {
       console.warn(`[Balance Cache] Enrichment error for ${publicKey}:`, onChainData.error);

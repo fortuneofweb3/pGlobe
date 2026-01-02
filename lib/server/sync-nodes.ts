@@ -469,7 +469,7 @@ export async function enrichWithBalance(
     if (!pubkey) continue;
 
     try {
-      const balanceData = await fetchBalanceForPubkey(pubkey);
+      const balanceData = await fetchBalanceForPubkey(pubkey, undefined, node.version);
       if (balanceData) {
         node.balance = balanceData.balance;
         node.isRegistered = balanceData.isRegistered;

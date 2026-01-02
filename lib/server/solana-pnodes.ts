@@ -7,6 +7,7 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import * as bs58 from 'bs58';
 import { PNode } from '../types/pnode';
 import { XANDEUM_NFT_COLLECTIONS } from '../constants/nft';
+import { XANDEUM_ERAS, getItemForVersion, getMilestoneLabel } from '../constants/eras';
 
 const DEVNET_PROGRAM = new PublicKey('6Bzz3KPvzQruqBg2vtsvkuitd6Qb4iCcr5DViifCwLsL');
 export const DEVNET_RPC = 'https://api.devnet.xandeum.com:8899';
@@ -149,6 +150,7 @@ export async function enrichPNodeWithOnChainData(pubkey: string, connection: Con
     let registrarWallet: string | undefined;
     let eraBoost: number | null = null;
     let eraLabel: string | null = null;
+    let milestoneItem: number | null = null;
     let isRegistered = false;
 
     if (regRes.status === 'fulfilled' && regRes.value) {
@@ -196,34 +198,25 @@ export async function enrichPNodeWithOnChainData(pubkey: string, connection: Con
       }
 
       // Map Era ID (Item Index) to Label and Boost based on Xandeum roadmap ranges
-      if (eraId >= 1 && eraId <= 2) {
-        eraLabel = 'Deep South Era';
-        eraBoost = 16;
-      } else if (eraId >= 3 && eraId <= 9) {
-        eraLabel = 'South Era';
-        eraBoost = 10;
-      } else if (eraId >= 10 && eraId <= 14) {
-        eraLabel = 'Main Era';
-        eraBoost = 7;
-      } else if (eraId >= 15 && eraId <= 20) {
-        eraLabel = 'Central Era';
-        eraBoost = 2;
-      } else if (eraId >= 21 && eraId <= 25) {
-        eraLabel = 'Coal Era';
-        eraBoost = 3.5;
-      } else if (eraId >= 26) {
-        eraLabel = 'North Era';
-        eraBoost = 1.25;
-      } else {
-        // Fallback for 0 or invalid
-        eraLabel = 'Deep South Era';
-        eraBoost = 16;
+      // Priority 1: Node Version (if available) - as requested by user
+      const eraIdFromVersion = getItemForVersion(version);
+      if (eraIdFromVersion > 0) {
+        eraId = eraIdFromVersion;
+        isNewGen = true;
       }
 
-      // Append Milestone Item for clarity if New Gen
-      if (isNewGen) {
-        eraLabel += ` (Item ${eraId})`;
-      }
+      // Map to Era Label and Boost using shared constants
+      const era = XANDEUM_ERAS.find(e =>
+        eraId >= e.minItem && (e.maxItem === undefined || eraId <= e.maxItem)
+      ) || XANDEUM_ERAS[0];
+
+      eraLabel = era.name;
+      eraBoost = era.boost;
+
+      // Append Milestone Item for clarity - requested by user to include Era, Milestone, and Version
+      const milestoneLabel = getMilestoneLabel(eraId);
+      eraLabel += ` (${milestoneLabel})`;
+      milestoneItem = eraId;
     }
 
     if (manRes.status === 'fulfilled' && manRes.value && !managerWallet) {
@@ -254,7 +247,7 @@ export async function enrichPNodeWithOnChainData(pubkey: string, connection: Con
       daoStake,
       vestingStake, // This is current vault balance (unclaimed rewards)
       xandStake: daoStake, // Map xandStake ONLY to DAO stake
-      nftBoost, eraBoost, eraLabel, validatorInfo
+      nftBoost, eraBoost, eraLabel, milestoneItem, validatorInfo
     };
   } catch (err) {
     if ((err as Error).message?.includes('429')) throw err;

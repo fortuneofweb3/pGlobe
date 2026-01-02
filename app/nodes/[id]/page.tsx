@@ -1943,6 +1943,15 @@ function NodeDetailContent() {
                           )}
                         </div>
                       </div>
+                      {node.eraLabel && (
+                        <div className="flex items-center justify-between p-3 bg-[#F0A741]/5 border border-[#F0A741]/20 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Rocket className="w-4 h-4 text-[#F0A741]" />
+                            <span className="text-sm text-foreground/80">Innovation Era</span>
+                          </div>
+                          <span className="text-sm font-bold text-[#F0A741]">{node.eraLabel}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
