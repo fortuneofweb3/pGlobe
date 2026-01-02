@@ -9,40 +9,51 @@ import { NextResponse } from 'next/server';
  * - +1 credit per heartbeat request responded to (~30 second intervals)
  * - -100 credits for failing to respond to a data request
  * - Credits reset monthly (tracked via creditsResetMonth field in database)
- * 
- * API Endpoint: https://podcredits.xandeum.network/api/pods-credits
  */
-const POD_CREDITS_API = 'https://podcredits.xandeum.network/api/pods-credits';
+const MAINNET_CREDITS_API = 'https://podcredits.xandeum.network/api/mainnet-pod-credits';
+const DEVNET_CREDITS_API = 'https://podcredits.xandeum.network/api/pods-credits';
 
 export async function GET() {
   try {
-    const response = await fetch(POD_CREDITS_API, {
-      next: { revalidate: 60 }, // Cache for 1 minute
-    });
+    const [mainnetRes, devnetRes] = await Promise.all([
+      fetch(MAINNET_CREDITS_API, { next: { revalidate: 60 } }),
+      fetch(DEVNET_CREDITS_API, { next: { revalidate: 60 } })
+    ]);
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch pod credits: ${response.status}`);
-    }
+    const [mainnetData, devnetData] = await Promise.all([
+      mainnetRes.ok ? mainnetRes.json() : null,
+      devnetRes.ok ? devnetRes.json() : null
+    ]);
 
-    const data = await response.json();
-
-    if (data.status !== 'success') {
-      throw new Error('Pod credits API returned non-success status');
-    }
-
-    // Convert array to map for easy lookup by pod_id (pubkey)
+    // Convert arrays to map for easy lookup by pod_id (pubkey)
     const creditsMap: Record<string, number> = {};
-    for (const pod of data.pods_credits) {
-      // Store with pod_id as key (case-sensitive match)
-      creditsMap[pod.pod_id] = pod.credits;
+    let totalMainnet = 0;
+    let totalDevnet = 0;
+
+    if (mainnetData?.status === 'success') {
+      for (const pod of mainnetData.pods_credits) {
+        creditsMap[pod.pod_id] = pod.credits;
+      }
+      totalMainnet = mainnetData.pods_credits.length;
     }
 
-    console.log('[PodCredits] Fetched credits for', data.pods_credits.length, 'pods');
-    console.log('[PodCredits] Sample pod_ids:', data.pods_credits.slice(0, 3).map((p: { pod_id: string; credits: number }) => p.pod_id));
+    if (devnetData?.status === 'success') {
+      for (const pod of devnetData.pods_credits) {
+        // If pod exists in both, mainnet credits are usually updated more frequently or prioritized
+        // but for a simple proxy, we can just let devnet fill in the gaps or overwrite if appropriate.
+        // Given our prioritization logic, if it's in mainnet, it's mainnet.
+        if (!creditsMap[pod.pod_id]) {
+          creditsMap[pod.pod_id] = pod.credits;
+        }
+      }
+      totalDevnet = devnetData.pods_credits.length;
+    }
+
+    console.log(`[PodCredits] Merged credits: ${totalMainnet} mainnet, ${totalDevnet} devnet`);
 
     return NextResponse.json({
       credits: creditsMap,
-      totalPods: data.pods_credits.length,
+      totalPods: Object.keys(creditsMap).length,
       timestamp: Date.now(),
     });
   } catch (error: any) {
