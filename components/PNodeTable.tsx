@@ -632,12 +632,12 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                   </td>
                 </tr>
               ) : (
-                nodes.map((node) => {
+                nodes.map((node, index) => {
                   const duplicate = isDuplicate(node);
                   const isTrynet = node.version?.includes('-trynet') || false;
                   return (
                     <tr
-                      key={node.id}
+                      key={`${node.id || 'unknown'}-${index}`}
                       onClick={() => {
                         if (onNodeClick) {
                           onNodeClick(node);
@@ -663,12 +663,12 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         <button
                           onClick={() => toggleWatchlist(node.pubkey || node.publicKey || node.id)}
                           className={`p-1 rounded-full transition-all duration-200 ${isWatched(node.pubkey || node.publicKey || node.id)
-                            ? 'text-yellow-500 fill-yellow-500 bg-yellow-500/10'
+                            ? 'bg-yellow-500/10'
                             : 'text-foreground/20 hover:text-foreground/40 hover:bg-muted'
                             }`}
                           title={isWatched(node.pubkey || node.publicKey || node.id) ? 'Remove from Watchlist' : 'Add to Watchlist'}
                         >
-                          <Star className="w-4 h-4" />
+                          <Star className={`w-4 h-4 ${isWatched(node.pubkey || node.publicKey || node.id) ? 'fill-[#FFD700] text-[#FFD700]' : ''}`} />
                         </button>
                       </td>
                       <td className="px-3 sm:px-5 py-5 whitespace-nowrap relative">

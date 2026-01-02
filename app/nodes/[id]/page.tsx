@@ -1497,62 +1497,14 @@ function NodeDetailContent() {
                           <button
                             onClick={() => toggleWatchlist(pubkey)}
                             className={`p-1.5 rounded transition-all duration-200 border ${isWatched(pubkey)
-                              ? 'text-yellow-500 fill-yellow-500 bg-yellow-500/10 border-yellow-500/30'
+                              ? 'bg-yellow-500/10 border-yellow-500/30'
                               : 'text-foreground/20 hover:text-foreground/40 hover:bg-muted border-border/60'
                               }`}
                             title={isWatched(pubkey) ? 'Remove from Watchlist' : 'Add to Watchlist'}
                           >
-                            <Star className={`w-3.5 h-3.5 ${isWatched(pubkey) ? 'fill-yellow-500' : ''}`} />
+                            <Star className={`w-3.5 h-3.5 ${isWatched(pubkey) ? 'fill-[#FFD700] text-[#FFD700]' : ''}`} />
                           </button>
                         </div>
-
-                        {/* Manager & Registrar Info - Only show for registered nodes */}
-                        {node.isRegistered && (
-                          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Manager (Buyer) */}
-                            <div className="p-3 bg-background/40 border border-border/40 rounded-lg backdrop-blur-sm">
-                              <div className="text-xs text-foreground/40 mb-1 uppercase font-semibold tracking-wider">Manager (Mainnet Buyer)</div>
-                              <div className="flex items-center gap-2">
-                                {node.managerWallet ? (
-                                  <>
-                                    <Link href={`/managers/${node.managerWallet}`} className="font-mono text-sm text-[#F0A741] hover:underline underline-offset-4 decoration-[#F0A741]/40">
-                                      {node.managerWallet.slice(0, 6)}...{node.managerWallet.slice(-4)}
-                                    </Link>
-                                    <a href={`https://solscan.io/account/${node.managerWallet}`} target="_blank" rel="noopener noreferrer" className="text-foreground/20 hover:text-foreground/60 transition-colors">
-                                      <ExternalLink className="w-3 h-3" />
-                                    </a>
-                                    {node.xandStake !== undefined && (
-                                      <div className="ml-auto flex items-center gap-1">
-                                        <div className="text-[10px] text-foreground/40 uppercase font-bold">Stake:</div>
-                                        <div className="text-xs font-bold text-[#F0A741]">{node.xandStake.toLocaleString()} XAND</div>
-                                      </div>
-                                    )}
-                                  </>
-                                ) : (
-                                  <span className="text-sm text-foreground/40 italic">Unknown (Purchased on Mainnet)</span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Registrar (Devnet) */}
-                            {node.registrarWallet && (
-                              <div className="p-3 bg-background/40 border border-border/40 rounded-lg backdrop-blur-sm">
-                                <div className="text-xs text-foreground/40 mb-1 uppercase font-semibold tracking-wider">Registrar (Devnet)</div>
-                                <div className="flex items-center gap-2">
-                                  <a href={`https://explorer.xandeum.com/address/${node.registrarWallet}`} target="_blank" rel="noopener noreferrer" className="font-mono text-sm text-blue-400 hover:underline underline-offset-4 decoration-blue-400/40">
-                                    {node.registrarWallet.slice(0, 6)}...{node.registrarWallet.slice(-4)}
-                                  </a>
-                                  <a href={`https://explorer.xandeum.com/address/${node.registrarWallet}`} target="_blank" rel="noopener noreferrer" className="text-foreground/20 hover:text-foreground/60 transition-colors">
-                                    <ExternalLink className="w-3 h-3" />
-                                  </a>
-                                  <div className="text-xs bg-muted/40 px-1.5 py-0.5 rounded text-foreground/50">
-                                    {node.managerWallet === node.registrarWallet ? 'SAME AS BUYER' : 'REGISTRAR'}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -1592,47 +1544,6 @@ function NodeDetailContent() {
                     <div className="flex items-center gap-2 text-sm">
                       <span className="text-foreground/60">Version</span>
                       <span className="font-semibold text-foreground">{node.version}</span>
-                    </div>
-                  )}
-                  {/* Manager & Registrar Info - Only show for registered nodes */}
-                  {node.isRegistered && (
-                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Manager (Buyer) */}
-                      <div className="p-3 bg-background/40 border border-border/40 rounded-lg backdrop-blur-sm">
-                        <div className="text-xs text-foreground/40 mb-1 uppercase font-semibold tracking-wider">Manager (Mainnet Buyer)</div>
-                        <div className="flex items-center gap-2">
-                          {node.managerWallet ? (
-                            <>
-                              <Link href={`/managers/${node.managerWallet}`} className="font-mono text-sm text-[#F0A741] hover:underline underline-offset-4 decoration-[#F0A741]/40">
-                                {node.managerWallet.slice(0, 6)}...{node.managerWallet.slice(-4)}
-                              </Link>
-                              <a href={`https://solscan.io/account/${node.managerWallet}`} target="_blank" rel="noopener noreferrer" className="text-foreground/20 hover:text-foreground/60 transition-colors">
-                                <ExternalLink className="w-3 h-3" />
-                              </a>
-                            </>
-                          ) : (
-                            <span className="text-sm text-foreground/40 italic">Unknown (Purchased on Mainnet)</span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Registrar (Devnet) */}
-                      {node.registrarWallet && (
-                        <div className="p-3 bg-background/40 border border-border/40 rounded-lg backdrop-blur-sm">
-                          <div className="text-xs text-foreground/40 mb-1 uppercase font-semibold tracking-wider">Registrar (Devnet)</div>
-                          <div className="flex items-center gap-2">
-                            <a href={`https://explorer.xandeum.com/address/${node.registrarWallet}`} target="_blank" rel="noopener noreferrer" className="font-mono text-sm text-blue-400 hover:underline underline-offset-4 decoration-blue-400/40">
-                              {node.registrarWallet.slice(0, 6)}...{node.registrarWallet.slice(-4)}
-                            </a>
-                            <a href={`https://explorer.xandeum.com/address/${node.registrarWallet}`} target="_blank" rel="noopener noreferrer" className="text-foreground/20 hover:text-foreground/60 transition-colors">
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                            <div className="text-xs bg-muted/40 px-1.5 py-0.5 rounded text-foreground/50">
-                              {node.managerWallet === node.registrarWallet ? 'SAME AS BUYER' : 'REGISTRAR'}
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
@@ -1910,16 +1821,22 @@ function NodeDetailContent() {
                     </div>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-foreground/60" />
-                          <span className="text-sm text-foreground/80">Uptime</span>
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-foreground/60" />
+                            <span className="text-sm text-foreground/80">Uptime</span>
+                          </div>
+                          <span className="text-[10px] text-foreground/40 mt-1 font-semibold uppercase tracking-wider">Network availability</span>
                         </div>
                         <span className="text-lg font-bold text-foreground">{formatUptime(node.uptime)}</span>
                       </div>
                       <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <Award className="w-4 h-4 text-foreground/60" />
-                          <span className="text-sm text-foreground/80">Credits</span>
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <Award className="w-4 h-4 text-foreground/60" />
+                            <span className="text-sm text-foreground/80">Credits</span>
+                          </div>
+                          <span className="text-[10px] text-foreground/40 mt-1 font-semibold uppercase tracking-wider">Lifetime earnings</span>
                         </div>
                         <span className="text-lg font-bold text-[#F0A741]">
                           {node.credits !== undefined && node.credits !== null
@@ -1928,7 +1845,10 @@ function NodeDetailContent() {
                         </span>
                       </div>
                       <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                        <span className="text-sm text-foreground/80">Registered</span>
+                        <div className="flex flex-col">
+                          <span className="text-sm text-foreground/80">Registered</span>
+                          <span className="text-[10px] text-foreground/40 mt-1 font-semibold uppercase tracking-wider">Identity on-chain</span>
+                        </div>
                         <div className="flex items-center gap-1.5">
                           {node.isRegistered || (node.balance && node.balance > 0) ? (
                             <>
@@ -1943,15 +1863,6 @@ function NodeDetailContent() {
                           )}
                         </div>
                       </div>
-                      {node.eraLabel && (
-                        <div className="flex items-center justify-between p-3 bg-[#F0A741]/5 border border-[#F0A741]/20 rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <Rocket className="w-4 h-4 text-[#F0A741]" />
-                            <span className="text-sm text-foreground/80">Innovation Era</span>
-                          </div>
-                          <span className="text-sm font-bold text-[#F0A741]">{node.eraLabel}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
