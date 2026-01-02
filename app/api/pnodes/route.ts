@@ -70,6 +70,7 @@ export async function GET(request: Request) {
         timestamp: data.timestamp || Date.now(),
         networks: data.networks,
         currentNetwork: data.currentNetwork,
+        managerStats: data.managerStats,
       },
       {
         headers: {

@@ -251,7 +251,7 @@ function ManagersPageContent() {
                                             <div className="bg-green-500/10 rounded-lg p-2 text-center">
                                                 <div className="flex items-center justify-center gap-1 text-green-400">
                                                     <ShoppingCart className="w-3 h-3" />
-                                                    <span className="text-lg font-bold">{manager.purchasedNodes}</span>
+                                                    <span className="text-lg font-bold">{manager.totalPurchases || manager.purchasedNodes}</span>
                                                 </div>
                                                 <div className="text-[10px] text-foreground/50">Purchased</div>
                                             </div>

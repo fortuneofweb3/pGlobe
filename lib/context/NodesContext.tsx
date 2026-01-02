@@ -23,6 +23,7 @@ export interface Manager {
   vestingStake: number;
   onlineCount: number;
   source: 'mainnet' | 'devnet' | 'both';
+  totalPurchases?: number; // Actual on-chain purchase count (from Mainnet purchase accounts)
 }
 
 interface NodesContextType {
@@ -54,6 +55,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   const [availableNetworks, setAvailableNetworks] = useState<NetworkConfig[]>([]);
   const [currentNetwork, setCurrentNetwork] = useState<NetworkConfig | null>(null);
   const [podCredits, setPodCredits] = useState<Record<string, number>>({});
+  const [managerStats, setManagerStats] = useState<Record<string, number>>({});
 
   // Request deduplication - prevent multiple simultaneous requests
   const fetchingRef = useRef(false);
@@ -164,6 +166,9 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         if (data.nodes && Array.isArray(data.nodes)) {
           if (data.nodes.length > 0 || nodes.length === 0) {
             setNodes(data.nodes);
+            if (data.managerStats) {
+              setManagerStats(data.managerStats);
+            }
             setLastUpdate(new Date());
             setError(null);
             setLoading(false);
@@ -216,6 +221,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       const cached = loadCache();
       if (cached?.nodes && cached.nodes.length > 0 && nodes.length === 0) {
         setNodes(cached.nodes);
+        // Note: managerStats not currently cached, will fetch on refresh
         setLastUpdate(cached.lastUpdate ? new Date(cached.lastUpdate) : null);
         if (cached.availableNetworks) setAvailableNetworks(cached.availableNetworks);
         if (cached.currentNetwork) {
@@ -371,6 +377,9 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     }
   }, [nodes.length]);
 
+  // Fetch manager stats (purchase counts)
+  // Fetch manager stats (purchase counts) - Merged into /api/pnodes response
+
   // Merge credits into nodes before providing to context
   const nodesWithCredits = useMemo(() => {
     if (Object.keys(podCredits).length === 0) return nodes;
@@ -478,9 +487,20 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       }
     });
 
+    // Apply purchase stats
+    managerMap.forEach((manager, wallet) => {
+      if (managerStats[wallet]) {
+        manager.totalPurchases = managerStats[wallet];
+        // If we know they purchased more than we've found registered, update source to imply mainnet history
+        if (manager.totalPurchases > 0 && manager.source === 'devnet') {
+          manager.source = 'both'; // Has purchase history but only devnet nodes? likely both/migration
+        }
+      }
+    });
+
     return Array.from(managerMap.values())
       .sort((a, b) => b.totalXandStake - a.totalXandStake || b.registeredNodes - a.registeredNodes);
-  }, [nodesWithCredits]);
+  }, [nodesWithCredits, managerStats]);
 
   // Calculate dead managers (managers with only offline nodes)
   const deadManagerCount = useMemo(() => {

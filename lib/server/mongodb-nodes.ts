@@ -119,6 +119,11 @@ export async function getNodesCollection(): Promise<Collection<NodeDocument>> {
   return database.collection<NodeDocument>('nodes');
 }
 
+export async function getManagerStatsCollection(): Promise<Collection<{ wallet: string; purchaseCount: number; updatedAt: Date }>> {
+  const database = await getDb();
+  return database.collection('manager_stats');
+}
+
 // ============================================================================
 // TYPES
 // ============================================================================

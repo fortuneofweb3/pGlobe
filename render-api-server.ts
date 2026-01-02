@@ -25,6 +25,7 @@ import { getNetworkConfig } from './lib/server/network-config';
 import { calculateNetworkHealth, getLatestVersion } from './lib/utils/network-health';
 import { PNode } from './lib/types/pnode';
 import { createRegionHistoryIndexes, getRegionHistory as getOptimizedRegionHistory, clearAllRegionCache, getRegionCacheStats } from './lib/server/mongodb-region-history';
+import { getManagerPurchaseStats } from './lib/server/manager-discovery';
 
 const app = express();
 const server = require('http').createServer(app);
@@ -240,10 +241,25 @@ app.get('/api/pnodes', authenticate, async (req, res) => {
     // Always return from DB (fast), fall back to cache if DB fails
     const { nodes, fromCache } = await getNodesWithFallback();
 
+    // Stats logic: Fetch and filter
+    const connectedManagers = new Set<string>();
+    nodes.forEach(n => {
+      if (n.managerWallet) connectedManagers.add(n.managerWallet);
+    });
+
+    const allStats = await getManagerPurchaseStats();
+    const filteredStats: Record<string, number> = {};
+    for (const wallet of connectedManagers) {
+      if (allStats.has(wallet)) {
+        filteredStats[wallet] = allStats.get(wallet)!;
+      }
+    }
+
     if (fromCache) {
       console.log(`[RenderAPI] Returning ${nodes.length} nodes from cache (DB unavailable or empty)`);
       res.json({
         nodes,
+        managerStats: filteredStats,
         count: nodes.length,
         timestamp: cacheTimestamp?.toISOString() || new Date().toISOString(),
         fromCache: true,
@@ -253,6 +269,7 @@ app.get('/api/pnodes', authenticate, async (req, res) => {
       console.log(`[RenderAPI] Returning ${nodes.length} nodes from DB`);
       res.json({
         nodes,
+        managerStats: filteredStats,
         count: nodes.length,
         timestamp: new Date().toISOString(),
       });
@@ -689,6 +706,29 @@ app.get('/api/v1/network/stats', authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       error: error?.message || 'Failed to fetch network stats',
+    });
+  }
+});
+
+/**
+ * GET /api/manager-stats
+ * Returns purchase stats for all managers (wallet -> count)
+ */
+app.get('/api/manager-stats', authenticate, async (req, res) => {
+  try {
+    const stats = await getManagerPurchaseStats();
+    // Convert Map to Object for JSON serialization
+    const statsObj = Object.fromEntries(stats);
+    res.json({
+      success: true,
+      stats: statsObj,
+      timestamp: Date.now()
+    });
+  } catch (error: any) {
+    console.error('[RenderAPI] ❌ Failed to get manager stats:', error);
+    res.status(500).json({
+      success: false,
+      error: error?.message || 'Failed to fetch manager stats'
     });
   }
 });

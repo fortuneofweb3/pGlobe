@@ -33,8 +33,8 @@ function getMainnetConnection(): Connection {
     return mainnetConn;
 }
 
-// Cache for Mainnet wallets (wallet -> true)
-let mainnetWalletsCache: Set<string> | null = null;
+// Cache for Mainnet wallets (wallet -> purchase count)
+let mainnetPurchaseStatsCache: Map<string, number> | null = null;
 let mainnetCacheTime = 0;
 const MAINNET_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
@@ -43,24 +43,55 @@ let devnetNodesCache: Set<string> | null = null;
 let devnetCacheTime = 0;
 const DEVNET_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-async function getMainnetWallets(): Promise<Set<string>> {
-    const now = Date.now();
-    if (mainnetWalletsCache && (now - mainnetCacheTime) < MAINNET_CACHE_TTL) {
-        return mainnetWalletsCache;
+import { getManagerStatsCollection } from './mongodb-nodes';
+
+export async function getManagerPurchaseStats(): Promise<Map<string, number>> {
+    // Try to read from MongoDB first
+    try {
+        const collection = await getManagerStatsCollection();
+        const docs = await collection.find({}).toArray();
+        if (docs.length > 0) {
+            const stats = new Map<string, number>();
+            for (const doc of docs) {
+                stats.set(doc.wallet, doc.purchaseCount);
+            }
+            console.log(`[ManagerDiscovery] ✅ Loaded ${stats.size} manager stats from MongoDB`);
+            return stats;
+        }
+    } catch (e) {
+        console.warn(`[ManagerDiscovery] ⚠️ Failed to read stats from DB:`, (e as Error).message);
     }
+
+    const now = Date.now();
+    if (mainnetPurchaseStatsCache && (now - mainnetCacheTime) < MAINNET_CACHE_TTL) {
+        return mainnetPurchaseStatsCache;
+    }
+
+    // Fallback: Fetch from on-chain (and maybe we should save to DB?)
+    // For now, let's keep the existing logic but logging it
+    console.log('[ManagerDiscovery] ⚠️ MongoDB empty or unavailable, fetching from on-chain...');
 
     const conn = getMainnetConnection();
     const accounts = await conn.getProgramAccounts(MAINNET_PROGRAM, {
         filters: [{ dataSize: 48 }]
     });
 
-    mainnetWalletsCache = new Set(
-        accounts.map(a => new PublicKey(a.account.data.slice(0, 32)).toBase58())
-    );
+    const stats = new Map<string, number>();
+    for (const acc of accounts) {
+        const wallet = new PublicKey(acc.account.data.slice(0, 32)).toBase58();
+        stats.set(wallet, (stats.get(wallet) || 0) + 1);
+    }
+
+    mainnetPurchaseStatsCache = stats;
     mainnetCacheTime = now;
 
-    console.log(`[ManagerDiscovery] Loaded ${mainnetWalletsCache.size} Mainnet wallets`);
-    return mainnetWalletsCache;
+    console.log(`[ManagerDiscovery] Loaded stats for ${mainnetPurchaseStatsCache.size} Mainnet wallets`);
+    return mainnetPurchaseStatsCache;
+}
+
+async function getMainnetWallets(): Promise<Set<string>> {
+    const stats = await getManagerPurchaseStats();
+    return new Set(stats.keys());
 }
 
 async function getDevnetNodes(): Promise<Set<string>> {
