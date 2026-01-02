@@ -77,7 +77,7 @@ interface HistoryPoint {
 
 function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
     const { wallet } = params;
-    const { nodes: allNodes, loading: nodesLoading, lastUpdate, refreshNodes } = useNodes();
+    const { nodes: allNodes, loading: nodesLoading, lastUpdate, refreshNodes, selectedNetwork } = useNodes();
 
     // State
     const [manager, setManager] = useState<ManagerDetails | null>(null);
@@ -207,18 +207,20 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                 };
             });
             setLoading(false);
-        } else if (!nodesLoading) {
-            // If nodes loaded but none found for this wallet, we still wait for the specific API
-            // but we might want to show an error if that fails too.
         }
-    }, [allNodes, wallet, nodesLoading]);
+    }, [allNodes, wallet, nodesLoading, selectedNetwork]);
 
     const fetchManagerDetails = async () => {
         try {
             // Don't set loading to true if we already have some data
             if (nodes.length === 0) setLoading(true);
 
-            const res = await fetch(`/api/managers/${wallet}`);
+            const url = new URL(`/api/managers/${wallet}`, window.location.origin);
+            if (selectedNetwork && selectedNetwork !== 'all') {
+                url.searchParams.set('network', selectedNetwork);
+            }
+
+            const res = await fetch(url.toString());
             const data: ManagerResponse = await res.json();
 
             if (data.success) {
@@ -239,7 +241,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
 
     useEffect(() => {
         fetchManagerDetails();
-    }, [wallet]);
+    }, [wallet, selectedNetwork]);
 
     const copyWallet = () => {
         navigator.clipboard.writeText(wallet);
