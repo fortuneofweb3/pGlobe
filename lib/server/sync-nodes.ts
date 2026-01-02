@@ -434,12 +434,11 @@ export async function enrichWithCredits(nodesMap: Map<string, PNode>): Promise<v
     }
 
     // Determine network
-    if (inMainnet && inDevnet) {
-      node.network = 'both';
-      bothCount++;
-    } else if (inMainnet) {
+    if (inMainnet) {
+      // Prioritize Mainnet: If in Mainnet (even if also in Devnet), it's a Mainnet node
       node.network = 'mainnet';
       mainnetCount++;
+      if (inDevnet) bothCount++; // Just track count for logging
     } else if (inDevnet) {
       node.network = 'devnet';
       devnetCount++;

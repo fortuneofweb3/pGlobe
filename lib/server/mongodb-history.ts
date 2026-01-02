@@ -297,8 +297,9 @@ export async function getHistoricalSnapshots(
                 cond: {
                   $or: [
                     { $eq: ['$$node.network', network] },
-                    { $eq: ['$$node.network', 'both'] },
-                    // Detailed legacy handling:
+                    // Treat 'both' as 'mainnet' for historical data
+                    ...(network === 'mainnet' ? [{ $eq: ['$$node.network', 'both'] }] : []),
+                    // Detailed legacy handling for Devnet:
                     ...(network === 'devnet' ? [
                       { $eq: ['$$node.network', 'unknown'] },
                       { $not: { $ifNull: ['$$node.network', false] } }

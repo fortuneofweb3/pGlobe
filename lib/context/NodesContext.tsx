@@ -426,7 +426,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         return nodeNetwork === 'mainnet' || nodeNetwork === 'both';
       }
       if (selectedNetwork === 'devnet') {
-        return nodeNetwork === 'devnet' || nodeNetwork === 'both' || nodeNetwork === 'unknown';
+        return nodeNetwork === 'devnet' || nodeNetwork === 'unknown';
       }
       return true;
     });
