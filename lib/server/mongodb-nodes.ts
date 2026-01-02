@@ -160,6 +160,9 @@ export interface NodeDocument {
   locationCountryCode?: string;
   balance?: number;
   credits?: number;
+  mainnetCredits?: number;
+  devnetCredits?: number;
+  network?: string;
   creditsResetMonth?: string;
   isRegistered?: boolean;
   managerPDA?: string;
@@ -245,6 +248,9 @@ function nodeToDocument(node: Partial<PNode>): Partial<NodeDocument> {
 
   if (node.balance !== undefined) doc.balance = node.balance;
   if (node.credits !== undefined) doc.credits = node.credits;
+  if (node.mainnetCredits !== undefined) doc.mainnetCredits = node.mainnetCredits;
+  if (node.devnetCredits !== undefined) doc.devnetCredits = node.devnetCredits;
+  if (node.network !== undefined) doc.network = node.network;
   if (node.creditsResetMonth !== undefined) doc.creditsResetMonth = node.creditsResetMonth;
   if (node.isRegistered !== undefined) doc.isRegistered = node.isRegistered;
   if (node.managerPDA !== undefined) doc.managerPDA = node.managerPDA;
@@ -305,6 +311,9 @@ export function documentToNode(doc: NodeDocument): PNode {
     peers: doc.peers ? JSON.parse(doc.peers) : undefined,
     balance: doc.balance,
     credits: doc.credits,
+    mainnetCredits: doc.mainnetCredits,
+    devnetCredits: doc.devnetCredits,
+    network: doc.network as 'mainnet' | 'devnet' | 'both' | 'unknown' | undefined,
     creditsResetMonth: doc.creditsResetMonth,
     isRegistered: doc.isRegistered,
     managerPDA: doc.managerPDA,
@@ -375,7 +384,7 @@ export async function upsertNodes(nodes: PNode[], skipMarkOffline: boolean = fal
         'cpuPercent', 'ramUsed', 'ramTotal', 'packetsReceived', 'packetsSent', 'activeStreams',
         'storageCapacity',
         'totalPages', 'dataOperationsHandled', 'isPublic', 'rpcPort', 'peerCount', 'peers',
-        'credits', 'creditsResetMonth', 'seenInGossip', 'pubkey', 'publicKey', 'previousAddresses',
+        'credits', 'mainnetCredits', 'devnetCredits', 'network', 'creditsResetMonth', 'seenInGossip', 'pubkey', 'publicKey', 'previousAddresses',
       ];
 
       for (const field of statsFields) {
