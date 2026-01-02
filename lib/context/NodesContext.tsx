@@ -51,12 +51,19 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [selectedNetwork, setSelectedNetworkState] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('pglobe:network') || 'devnet';
+  const [selectedNetwork, setSelectedNetworkState] = useState<string>('devnet');
+  const [networkHydrated, setNetworkHydrated] = useState(false);
+
+  // Hydrate network selection from localStorage after mount (avoids SSR mismatch)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !networkHydrated) {
+      const saved = localStorage.getItem('pglobe:network');
+      if (saved && (saved === 'mainnet' || saved === 'devnet')) {
+        setSelectedNetworkState(saved);
+      }
+      setNetworkHydrated(true);
     }
-    return 'devnet';
-  });
+  }, [networkHydrated]);
 
   // Wrapper to persist network selection
   const setSelectedNetwork = useCallback((network: string) => {
