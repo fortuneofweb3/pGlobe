@@ -29,13 +29,14 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || '7d';
+    const network = searchParams.get('network') || 'all';
 
-    console.log(`[NetworkHealthHistory] Proxying health history request to backend: period=${period}`);
+    console.log(`[NetworkHealthHistory] Proxying health history request to backend: period=${period} network=${network}`);
     console.log(`[NetworkHealthHistory] RENDER_API_URL: ${RENDER_API_URL ? 'SET' : 'NOT SET'}`);
     console.log(`[NetworkHealthHistory] API_SECRET: ${API_SECRET ? 'SET' : 'NOT SET'}`);
 
     // Proxy to backend API server
-    const url = `${RENDER_API_URL}/api/v1/network/health/history?period=${period}`;
+    const url = `${RENDER_API_URL}/api/v1/network/health/history?period=${period}&network=${network}`;
     console.log(`[NetworkHealthHistory] Backend URL: ${url}`);
 
     // Add timeout to backend fetch (40 seconds - allows time for MongoDB + calculation)

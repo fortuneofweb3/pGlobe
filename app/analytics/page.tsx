@@ -34,7 +34,7 @@ interface HistoricalDataPoint {
 
 export default function AnalyticsPage() {
   // Use shared nodes data from context (fetched once, updated passively)
-  const { nodes, activeNodes, loading, error, lastUpdate, refreshNodes } = useNodes();
+  const { nodes, activeNodes, loading, error, lastUpdate, refreshNodes, selectedNetwork } = useNodes();
 
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
   const [isComparisonOpen, setIsComparisonOpen] = useState(false);
@@ -46,7 +46,7 @@ export default function AnalyticsPage() {
     const fetchHistoricalData = async () => {
       try {
         // Fetch network health history
-        const url = `/api/v1/network/health/history?period=${healthPeriod}`;
+        const url = `/api/v1/network/health/history?period=${healthPeriod}&network=${selectedNetwork}`;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 45000);
@@ -120,7 +120,7 @@ export default function AnalyticsPage() {
         fetchHistoricalData();
       }, 100);
     }
-  }, [healthPeriod]);
+  }, [healthPeriod, selectedNetwork]);
 
   // Export functions
   const exportToCSV = () => {

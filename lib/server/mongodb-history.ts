@@ -71,7 +71,11 @@ export interface HistoricalSnapshot {
     uptimePercent?: number; // calculated from uptime
     storageCapacity?: number; // bytes - total capacity allocated
     storageUsed?: number; // bytes - actual storage used - changes over time
+    usage?: number; // bytes - actual storage used - changes over time
     credits?: number; // cumulative credits earned - changes over time
+    mainnetCredits?: number;
+    devnetCredits?: number;
+    network?: string;
     // Static-ish metadata (for context)
     version?: string; // changes occasionally
     isRegistered?: boolean; // changes occasionally
@@ -254,7 +258,8 @@ export async function storeHistoricalSnapshot(
 export async function getHistoricalSnapshots(
   startTime?: number,
   endTime?: number,
-  limit: number = 1000
+  limit: number = 1000,
+  network?: string // 'mainnet', 'devnet', 'all'
 ): Promise<HistoricalSnapshot[]> {
   try {
     const collection = await getHistoryCollection();
@@ -269,11 +274,106 @@ export async function getHistoricalSnapshots(
     console.log(`[MongoDB History] Querying snapshots:`, {
       hasStartTime: !!startTime,
       hasEndTime: !!endTime,
-      startTime: startTime ? new Date(startTime).toISOString() : undefined,
-      endTime: endTime ? new Date(endTime).toISOString() : undefined,
+      network: network || 'all',
       limit,
-      query: JSON.stringify(query),
     });
+
+    // If network is specified and not 'all', we need to re-aggregate from nodeSnapshots
+    if (network && network !== 'all') {
+      const pipeline: any[] = [
+        { $match: query },
+        { $sort: { timestamp: 1 } },
+        { $limit: limit },
+        // Filter the nodeSnapshots array in-place to only include relevant nodes
+        {
+          $project: {
+            timestamp: 1,
+            interval: 1,
+            // Filter nodeSnapshots based on network criteria
+            nodes: {
+              $filter: {
+                input: '$nodeSnapshots',
+                as: 'node',
+                cond: {
+                  $or: [
+                    { $eq: ['$$node.network', network] },
+                    { $eq: ['$$node.network', 'both'] },
+                    // Detailed legacy handling:
+                    ...(network === 'devnet' ? [
+                      { $eq: ['$$node.network', 'unknown'] },
+                      { $not: { $ifNull: ['$$node.network', false] } }
+                    ] : [])
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ];
+
+      // Use allowDiskUse just in case, though this should be much lighter
+      const results = await collection.aggregate(pipeline, { maxTimeMS: 30000 }).toArray();
+
+      // Post-process to calculate aggregates and health scores correctly
+      return results.map((res: any) => {
+        const nodes = res.nodes || [];
+        const totalNodes = nodes.length;
+        const onlineNodes = nodes.filter((n: any) => n.status === 'online').length;
+        const offlineNodes = nodes.filter((n: any) => n.status === 'offline').length;
+        const syncingNodes = nodes.filter((n: any) => n.status === 'syncing').length;
+
+        // Calculate averages
+        const nodesWithCpu = nodes.filter((n: any) => n.cpuPercent !== undefined);
+        const avgCpuPercent = nodesWithCpu.length > 0
+          ? nodesWithCpu.reduce((sum: number, n: any) => sum + n.cpuPercent, 0) / nodesWithCpu.length
+          : 0;
+
+        const nodesWithRam = nodes.filter((n: any) => n.ramPercent !== undefined);
+        const avgRamPercent = nodesWithRam.length > 0
+          ? nodesWithRam.reduce((sum: number, n: any) => sum + n.ramPercent, 0) / nodesWithRam.length
+          : 0;
+
+        const totalCredits = nodes.reduce((sum: number, n: any) => sum + (n.credits || 0), 0);
+
+        // Version distribution
+        const versionDistribution: Record<string, number> = {};
+        nodes.forEach((n: any) => {
+          const v = n.version || 'unknown';
+          versionDistribution[v] = (versionDistribution[v] || 0) + 1;
+        });
+
+        const countries = new Set(nodes.map((n: any) => n.nodeLocation?.country).filter(Boolean)).size;
+        const cities = new Set(nodes.map((n: any) => n.nodeLocation?.city).filter(Boolean)).size;
+
+        const availability = totalNodes > 0 ? (onlineNodes / totalNodes) * 100 : 0;
+
+        return {
+          timestamp: res.timestamp,
+          interval: res.interval,
+          totalNodes,
+          onlineNodes,
+          offlineNodes,
+          syncingNodes,
+          avgCpuPercent,
+          avgRamPercent,
+          avgPacketsReceived: 0, // Simplified for filtered view
+          avgPacketsSent: 0,
+          avgActiveStreams: 0,
+          avgUptime: 0,
+          avgUptimePercent: 0,
+          versionDistribution,
+          countries,
+          cities,
+          networkHealthScore: Math.round(availability), // Approximated for filtered view
+          networkHealthAvailability: Math.round(availability),
+          networkHealthVersion: 0, // Placeholder
+          networkHealthDistribution: 0, // Placeholder
+          nodeSnapshots: nodes
+        } as HistoricalSnapshot;
+      });
+    }
+
+    // Default: Return pre-aggregated snapshots (no filtering)
 
     const queryStartTime = Date.now();
 
@@ -885,6 +985,9 @@ function createNodeSnapshots(nodes: PNode[]): HistoricalSnapshot['nodeSnapshots'
       storageCapacity: node.storageCapacity,
       storageUsed: node.storageUsed,
       credits: node.credits,
+      mainnetCredits: node.mainnetCredits,
+      devnetCredits: node.devnetCredits,
+      network: node.network,
       // Static-ish metadata (for context)
       version: node.version,
       isRegistered: node.isRegistered,

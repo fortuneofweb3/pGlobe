@@ -743,6 +743,7 @@ app.get('/api/manager-stats', authenticate, async (req, res) => {
 app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
   try {
     const period = (req.query.period as string) || '7d';
+    const network = (req.query.network as string) || 'all';
 
     // Calculate time range based on period
     const now = Date.now();
@@ -772,7 +773,7 @@ app.get('/api/v1/network/health/history', authenticate, async (req, res) => {
     console.log(`[RenderAPI] Query parameters: startTime=${startTime}, endTime=${now}, limit=1000`);
 
     // Fetch historical snapshots
-    const snapshots = await getHistoricalSnapshots(startTime, now, 1000);
+    const snapshots = await getHistoricalSnapshots(startTime, now, 1000, network);
 
     console.log(`[RenderAPI] MongoDB query returned ${snapshots.length} snapshots`);
 
