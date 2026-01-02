@@ -11,6 +11,7 @@
 // Lazy import to avoid module resolution issues with tsx
 let syncNodesFn: (() => Promise<{ success: boolean; count: number; error?: string }>) | null = null;
 let syncRewardsFn: (() => Promise<{ success: boolean; count: number; error?: string }>) | null = null;
+let updateManagerStatsFn: (() => Promise<{ success: boolean; count: number }>) | null = null;
 
 async function getSyncNodes() {
   if (!syncNodesFn) {
@@ -34,18 +35,31 @@ async function getSyncRewards() {
   return syncRewardsFn;
 }
 
+async function getUpdateManagerStats() {
+  if (!updateManagerStatsFn) {
+    const mod = await import('./manager-discovery');
+    if (typeof mod.updateManagerStats !== 'function') {
+      throw new Error('updateManagerStats export is not a function');
+    }
+    updateManagerStatsFn = mod.updateManagerStats;
+  }
+  return updateManagerStatsFn;
+}
+
 let refreshInterval: NodeJS.Timeout | null = null;
 let heartbeatInterval: NodeJS.Timeout | null = null;
 let isRunning = false;
 let lastRefreshStart = 0;
 let lastRefreshComplete = 0;
 let lastRewardSyncComplete = 0;
+let lastManagerStatsSyncComplete = 0;
 let consecutiveSkips = 0;
 
 // Maximum time before force-resetting isRunning
 const MAX_REFRESH_TIME_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_CONSECUTIVE_SKIPS = 3;
 const REWARD_SYNC_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+const MANAGER_STATS_SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
 /**
  * Check if refresh is currently running
@@ -89,8 +103,29 @@ export async function performRefresh(): Promise<void> {
     if (result.success) {
       console.log(`[BackgroundRefresh] ✅ Synced ${result.count} nodes`);
 
-      // Check if it's time for a reward sync (every hour)
       const now = Date.now();
+
+      // Manager Stats Sync (every 10 minutes)
+      if (now - lastManagerStatsSyncComplete > MANAGER_STATS_SYNC_INTERVAL_MS) {
+        console.log('[BackgroundRefresh] 📊 Starting scheduled manager stats sync...');
+        try {
+          // Force use local definition if we are inside the same process, or use dynamic import
+          const updateStats = await getUpdateManagerStats();
+          if (updateStats) {
+            const statsResult = await updateStats();
+            if (statsResult.success) {
+              lastManagerStatsSyncComplete = now;
+              console.log(`[BackgroundRefresh] ✅ Manager stats updated for ${statsResult.count} records`);
+            } else {
+              console.warn(`[BackgroundRefresh] ⚠️ Manager stats update failed partially`);
+            }
+          }
+        } catch (e: any) {
+          console.error('[BackgroundRefresh] ❌ Manager stats sync error:', e?.message || e);
+        }
+      }
+
+      // Check if it's time for a reward sync (every hour)
       if (now - lastRewardSyncComplete > REWARD_SYNC_INTERVAL_MS) {
         console.log('[BackgroundRefresh] 🎁 Starting scheduled reward sync...');
         const syncRewards = await getSyncRewards();

@@ -1885,6 +1885,20 @@ function ManagersDocs({ onClose }: { onClose: () => void }) {
               </div>
               <p className="text-sm text-muted-foreground">Quickly identify how many of your nodes are online, syncing, or offline at a glance.</p>
             </div>
+            <div className="border border-border rounded-lg p-4 md:col-span-2 bg-[#0f0f0f]">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="w-5 h-5 text-green-400" />
+                <h3 className="font-semibold text-foreground">Registered vs. Purchased</h3>
+              </div>
+              <p className="text-sm text-muted-foreground mb-2">
+                We track both your <strong>registered</strong> nodes (active on Devnet) and <strong>purchased</strong> licenses (historically bought on Mainnet).
+              </p>
+              <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1">
+                <li><strong>Registered:</strong> Nodes linked to your manager wallet and currently participating in the network.</li>
+                <li><strong>Purchased:</strong> Total node licenses found in your wallet's transaction history.</li>
+                <li><strong>Note:</strong> If <em>Purchased</em> &gt; <em>Registered</em>, you likely have licenses that haven't been set up yet!</li>
+              </ul>
+            </div>
           </div>
         </section>
 

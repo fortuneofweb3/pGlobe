@@ -7,11 +7,48 @@
  */
 
 import { NextResponse } from 'next/server';
+import { getAllNodes } from '@/lib/server/mongodb-nodes';
+import { getManagerPurchaseStats } from '@/lib/server/manager-discovery';
 
 const RENDER_API_URL = process.env.RENDER_API_URL || process.env.NEXT_PUBLIC_RENDER_API_URL;
 const API_SECRET = process.env.API_SECRET;
 
 export async function GET(request: Request) {
+  // DEVELOPMENT OVERRIDE:
+  // If we are in development, use the local library logic directly.
+  // This avoids needing to run a separate backend server or wait for remote deployment.
+  if (process.env.NODE_ENV === 'development') {
+    try {
+      console.log('[VercelProxy] 🔧 DEV MODE: Fetching nodes directly from local DB...');
+      const nodes = await getAllNodes();
+
+      // Stats Logic (Duplicated from backend for local dev)
+      const connectedManagers = new Set<string>();
+      nodes.forEach(n => {
+        if (n.managerWallet) connectedManagers.add(n.managerWallet);
+      });
+
+      const allStats = await getManagerPurchaseStats();
+      const filteredStats: Record<string, number> = {};
+      for (const wallet of connectedManagers) {
+        if (allStats.has(wallet)) {
+          filteredStats[wallet] = allStats.get(wallet)!;
+        }
+      }
+
+      return NextResponse.json({
+        nodes,
+        managerStats: filteredStats,
+        totalNodes: nodes.length,
+        timestamp: Date.now()
+      });
+    } catch (e: any) {
+      console.error('[VercelProxy] Local fetch failed:', e);
+      // Fallthrough to proxy if local fails? Or just error.
+      return NextResponse.json({ error: e.message || 'Local fetch failed' }, { status: 500 });
+    }
+  }
+
   if (!RENDER_API_URL) {
     return NextResponse.json(
       {

@@ -306,3 +306,33 @@ export async function getAllManagers(): Promise<{ wallet: string; nodeCount: num
         return [];
     }
 }
+
+/**
+ * Update manager purchase stats from chain and persist to DB
+ */
+export async function updateManagerStats(): Promise<{ success: boolean; count: number }> {
+    try {
+        const stats = await fetchManagerPurchaseStatsFromChain();
+        const collection = await getManagerStatsCollection();
+
+        let upserted = 0;
+        for (const [wallet, count] of stats.entries()) {
+            await collection.updateOne(
+                { wallet },
+                {
+                    $set: {
+                        wallet,
+                        purchaseCount: count,
+                        updatedAt: new Date()
+                    }
+                },
+                { upsert: true }
+            );
+            upserted++;
+        }
+        return { success: true, count: upserted };
+    } catch (e) {
+        console.error('[ManagerDiscovery] Failed to update stats:', e);
+        return { success: false, count: 0 };
+    }
+}
