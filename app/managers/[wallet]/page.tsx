@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useMemo, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
@@ -10,12 +9,19 @@ import { StatCardSkeleton } from '@/components/Skeletons';
 import PNodeTable from '@/components/PNodeTable';
 import StatsCard from '@/components/StatsCard';
 import { PNode } from '@/lib/types/pnode';
-import { getFlagForCountry } from '@/lib/utils/country-flags';
 import { formatStorageBytes } from '@/lib/utils/storage';
 import {
     Server, TrendingUp, ArrowLeft, ExternalLink, Copy, Check,
-    Award, HardDrive, Users, Zap, Activity, MapPin, Clock, ShieldCheck
+    Award, HardDrive, Users, Zap, Activity, MapPin, Clock, ShieldCheck, ChevronDown
 } from 'lucide-react';
+import MetricChart from '@/components/charts/MetricChart';
+
+import dynamic from 'next/dynamic';
+
+const ManagerMap = dynamic(() => import('@/components/ManagerMap'), {
+    ssr: false,
+    loading: () => <div className="h-full w-full bg-[#0a0a0a] animate-pulse flex items-center justify-center text-white/20">Loading Map...</div>
+});
 
 // Format XAND values with M/K notation and 2 decimal places
 const formatXandValue = (value: number): string => {
@@ -44,13 +50,29 @@ interface ManagerDetails {
     associatedWallets?: string[];
 }
 
+interface RewardHistoryItem {
+    unlockDate: string;
+    amount: number;
+}
+
 interface ManagerResponse {
     success: boolean;
     manager: ManagerDetails;
     nodes: PNode[];
-    rewards?: { history: any[] };
+    rewards?: { history: RewardHistoryItem[] };
     associatedWallets?: string[];
     error?: string;
+}
+
+interface HistoryPoint {
+    timestamp: number;
+    cpuPercent?: number;
+    ramPercent?: number;
+    packetsReceived?: number;
+    packetsSent?: number;
+    credits?: number;
+    status?: string;
+    [key: string]: any;
 }
 
 function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
@@ -60,16 +82,63 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
     // State
     const [manager, setManager] = useState<ManagerDetails | null>(null);
     const [nodes, setNodes] = useState<PNode[]>([]);
-    const [rewards, setRewards] = useState<any>(null);
+    const [rewards, setRewards] = useState<{ history: RewardHistoryItem[] } | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'nodes' | 'rewards'>('nodes');
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
     const [sortBy, setSortBy] = useState<string>('credits');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+    const [activeNodeIndex, setActiveNodeIndex] = useState(0);
+    const [selectedMetric, setSelectedMetric] = useState<'vesting' | 'activity' | 'resources' | 'credits'>('resources');
+    const [showMetricDropdown, setShowMetricDropdown] = useState(false);
+    const [historyData, setHistoryData] = useState<Record<string, HistoryPoint[]>>({});
+    const [historyLoading, setHistoryLoading] = useState(false);
 
     // XAND price from Jupiter
     const { formatUsd } = useXandPrice();
+
+    // Fetch historical data for top nodes
+    useEffect(() => {
+        const fetchHistory = async () => {
+            if (nodes.length === 0) return;
+
+            // Only fetch if we haven't already (or simple cache check)
+            if (Object.keys(historyData).length > 0) return;
+
+            setHistoryLoading(true);
+            try {
+                // Take top 50 active nodes to avoid URL limits and useless data
+                const activeNodes = nodes.filter(n => n.status === 'online' || n.status === 'syncing');
+                const topNodes = activeNodes.slice(0, 50);
+
+                if (topNodes.length === 0) {
+                    setHistoryLoading(false);
+                    return;
+                }
+
+                const nodeIds = topNodes.map(n => n.id).join(',');
+                // 24h history
+                const endTime = Date.now();
+                const startTime = endTime - (24 * 60 * 60 * 1000);
+
+                const res = await fetch(`/api/history/bulk?nodeIds=${nodeIds}&startTime=${startTime}&endTime=${endTime}`);
+                const data = await res.json();
+
+                if (data.data) {
+                    setHistoryData(data.data);
+                }
+            } catch (err) {
+                console.error("Failed to fetch fleet history", err);
+            } finally {
+                setHistoryLoading(false);
+            }
+        };
+
+        if (nodes.length > 0) {
+            fetchHistory();
+        }
+    }, [nodes]);
 
     const handleSort = (field: string) => {
         if (sortBy === field) {
@@ -372,7 +441,324 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                             />
                         </div>
 
-                        {/* Tabs Navigation */}
+                        {/* Analytics Section - Chart & Map */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+                            {/* Left: Chart */}
+                            <div className="card">
+                                <div className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-sm font-medium text-foreground">
+                                            {selectedMetric === 'vesting' && 'Vesting Schedule'}
+                                            {selectedMetric === 'activity' && 'Network Activity'}
+                                            {selectedMetric === 'resources' && 'Resource Utilization'}
+                                            {selectedMetric === 'credits' && 'Credits History'}
+                                        </h3>
+
+                                        <div className="flex items-center gap-2">
+                                            {/* Custom Dropdown */}
+                                            <div className="relative">
+                                                <button
+                                                    onClick={() => setShowMetricDropdown(!showMetricDropdown)}
+                                                    className="flex items-center gap-2 bg-transparent hover:bg-white/5 rounded-lg px-2 py-1 text-xs font-medium transition-all text-muted-foreground hover:text-foreground"
+                                                >
+                                                    <span>
+                                                        {selectedMetric === 'vesting' && 'Vesting'}
+                                                        {selectedMetric === 'activity' && 'Activity'}
+                                                        {selectedMetric === 'resources' && 'Resources'}
+                                                        {selectedMetric === 'credits' && 'Credits'}
+                                                    </span>
+                                                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showMetricDropdown ? 'rotate-180' : ''}`} />
+                                                </button>
+
+                                                {showMetricDropdown && (
+                                                    <div className="absolute top-full right-0 mt-1 w-[140px] bg-[#0a0a0a] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50 flex flex-col py-1">
+                                                        {[
+                                                            { id: 'vesting', label: 'Vesting' },
+                                                            { id: 'activity', label: 'Activity' },
+                                                            { id: 'resources', label: 'Resources' },
+                                                            { id: 'credits', label: 'Credits' }
+                                                        ].map((opt) => (
+                                                            <button
+                                                                key={opt.id}
+                                                                onClick={() => {
+                                                                    setSelectedMetric(opt.id as any);
+                                                                    setShowMetricDropdown(false);
+                                                                }}
+                                                                className={`text-left px-3 py-2 text-xs hover:bg-white/5 transition-colors ${selectedMetric === opt.id ? 'text-[#F0A741] font-bold' : 'text-foreground/70'}`}
+                                                            >
+                                                                {opt.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Chart Area */}
+                                    <div className="bg-muted/10 rounded-lg p-3 w-full h-[250px] relative">
+                                        {(() => {
+                                            // 1. Loading State
+                                            if (historyLoading) {
+                                                return (
+                                                    <div className="h-full flex items-center justify-center text-foreground/40 animate-pulse gap-2">
+                                                        <Activity className="w-5 h-5" />
+                                                        <span>Loading fleet data...</span>
+                                                    </div>
+                                                );
+                                            }
+
+                                            // 2. Vesting Chart
+                                            if (selectedMetric === 'vesting') {
+                                                if (rewards?.history && rewards.history.length > 0) {
+                                                    const sortedHistory = [...rewards.history].sort((a: any, b: any) => new Date(a.unlockDate).getTime() - new Date(b.unlockDate).getTime());
+                                                    let cumulative = 0;
+                                                    const chartData = sortedHistory.map((h: any) => {
+                                                        cumulative += h.amount;
+                                                        return {
+                                                            timestamp: new Date(h.unlockDate).getTime(),
+                                                            value: cumulative,
+                                                            originalAmount: h.amount
+                                                        };
+                                                    });
+                                                    const maxVal = chartData[chartData.length - 1].value;
+
+                                                    return (
+                                                        <MetricChart
+                                                            title=""
+                                                            data={chartData}
+                                                            height={250}
+                                                            yDomain={[0, maxVal * 1.1]}
+                                                            strokeColor="#F0A741"
+                                                            yTickFormatter={(val) => formatXandValue(val)}
+                                                            minimal={true}
+                                                            tooltipFormatter={(d: any) => (
+                                                                <div className="flex flex-col gap-1">
+                                                                    <div className="text-xs text-muted-foreground">{new Date(d.timestamp).toLocaleDateString()}</div>
+                                                                    <div className="font-bold text-[#F0A741]">{formatXandValue(d.value)} XAND</div>
+                                                                    {d.originalAmount !== undefined && (
+                                                                        <div className="text-[10px] text-white/50">
+                                                                            +{formatXandValue(d.originalAmount)} unlocked
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        />
+                                                    );
+                                                } else {
+                                                    return (
+                                                        <div className="h-full flex items-center justify-center text-foreground/20 italic self-center">
+                                                            No vesting history available
+                                                        </div>
+                                                    );
+                                                }
+                                            }
+
+                                            // 3. Prepare Aggregated Data for Other Metrics
+                                            if (!historyData || Object.keys(historyData).length === 0) {
+                                                return (
+                                                    <div className="h-full flex items-center justify-center text-foreground/20 italic flex-col gap-3">
+                                                        <Activity className="w-8 h-8 opacity-20" />
+                                                        <span>No historical data available</span>
+                                                    </div>
+                                                );
+                                            }
+
+                                            // Consolidate all timestamps
+                                            const allTimestamps = new Set<number>();
+                                            Object.values(historyData).forEach((nodeHistory: HistoryPoint[]) => {
+                                                if (Array.isArray(nodeHistory)) {
+                                                    nodeHistory.forEach((pt: HistoryPoint) => allTimestamps.add(pt.timestamp));
+                                                }
+                                            });
+                                            const sortedTimestamps = Array.from(allTimestamps).sort((a, b) => a - b);
+
+                                            if (sortedTimestamps.length === 0) {
+                                                return (
+                                                    <div className="h-full flex items-center justify-center text-foreground/20 italic flex-col gap-3">
+                                                        <Activity className="w-8 h-8 opacity-20" />
+                                                        <span>No historical data available</span>
+                                                    </div>
+                                                );
+                                            }
+
+                                            // Aggregate by timestamp
+                                            const aggregatedData = sortedTimestamps.map(ts => {
+                                                let cpuSum = 0;
+                                                let ramSum = 0;
+                                                let packetSum = 0;
+                                                let creditSum = 0;
+                                                let nodeCount = 0;
+                                                let onlineNodes = 0;
+                                                let cpuCount = 0;
+                                                let ramCount = 0;
+
+                                                Object.values(historyData).forEach((nodeHistory: HistoryPoint[]) => {
+                                                    if (!Array.isArray(nodeHistory)) return;
+                                                    // Find closest point within 5 minutes
+                                                    const pt = nodeHistory.find((p: HistoryPoint) => Math.abs(p.timestamp - ts) < 5 * 60 * 1000);
+                                                    if (pt) {
+                                                        if (pt.cpuPercent !== undefined) { cpuSum += pt.cpuPercent; cpuCount++; }
+                                                        if (pt.ramPercent !== undefined) { ramSum += pt.ramPercent; ramCount++; }
+                                                        if (pt.packetsReceived !== undefined) packetSum += (pt.packetsReceived + (pt.packetsSent || 0));
+                                                        if (pt.credits !== undefined) creditSum += pt.credits;
+
+                                                        if (pt.status === 'online') onlineNodes++;
+                                                        nodeCount++;
+                                                    }
+                                                });
+
+                                                return {
+                                                    timestamp: ts,
+                                                    cpu: cpuCount > 0 ? cpuSum / cpuCount : 0,
+                                                    ram: ramCount > 0 ? ramSum / ramCount : 0,
+                                                    packets: packetSum,
+                                                    credits: creditSum,
+                                                    onlineNodes
+                                                };
+                                            });
+
+                                            // Downsample if too many points for performance
+                                            const finalData = aggregatedData.length > 100
+                                                ? aggregatedData.filter((_, i) => i % Math.ceil(aggregatedData.length / 100) === 0)
+                                                : aggregatedData;
+
+
+                                            // 4. Activity Chart
+                                            if (selectedMetric === 'activity') {
+                                                const maxPackets = Math.max(...finalData.map(d => d.packets));
+                                                return (
+                                                    <MetricChart
+                                                        title=""
+                                                        data={finalData.map(d => ({ ...d, value: d.packets }))}
+                                                        height={250}
+                                                        yDomain={[0, maxPackets * 1.1]}
+                                                        strokeColor="#3F8277"
+                                                        yLabel="Packets/s"
+                                                        minimal={true}
+                                                        tooltipFormatter={(d: any) => (
+                                                            <div className="flex flex-col gap-1">
+                                                                <div className="text-xs text-muted-foreground">{new Date(d.timestamp).toLocaleString()}</div>
+                                                                <div className="font-bold text-[#3F8277]">{formatXandValue(d.value)} pkts/s</div>
+                                                                <div className="text-[10px] text-white/50">Total Fleet Traffic</div>
+                                                            </div>
+                                                        )}
+                                                        headerContent={
+                                                            <div className="flex items-center gap-2 text-xs">
+                                                                <div className="flex items-center gap-1.5 px-2 py-1 bg-[#3F8277]/10 rounded text-[#3F8277] border border-[#3F8277]/20">
+                                                                    <Activity className="w-3 h-3" />
+                                                                    Peak: {formatXandValue(maxPackets)}
+                                                                </div>
+                                                            </div>
+                                                        }
+                                                    />
+                                                );
+                                            }
+
+                                            // 5. Resources Chart
+                                            if (selectedMetric === 'resources') {
+                                                return (
+                                                    <MetricChart
+                                                        title=""
+                                                        data={finalData}
+                                                        height={250}
+                                                        yDomain={[0, 100]}
+                                                        strokeColor="#F0A741"
+                                                        yLabel="Usage (%)"
+                                                        minimal={true}
+                                                        multiLine={[
+                                                            { key: 'cpu', color: '#F0A741', label: 'CPU' },
+                                                            { key: 'ram', color: '#3F8277', label: 'RAM' },
+                                                        ]}
+                                                        tooltipFormatter={(d: any) => (
+                                                            <div className="flex flex-col gap-1">
+                                                                <div className="text-xs text-muted-foreground">{new Date(d.timestamp).toLocaleString()}</div>
+                                                                <div className="flex gap-4">
+                                                                    <div className="font-bold text-[#F0A741]">CPU: {d.cpu.toFixed(1)}%</div>
+                                                                    <div className="font-bold text-[#3F8277]">RAM: {d.ram.toFixed(1)}%</div>
+                                                                </div>
+                                                                <div className="text-[10px] text-white/50">Avg Fleet Usage</div>
+                                                            </div>
+                                                        )}
+                                                        headerContent={
+                                                            <div className="flex items-center gap-3 text-xs">
+                                                                <div className="flex items-center gap-1">
+                                                                    <div className="w-2 h-2 rounded-full bg-[#F0A741]" />
+                                                                    CPU
+                                                                </div>
+                                                                <div className="flex items-center gap-1">
+                                                                    <div className="w-2 h-2 rounded-full bg-[#3F8277]" />
+                                                                    RAM
+                                                                </div>
+                                                            </div>
+                                                        }
+                                                    />
+                                                );
+                                            }
+
+                                            // 6. Credits Chart
+                                            if (selectedMetric === 'credits') {
+                                                const maxCredits = Math.max(...finalData.map(d => d.credits));
+                                                return (
+                                                    <MetricChart
+                                                        title=""
+                                                        data={finalData.map(d => ({ ...d, value: d.credits }))}
+                                                        height={250}
+                                                        yDomain={[0, maxCredits * 1.1]}
+                                                        strokeColor="#F0A741"
+                                                        yTickFormatter={(val) => formatXandValue(val)}
+                                                        minimal={true}
+                                                        tooltipFormatter={(d: any) => (
+                                                            <div className="flex flex-col gap-1">
+                                                                <div className="text-xs text-muted-foreground">{new Date(d.timestamp).toLocaleString()}</div>
+                                                                <div className="font-bold text-[#F0A741]">{formatXandValue(d.value)} Credits</div>
+                                                            </div>
+                                                        )}
+                                                    />
+                                                );
+                                            }
+
+                                            return null;
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right: Interactive Map */}
+                            <div className="card h-full relative group overflow-hidden p-0 bg-transparent">
+                                <div className="h-full w-full bg-[#0a0a0a] absolute inset-0">
+                                    <ManagerMap
+                                        nodes={nodes}
+                                        selectedNode={nodes[activeNodeIndex]}
+                                        onNodeSelect={(n: PNode) => {
+                                            const idx = nodes.findIndex(node => node.id === n.id);
+                                            if (idx !== -1) setActiveNodeIndex(idx);
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Navigation Controls */}
+                                <div className="absolute bottom-4 right-4 z-[400] flex gap-2">
+                                    <button
+                                        onClick={() => nodes.length > 0 && setActiveNodeIndex(prev => (prev - 1 + nodes.length) % nodes.length)}
+                                        disabled={nodes.length === 0}
+                                        className={`bg-black/80 p-2 rounded-full backdrop-blur border border-white/10 transition-all shadow-xl ${nodes.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#F0A741] hover:text-black text-white active:scale-95'}`}
+                                    >
+                                        <ArrowLeft className="w-4 h-4" />
+                                    </button>
+                                    <div className="bg-black/80 backdrop-blur border border-white/10 px-3 flex items-center justify-center min-w-[50px] rounded-full text-[10px] font-mono font-bold">
+                                        {nodes.length > 0 ? activeNodeIndex + 1 : 0} / {nodes.length || 0}
+                                    </div>
+                                    <button
+                                        onClick={() => nodes.length > 0 && setActiveNodeIndex(prev => (prev + 1) % nodes.length)}
+                                        disabled={nodes.length === 0}
+                                        className={`bg-black/80 p-2 rounded-full backdrop-blur border border-white/10 transition-all shadow-xl rotate-180 transform ${nodes.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#F0A741] hover:text-black text-white active:scale-95'}`}
+                                    >
+                                        <ArrowLeft className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                         <div className="flex gap-1 sm:gap-2 mb-8 bg-black/40 backdrop-blur-md p-1 rounded-xl border border-white/5 w-fit max-w-full overflow-x-auto no-scrollbar animate-slide-in-bottom" style={{ animationDelay: '0.15s', opacity: 0, animationFillMode: 'forwards' }}>
                             <button
                                 onClick={() => setActiveTab('nodes')}
