@@ -330,6 +330,40 @@ function QuickStartGuide() {
             </div>
           </div>
 
+          <h3 className="text-xl font-semibold text-foreground mb-3 mt-8">Network Selection</h3>
+          <p className="text-foreground mb-4">
+            Use the network dropdown in the header to switch between different network views. This filters all data across the platform,
+            including charts, stats, and lists.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="border border-green-900/30 bg-green-950/10 rounded-lg p-4">
+              <h4 className="font-medium text-green-400 mb-2">Mainnet</h4>
+              <p className="text-sm text-muted-foreground">
+                Shows nodes that are earning credits on the Xandeum Mainnet.
+                <br />
+                <span className="text-xs opacity-70 mt-1 block">
+                  *Nodes present in both networks are classified as Mainnet.
+                </span>
+              </p>
+            </div>
+            <div className="border border-yellow-900/30 bg-yellow-950/10 rounded-lg p-4">
+              <h4 className="font-medium text-yellow-500 mb-2">Devnet</h4>
+              <p className="text-sm text-muted-foreground">
+                Shows nodes that are earning credits <strong>only</strong> on the Devnet.
+                <br />
+                <span className="text-xs opacity-70 mt-1 block">
+                  *Excludes nodes that have migrated to Mainnet.
+                </span>
+              </p>
+            </div>
+            <div className="border border-blue-900/30 bg-blue-950/10 rounded-lg p-4">
+              <h4 className="font-medium text-blue-400 mb-2">All Networks</h4>
+              <p className="text-sm text-muted-foreground">
+                Displays the complete list of all discovered nodes, regardless of which network they are participating in.
+              </p>
+            </div>
+          </div>
+
           <h3 className="text-xl font-semibold text-foreground mb-3 mt-8">Quick Actions</h3>
           <ul className="space-y-2 text-foreground">
             <li className="flex items-start gap-2">
@@ -367,6 +401,12 @@ function QuickStartGuide() {
           <p className="text-foreground mb-4">
             The pNodes page provides powerful filtering and search capabilities to help you find specific pNodes or analyze subsets of the network.
           </p>
+          <div className="bg-blue-950/30 border border-blue-800 rounded-lg p-4 mb-6">
+            <p className="text-sm text-foreground">
+              <strong>Note:</strong> All filters and searches operate within your currently selected network in the header
+              (Mainnet, Devnet, or All). If you can't find a node, try switching the network to "All Networks".
+            </p>
+          </div>
 
           <h3 className="text-xl font-semibold text-foreground mb-3">Search Bar</h3>
           <p className="text-foreground mb-3">
