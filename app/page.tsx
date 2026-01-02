@@ -7,7 +7,7 @@ import { PNode, isNodeDead } from '@/lib/types/pnode';
 import StatsCard from '@/components/StatsCard';
 import dynamic from 'next/dynamic';
 
-import { CardSkeleton } from '@/components/Skeletons';
+import { EraCardSkeleton, SidebarStatsSkeleton } from '@/components/Skeletons';
 
 const MapLibreGlobe = dynamic(() => import('@/components/MapLibreGlobe'), {
   ssr: false,
@@ -59,7 +59,7 @@ function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   // Use shared nodes data from context (fetched once, updated passively)
-  const { nodes, loading, error, lastUpdate, selectedNetwork, setSelectedNetwork, availableNetworks, currentNetwork, refreshNodes } = useNodes();
+  const { nodes, loading, error, lastUpdate, refreshNodes } = useNodes();
   // Load cached latencies immediately (synchronous)
   const [nodeLatencies, setNodeLatencies] = useState<Record<string, number | null>>(() => {
     return getCachedNodesLatencies(nodes);
@@ -425,7 +425,6 @@ function HomeContent() {
           activePage="overview"
           loading={true}
           onRefresh={() => { }}
-          showNetworkSelector={false}
         />
 
         {/* Main Content Area */}
@@ -433,95 +432,8 @@ function HomeContent() {
           {/* Left Sidebar */}
           <aside className="hidden md:block w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-hidden">
             <div className="pt-1.5 px-3 pb-3 sm:pt-2 sm:px-4 sm:pb-4 space-y-3 sm:space-y-4">
-              {/* Era Card Skeleton */}
-              <div className="relative p-4 rounded-xl bg-[#050505] border border-[#F0A741]/10">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-9 h-9 rounded-lg bg-[#F0A741]/10 animate-pulse" />
-                  <div className="space-y-2">
-                    <div className="h-5 w-24 bg-muted/20 rounded animate-pulse" />
-                    <div className="h-3 w-20 bg-muted/10 rounded animate-pulse" />
-                  </div>
-                </div>
-                <div className="space-y-3 mb-4">
-                  <div className="flex justify-between">
-                    <div className="h-4 w-16 bg-muted/10 rounded animate-pulse" />
-                    <div className="h-4 w-12 bg-muted/20 rounded animate-pulse" />
-                  </div>
-                  <div className="flex justify-between">
-                    <div className="h-4 w-24 bg-muted/10 rounded animate-pulse" />
-                    <div className="h-4 w-16 bg-muted/20 rounded animate-pulse" />
-                  </div>
-                </div>
-                <div className="p-2.5 rounded-lg bg-[#F0A741]/5 border border-[#F0A741]/20">
-                  <div className="h-3 w-20 bg-muted/10 rounded animate-pulse mb-2" />
-                  <div className="h-4 w-32 bg-muted/20 rounded animate-pulse" />
-                </div>
-              </div>
-
-              {/* Network Stats */}
-              <div>
-                <h2 className="text-xs font-semibold text-foreground/60 mb-3 uppercase tracking-wide">Network Stats</h2>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground/70">Total pNodes</span>
-                    <span className="h-4 w-12 bg-muted/20 rounded animate-pulse" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground/70">Online</span>
-                    <span className="h-4 w-12 bg-muted/20 rounded animate-pulse" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground/70">Syncing</span>
-                    <span className="h-4 w-12 bg-muted/20 rounded animate-pulse" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground/70">Offline</span>
-                    <span className="h-4 w-12 bg-muted/20 rounded animate-pulse" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Performance */}
-              <div className="pt-4 border-t border-border">
-                <h2 className="text-xs font-semibold text-foreground/60 mb-3 uppercase tracking-wide">Performance</h2>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground/70">Avg Uptime</span>
-                    <span className="h-4 w-16 bg-muted/20 rounded animate-pulse" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground/70">Avg CPU</span>
-                    <span className="h-4 w-16 bg-muted/20 rounded animate-pulse" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground/70">Avg RAM</span>
-                    <span className="h-4 w-16 bg-muted/20 rounded animate-pulse" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Storage & Memory */}
-              <div className="pt-4 border-t border-border">
-                <h2 className="text-xs font-semibold text-foreground/60 mb-3 uppercase tracking-wide">Storage & Memory</h2>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground/70">Total Storage</span>
-                    <span className="h-4 w-20 bg-muted/20 rounded animate-pulse" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground/70">Total RAM</span>
-                    <span className="h-4 w-20 bg-muted/20 rounded animate-pulse" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground/70">Used RAM</span>
-                    <span className="h-4 w-20 bg-muted/20 rounded animate-pulse" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground/70">Avg RAM Usage</span>
-                    <span className="h-4 w-16 bg-muted/20 rounded animate-pulse" />
-                  </div>
-                </div>
-              </div>
+              <EraCardSkeleton />
+              <SidebarStatsSkeleton />
             </div>
           </aside>
 
@@ -558,12 +470,6 @@ function HomeContent() {
         lastUpdate={lastUpdate}
         loading={loading}
         onRefresh={() => refreshNodes()}
-        networks={availableNetworks}
-        currentNetwork={currentNetwork}
-        onNetworkChange={(networkId) => {
-          setSelectedNetwork(networkId);
-        }}
-        showNetworkSelector={false}
       />
 
       {/* Main Content Area - Header, Sidebars, and Map */}

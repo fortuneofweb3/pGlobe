@@ -34,7 +34,7 @@ interface HistoricalDataPoint {
 
 export default function AnalyticsPage() {
   // Use shared nodes data from context (fetched once, updated passively)
-  const { nodes, activeNodes, loading, error, lastUpdate, selectedNetwork, setSelectedNetwork, availableNetworks, currentNetwork, refreshNodes } = useNodes();
+  const { nodes, activeNodes, loading, error, lastUpdate, refreshNodes } = useNodes();
 
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
   const [isComparisonOpen, setIsComparisonOpen] = useState(false);
@@ -120,7 +120,7 @@ export default function AnalyticsPage() {
         fetchHistoricalData();
       }, 100);
     }
-  }, [selectedNetwork, healthPeriod]);
+  }, [healthPeriod]);
 
   // Export functions
   const exportToCSV = () => {
@@ -239,7 +239,6 @@ export default function AnalyticsPage() {
           activePage="analytics"
           loading={true}
           onRefresh={() => { }}
-          showNetworkSelector={false}
         />
 
         <main className="flex-1 overflow-auto">
@@ -307,12 +306,6 @@ export default function AnalyticsPage() {
         lastUpdate={lastUpdate}
         loading={loading}
         onRefresh={() => refreshNodes()}
-        networks={availableNetworks}
-        currentNetwork={currentNetwork}
-        onNetworkChange={(networkId) => {
-          setSelectedNetwork(networkId);
-        }}
-        showNetworkSelector={false}
       />
 
       <main className="flex-1 overflow-y-auto">

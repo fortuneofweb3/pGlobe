@@ -21,6 +21,7 @@ import { useRouter } from 'next/navigation';
 import { startProgress } from '@/lib/nprogress';
 import { enrichNodesWithGeo } from '@/lib/utils/geo';
 import { useNodes } from '@/lib/context/NodesContext';
+import { ScanSidebarSkeleton } from '@/components/Skeletons';
 
 /**
  * Calculate distance between two coordinates using Haversine formula
@@ -45,7 +46,7 @@ interface NodeWithDistance extends PNode {
 
 export default function ScanPage() {
   // Use shared nodes data from context (fetched once, updated passively)
-  const { nodes, loading, error, lastUpdate, selectedNetwork, setSelectedNetwork, availableNetworks, currentNetwork, refreshNodes } = useNodes();
+  const { nodes, loading, error, lastUpdate, refreshNodes } = useNodes();
 
   const [nodesWithGeo, setNodesWithGeo] = useState<PNode[]>([]);
   const [geoEnriching, setGeoEnriching] = useState(false);
@@ -239,7 +240,6 @@ export default function ScanPage() {
     return (
       <div className="flex flex-col h-screen bg-background overflow-hidden">
         <Header
-          showNetworkSelector={false}
           activePage="scan"
           lastUpdate={null}
           loading={true}
@@ -294,42 +294,7 @@ export default function ScanPage() {
                 </button>
               </div>
 
-              {/* Placeholder for scan location info */}
-              <div className="p-3 bg-muted/30 rounded-lg border border-border animate-pulse">
-                <div className="flex items-start gap-2">
-                  <MapPin className="w-4 h-4 text-foreground/40 mt-0.5" />
-                  <div className="flex-1">
-                    <div className="h-4 w-32 bg-muted/40 rounded mb-1.5" />
-                    <div className="h-3 w-48 bg-muted/30 rounded" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Results Placeholder with Static Labels */}
-              <div>
-                <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-foreground/40" />
-                  Closest pNodes
-                </h3>
-                <div className="space-y-1.5">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div
-                      key={i}
-                      className="p-2 bg-muted/30 rounded-lg border border-border animate-pulse"
-                    >
-                      <div className="flex items-start justify-between mb-1">
-                        <div className="h-3 w-32 bg-muted/40 rounded" />
-                        <div className="h-3 w-12 bg-muted/40 rounded" />
-                      </div>
-                      <div className="h-3 w-24 bg-muted/30 rounded mb-1.5" />
-                      <div className="flex items-center gap-2">
-                        <div className="h-4 w-14 bg-muted/30 rounded" />
-                        <div className="h-4 w-10 bg-muted/30 rounded" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <ScanSidebarSkeleton />
             </div>
           </aside>
 
@@ -367,7 +332,6 @@ export default function ScanPage() {
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
       <Header
-        showNetworkSelector={false}
         activePage="scan"
         lastUpdate={lastUpdate}
         loading={loading}
@@ -375,11 +339,6 @@ export default function ScanPage() {
           // Only refresh if user explicitly clicks refresh button
           // Don't trigger automatic refreshes on page load
           refreshNodes();
-        }}
-        networks={availableNetworks}
-        currentNetwork={currentNetwork}
-        onNetworkChange={(networkId) => {
-          setSelectedNetwork(networkId);
         }}
       />
 

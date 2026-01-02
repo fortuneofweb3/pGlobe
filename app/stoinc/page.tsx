@@ -8,7 +8,7 @@ import CreditsLeaderboard from '@/components/stoinc/CreditsLeaderboard';
 import CreditsDistributionChart from '@/components/stoinc/CreditsDistributionChart';
 import StoincCalculator from '@/components/stoinc/StoincCalculator';
 import { useNodes } from '@/lib/context/NodesContext';
-import { ChartSkeleton } from '@/components/Skeletons';
+import { ChartSkeleton, LeaderboardSkeleton } from '@/components/Skeletons';
 import {
     Coins,
     TrendingUp,
@@ -118,14 +118,8 @@ export default function StoincPage() {
                                             Credits Leaderboard
                                         </h2>
                                     </div>
-                                    <div className="p-4 space-y-3">
-                                        {[...Array(5)].map((_, i) => (
-                                            <div key={i} className="flex items-center gap-3">
-                                                <div className="h-4 w-4 bg-muted/20 rounded animate-pulse" />
-                                                <div className="h-4 w-32 bg-muted/30 rounded animate-pulse" />
-                                                <div className="ml-auto h-4 w-16 bg-muted/20 rounded animate-pulse" />
-                                            </div>
-                                        ))}
+                                    <div className="p-4">
+                                        <LeaderboardSkeleton rows={5} />
                                     </div>
                                 </div>
                             </div>
@@ -143,7 +137,6 @@ export default function StoincPage() {
                 lastUpdate={lastUpdate}
                 loading={loading}
                 onRefresh={() => refreshNodes()}
-                showNetworkSelector={false}
             />
 
             <main className="flex-1 overflow-y-auto relative">

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import { useNodes, Manager } from '@/lib/context/NodesContext';
 import { startProgress } from '@/lib/nprogress';
-import { TableSkeleton } from '@/components/Skeletons';
+import { TableSkeleton, ManagerCardSkeleton } from '@/components/Skeletons';
 import StatsCard from '@/components/StatsCard';
 import {
     Users, Server, TrendingUp, Search, X,
@@ -92,27 +92,7 @@ function ManagersPageContent() {
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                {[...Array(8)].map((_, i) => (
-                                    <div key={i} className="card p-4">
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <div className="w-12 h-12 rounded-full bg-muted/20 animate-pulse" />
-                                            <div className="flex-1 space-y-2">
-                                                <div className="h-4 w-24 bg-muted/30 rounded animate-pulse" />
-                                                <div className="h-3 w-16 bg-muted/20 rounded animate-pulse" />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-3 mt-4">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-4 h-4 bg-muted/20 rounded animate-pulse" />
-                                                <div className="h-3 w-full bg-muted/20 rounded animate-pulse" />
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-4 h-4 bg-muted/20 rounded animate-pulse" />
-                                                <div className="h-3 w-3/4 bg-muted/20 rounded animate-pulse" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
+                                <ManagerCardSkeleton count={8} />
                             </div>
                         </div>
                     </div>

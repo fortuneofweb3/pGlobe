@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
 import { useXandPrice } from '@/lib/hooks/useXandPrice';
-import { CardSkeleton } from '@/components/Skeletons';
+import { StatCardSkeleton } from '@/components/Skeletons';
 import PNodeTable from '@/components/PNodeTable';
 import StatsCard from '@/components/StatsCard';
 import { PNode } from '@/lib/types/pnode';
@@ -227,12 +227,11 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                 <div className="h-8 w-1/2 bg-muted/20 animate-pulse rounded mb-4" />
                                 <div className="h-4 w-1/3 bg-muted/10 animate-pulse rounded" />
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-                                <CardSkeleton />
-                                <CardSkeleton />
-                                <CardSkeleton />
-                                <CardSkeleton />
-                                <CardSkeleton />
+                            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                                <StatCardSkeleton />
+                                <StatCardSkeleton />
+                                <StatCardSkeleton />
+                                <StatCardSkeleton />
                             </div>
                             <div className="card p-4">
                                 <div className="h-32 bg-muted/10 animate-pulse rounded" />

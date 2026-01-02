@@ -4,7 +4,7 @@ import React, { useMemo, useState, useEffect, Suspense, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PNode } from '@/lib/types/pnode';
-import { Copy, Check, RefreshCw, HardDrive, Cpu, MemoryStick, Network, MapPin, Clock, CheckCircle2, XCircle, TrendingUp, Server, ArrowLeft, Activity, Award, Globe, Lock, ExternalLink } from 'lucide-react';
+import { Copy, Check, RefreshCw, HardDrive, Cpu, MemoryStick, Network, MapPin, Clock, CheckCircle2, XCircle, TrendingUp, Server, ArrowLeft, Activity, Award, Globe, Lock, ExternalLink, Rocket } from 'lucide-react';
 import { ChartSkeleton, MapSkeleton, CardSkeleton, TableSkeleton } from '@/components/Skeletons';
 import { detectDataCenter, getRegionName } from '@/lib/utils/dataCenter';
 import { formatBytes, formatStorageBytes } from '@/lib/utils/storage';

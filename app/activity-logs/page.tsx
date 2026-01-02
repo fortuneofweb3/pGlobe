@@ -8,7 +8,7 @@ import { useNodes } from '@/lib/context/NodesContext';
 import { Activity } from 'lucide-react';
 
 export default function ActivityLogsPage() {
-    const { nodes, lastUpdate, loading, refreshNodes, availableNetworks, currentNetwork, setSelectedNetwork } = useNodes();
+    const { nodes, lastUpdate, loading, refreshNodes } = useNodes();
 
     const [activeTab, setActiveTab] = React.useState<'racing' | 'feed'>('feed');
 
@@ -62,12 +62,6 @@ export default function ActivityLogsPage() {
                 lastUpdate={lastUpdate}
                 loading={loading}
                 onRefresh={() => refreshNodes()}
-                networks={availableNetworks}
-                currentNetwork={currentNetwork}
-                onNetworkChange={(networkId) => {
-                    setSelectedNetwork(networkId);
-                }}
-                showNetworkSelector={false}
             />
 
             <main className="flex-1 flex flex-col overflow-hidden">

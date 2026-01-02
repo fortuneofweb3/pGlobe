@@ -7,7 +7,7 @@ import { useNodes } from '@/lib/context/NodesContext';
 import { BookOpen, ChevronRight, X, FileText, Settings, BarChart3, MapPin, Search, HelpCircle, Bot, Server, Github, Activity, Coins } from 'lucide-react';
 
 export default function HelpPage() {
-  const { nodes, loading, lastUpdate, availableNetworks, currentNetwork, refreshNodes } = useNodes();
+  const { loading, lastUpdate, refreshNodes } = useNodes();
   const [activeDoc, setActiveDoc] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -18,10 +18,6 @@ export default function HelpPage() {
         lastUpdate={lastUpdate}
         loading={loading}
         onRefresh={() => refreshNodes()}
-        networks={availableNetworks}
-        currentNetwork={currentNetwork}
-        onNetworkChange={() => { }}
-        showNetworkSelector={false}
       />
 
       <main className="flex-1 overflow-hidden flex relative">

@@ -44,6 +44,7 @@
     "scripts",
     "investigation",
     "tmp",
+    "XandeumRepos",
     "render-api-server.ts",
     "render-server.ts",
     "realtime-server.ts"
