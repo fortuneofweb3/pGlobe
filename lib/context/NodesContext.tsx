@@ -491,6 +491,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     managerMap.forEach((manager, wallet) => {
       if (managerStats[wallet]) {
         manager.totalPurchases = managerStats[wallet];
+
         // If we know they purchased more than we've found registered, update source to imply mainnet history
         if (manager.totalPurchases > 0 && manager.source === 'devnet') {
           manager.source = 'both'; // Has purchase history but only devnet nodes? likely both/migration

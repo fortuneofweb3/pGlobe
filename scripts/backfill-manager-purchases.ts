@@ -1,6 +1,6 @@
 
 import { config } from 'dotenv';
-import { getManagerPurchaseStats } from '../lib/server/manager-discovery';
+import { fetchManagerPurchaseStatsFromChain } from '../lib/server/manager-discovery';
 import { getManagerStatsCollection } from '../lib/server/mongodb-nodes';
 
 // Load environment variables
@@ -11,9 +11,9 @@ async function main() {
     try {
         console.log('Starting manager purchase stats backfill...');
 
-        // 1. Fetch stats from on-chain (using existing logic)
+        // 1. Fetch stats from on-chain (Directly from chain, bypassing DB cache)
         console.log('Fetching on-chain data...');
-        const stats = await getManagerPurchaseStats();
+        const stats = await fetchManagerPurchaseStatsFromChain();
         console.log(`Fetched stats for ${stats.size} managers.`);
 
         // 2. Connect to DB

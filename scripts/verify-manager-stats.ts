@@ -14,11 +14,14 @@ async function main() {
         const count = await collection.countDocuments({});
         console.log(`Total documents in 'manager_stats': ${count}`);
 
-        if (count > 0) {
-            console.log('Sample documents (first 5):');
-            const docs = await collection.find({}).limit(5).toArray();
-            console.log(JSON.stringify(docs, null, 2));
-        }
+        const wallets = [
+            '3E1MAZzMV69yXwtZFy9cSTSByVMXGCSasitCNtRX5UxT', // Expected: 4
+            'sHokok1QWtQePa9vHeA5dXzB2PrFaPfxzth6s2hvXwa'   // Expected: 2 (despite 0 registered)
+        ];
+
+        console.log('Checking specific wallets:');
+        const docs = await collection.find({ wallet: { $in: wallets } }).toArray();
+        console.log(JSON.stringify(docs, null, 2));
 
         process.exit(0);
     } catch (error) {

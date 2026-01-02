@@ -71,6 +71,17 @@ export async function getManagerPurchaseStats(): Promise<Map<string, number>> {
     // For now, let's keep the existing logic but logging it
     console.log('[ManagerDiscovery] ⚠️ MongoDB empty or unavailable, fetching from on-chain...');
 
+    mainnetPurchaseStatsCache = await fetchManagerPurchaseStatsFromChain();
+    mainnetCacheTime = now;
+
+    console.log(`[ManagerDiscovery] Loaded stats for ${mainnetPurchaseStatsCache.size} Mainnet wallets`);
+    return mainnetPurchaseStatsCache;
+}
+
+/**
+ * Fetch fresh manager stats directly from Mainnet
+ */
+export async function fetchManagerPurchaseStatsFromChain(): Promise<Map<string, number>> {
     const conn = getMainnetConnection();
     const accounts = await conn.getProgramAccounts(MAINNET_PROGRAM, {
         filters: [{ dataSize: 48 }]
@@ -79,14 +90,12 @@ export async function getManagerPurchaseStats(): Promise<Map<string, number>> {
     const stats = new Map<string, number>();
     for (const acc of accounts) {
         const wallet = new PublicKey(acc.account.data.slice(0, 32)).toBase58();
-        stats.set(wallet, (stats.get(wallet) || 0) + 1);
+        // Count represents number of purchases, stored at offset 32 (u8)
+        const count = acc.account.data.readUInt8(32);
+        stats.set(wallet, count);
     }
 
-    mainnetPurchaseStatsCache = stats;
-    mainnetCacheTime = now;
-
-    console.log(`[ManagerDiscovery] Loaded stats for ${mainnetPurchaseStatsCache.size} Mainnet wallets`);
-    return mainnetPurchaseStatsCache;
+    return stats;
 }
 
 async function getMainnetWallets(): Promise<Set<string>> {
