@@ -30,6 +30,7 @@ const COLLECTION_NAME = 'region_history';
 export interface RegionHistorySnapshot {
   _id?: ObjectId;
   timestamp: number; // Unix timestamp in milliseconds
+  createdAt?: Date; // TTL index field
   interval: string; // YYYY-MM-DD-HH-MM format for 10-minute aggregation
   date: string; // YYYY-MM-DD for easy querying
 
@@ -123,6 +124,10 @@ export async function createRegionHistoryIndexes(): Promise<void> {
 
     // Index on date for daily queries
     await collection.createIndex({ date: 1 });
+
+    // TTL index: automatically delete snapshots older than 2 weeks (1209600 seconds)
+    // Note: TTL indexes require the field to be a Date
+    await collection.createIndex({ createdAt: 1 }, { expireAfterSeconds: 1209600 });
 
     console.log('[MongoDB RegionHistory] ✅ Indexes created');
   } catch (err) {
@@ -258,6 +263,7 @@ export async function storeRegionSnapshots(
       // Create snapshot document
       const snapshot: RegionHistorySnapshot = {
         timestamp,
+        createdAt: new Date(timestamp), // Set for TTL index
         interval,
         date,
         country,

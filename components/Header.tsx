@@ -318,6 +318,17 @@ export default function Header({
               Scan
             </Link>
             <Link
+              href="/watchlist"
+              prefetch={true}
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 active:scale-100 ${activePage === 'watchlist'
+                ? 'text-yellow-500 bg-yellow-500/10 shadow-sm'
+                : 'text-yellow-500/60 hover:text-yellow-500 hover:bg-yellow-500/5'
+                }`}
+            >
+              Watchlist {watchlist.length > 0 && `(${watchlist.length})`}
+            </Link>
+            <Link
               href="/help"
               prefetch={true}
               onClick={() => setMobileMenuOpen(false)}

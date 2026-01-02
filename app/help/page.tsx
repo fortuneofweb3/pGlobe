@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
-import { BookOpen, ChevronRight, X, FileText, Settings, BarChart3, MapPin, Search, HelpCircle, Bot, Server, Github, Activity, Coins } from 'lucide-react';
+import { BookOpen, ChevronRight, X, FileText, Settings, BarChart3, MapPin, Search, HelpCircle, Bot, Server, Github, Activity, Coins, Users, Star } from 'lucide-react';
 
 export default function HelpPage() {
   const { loading, lastUpdate, refreshNodes } = useNodes();
@@ -80,6 +80,32 @@ export default function HelpPage() {
                   }`}
               >
                 <span>Network Explorer</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => {
+                  setActiveDoc('managers');
+                  setSidebarOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${activeDoc === 'managers'
+                  ? 'bg-[#1a1a1a] text-foreground font-medium'
+                  : 'text-foreground hover:hover:bg-[#1a1a1a]'
+                  }`}
+              >
+                <span>Managers</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => {
+                  setActiveDoc('watchlist');
+                  setSidebarOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${activeDoc === 'watchlist'
+                  ? 'bg-[#1a1a1a] text-foreground font-medium'
+                  : 'text-foreground hover:hover:bg-[#1a1a1a]'
+                  }`}
+              >
+                <span>Watchlist</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
               <button
@@ -183,6 +209,10 @@ export default function HelpPage() {
             <LiveMonitoringDocs onClose={() => setActiveDoc(null)} />
           ) : activeDoc === 'explorer' ? (
             <ExplorerDocs onClose={() => setActiveDoc(null)} />
+          ) : activeDoc === 'managers' ? (
+            <ManagersDocs onClose={() => setActiveDoc(null)} />
+          ) : activeDoc === 'watchlist' ? (
+            <WatchlistDocs onClose={() => setActiveDoc(null)} />
           ) : activeDoc === 'stoinc' ? (
             <StoincDocs onClose={() => setActiveDoc(null)} />
           ) : activeDoc === 'analytics' ? (
@@ -255,6 +285,15 @@ function QuickStartGuide() {
             </div>
             <div className="border border-border rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
+                <Users className="w-5 h-5 text-muted-foreground" />
+                <h4 className="font-medium text-foreground">Managers</h4>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Track pNode portfolios, aggregate statistics, and reward distributions for node operators.
+              </p>
+            </div>
+            <div className="border border-border rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
                 <Coins className="w-5 h-5 text-muted-foreground" />
                 <h4 className="font-medium text-foreground">STOINC</h4>
               </div>
@@ -269,6 +308,15 @@ function QuickStartGuide() {
               </div>
               <p className="text-sm text-muted-foreground">
                 Global pNode lists, regional distribution analysis, and pScan proximity searching.
+              </p>
+            </div>
+            <div className="border border-border rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Star className="w-5 h-5 text-muted-foreground" />
+                <h4 className="font-medium text-foreground">Watchlist</h4>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Pin and monitor specific pNodes for quick access and personalized tracking.
               </p>
             </div>
             <div className="border border-border rounded-lg p-4">
@@ -1790,6 +1838,124 @@ function StoincDocs({ onClose }: { onClose: () => void }) {
           <p className="text-foreground mb-4">
             The Credits Leaderboard tracks the top pNodes in the network by their reputation score. This provides a transparent view of which operators are providing the most reliable storage services to Xandeum.
           </p>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function ManagersDocs({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Managers</h1>
+          <p className="text-muted-foreground">Managing multiple pNodes and tracking rewards</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-2 hover:hover:bg-[#1a1a1a] rounded-lg transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="prose prose-gray prose-invert max-w-none">
+        <section className="mb-12 animate-fade-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Overview</h2>
+          <p className="text-foreground mb-4">
+            The Managers section provides an aggregated view for operators running multiple pNodes. By grouping nodes by their payment or management wallet, it offers a high-level dashboard of your entire operation.
+          </p>
+        </section>
+
+        <section className="mb-12 animate-slide-in-right" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Understanding Manager Profiles</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="border border-border rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Coins className="w-5 h-5 text-[#F0A741]" />
+                <h3 className="font-semibold text-foreground">Portfolio Stats</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">View total XAND staked, vesting rewards, and aggregate performance metrics across all your nodes.</p>
+            </div>
+            <div className="border border-border rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Activity className="w-5 h-5 text-blue-400" />
+                <h3 className="font-semibold text-foreground">Node Status</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">Quickly identify how many of your nodes are online, syncing, or offline at a glance.</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-12 animate-slide-in-left" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Manager Details Landing</h2>
+          <p className="text-foreground mb-4">
+            Clicking on a manager opens their detailed profile, which includes:
+          </p>
+          <ul className="list-disc list-inside text-foreground space-y-2 mb-4">
+            <li><strong>Wallet Address:</strong> The associated Solana wallet address.</li>
+            <li><strong>Total Nodes:</strong> Lists all pNodes associated with this manager.</li>
+            <li><strong>Financial Overview:</strong> Total DAO stake and vesting rewards (displayed in XAND and USD).</li>
+            <li><strong>Regional Distribution:</strong> Map showing where your nodes are located.</li>
+          </ul>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function WatchlistDocs({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Watchlist</h1>
+          <p className="text-muted-foreground">Track your favorite nodes</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-2 hover:hover:bg-[#1a1a1a] rounded-lg transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="prose prose-gray prose-invert max-w-none">
+        <section className="mb-12 animate-fade-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
+          <h2 className="text-2xl font-semibold text-foreground mb-4">What is the Watchlist?</h2>
+          <p className="text-foreground mb-4">
+            The Watchlist allows you to pin specific pNodes for easy access. Whether you are tracking your own nodes or monitoring high-performing nodes in the network, the Watchlist keeps them one click away.
+          </p>
+        </section>
+
+        <section className="mb-12 animate-slide-in-up" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
+          <h2 className="text-2xl font-semibold text-foreground mb-4">Using the Watchlist</h2>
+          <div className="bg-[#0f0f0f] border border-border rounded-lg p-6">
+            <ul className="space-y-4 text-foreground">
+              <li className="flex items-start gap-3">
+                <Star className="w-5 h-5 text-[#F0A741] mt-1 shrink-0" />
+                <div>
+                  <strong>Add to Watchlist:</strong>
+                  <p className="text-sm text-muted-foreground">Click the "Star" icon next to any node in the list or on the details page.</p>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <BookOpen className="w-5 h-5 text-blue-400 mt-1 shrink-0" />
+                <div>
+                  <strong>View Watchlist:</strong>
+                  <p className="text-sm text-muted-foreground">Navigate to the Watchlist page from the main menu to see only your starred nodes.</p>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <Settings className="w-5 h-5 text-gray-400 mt-1 shrink-0" />
+                <div>
+                  <strong>Persistence:</strong>
+                  <p className="text-sm text-muted-foreground">Your watchlist is saved locally in your browser, so it persists between sessions without needing a login.</p>
+                </div>
+              </li>
+            </ul>
+          </div>
         </section>
       </div>
     </div>
