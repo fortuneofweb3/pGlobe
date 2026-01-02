@@ -39,8 +39,8 @@ const DIRECT_PRPC_ENDPOINTS = [
   '152.53.236.91:6000',
 ];
 
-const POD_CREDITS_API = 'https://podcredits.xandeum.network/api/pods-credits';
-const DEVNET_POD_CREDITS_API = 'https://podcredits.xandeum.network/api/devnet-pod-credits';
+const POD_CREDITS_API = 'https://podcredits.xandeum.network/api/mainnet-pod-credits';
+const DEVNET_POD_CREDITS_API = 'https://podcredits.xandeum.network/api/pods-credits';
 
 // ============================================================================
 // UTILITY FUNCTIONS

@@ -19,19 +19,22 @@ export async function GET(
 ) {
     try {
         const { wallet } = await params;
+        const { searchParams } = new URL(request.url);
+        const network = searchParams.get('network') || 'all';
 
         // 1. FAST PATH: Check cache first
-        const cached = managerDetailCache.get(wallet);
+        const cacheKey = `${wallet}:${network}`;
+        const cached = managerDetailCache.get(cacheKey);
         if (cached) {
-            console.log(`[API] 🚀 Cache hit for ${wallet}`);
+            console.log(`[API] 🚀 Cache hit for ${wallet} (${network})`);
             return NextResponse.json(cached);
         }
 
         // 2. Fetch all data from DB FIRST
         let managerNodes;
         try {
-            console.log(`[API] 📥 Fetching nodes for ${wallet}...`);
-            managerNodes = await getNodesByManager(wallet);
+            console.log(`[API] 📥 Fetching nodes for ${wallet} (${network})...`);
+            managerNodes = await getNodesByManager(wallet, network);
         } catch (dbError: any) {
             console.error('[API] Database error:', dbError.message);
             return NextResponse.json(
@@ -133,7 +136,7 @@ export async function GET(
         const lastUpdated = dbRewards?.updatedAt || managerNodes[0]?.updatedAt || new Date(0);
         const isStale = Date.now() - new Date(lastUpdated).getTime() > 15 * 60 * 1000;
 
-        managerDetailCache.set(wallet, response);
+        managerDetailCache.set(cacheKey, response);
 
         if (isStale) {
             // Truly FIRE AND FORGET background refresh

@@ -550,18 +550,28 @@ export async function getAllNodes(network?: string): Promise<PNode[]> {
  * Get nodes for a specific manager
  * Throws on connection error so callers can distinguish from "not found"
  */
-export async function getNodesByManager(wallet: string): Promise<PNode[]> {
+export async function getNodesByManager(wallet: string, network?: string): Promise<PNode[]> {
   try {
     await getClient();
     const collection = await getNodesCollection();
 
     // Query by managerWallet OR registrarWallet
-    const cursor = collection.find({
+    const query: any = {
       $or: [
         { managerWallet: wallet },
         { registrarWallet: wallet }
       ]
-    }).sort({ updatedAt: -1 });
+    };
+
+    if (network && network !== 'all') {
+      if (network === 'mainnet') {
+        query.network = { $in: ['mainnet', 'both'] };
+      } else {
+        query.network = network;
+      }
+    }
+
+    const cursor = collection.find(query).sort({ updatedAt: -1 });
 
     const docs = await cursor.toArray();
     console.log(`[MongoDB] ✅ Retrieved ${docs.length} nodes for manager ${wallet}`);
