@@ -37,6 +37,7 @@ export interface RegionHistorySnapshot {
   // Region identification
   country: string; // Country name
   countryCode: string; // ISO 2-letter country code
+  network: 'mainnet' | 'devnet' | 'all'; // Network scope for this snapshot
 
   // Aggregated metrics for this region
   totalNodes: number;
@@ -53,6 +54,8 @@ export interface RegionHistorySnapshot {
   totalPacketsSent: number;
   totalActiveStreams: number;
   totalCredits: number;
+  totalMainnetCredits?: number;
+  totalDevnetCredits?: number;
 
   // Calculated metrics
   avgUptime: number; // Average uptime in seconds
@@ -118,8 +121,8 @@ export async function createRegionHistoryIndexes(): Promise<void> {
 
     // Index on interval for deduplication during writes
     await collection.createIndex(
-      { interval: 1, country: 1 },
-      { unique: true, name: 'interval_country_unique' }
+      { interval: 1, country: 1, network: 1 },
+      { unique: true, name: 'interval_country_network_unique' }
     );
 
     // Index on date for daily queries
@@ -192,111 +195,120 @@ export async function storeRegionSnapshots(
         continue;
       }
 
-      // Calculate aggregated metrics
-      const onlineNodes = nodes.filter(n => n.status === 'online').length;
-      const offlineNodes = nodes.filter(n => n.status === 'offline').length;
-      const syncingNodes = nodes.filter(n => n.status === 'syncing').length;
+      // Generate snapshots for each network scope
+      const networkScopes: ('all' | 'mainnet' | 'devnet')[] = ['all', 'mainnet', 'devnet'];
 
-      // CPU/RAM averages
-      const nodesWithCPU = nodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null);
-      const avgCpuPercent = nodesWithCPU.length > 0
-        ? nodesWithCPU.reduce((sum, n) => sum + (n.cpuPercent || 0), 0) / nodesWithCPU.length
-        : 0;
+      for (const networkScope of networkScopes) {
+        // Filter nodes based on network scope
+        const filteredNodes = networkScope === 'all'
+          ? nodes
+          : nodes.filter(n => {
+            const nodeNetwork = (n as any).network || 'unknown';
+            if (networkScope === 'mainnet') return nodeNetwork === 'mainnet' || nodeNetwork === 'both';
+            if (networkScope === 'devnet') return nodeNetwork === 'devnet';
+            return false;
+          });
 
-      // RAM averages (calculate from used/total if available, or use pre-calculated percent)
-      const nodesWithRAM = nodes.filter(n => (n.ramUsed && n.ramTotal && n.ramTotal > 0) || (n.ramPercent !== undefined));
-      const avgRamPercent = nodesWithRAM.length > 0
-        ? nodesWithRAM.reduce((sum, n) => {
-          if (n.ramPercent !== undefined) return sum + n.ramPercent;
-          return sum + ((n.ramUsed || 0) / (n.ramTotal || 1)) * 100;
-        }, 0) / nodesWithRAM.length
-        : 0;
+        if (filteredNodes.length === 0 && networkScope !== 'all') continue;
 
-      // Network activity totals
-      const totalPacketsReceived = nodes.reduce((sum, n) => sum + (n.packetsReceived || 0), 0);
-      const totalPacketsSent = nodes.reduce((sum, n) => sum + (n.packetsSent || 0), 0);
-      const totalActiveStreams = nodes.reduce((sum, n) => sum + (n.activeStreams || 0), 0);
-      const totalCredits = nodes.reduce((sum, n) => sum + (n.credits || 0), 0);
+        // Calculate aggregated metrics
+        const onlineNodes = filteredNodes.filter(n => n.status === 'online').length;
+        const offlineNodes = filteredNodes.filter(n => n.status === 'offline').length;
+        const syncingNodes = filteredNodes.filter(n => n.status === 'syncing').length;
 
-      // Uptime average
-      const nodesWithUptime = nodes.filter(n => n.uptime !== undefined && n.uptime > 0);
-      const avgUptime = nodesWithUptime.length > 0
-        ? nodesWithUptime.reduce((sum, n) => sum + (n.uptime || 0), 0) / nodesWithUptime.length
-        : 0;
+        // CPU/RAM averages
+        const nodesWithCPU = filteredNodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null);
+        const avgCpuPercent = nodesWithCPU.length > 0
+          ? nodesWithCPU.reduce((sum, n) => sum + (n.cpuPercent || 0), 0) / nodesWithCPU.length
+          : 0;
 
-      // Packet rate
-      const avgPacketRate = avgUptime > 0
-        ? (totalPacketsReceived + totalPacketsSent) / avgUptime
-        : 0;
+        const nodesWithRAM = filteredNodes.filter(n => (n.ramUsed && n.ramTotal && n.ramTotal > 0) || (n.ramPercent !== undefined));
+        const avgRamPercent = nodesWithRAM.length > 0
+          ? nodesWithRAM.reduce((sum, n) => {
+            if (n.ramPercent !== undefined) return sum + n.ramPercent;
+            return sum + ((n.ramUsed || 0) / (n.ramTotal || 1)) * 100;
+          }, 0) / nodesWithRAM.length
+          : 0;
 
-      // Cities count
-      const cities = new Set(nodes.map(n => n.locationData?.city || n.nodeLocation?.city).filter(Boolean)).size;
+        // Network activity totals
+        const totalPacketsReceived = filteredNodes.reduce((sum, n) => sum + (n.packetsReceived || 0), 0);
+        const totalPacketsSent = filteredNodes.reduce((sum, n) => sum + (n.packetsSent || 0), 0);
+        const totalActiveStreams = filteredNodes.reduce((sum, n) => sum + (n.activeStreams || 0), 0);
+        const totalCredits = filteredNodes.reduce((sum, n) => sum + (n.credits || 0), 0);
+        const totalMainnetCredits = filteredNodes.reduce((sum, n) => sum + ((n as any).mainnetCredits || 0), 0);
+        const totalDevnetCredits = filteredNodes.reduce((sum, n) => sum + ((n as any).devnetCredits || 0), 0);
 
-      // Version distribution
-      const versionDistribution: Record<string, number> = {};
-      nodes.forEach(n => {
-        const version = n.version || 'unknown';
-        versionDistribution[version] = (versionDistribution[version] || 0) + 1;
-      });
+        // Uptime average
+        const nodesWithUptime = filteredNodes.filter(n => n.uptime !== undefined && n.uptime > 0);
+        const avgUptime = nodesWithUptime.length > 0
+          ? nodesWithUptime.reduce((sum, n) => sum + (n.uptime || 0), 0) / nodesWithUptime.length
+          : 0;
 
-      // Calculate network health score using the same formula as analytics - using ONLY active nodes
-      // (40% availability, 35% version, 25% distribution)
-      // Cast to PNode[] as calculateNetworkHealth expects PNodes, but we only have subset of fields
-      // This is safe because calculateNetworkHealth only checks status, version & location
-      const activeRegionNodes = nodes.filter(n => n.status === 'online' || n.status === 'syncing');
-      const networkHealth = calculateNetworkHealth((activeRegionNodes.length > 0 ? activeRegionNodes : nodes) as unknown as PNode[]);
+        const avgPacketRate = avgUptime > 0
+          ? (totalPacketsReceived + totalPacketsSent) / avgUptime
+          : 0;
 
-      // Capture per-node credits for accurate credit earned calculations
-      // This allows tracking true earned credits independent of nodes joining/leaving
-      const nodeCredits = nodes
-        .filter(n => {
-          // Only include nodes with valid identifiers and credit data
-          const hasId = n.pubkey || n.publicKey || n.id;
-          const hasCredits = n.credits !== undefined && n.credits !== null && !isNaN(n.credits);
-          return hasId && hasCredits;
-        })
-        .map(n => ({
-          nodeId: (n.pubkey || n.publicKey || n.id) as string,
-          credits: n.credits || 0,
-        }));
+        const cities = new Set(filteredNodes.map(n => n.locationData?.city || n.nodeLocation?.city).filter(Boolean)).size;
 
-      // Create snapshot document
-      const snapshot: RegionHistorySnapshot = {
-        timestamp,
-        createdAt: new Date(timestamp), // Set for TTL index
-        interval,
-        date,
-        country,
-        countryCode,
-        totalNodes: nodes.length,
-        onlineNodes,
-        offlineNodes,
-        syncingNodes,
-        avgCpuPercent,
-        avgRamPercent,
-        totalPacketsReceived,
-        totalPacketsSent,
-        totalActiveStreams,
-        totalCredits,
-        avgUptime,
-        avgPacketRate,
-        cities,
-        versionDistribution,
-        networkHealthScore: networkHealth.overall,
-        networkHealthAvailability: networkHealth.availability,
-        networkHealthVersion: networkHealth.versionHealth,
-        networkHealthDistribution: networkHealth.distribution,
-        nodeCredits, // Store per-node credits for accurate delta calculations
-      };
+        const versionDistribution: Record<string, number> = {};
+        filteredNodes.forEach(n => {
+          const version = n.version || 'unknown';
+          versionDistribution[version] = (versionDistribution[version] || 0) + 1;
+        });
 
-      // Use updateOne with upsert to avoid duplicates
-      bulkOps.push({
-        updateOne: {
-          filter: { interval, country },
-          update: { $set: snapshot },
-          upsert: true,
-        }
-      });
+        const activeRegionNodes = filteredNodes.filter(n => n.status === 'online' || n.status === 'syncing');
+        const networkHealth = calculateNetworkHealth((activeRegionNodes.length > 0 ? activeRegionNodes : filteredNodes) as unknown as PNode[]);
+
+        const nodeCredits = filteredNodes
+          .filter(n => {
+            const hasId = n.pubkey || n.publicKey || n.id;
+            const hasCredits = n.credits !== undefined && n.credits !== null && !isNaN(n.credits);
+            return hasId && hasCredits;
+          })
+          .map(n => ({
+            nodeId: (n.pubkey || n.publicKey || n.id) as string,
+            credits: n.credits || 0,
+          }));
+
+        const snapshot: RegionHistorySnapshot = {
+          timestamp,
+          createdAt: new Date(timestamp),
+          interval,
+          date,
+          country,
+          countryCode,
+          network: networkScope,
+          totalNodes: filteredNodes.length,
+          onlineNodes,
+          offlineNodes,
+          syncingNodes,
+          avgCpuPercent,
+          avgRamPercent,
+          totalPacketsReceived,
+          totalPacketsSent,
+          totalActiveStreams,
+          totalCredits,
+          totalMainnetCredits,
+          totalDevnetCredits,
+          avgUptime,
+          avgPacketRate,
+          cities,
+          versionDistribution,
+          networkHealthScore: networkHealth.overall,
+          networkHealthAvailability: networkHealth.availability,
+          networkHealthVersion: networkHealth.versionHealth,
+          networkHealthDistribution: networkHealth.distribution,
+          nodeCredits,
+        };
+
+        bulkOps.push({
+          updateOne: {
+            filter: { interval, country, network: networkScope },
+            update: { $set: snapshot },
+            upsert: true,
+          }
+        });
+      }
     }
 
     if (bulkOps.length > 0) {
@@ -325,16 +337,17 @@ export async function getRegionHistory(
   country: string,
   countryCode?: string,
   startTime?: number,
-  endTime?: number
+  endTime?: number,
+  network: 'mainnet' | 'devnet' | 'all' = 'all'
 ): Promise<RegionHistorySnapshot[]> {
   try {
     // Generate cache key
-    const cacheKey = `${country}:${countryCode || ''}:${startTime || 0}:${endTime || 0}`;
+    const cacheKey = `${country}:${countryCode || ''}:${startTime || 0}:${endTime || 0}:${network}`;
 
     // Check cache first
     const cached = regionHistoryCache.get(cacheKey);
     if (cached && (Date.now() - cached.timestamp < cached.ttl)) {
-      console.log(`[MongoDB RegionHistory] 🎯 Cache hit for ${country} (${cached.data.length} points)`);
+      console.log(`[MongoDB RegionHistory] 🎯 Cache hit for ${country} (${network}) (${cached.data.length} points)`);
       return cached.data;
     }
 
@@ -342,6 +355,7 @@ export async function getRegionHistory(
     console.log('[MongoDB RegionHistory] 💾 Cache miss, querying database for:', {
       country,
       countryCode,
+      network,
       startTime: startTime ? new Date(startTime).toISOString() : undefined,
       endTime: endTime ? new Date(endTime).toISOString() : undefined,
     });
@@ -354,6 +368,7 @@ export async function getRegionHistory(
         { country },
         ...(countryCode ? [{ countryCode }] : []),
       ],
+      network,
     };
 
     // Add time range

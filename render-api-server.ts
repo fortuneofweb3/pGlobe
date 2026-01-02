@@ -239,7 +239,17 @@ app.get('/api/pnodes', authenticate, async (req, res) => {
     }
 
     // Always return from DB (fast), fall back to cache if DB fails
-    const { nodes, fromCache } = await getNodesWithFallback();
+    const { nodes: allNodes, fromCache } = await getNodesWithFallback();
+
+    // Filter by network if provided
+    let nodes = allNodes;
+    if (networkId && networkId !== 'all') {
+      nodes = allNodes.filter(n => {
+        if (networkId === 'mainnet') return n.network === 'mainnet' || n.network === 'both';
+        if (networkId === 'devnet') return n.network === 'devnet';
+        return true;
+      });
+    }
 
     // Stats logic: Fetch and filter
     const connectedManagers = new Set<string>();
@@ -336,15 +346,18 @@ app.get('/api/nodes/:id', authenticate, async (req, res) => {
  * GET /api/activity-logs
  * Returns recent activity logs
  */
-import { getActivityLogs } from './lib/server/mongodb-activity';
+import { getActivityLogs, ActivityType } from './lib/server/mongodb-activity';
 app.get('/api/activity-logs', authenticate, async (req, res) => {
   try {
-    const pubkey = req.query.pubkey as string;
-    const countryCode = req.query.countryCode as string;
-    const limit = parseInt(req.query.limit as string) || 50;
-    const skip = parseInt(req.query.skip as string) || 0;
+    const pubkey = req.query.pubkey as string | undefined;
+    const address = req.query.address as string | undefined;
+    const countryCode = req.query.countryCode as string | undefined;
+    const type = req.query.type as ActivityType | undefined;
+    const network = req.query.network as string | undefined;
+    const limit = parseInt(req.query.limit as string || '50');
+    const skip = parseInt(req.query.skip as string || '0');
 
-    const logs = await getActivityLogs({ pubkey, countryCode, limit, skip });
+    const logs = await getActivityLogs({ pubkey, address, countryCode, type, limit, skip, network });
     res.json({ logs });
   } catch (error: any) {
     console.error('[RenderAPI] ❌ Failed to get activity logs:', error);
@@ -589,7 +602,18 @@ app.get('/api/v1/nodes/:id', authenticate, async (req, res) => {
  */
 app.get('/api/v1/network/health', authenticate, async (req, res) => {
   try {
-    const { nodes } = await getNodesWithFallback();
+    const network = (req.query.network as string) || 'all';
+    const { nodes: allNodes } = await getNodesWithFallback();
+
+    // Filter nodes by network
+    let nodes = allNodes;
+    if (network !== 'all') {
+      nodes = allNodes.filter(n => {
+        if (network === 'mainnet') return n.network === 'mainnet' || n.network === 'both';
+        if (network === 'devnet') return n.network === 'devnet';
+        return true;
+      });
+    }
 
     if (nodes.length === 0) {
       return res.status(404).json({
@@ -1011,7 +1035,9 @@ app.get('/api/history', authenticate, async (req, res) => {
       const dailyStats: any[] = [];
       const snapshots = await getHistoricalSnapshots(
         startTime || (Date.now() - days * 24 * 60 * 60 * 1000),
-        endTime
+        endTime,
+        1000,
+        (req.query.network as string) || 'all'
       );
 
       if (snapshots.length === 0) {
@@ -1040,7 +1066,7 @@ app.get('/api/history', authenticate, async (req, res) => {
     }
 
     // Get full historical snapshots
-    const snapshots = await getHistoricalSnapshots(startTime, endTime, 1000);
+    const snapshots = await getHistoricalSnapshots(startTime, endTime, 1000, (req.query.network as string) || 'all');
 
     return res.json({
       data: snapshots,
@@ -1083,10 +1109,12 @@ app.get('/api/history/region', authenticate, async (req, res) => {
     const countryCode = req.query.countryCode as string | undefined;
     const startTime = req.query.startTime ? parseInt(req.query.startTime as string) : undefined;
     const endTime = req.query.endTime ? parseInt(req.query.endTime as string) : undefined;
+    const network = (req.query.network as string || 'all') as 'mainnet' | 'devnet' | 'all';
 
     console.log('[RenderAPI] 🚀 Fetching OPTIMIZED region history:', {
       country,
       countryCode,
+      network,
       startTime: startTime ? new Date(startTime).toISOString() : undefined,
       endTime: endTime ? new Date(endTime).toISOString() : undefined,
     });
@@ -1094,7 +1122,7 @@ app.get('/api/history/region', authenticate, async (req, res) => {
     const queryStartTime = Date.now();
 
     // Use NEW optimized region history (from pre-aggregated collection)
-    const snapshots = await getOptimizedRegionHistory(country, countryCode, startTime, endTime);
+    const snapshots = await getOptimizedRegionHistory(country, countryCode, startTime, endTime, network);
 
     const queryDuration = Date.now() - queryStartTime;
 

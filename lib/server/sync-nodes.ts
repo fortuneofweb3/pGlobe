@@ -639,15 +639,17 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
 
 
   const pubkey = newNode.pubkey || newNode.publicKey || '';
-  const nodeAddress = newNode.address || '';
-  const countryCode = newNode.locationData?.countryCode || '??';
-  const location = newNode.location || 'Unknown';
+  const countryCode = newNode.locationData?.countryCode;
+  const location = newNode.location || (newNode.locationData?.city ? `${newNode.locationData.city}, ${newNode.locationData.country || ''}` : newNode.locationData?.country || '');
+  const nodeAddress = newNode.address;
+  const currentNetwork = (newNode.network || 'unknown') as any;
 
-  // 1. New Node Detection
+  // 1. New Node Discovered
   if (!oldNode) {
     const log = {
       pubkey,
       address: nodeAddress,
+      network: currentNetwork,
       type: 'new_node' as const,
       message: `${nodeAddress || pubkey.slice(0, 8) + '...'} discovered (${location})`,
       countryCode,
@@ -677,6 +679,7 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
     const log = {
       pubkey,
       address: nodeAddress,
+      network: currentNetwork,
       type,
       message,
       countryCode,
@@ -688,21 +691,64 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
     emitActivity({ ...log, timestamp: new Date() });
   }
 
-  // 3. Credits Earned
-  if (oldNode && newNode.credits !== undefined && oldNode.credits !== undefined && newNode.credits > oldNode.credits) {
-    const earned = newNode.credits - oldNode.credits;
+  // 3a. Mainnet Credits Earned
+  if (oldNode && newNode.mainnetCredits !== undefined && oldNode.mainnetCredits !== undefined && newNode.mainnetCredits > oldNode.mainnetCredits) {
+    const earned = newNode.mainnetCredits - oldNode.mainnetCredits;
     const log = {
       pubkey,
       address: nodeAddress,
+      network: 'mainnet' as const,
       type: 'credits_earned' as const,
-      message: `${nodeAddress || pubkey.slice(0, 8) + '...'} earned ${earned.toFixed(2)} credits`,
+      message: `${nodeAddress || pubkey.slice(0, 8) + '...'} earned ${earned.toFixed(2)} mainnet credits`,
       countryCode,
       location,
-      data: { earned, total: newNode.credits }
+      data: { earned, total: newNode.mainnetCredits }
     };
 
     await storeActivityLog(log);
     emitActivity({ ...log, timestamp: new Date() });
+  }
+
+  // 3b. Devnet Credits Earned
+  if (oldNode && newNode.devnetCredits !== undefined && oldNode.devnetCredits !== undefined && newNode.devnetCredits > oldNode.devnetCredits) {
+    const earned = newNode.devnetCredits - oldNode.devnetCredits;
+    const log = {
+      pubkey,
+      address: nodeAddress,
+      network: 'devnet' as const,
+      type: 'credits_earned' as const,
+      message: `${nodeAddress || pubkey.slice(0, 8) + '...'} earned ${earned.toFixed(2)} devnet credits`,
+      countryCode,
+      location,
+      data: { earned, total: newNode.devnetCredits }
+    };
+
+    await storeActivityLog(log);
+    emitActivity({ ...log, timestamp: new Date() });
+  }
+
+  // 3c. Legacy/Active Credits Earned (for generic display)
+  if (oldNode && newNode.credits !== undefined && oldNode.credits !== undefined && newNode.credits > oldNode.credits) {
+    // Only log this if we didn't already log mainnet or devnet specific changes to avoid spam
+    const mainnetChanged = oldNode.mainnetCredits !== undefined && newNode.mainnetCredits !== undefined && newNode.mainnetCredits > oldNode.mainnetCredits;
+    const devnetChanged = oldNode.devnetCredits !== undefined && newNode.devnetCredits !== undefined && newNode.devnetCredits > oldNode.devnetCredits;
+
+    if (!mainnetChanged && !devnetChanged) {
+      const earned = newNode.credits - oldNode.credits;
+      const log = {
+        pubkey,
+        address: nodeAddress,
+        network: currentNetwork,
+        type: 'credits_earned' as const,
+        message: `${nodeAddress || pubkey.slice(0, 8) + '...'} earned ${earned.toFixed(2)} credits`,
+        countryCode,
+        location,
+        data: { earned, total: newNode.credits }
+      };
+
+      await storeActivityLog(log);
+      emitActivity({ ...log, timestamp: new Date() });
+    }
   }
 
   // 4. Packets Earned
@@ -717,6 +763,7 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
     const log = {
       pubkey,
       address: nodeAddress,
+      network: currentNetwork,
       type: 'packets_earned' as const,
       message: `${nodeAddress || pubkey.slice(0, 8) + '...'} processed ${rxEarned + txEarned} packets`,
       countryCode,
@@ -735,6 +782,7 @@ async function detectAndLogActivity(newNode: PNode, oldNode: PNode | undefined) 
     const log = {
       pubkey,
       address: nodeAddress,
+      network: currentNetwork,
       type: 'streams_active' as const,
       message: `${nodeLabel} active streams increased by ${increased} (Total: ${newNode.activeStreams})`,
       countryCode,

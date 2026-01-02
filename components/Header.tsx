@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Menu, X, Activity, HelpCircle, Star, ChevronDown, Check } from 'lucide-react';
+import { Menu, X, Activity, HelpCircle, Star, ChevronDown, Check, Globe, Zap, Code } from 'lucide-react';
 import { useNodes } from '@/lib/context/NodesContext';
 import { useWatchlist } from '@/lib/context/WatchlistContext';
 
@@ -67,7 +67,7 @@ export default function Header({
     switch (network) {
       case 'mainnet': return 'Mainnet';
       case 'devnet': return 'Devnet';
-      case 'all': return 'All Networks';
+      case 'all': return 'All';
       default: return 'Select Network';
     }
   };
@@ -244,28 +244,38 @@ export default function Header({
             </Link>
 
             {/* Network Dropdown */}
+            {/* Network Dropdown */}
             <div className="hidden sm:block relative" ref={dropdownRef}>
               <button
                 onClick={() => setNetworkDropdownOpen(!networkDropdownOpen)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-300 min-w-[100px] justify-between ${context.selectedNetwork === 'mainnet'
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border transition-all duration-300 justify-between ${context.selectedNetwork === 'mainnet'
                   ? 'bg-green-500/10 border-green-500/20 text-green-400 hover:bg-green-500/20'
                   : context.selectedNetwork === 'devnet'
                     ? 'bg-[#F0A741]/10 border-[#F0A741]/20 text-[#F0A741] hover:bg-[#F0A741]/20'
-                    : 'bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20'
+                    : 'bg-[#F0A741]/5 border-[#F0A741]/20 text-[#F0A741]/80 hover:bg-[#F0A741]/10 hover:text-[#F0A741]'
                   }`}
               >
-                <span>{getNetworkLabel(context.selectedNetwork)}</span>
+                <div className="flex items-center gap-2">
+                  {context.selectedNetwork === 'mainnet' ? (
+                    <Zap className="w-3.5 h-3.5" />
+                  ) : context.selectedNetwork === 'devnet' ? (
+                    <Code className="w-3.5 h-3.5" />
+                  ) : (
+                    <Globe className="w-3.5 h-3.5" />
+                  )}
+                  <span>{getNetworkLabel(context.selectedNetwork)}</span>
+                </div>
                 <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${networkDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {/* Dropdown Menu */}
               {networkDropdownOpen && (
-                <div className="absolute top-full right-0 mt-2 w-32 bg-black/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-xl overflow-hidden z-[70] animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="p-1 space-y-0.5">
+                <div className="absolute top-full right-0 mt-2 w-44 bg-black border border-[#F0A741]/30 rounded-xl shadow-2xl shadow-black/80 overflow-hidden z-[70] animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="p-1.5 space-y-0.5">
                     {[
-                      { id: 'all', label: 'All Networks', color: 'text-blue-400', hover: 'hover:bg-blue-500/10' },
-                      { id: 'devnet', label: 'Devnet', color: 'text-[#F0A741]', hover: 'hover:bg-[#F0A741]/10' },
-                      { id: 'mainnet', label: 'Mainnet', color: 'text-green-400', hover: 'hover:bg-green-500/10' }
+                      { id: 'all', label: 'All Networks', icon: Globe, color: 'text-[#F0A741]', hover: 'hover:bg-[#F0A741]/10' },
+                      { id: 'devnet', label: 'Devnet', icon: Code, color: 'text-[#F0A741]', hover: 'hover:bg-[#F0A741]/10' },
+                      { id: 'mainnet', label: 'Mainnet', icon: Zap, color: 'text-green-400', hover: 'hover:bg-green-500/10' }
                     ].map((option) => (
                       <button
                         key={option.id}
@@ -273,10 +283,13 @@ export default function Header({
                           context.setSelectedNetwork(option.id);
                           setNetworkDropdownOpen(false);
                         }}
-                        className={`w-full flex items-center justify-between px-3 py-2 text-xs font-medium rounded-lg transition-colors ${option.hover} ${context.selectedNetwork === option.id ? 'bg-white/5' : ''
+                        className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg transition-colors ${option.hover} ${context.selectedNetwork === option.id ? 'bg-white/5' : ''
                           }`}
                       >
-                        <span className={option.color}>{option.label}</span>
+                        <div className="flex items-center gap-2">
+                          <option.icon className={`w-4 h-4 ${option.color}`} />
+                          <span className={`${option.color}`}>{option.label}</span>
+                        </div>
                         {context.selectedNetwork === option.id && (
                           <Check className={`w-3 h-3 ${option.color}`} />
                         )}
@@ -310,29 +323,31 @@ export default function Header({
           <nav className="px-4 py-3 space-y-2 bg-black">
 
             {/* Mobile Network Dropdown */}
-            <div className="flex items-center justify-between px-4 py-2 bg-black/40 border border-[#F0A741]/20 rounded-xl">
-              <span className="text-sm font-medium text-[#F0A741]">Network</span>
-              <div className="relative">
-                <select
-                  value={context.selectedNetwork}
-                  onChange={(e) => context.setSelectedNetwork(e.target.value)}
-                  className={`appearance-none cursor-pointer px-3 py-1 pr-7 rounded-lg text-xs font-medium border transition-all duration-300 ${context.selectedNetwork === 'mainnet'
-                    ? 'bg-green-500/20 border-green-500/50 text-green-400'
-                    : context.selectedNetwork === 'devnet'
-                      ? 'bg-[#F0A741]/20 border-[#F0A741]/50 text-[#F0A741]'
-                      : 'bg-blue-500/20 border-blue-500/50 text-blue-400'
-                    }`}
-                  style={{ backgroundImage: 'none' }}
-                >
-                  <option value="all" className="bg-black text-blue-400">All Networks</option>
-                  <option value="devnet" className="bg-black text-[#F0A741]">Devnet</option>
-                  <option value="mainnet" className="bg-black text-green-400">Mainnet</option>
-                </select>
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <ChevronDown className={`w-3 h-3 ${context.selectedNetwork === 'mainnet' ? 'text-green-400' :
-                    context.selectedNetwork === 'devnet' ? 'text-[#F0A741]' : 'text-blue-400'
-                    }`} />
-                </div>
+            <div className="px-4 py-2">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 block">Network Selection</span>
+              <div className="grid grid-cols-1 gap-2">
+                {[
+                  { id: 'all', label: 'All Networks', icon: Globe, color: 'text-[#F0A741]', bg: 'bg-[#F0A741]/10', border: 'border-[#F0A741]/20' },
+                  { id: 'devnet', label: 'Devnet', icon: Code, color: 'text-[#F0A741]', bg: 'bg-[#F0A741]/10', border: 'border-[#F0A741]/20' },
+                  { id: 'mainnet', label: 'Mainnet', icon: Zap, color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' }
+                ].map((option) => (
+                  <button
+                    key={option.id}
+                    onClick={() => context.setSelectedNetwork(option.id)}
+                    className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all duration-200 ${context.selectedNetwork === option.id
+                      ? `${option.bg} ${option.border.replace('/20', '/40')}`
+                      : 'bg-black/40 border-white/5 text-muted-foreground hover:bg-white/5 hover:text-foreground'
+                      }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <option.icon className={`w-4 h-4 ${context.selectedNetwork === option.id ? option.color : ''}`} />
+                      <span className={`font-semibold text-sm ${context.selectedNetwork === option.id ? option.color : ''}`}>{option.label}</span>
+                    </div>
+                    {context.selectedNetwork === option.id && (
+                      <Check className={`w-4 h-4 ${option.color}`} />
+                    )}
+                  </button>
+                ))}
               </div>
             </div>
 

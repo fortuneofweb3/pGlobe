@@ -19,8 +19,11 @@ export async function GET(request: Request) {
   // This avoids needing to run a separate backend server or wait for remote deployment.
   if (process.env.NODE_ENV === 'development') {
     try {
-      console.log('[VercelProxy] 🔧 DEV MODE: Fetching nodes directly from local DB...');
-      const nodes = await getAllNodes();
+      const { searchParams } = new URL(request.url);
+      const network = searchParams.get('network') || 'all';
+
+      console.log(`[VercelProxy] 🔧 DEV MODE: Fetching ${network} nodes directly from local DB...`);
+      const nodes = await getAllNodes(network);
 
       // Stats Logic (Duplicated from backend for local dev)
       const connectedManagers = new Set<string>();

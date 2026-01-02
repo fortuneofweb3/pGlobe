@@ -459,7 +459,7 @@ export async function upsertNodes(nodes: PNode[], skipMarkOffline: boolean = fal
 /**
  * Get all nodes
  */
-export async function getAllNodes(): Promise<PNode[]> {
+export async function getAllNodes(network?: string): Promise<PNode[]> {
   const retries = 3;
   let lastError: unknown = null;
 
@@ -469,9 +469,19 @@ export async function getAllNodes(): Promise<PNode[]> {
       await getClient();
       const collection = await getNodesCollection();
 
+      // Build query
+      const query: any = {};
+      if (network && network !== 'all') {
+        if (network === 'mainnet') {
+          query.network = { $in: ['mainnet', 'both'] };
+        } else {
+          query.network = network;
+        }
+      }
+
       // Use explicit cursor to ensure we get all results
       // Set batchSize to ensure we get all documents in one batch
-      const cursor = collection.find({}).sort({ updatedAt: -1 }).batchSize(1000);
+      const cursor = collection.find(query).sort({ updatedAt: -1 }).batchSize(1000);
       let docs = await cursor.toArray();
 
       // Sort in-memory to push blank nodes to the end (requested by USER)
@@ -487,12 +497,12 @@ export async function getAllNodes(): Promise<PNode[]> {
       // Double-check we got all results - if we got exactly 101, it might be a batch limit issue
       if (docs.length === 101) {
         console.warn('[MongoDB] ⚠️  Got exactly 101 nodes - possible batch limit, checking total count...');
-        const totalCount = await collection.countDocuments({});
+        const totalCount = await collection.countDocuments(query);
         if (totalCount > 101) {
           console.warn(`[MongoDB] ⚠️  Database has ${totalCount} nodes but query returned only 101 - retrying with explicit batch handling...`);
           // Retry with explicit batch handling
           const allDocs: unknown[] = [];
-          const batchCursor = collection.find({}).sort({ updatedAt: -1 }).batchSize(1000);
+          const batchCursor = collection.find(query).sort({ updatedAt: -1 }).batchSize(1000);
           for await (const doc of batchCursor) {
             allDocs.push(doc);
           }

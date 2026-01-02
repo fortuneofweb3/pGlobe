@@ -8,6 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Activity, Zap, CheckCircle2, XCircle, RefreshCw, MapPin, Globe, Filter, ChevronDown, Pause, Play, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWatchlist } from '@/lib/context/WatchlistContext';
+import { useNodes } from '@/lib/context/NodesContext';
 
 interface ActivityLogListProps {
     pubkey?: string;
@@ -235,6 +236,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50, watch
     const [showFilterDropdown, setShowFilterDropdown] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const { watchlist } = useWatchlist();
+    const { selectedNetwork } = useNodes();
     const [localWatchlistOnly, setLocalWatchlistOnly] = useState(watchlistOnly || false);
 
     const fetchLogs = async (skip: number = 0, append: boolean = false) => {
@@ -250,6 +252,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50, watch
             if (pubkey) query.set('pubkey', pubkey);
             if (countryCode) query.set('countryCode', countryCode);
             if (typeFilter) query.set('type', typeFilter);
+            if (selectedNetwork && selectedNetwork !== 'all') query.set('network', selectedNetwork);
 
             // If we're in watchlist only mode and have a watchlist, we ideally want to fetch only those.
             // But since the backend only supports one pubkey, we fetch all and filter client-side for now
@@ -374,6 +377,13 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50, watch
             if (countryCode && newLog.countryCode !== countryCode) return;
             if (localWatchlistOnly && newLog.pubkey && !watchlist.includes(newLog.pubkey)) return;
 
+            // Simple client-side network filtering for realtime events
+            if (selectedNetwork && selectedNetwork !== 'all') {
+                const logNetwork = newLog.network || 'unknown';
+                if (selectedNetwork === 'mainnet' && logNetwork !== 'mainnet' && logNetwork !== 'both') return;
+                if (selectedNetwork === 'devnet' && logNetwork !== 'devnet') return;
+            }
+
             const logWithId = {
                 ...newLog,
                 _id: newLog._id || `${newLog.pubkey}-${newLog.type}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -395,7 +405,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50, watch
             bufferRef.current = [];
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pubkey, countryCode, limit, typeFilter, processBuffer]);
+    }, [pubkey, countryCode, limit, typeFilter, processBuffer, selectedNetwork]);
 
     useEffect(() => {
         if (isPaused) {

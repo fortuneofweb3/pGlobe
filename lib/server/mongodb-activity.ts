@@ -17,6 +17,7 @@ export interface ActivityLog {
     timestamp: Date;
     pubkey: string;
     address?: string;
+    network?: 'mainnet' | 'devnet' | 'both' | 'all' | 'unknown';
     type: ActivityType;
     message: string;
     data?: unknown;
@@ -46,6 +47,7 @@ export async function getActivityLogs(options: {
     pubkey?: string,
     address?: string,
     countryCode?: string,
+    network?: string,
     limit?: number,
     skip?: number,
     type?: ActivityType
@@ -58,6 +60,16 @@ export async function getActivityLogs(options: {
         if (options.address) query.address = options.address;
         if (options.countryCode) query.countryCode = options.countryCode;
         if (options.type) query.type = options.type;
+
+        if (options.network && options.network !== 'all') {
+            if (options.network === 'mainnet') {
+                query.network = { $in: ['mainnet', 'both'] };
+            } else if (options.network === 'devnet') {
+                query.network = 'devnet';
+            } else {
+                query.network = options.network as any;
+            }
+        }
 
         return await collection
             .find(query)

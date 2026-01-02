@@ -51,7 +51,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [selectedNetwork, setSelectedNetworkState] = useState<string>('devnet');
+  const [selectedNetwork, setSelectedNetworkState] = useState<string>('all');
   const [networkHydrated, setNetworkHydrated] = useState(false);
 
   // Hydrate network selection from localStorage after mount (avoids SSR mismatch)
