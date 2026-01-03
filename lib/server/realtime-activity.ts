@@ -17,8 +17,9 @@ const PROXY_RPC_ENDPOINTS = [
     'https://rpc4.pchednode.com/rpc',
 ];
 
-const MAINNET_CREDITS_API = 'https://podcredits.xandeum.network/api/mainnet-pod-credits';
-const DEVNET_CREDITS_API = 'https://podcredits.xandeum.network/api/pods-credits';
+import { fetchMergedCredits } from './xandeum-api';
+
+// Redundant URLs removed - now centralized in lib/server/xandeum-api.ts
 
 // In-memory cache of previous node states
 const previousNodeStates: Map<string, {
@@ -126,37 +127,10 @@ async function fetchPodsFromEndpoint(endpoint: string): Promise<RawPod[]> {
 }
 
 /**
- * Fetch credits from the pod credits API
+ * Fetch credits from the pod credits API using the centralized utility
  */
 async function fetchCredits(): Promise<Map<string, number>> {
-    const creditsMap = new Map<string, number>();
-
-    try {
-        const [mainnetRes, devnetRes] = await Promise.allSettled([
-            fetch(MAINNET_CREDITS_API, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }),
-            fetch(DEVNET_CREDITS_API, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) })
-        ]);
-
-        const responses = [mainnetRes, devnetRes];
-        for (const res of responses) {
-            if (res.status === 'fulfilled' && res.value.ok) {
-                const data = await res.value.json();
-                if (data.status === 'success' && data.pods_credits) {
-                    for (const pod of data.pods_credits) {
-                        if (pod.pod_id && typeof pod.credits === 'number') {
-                            // Mainnet (first in array) takes priority if pod in both
-                            if (!creditsMap.has(pod.pod_id)) {
-                                creditsMap.set(pod.pod_id, pod.credits);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    } catch {
-        // Silent fail - credits are optional
-    }
-
+    const { creditsMap } = await fetchMergedCredits(REQUEST_TIMEOUT_MS);
     return creditsMap;
 }
 

@@ -49,17 +49,19 @@ export default function Header({
 
   const getNetworkColor = (network: string) => {
     switch (network) {
-      case 'mainnet': return 'text-green-500';
-      case 'devnet': return 'text-[#F0A741]';
-      default: return 'text-blue-400';
+      case 'all': return 'text-green-500';
+      case 'mainnet': return 'text-[#F0A741]';
+      case 'devnet': return 'text-blue-400';
+      default: return 'text-foreground/60';
     }
   };
 
   const getNetworkBg = (network: string) => {
     switch (network) {
-      case 'mainnet': return 'bg-green-500/10 border-green-500/20';
-      case 'devnet': return 'bg-[#F0A741]/10 border-[#F0A741]/20';
-      default: return 'bg-blue-500/10 border-blue-500/20';
+      case 'all': return 'bg-green-500/10 border-green-500/20';
+      case 'mainnet': return 'bg-[#F0A741]/10 border-[#F0A741]/20';
+      case 'devnet': return 'bg-blue-500/10 border-blue-500/20';
+      default: return 'bg-white/5 border-white/10';
     }
   };
 
@@ -248,11 +250,11 @@ export default function Header({
             <div className="hidden sm:block relative" ref={dropdownRef}>
               <button
                 onClick={() => setNetworkDropdownOpen(!networkDropdownOpen)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border transition-all duration-300 justify-between ${context.selectedNetwork === 'mainnet'
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border transition-all duration-300 justify-between ${context.selectedNetwork === 'all'
                   ? 'bg-green-500/10 border-green-500/20 text-green-400 hover:bg-green-500/20'
-                  : context.selectedNetwork === 'devnet'
+                  : context.selectedNetwork === 'mainnet'
                     ? 'bg-[#F0A741]/10 border-[#F0A741]/20 text-[#F0A741] hover:bg-[#F0A741]/20'
-                    : 'bg-[#F0A741]/5 border-[#F0A741]/20 text-[#F0A741]/80 hover:bg-[#F0A741]/10 hover:text-[#F0A741]'
+                    : 'bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20'
                   }`}
               >
                 <div className="flex items-center gap-2">
@@ -273,9 +275,9 @@ export default function Header({
                 <div className="absolute top-full right-0 mt-2 w-44 bg-black border border-[#F0A741]/30 rounded-xl shadow-2xl shadow-black/80 overflow-hidden z-[70] animate-in fade-in slide-in-from-top-1 duration-200">
                   <div className="p-1.5 space-y-0.5">
                     {[
-                      { id: 'all', label: 'All Networks', icon: Globe, color: 'text-[#F0A741]', hover: 'hover:bg-[#F0A741]/10' },
-                      { id: 'devnet', label: 'Devnet', icon: Code, color: 'text-[#F0A741]', hover: 'hover:bg-[#F0A741]/10' },
-                      { id: 'mainnet', label: 'Mainnet', icon: Zap, color: 'text-green-400', hover: 'hover:bg-green-500/10' }
+                      { id: 'all', label: 'All Networks', icon: Globe, color: 'text-green-400', hover: 'hover:bg-green-500/10' },
+                      { id: 'mainnet', label: 'Mainnet', icon: Zap, color: 'text-[#F0A741]', hover: 'hover:bg-[#F0A741]/10' },
+                      { id: 'devnet', label: 'Devnet', icon: Code, color: 'text-blue-400', hover: 'hover:bg-blue-500/10' }
                     ].map((option) => (
                       <button
                         key={option.id}
@@ -327,9 +329,9 @@ export default function Header({
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 block">Network Selection</span>
               <div className="grid grid-cols-1 gap-2">
                 {[
-                  { id: 'all', label: 'All Networks', icon: Globe, color: 'text-[#F0A741]', bg: 'bg-[#F0A741]/10', border: 'border-[#F0A741]/20' },
-                  { id: 'devnet', label: 'Devnet', icon: Code, color: 'text-[#F0A741]', bg: 'bg-[#F0A741]/10', border: 'border-[#F0A741]/20' },
-                  { id: 'mainnet', label: 'Mainnet', icon: Zap, color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' }
+                  { id: 'all', label: 'All Networks', icon: Globe, color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' },
+                  { id: 'mainnet', label: 'Mainnet', icon: Zap, color: 'text-[#F0A741]', bg: 'bg-[#F0A741]/10', border: 'border-[#F0A741]/20' },
+                  { id: 'devnet', label: 'Devnet', icon: Code, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' }
                 ].map((option) => (
                   <button
                     key={option.id}

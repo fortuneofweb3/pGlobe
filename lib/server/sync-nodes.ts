@@ -14,6 +14,7 @@
 import { PNode } from '@/lib/types/pnode';
 import { ActivityType } from './mongodb-activity';
 import * as http from 'http';
+import { fetchMergedCredits } from './xandeum-api';
 
 // ============================================================================
 // CONFIGURATION
@@ -39,8 +40,7 @@ const DIRECT_PRPC_ENDPOINTS = [
   '152.53.236.91:6000',
 ];
 
-const POD_CREDITS_API = 'https://podcredits.xandeum.network/api/mainnet-pod-credits';
-const DEVNET_POD_CREDITS_API = 'https://podcredits.xandeum.network/api/pods-credits';
+// Redundant URLs removed - now centralized in lib/server/xandeum-api.ts
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -366,45 +366,14 @@ export async function enrichWithLocation(nodesMap: Map<string, PNode>): Promise<
 // ============================================================================
 
 export async function enrichWithCredits(nodesMap: Map<string, PNode>): Promise<void> {
-  console.log('[Sync] Fetching pod credits from mainnet and devnet APIs...');
+  console.log('[Sync] Fetching pod credits via centralized Xandeum API utility...');
 
   const currentMonth = new Date().toISOString().slice(0, 7);
 
-  // Track which nodes appear in which API
-  const mainnetPods = new Map<string, number>(); // pod_id -> credits
-  const devnetPods = new Map<string, number>(); // pod_id -> credits
+  // Fetch merged credits (handles Mainnet/Devnet URLs and prioritization)
+  const { creditsMap, mainnetPods, devnetPods } = await fetchMergedCredits();
 
-  // Fetch both APIs in parallel
-  const [mainnetResult, devnetResult] = await Promise.allSettled([
-    fetch(POD_CREDITS_API, { signal: AbortSignal.timeout(10000) })
-      .then(res => res.ok ? res.json() : null),
-    fetch(DEVNET_POD_CREDITS_API, { signal: AbortSignal.timeout(10000) })
-      .then(res => res.ok ? res.json() : null),
-  ]);
-
-  // Parse mainnet results
-  if (mainnetResult.status === 'fulfilled' && mainnetResult.value?.status === 'success') {
-    for (const pod of mainnetResult.value.pods_credits || []) {
-      if (pod.pod_id && typeof pod.credits === 'number') {
-        mainnetPods.set(pod.pod_id, pod.credits);
-      }
-    }
-    console.log(`[Sync] Mainnet API returned ${mainnetPods.size} pods`);
-  } else {
-    console.warn('[Sync] Failed to fetch mainnet credits');
-  }
-
-  // Parse devnet results
-  if (devnetResult.status === 'fulfilled' && devnetResult.value?.status === 'success') {
-    for (const pod of devnetResult.value.pods_credits || []) {
-      if (pod.pod_id && typeof pod.credits === 'number') {
-        devnetPods.set(pod.pod_id, pod.credits);
-      }
-    }
-    console.log(`[Sync] Devnet API returned ${devnetPods.size} pods`);
-  } else {
-    console.warn('[Sync] Failed to fetch devnet credits');
-  }
+  console.log(`[Sync] Credits API returned ${mainnetPods.size} mainnet and ${devnetPods.size} devnet pods`);
 
   // Enrich nodes with credits and determine network
   let mainnetCount = 0;
@@ -418,7 +387,7 @@ export async function enrichWithCredits(nodesMap: Map<string, PNode>): Promise<v
     const inMainnet = mainnetCredits !== undefined;
     const inDevnet = devnetCredits !== undefined;
 
-    // Store credits
+    // Store granular credits
     if (inMainnet) {
       node.mainnetCredits = mainnetCredits;
     }
@@ -426,19 +395,18 @@ export async function enrichWithCredits(nodesMap: Map<string, PNode>): Promise<v
       node.devnetCredits = devnetCredits;
     }
 
-    // Use mainnet credits as primary if available, otherwise devnet
-    if (inMainnet) {
-      node.credits = mainnetCredits;
-    } else if (inDevnet) {
-      node.credits = devnetCredits;
+    // Use merged map for primary credits (already prioritized by utility)
+    const credits = creditsMap.get(pubkey);
+    if (credits !== undefined) {
+      node.credits = credits;
     }
 
-    // Determine network
+    // Determine network classification
     if (inMainnet) {
       // Prioritize Mainnet: If in Mainnet (even if also in Devnet), it's a Mainnet node
       node.network = 'mainnet';
       mainnetCount++;
-      if (inDevnet) bothCount++; // Just track count for logging
+      if (inDevnet) bothCount++;
     } else if (inDevnet) {
       node.network = 'devnet';
       devnetCount++;

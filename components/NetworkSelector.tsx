@@ -23,7 +23,7 @@ export default function NetworkSelector({
   // Only show enabled networks (mainnet is not yet active)
   const enabledNetworks = networks.filter(n => n.enabled !== false);
   const disabledNetworks = networks.filter(n => n.enabled === false);
-  
+
   return (
     <div className={`flex flex-wrap items-center gap-2 ${className}`}>
       {/* Enabled networks */}
@@ -31,33 +31,37 @@ export default function NetworkSelector({
         const isActive = currentNetwork?.id === network.id;
         const isSwitching = switchingNetwork === network.id;
         const isDisabled = loading && !isActive;
-        
+
         return (
           <button
             key={network.id}
             onClick={() => !isDisabled && onNetworkChange(network.id)}
             disabled={isDisabled}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-              isActive
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${isActive
                 ? network.type === 'mainnet'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-blue-600 text-white'
+                  ? 'bg-[#F0A741]/20 text-[#F0A741] border border-[#F0A741]/30'
+                  : network.id === 'all'
+                    ? 'bg-green-600/20 text-green-400 border border-green-500/30'
+                    : 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
                 : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-            } ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              } ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
           >
             {isSwitching && (
               <RefreshCw className="w-3 h-3 animate-spin" />
             )}
             <span
-              className={`w-2 h-2 rounded-full ${
-                network.type === 'mainnet' ? 'bg-green-400' : 'bg-blue-400'
-              }`}
+              className={`w-2 h-2 rounded-full ${network.type === 'mainnet'
+                  ? 'bg-[#F0A741]'
+                  : network.id === 'all'
+                    ? 'bg-green-400'
+                    : 'bg-blue-400'
+                }`}
             />
             {network.name}
           </button>
         );
       })}
-      
+
       {/* Disabled networks (Coming Soon) */}
       {disabledNetworks.map((network) => (
         <button

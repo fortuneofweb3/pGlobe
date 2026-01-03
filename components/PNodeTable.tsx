@@ -19,6 +19,7 @@ import { getFlagForCountry } from '@/lib/utils/country-flags';
 import { Check, X, ArrowUp, ArrowDown, Globe, Lock, Star } from 'lucide-react';
 import InfoTooltip from './InfoTooltip';
 import { useWatchlist } from '@/lib/context/WatchlistContext';
+import { useNodes } from '@/lib/context/NodesContext';
 
 interface PNodeTableProps {
   nodes: PNode[];
@@ -164,6 +165,7 @@ function VersionTooltip({ version, abbreviated }: { version: string; abbreviated
 export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSort }: PNodeTableProps) {
   const router = useRouter();
   const { isWatched, toggleWatchlist } = useWatchlist();
+  const { selectedNetwork } = useNodes();
   const [balances, setBalances] = useState<Record<string, number | null>>({});
   const [fetchingBalances, setFetchingBalances] = useState<Set<string>>(new Set());
   // Load cached latencies immediately (synchronous)
@@ -400,6 +402,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
               <col className="w-[4%]" />
               <col className="w-[6%]" />
               <col className="w-[6%]" />
+              {selectedNetwork === 'all' && <col className="w-[6%]" />}
               <col className="w-[7%]" />
               <col className="w-[5%]" />
               <col className="w-[6%]" />
@@ -429,6 +432,11 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                 <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                   Registered
                 </th>
+                {selectedNetwork === 'all' && (
+                  <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                    Network
+                  </th>
+                )}
                 {onSort ? (
                   <th
                     className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none group"
@@ -627,7 +635,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
             <tbody className="divide-y divide-border/40">
               {nodes.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="px-4 py-12 text-center text-foreground/50">
+                  <td colSpan={19} className="px-4 py-12 text-center text-foreground/50">
                     No pNodes found
                   </td>
                 </tr>
@@ -650,11 +658,9 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         }
                       }}
                       className={`
-                        group relative
-                        bg-white/[0.01] hover:bg-white/[0.04] 
-                        transition-all duration-300 ease-out
                         cursor-pointer border-b border-white/[0.03]
-                        hover:translate-x-0.5 hover:shadow-[0_0_20px_rgba(240,167,65,0.05)]
+                        bg-white/[0.01] hover:bg-white/[0.04] 
+                        transition-colors duration-200
                         ${duplicate ? 'bg-orange-500/[0.05]' : ''} 
                         ${isTrynet ? 'bg-orange-500/[0.02]' : ''}
                       `}
@@ -672,8 +678,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         </button>
                       </td>
                       <td className="px-3 sm:px-5 py-5 whitespace-nowrap relative">
-                        {/* Interactive Accent Bar */}
-                        <div className="absolute left-0 inset-y-0 w-0.5 bg-[#F0A741] opacity-0 group-hover:opacity-100 transition-opacity" />
+
 
                         <a
                           href={`/?node=${encodeURIComponent(node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '')}`}
@@ -722,7 +727,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           {duplicate && (
                             <span
                               className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-warning/20 text-warning text-[10px] font-bold"
-                              title={`Duplicate pubkey detected (appears ${pubkeyCounts[node.pubkey || node.publicKey]} times)`}
+                              title={`Duplicate pubkey detected(appears ${pubkeyCounts[node.pubkey || node.publicKey]} times)`}
                             >
                               !
                             </span>
@@ -744,6 +749,16 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           );
                         })()}
                       </td>
+                      {selectedNetwork === 'all' && (
+                        <td className="px-2 sm:px-3 py-5 whitespace-nowrap text-center">
+                          <span className={`px-2.5 py-1 rounded text-xs uppercase font-bold tracking-tight ${node.network === 'mainnet' || node.network === 'both'
+                            ? 'bg-[#F0A741]/20 text-[#F0A741] border border-[#F0A741]/30'
+                            : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                            }`}>
+                            {node.network === 'mainnet' || node.network === 'both' ? 'Mainnet' : 'Devnet'}
+                          </span>
+                        </td>
+                      )}
                       <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
                         {node.createdAt ? (
                           <div className="flex items-center gap-1.5">
@@ -843,8 +858,8 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                               }}
                               className="text-xs sm:text-sm text-foreground/80 flex items-center gap-1.5 hover:text-[#F0A741] transition-colors cursor-pointer group"
                             >
-                              {flag && <span className="text-base leading-none group-hover:scale-110 transition-transform">{flag}</span>}
-                              <span className="group-hover:underline">{node.location}</span>
+                              {flag && <span className="text-base leading-none">{flag}</span>}
+                              <span>{node.location}</span>
                             </button>
                           ) : (
                             <span className="text-xs sm:text-sm text-foreground/80 flex items-center gap-1.5">
@@ -956,10 +971,10 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                   );
                 })
               )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+            </tbody >
+          </table >
+        </div >
+      </div >
+    </div >
   );
 }
