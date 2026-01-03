@@ -742,7 +742,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
         } catch (e) { }
 
         // Continue animation loop
-        tilePreserveRafId = requestAnimationFrame(preserveTilesFrame);
+        // Managed by startPreserveLoop wrapper
       };
 
       // Start tile preservation loop

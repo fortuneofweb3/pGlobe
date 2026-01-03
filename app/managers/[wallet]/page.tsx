@@ -457,7 +457,6 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                         <h3 className="text-sm font-medium text-foreground">
                                             {selectedMetric === 'vesting' && 'Vesting Schedule'}
                                             {selectedMetric === 'activity' && 'Network Activity'}
-                                            {selectedMetric === 'live_feed' && 'Live Activity Feed'}
                                             {selectedMetric === 'resources' && 'Resource Utilization'}
                                             {selectedMetric === 'credits' && 'Credits History'}
                                         </h3>
@@ -472,7 +471,6 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                     <span>
                                                         {selectedMetric === 'vesting' && 'Vesting'}
                                                         {selectedMetric === 'activity' && 'Activity'}
-                                                        {selectedMetric === 'live_feed' && 'Live Activity'}
                                                         {selectedMetric === 'resources' && 'Resources'}
                                                         {selectedMetric === 'credits' && 'Credits'}
                                                     </span>
@@ -484,7 +482,6 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                         {[
                                                             { id: 'vesting', label: 'Vesting' },
                                                             { id: 'activity', label: 'Network Activity' },
-                                                            { id: 'live_feed', label: 'Live Activity' },
                                                             { id: 'resources', label: 'Resources' },
                                                             { id: 'credits', label: 'Credits' }
                                                         ].map((opt) => (
@@ -920,6 +917,15 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                     )}
                                 </div>
                             )}
+                        </div>
+
+                        {/* Activity Log List at Bottom */}
+                        <div className="max-w-7xl mx-auto mt-8 h-[600px] overflow-hidden">
+                            <ActivityLogList
+                                allowedPubkeys={allowedPubkeys}
+                                limit={50}
+                                showFilters={true}
+                            />
                         </div>
                     </div>
                 </div>
