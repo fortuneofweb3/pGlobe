@@ -80,6 +80,13 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   // Request deduplication - prevent multiple simultaneous requests
   const fetchingRef = useRef(false);
   const fetchPromiseRef = useRef<Promise<void> | null>(null);
+  // Track nodes length separately to avoid stale closure issues
+  const nodesLengthRef = useRef(0);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    nodesLengthRef.current = nodes.length;
+  }, [nodes.length]);
 
   const cacheKey = (network: string) => `nodesCache:${network || 'default'}`;
 
@@ -184,32 +191,30 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         const data = await response.json();
 
         if (data.nodes && Array.isArray(data.nodes)) {
-          if (data.nodes.length > 0 || nodes.length === 0) {
-            setNodes(data.nodes);
-            if (data.managerStats) {
-              setManagerStats(data.managerStats);
-            }
-            setLastUpdate(new Date());
-            setError(null);
-            setLoading(false);
-
-            if (data.networks && Array.isArray(data.networks)) {
-              setAvailableNetworks(data.networks);
-            }
-            if (data.currentNetwork) {
-              setCurrentNetwork(data.currentNetwork);
-              setSelectedNetwork(data.currentNetwork.id);
-            }
-
-            saveCache({
-              nodes: data.nodes,
-              lastUpdate: new Date(),
-              availableNetworks: data.networks,
-              currentNetwork: data.currentNetwork,
-            });
-          } else {
-            setLoading(false);
+          // Always update nodes - the filtering happens in useMemo based on selectedNetwork
+          // Don't skip updates based on length checks as this causes race conditions
+          setNodes(data.nodes);
+          if (data.managerStats) {
+            setManagerStats(data.managerStats);
           }
+          setLastUpdate(new Date());
+          setError(null);
+          setLoading(false);
+
+          if (data.networks && Array.isArray(data.networks)) {
+            setAvailableNetworks(data.networks);
+          }
+          if (data.currentNetwork) {
+            setCurrentNetwork(data.currentNetwork);
+            setSelectedNetwork(data.currentNetwork.id);
+          }
+
+          saveCache({
+            nodes: data.nodes,
+            lastUpdate: new Date(),
+            availableNetworks: data.networks,
+            currentNetwork: data.currentNetwork,
+          });
         } else {
           setLoading(false);
         }
@@ -223,7 +228,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
 
     fetchPromiseRef.current = fetchPromise;
     return fetchPromise;
-  }, [selectedNetwork, nodes.length, saveCache]);
+  }, [selectedNetwork, saveCache, setSelectedNetwork]);
 
   const hasInitializedRef = useRef(false);
 
@@ -239,7 +244,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     if (hasInitializedRef.current) {
       // Already initialized, just load cache if needed
       const cached = loadCache();
-      if (cached?.nodes && cached.nodes.length > 0 && nodes.length === 0) {
+      if (cached?.nodes && cached.nodes.length > 0 && nodesLengthRef.current === 0) {
         setNodes(cached.nodes);
         // Note: managerStats not currently cached, will fetch on refresh
         setLastUpdate(cached.lastUpdate ? new Date(cached.lastUpdate) : null);
@@ -347,7 +352,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         }, 2000);
       }
     }
-  }, [loadCache, nodes.length, refreshNodes]);
+  }, [loadCache, refreshNodes, setSelectedNetwork]);
 
   // Passive polling: Fetch fresh data from MongoDB every 2 minutes
   // Reduced frequency to minimize flickering and improve performance
@@ -357,7 +362,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     if (typeof window === 'undefined') return;
 
     // Only start polling if we have nodes
-    if (nodes.length === 0) return;
+    if (nodesLengthRef.current === 0) return;
 
     const interval = setInterval(() => {
       refreshNodes();
@@ -365,7 +370,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     return () => {
       clearInterval(interval);
     };
-  }, [nodes.length, refreshNodes]);
+  }, [refreshNodes]);
 
   // Refresh when network changes
   useEffect(() => {

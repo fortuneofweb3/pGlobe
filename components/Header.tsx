@@ -276,8 +276,8 @@ export default function Header({
                   <div className="p-1.5 space-y-0.5">
                     {[
                       { id: 'all', label: 'All Networks', icon: Globe, color: 'text-green-400', hover: 'hover:bg-green-500/10' },
-                      { id: 'mainnet', label: 'Mainnet', icon: Zap, color: 'text-[#F0A741]', hover: 'hover:bg-[#F0A741]/10' },
-                      { id: 'devnet', label: 'Devnet', icon: Code, color: 'text-blue-400', hover: 'hover:bg-blue-500/10' }
+                      { id: 'devnet', label: 'Devnet', icon: Code, color: 'text-blue-400', hover: 'hover:bg-blue-500/10' },
+                      { id: 'mainnet', label: 'Mainnet', icon: Zap, color: 'text-[#F0A741]', hover: 'hover:bg-[#F0A741]/10' }
                     ].map((option) => (
                       <button
                         key={option.id}
@@ -327,29 +327,27 @@ export default function Header({
             {/* Mobile Network Dropdown */}
             <div className="px-4 py-2">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 block">Network Selection</span>
-              <div className="grid grid-cols-1 gap-2">
-                {[
-                  { id: 'all', label: 'All Networks', icon: Globe, color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' },
-                  { id: 'mainnet', label: 'Mainnet', icon: Zap, color: 'text-[#F0A741]', bg: 'bg-[#F0A741]/10', border: 'border-[#F0A741]/20' },
-                  { id: 'devnet', label: 'Devnet', icon: Code, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' }
-                ].map((option) => (
-                  <button
-                    key={option.id}
-                    onClick={() => context.setSelectedNetwork(option.id)}
-                    className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all duration-200 ${context.selectedNetwork === option.id
-                      ? `${option.bg} ${option.border.replace('/20', '/40')}`
-                      : 'bg-black/40 border-white/5 text-muted-foreground hover:bg-white/5 hover:text-foreground'
-                      }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <option.icon className={`w-4 h-4 ${context.selectedNetwork === option.id ? option.color : ''}`} />
-                      <span className={`font-semibold text-sm ${context.selectedNetwork === option.id ? option.color : ''}`}>{option.label}</span>
-                    </div>
-                    {context.selectedNetwork === option.id && (
-                      <Check className={`w-4 h-4 ${option.color}`} />
-                    )}
-                  </button>
-                ))}
+              <div className="relative">
+                <select
+                  value={context.selectedNetwork}
+                  onChange={(e) => context.setSelectedNetwork(e.target.value)}
+                  className={`w-full appearance-none px-4 py-3 pr-10 rounded-xl border text-sm font-semibold transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#F0A741]/50 ${context.selectedNetwork === 'all'
+                      ? 'bg-green-500/10 border-green-500/40 text-green-400'
+                      : context.selectedNetwork === 'mainnet'
+                        ? 'bg-[#F0A741]/10 border-[#F0A741]/40 text-[#F0A741]'
+                        : 'bg-blue-500/10 border-blue-500/40 text-blue-400'
+                    }`}
+                >
+                  <option value="all" className="bg-black text-green-400">All Networks</option>
+                  <option value="devnet" className="bg-black text-blue-400">Devnet</option>
+                  <option value="mainnet" className="bg-black text-[#F0A741]">Mainnet</option>
+                </select>
+                <ChevronDown className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${context.selectedNetwork === 'all'
+                    ? 'text-green-400'
+                    : context.selectedNetwork === 'mainnet'
+                      ? 'text-[#F0A741]'
+                      : 'text-blue-400'
+                  }`} />
               </div>
             </div>
 

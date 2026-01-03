@@ -1,0 +1,353 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { Manager } from '@/lib/context/NodesContext';
+import { startProgress } from '@/lib/nprogress';
+import {
+    Trophy, Medal, TrendingUp, ArrowUpDown, ArrowUp, ArrowDown,
+    Copy, Check, ExternalLink, ChevronRight, Filter,
+    Server, Users, Coins, Activity
+} from 'lucide-react';
+
+type SortField = 'credits' | 'nodes' | 'uptime' | 'stake';
+type SortDirection = 'asc' | 'desc';
+
+interface LeaderboardProps {
+    managers: Manager[];
+    copiedWallet: string | null;
+    onCopyWallet: (wallet: string) => void;
+}
+
+export default function ManagerLeaderboard({ managers, copiedWallet, onCopyWallet }: LeaderboardProps) {
+    const router = useRouter();
+    const [sortField, setSortField] = useState<SortField>('credits');
+    const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+    const [networkFilter, setNetworkFilter] = useState<'all' | 'mainnet' | 'devnet' | 'both'>('all');
+    const [nodeCountFilter, setNodeCountFilter] = useState<'all' | '1-5' | '6-10' | '10+'>('all');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'active'>('all');
+
+    const truncateWallet = (wallet: string) => `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+
+    const getNodeCount = (m: Manager) => Math.max(m.registeredNodes, m.purchasedNodes, m.knownNodes.length);
+
+    const getUptime = (m: Manager) => {
+        const total = m.knownNodes.length;
+        if (total === 0) return 0;
+        return Math.round((m.onlineCount / total) * 100);
+    };
+
+    const filteredAndSorted = useMemo(() => {
+        let result = [...managers];
+
+        // Apply filters
+        if (networkFilter !== 'all') {
+            result = result.filter(m => m.source === networkFilter);
+        }
+
+        if (statusFilter === 'active') {
+            result = result.filter(m => m.onlineCount > 0);
+        }
+
+        if (nodeCountFilter !== 'all') {
+            result = result.filter(m => {
+                const count = getNodeCount(m);
+                switch (nodeCountFilter) {
+                    case '1-5': return count >= 1 && count <= 5;
+                    case '6-10': return count >= 6 && count <= 10;
+                    case '10+': return count > 10;
+                    default: return true;
+                }
+            });
+        }
+
+        // Apply sorting
+        result.sort((a, b) => {
+            let aVal: number, bVal: number;
+            switch (sortField) {
+                case 'credits':
+                    aVal = a.totalCredits || 0;
+                    bVal = b.totalCredits || 0;
+                    break;
+                case 'nodes':
+                    aVal = getNodeCount(a);
+                    bVal = getNodeCount(b);
+                    break;
+                case 'uptime':
+                    aVal = getUptime(a);
+                    bVal = getUptime(b);
+                    break;
+                case 'stake':
+                    aVal = a.totalXandStake || a.daoStake || 0;
+                    bVal = b.totalXandStake || b.daoStake || 0;
+                    break;
+                default:
+                    aVal = 0;
+                    bVal = 0;
+            }
+            return sortDirection === 'desc' ? bVal - aVal : aVal - bVal;
+        });
+
+        return result;
+    }, [managers, sortField, sortDirection, networkFilter, nodeCountFilter, statusFilter]);
+
+    const handleSort = (field: SortField) => {
+        if (sortField === field) {
+            setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc');
+        } else {
+            setSortField(field);
+            setSortDirection('desc');
+        }
+    };
+
+    const SortIcon = ({ field }: { field: SortField }) => {
+        if (sortField !== field) return <ArrowUpDown className="w-3 h-3 opacity-40" />;
+        return sortDirection === 'desc' ?
+            <ArrowDown className="w-3 h-3 text-[#F0A741]" /> :
+            <ArrowUp className="w-3 h-3 text-[#F0A741]" />;
+    };
+
+    const getRankBadge = (rank: number) => {
+        if (rank === 1) return (
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 text-black font-bold text-sm shadow-lg shadow-yellow-500/30">
+                🥇
+            </div>
+        );
+        if (rank === 2) return (
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-gray-300 to-gray-500 text-black font-bold text-sm shadow-lg shadow-gray-400/30">
+                🥈
+            </div>
+        );
+        if (rank === 3) return (
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 text-white font-bold text-sm shadow-lg shadow-amber-600/30">
+                🥉
+            </div>
+        );
+        return (
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-foreground/60 font-mono text-sm">
+                {rank}
+            </div>
+        );
+    };
+
+    const getSourceBadge = (source: string) => {
+        switch (source) {
+            case 'both':
+                return <span className="text-[9px] px-1.5 py-0.5 bg-purple-500/20 text-purple-400 rounded font-medium">BOTH</span>;
+            case 'mainnet':
+                return <span className="text-[9px] px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded font-medium">MAINNET</span>;
+            case 'devnet':
+                return <span className="text-[9px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded font-medium">DEVNET</span>;
+            default:
+                return null;
+        }
+    };
+
+    const getUptimeColor = (uptime: number) => {
+        if (uptime >= 90) return 'text-green-400';
+        if (uptime >= 70) return 'text-yellow-400';
+        if (uptime >= 50) return 'text-orange-400';
+        return 'text-red-400';
+    };
+
+    return (
+        <div className="space-y-4">
+            {/* Filters Row */}
+            <div className="flex flex-wrap items-center gap-3 p-3 bg-card rounded-lg border border-border/40">
+                <div className="flex items-center gap-2 text-foreground/60">
+                    <Filter className="w-4 h-4" />
+                    <span className="text-xs font-medium uppercase tracking-wider">Filters:</span>
+                </div>
+
+                <select
+                    value={networkFilter}
+                    onChange={(e) => setNetworkFilter(e.target.value as any)}
+                    className="px-3 py-1.5 text-xs bg-muted border border-border/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F0A741]/20"
+                >
+                    <option value="all">All Networks</option>
+                    <option value="mainnet">Mainnet Only</option>
+                    <option value="devnet">Devnet Only</option>
+                    <option value="both">Both Networks</option>
+                </select>
+
+                <select
+                    value={nodeCountFilter}
+                    onChange={(e) => setNodeCountFilter(e.target.value as any)}
+                    className="px-3 py-1.5 text-xs bg-muted border border-border/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F0A741]/20"
+                >
+                    <option value="all">Any Node Count</option>
+                    <option value="1-5">1-5 Nodes</option>
+                    <option value="6-10">6-10 Nodes</option>
+                    <option value="10+">10+ Nodes</option>
+                </select>
+
+                <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as any)}
+                    className="px-3 py-1.5 text-xs bg-muted border border-border/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F0A741]/20"
+                >
+                    <option value="all">All Managers</option>
+                    <option value="active">Active Only</option>
+                </select>
+
+                <div className="ml-auto text-xs text-foreground/50">
+                    {filteredAndSorted.length} managers
+                </div>
+            </div>
+
+            {/* Leaderboard Table */}
+            <div className="overflow-x-auto">
+                <table className="w-full">
+                    <thead>
+                        <tr className="border-b border-border/40">
+                            <th className="text-left py-3 px-2 text-xs font-semibold text-foreground/60 uppercase tracking-wider w-16">
+                                Rank
+                            </th>
+                            <th className="text-left py-3 px-2 text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                                Manager
+                            </th>
+                            <th
+                                className="text-right py-3 px-2 text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
+                                onClick={() => handleSort('credits')}
+                            >
+                                <div className="flex items-center justify-end gap-1">
+                                    <Coins className="w-3 h-3" />
+                                    Credits
+                                    <SortIcon field="credits" />
+                                </div>
+                            </th>
+                            <th
+                                className="text-right py-3 px-2 text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
+                                onClick={() => handleSort('nodes')}
+                            >
+                                <div className="flex items-center justify-end gap-1">
+                                    <Server className="w-3 h-3" />
+                                    Nodes
+                                    <SortIcon field="nodes" />
+                                </div>
+                            </th>
+                            <th
+                                className="text-right py-3 px-2 text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors hidden sm:table-cell"
+                                onClick={() => handleSort('uptime')}
+                            >
+                                <div className="flex items-center justify-end gap-1">
+                                    <Activity className="w-3 h-3" />
+                                    Uptime
+                                    <SortIcon field="uptime" />
+                                </div>
+                            </th>
+                            <th
+                                className="text-right py-3 px-2 text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors hidden md:table-cell"
+                                onClick={() => handleSort('stake')}
+                            >
+                                <div className="flex items-center justify-end gap-1">
+                                    <TrendingUp className="w-3 h-3" />
+                                    XAND Stake
+                                    <SortIcon field="stake" />
+                                </div>
+                            </th>
+                            <th className="w-8"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filteredAndSorted.map((manager, idx) => {
+                            const rank = idx + 1;
+                            const uptime = getUptime(manager);
+                            const nodeCount = getNodeCount(manager);
+                            const stake = manager.totalXandStake || manager.daoStake || 0;
+
+                            return (
+                                <tr
+                                    key={manager.wallet}
+                                    className="border-b border-border/20 hover:bg-muted/30 cursor-pointer transition-colors group"
+                                    onClick={() => {
+                                        startProgress();
+                                        router.push(`/managers/${manager.wallet}`);
+                                    }}
+                                >
+                                    <td className="py-3 px-2">
+                                        {getRankBadge(rank)}
+                                    </td>
+                                    <td className="py-3 px-2">
+                                        <div className="flex items-center gap-3">
+                                            <img
+                                                src={`https://api.dicebear.com/7.x/identicon/svg?seed=${manager.wallet}&backgroundColor=1a1a2e`}
+                                                alt="Avatar"
+                                                className="w-8 h-8 rounded-full bg-muted border border-border/40"
+                                            />
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-mono text-sm">{truncateWallet(manager.wallet)}</span>
+                                                    {manager.onlineCount === 0 && (
+                                                        <span className="text-[9px] font-bold px-1 py-0.5 bg-red-500/20 text-red-500 rounded">DEAD</span>
+                                                    )}
+                                                    {getSourceBadge(manager.source)}
+                                                </div>
+                                                <div className="flex items-center gap-1 mt-0.5">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onCopyWallet(manager.wallet);
+                                                        }}
+                                                        className="p-0.5 hover:bg-muted rounded transition-colors"
+                                                    >
+                                                        {copiedWallet === manager.wallet ? (
+                                                            <Check className="w-3 h-3 text-green-400" />
+                                                        ) : (
+                                                            <Copy className="w-3 h-3 text-foreground/40" />
+                                                        )}
+                                                    </button>
+                                                    <a
+                                                        href={`https://solscan.io/account/${manager.wallet}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="p-0.5 hover:bg-muted rounded transition-colors"
+                                                    >
+                                                        <ExternalLink className="w-3 h-3 text-foreground/40" />
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="py-3 px-2 text-right">
+                                        <span className="font-bold text-[#F0A741]">
+                                            {(manager.totalCredits || 0).toLocaleString()}
+                                        </span>
+                                    </td>
+                                    <td className="py-3 px-2 text-right">
+                                        <div className="flex items-center justify-end gap-1">
+                                            <span className="font-medium">{nodeCount}</span>
+                                            <span className="text-foreground/40 text-xs">
+                                                ({manager.onlineCount} online)
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td className="py-3 px-2 text-right hidden sm:table-cell">
+                                        <span className={`font-medium ${getUptimeColor(uptime)}`}>
+                                            {uptime}%
+                                        </span>
+                                    </td>
+                                    <td className="py-3 px-2 text-right hidden md:table-cell">
+                                        <span className="font-medium">
+                                            {stake.toLocaleString()}
+                                        </span>
+                                    </td>
+                                    <td className="py-3 px-2">
+                                        <ChevronRight className="w-4 h-4 text-foreground/30 group-hover:text-[#F0A741] transition-colors" />
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+
+            {filteredAndSorted.length === 0 && (
+                <div className="text-center py-12 text-foreground/60">
+                    No managers match the current filters
+                </div>
+            )}
+        </div>
+    );
+}
