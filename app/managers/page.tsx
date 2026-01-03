@@ -205,16 +205,42 @@ function ManagersPageContent() {
                 <Header activePage="managers" loading={true} />
                 <main className="flex-1 overflow-hidden">
                     <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
-                        <div className="max-w-7xl mx-auto">
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                                <StatCardSkeleton />
-                                <StatCardSkeleton />
-                                <StatCardSkeleton />
-                                <StatCardSkeleton />
+                        {/* Page Title Row Skeleton */}
+                        <div className="mb-8 animate-pulse">
+                            <div className="h-8 w-64 bg-muted/30 rounded mb-2" />
+                            <div className="h-4 w-96 bg-muted/20 rounded" />
+                        </div>
+
+                        {/* Stats Row 1: Counts Skeleton */}
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                            <StatCardSkeleton />
+                            <StatCardSkeleton />
+                            <StatCardSkeleton />
+                            <StatCardSkeleton />
+                        </div>
+
+                        {/* Stats Row 2: Financials & Averages Skeleton */}
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+                            <StatCardSkeleton />
+                            <StatCardSkeleton />
+                            <StatCardSkeleton />
+                            <StatCardSkeleton />
+                        </div>
+
+                        {/* Registry Header Section Skeleton */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 animate-pulse">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 bg-muted/20 rounded-lg" />
+                                <div className="h-6 w-40 bg-muted/30 rounded" />
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <ManagerCardSkeleton count={8} />
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-24 bg-muted/20 rounded-xl" />
+                                <div className="h-10 w-64 bg-muted/20 rounded-xl" />
                             </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <ManagerCardSkeleton count={8} />
                         </div>
                     </div>
                 </main>
@@ -234,54 +260,13 @@ function ManagersPageContent() {
             <main className="flex-1 flex flex-col overflow-hidden">
                 <div className="flex-1 w-full p-3 sm:p-6 overflow-y-auto">
                     <div className="max-w-7xl mx-auto">
-                        {/* Title & Actions Row */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 animate-slide-in-bottom">
-                            <div>
-                                <h1 className="text-2xl sm:text-3xl font-bold mb-1 flex items-center gap-3">
-                                    <Users className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
-                                    Manager Wallets
-                                </h1>
-                                <p className="text-foreground/60 text-sm">pNode operators who run registered nodes</p>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <div className="flex items-center bg-card border border-border rounded-xl p-1 h-10">
-                                    <button
-                                        onClick={() => setViewMode('grid')}
-                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-[#F0A741] text-black font-bold' : 'text-foreground/40 hover:text-foreground'}`}
-                                        title="Grid View"
-                                    >
-                                        <LayoutGrid className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => setViewMode('leaderboard')}
-                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${viewMode === 'leaderboard' ? 'bg-[#F0A741] text-black font-bold' : 'text-foreground/40 hover:text-foreground'}`}
-                                        title="Leaderboard View"
-                                    >
-                                        <List className="w-4 h-4" />
-                                    </button>
-                                </div>
-
-
-                                <div className="relative flex-1 sm:w-64">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />
-                                    <input
-                                        type="text"
-                                        placeholder="Search by wallet..."
-                                        className="w-full pl-9 pr-9 py-2 bg-card border border-border rounded-xl text-sm h-10 focus:outline-none focus:ring-2 focus:ring-[#F0A741]/20 transition-all"
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                    />
-                                    {searchQuery && (
-                                        <button
-                                            onClick={() => setSearchQuery('')}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 hover:text-foreground/80 text-foreground/40"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
+                        {/* Page Title Row */}
+                        <div className="mb-8 animate-slide-in-bottom">
+                            <h1 className="text-2xl sm:text-3xl font-bold mb-1 flex items-center gap-3">
+                                <Users className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
+                                Manager Wallets
+                            </h1>
+                            <p className="text-foreground/60 text-sm">pNode operators who run registered nodes</p>
                         </div>
 
                         {/* Stats Row 1: Counts */}
@@ -321,7 +306,7 @@ function ManagersPageContent() {
                         </div>
 
                         {/* Stats Row 2: Financials & Averages */}
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 stagger-children" style={{ animationDelay: '0.1s' }}>
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10 stagger-children" style={{ animationDelay: '0.1s' }}>
                             <StatsCard
                                 title="Total Credits"
                                 value={stats.totalCredits.toLocaleString()}
@@ -343,7 +328,7 @@ function ManagersPageContent() {
                                     : stats.totalXandStake >= 1000
                                         ? `${(stats.totalXandStake / 1000).toFixed(1)}K`
                                         : stats.totalXandStake.toLocaleString()}
-                                subValue="Total stake locked"
+                                subValue={formatUsd(stats.totalXandStake)}
                                 icon={<TrendingUp className="w-4 h-4" />}
                                 color="purple"
                             />
@@ -353,6 +338,54 @@ function ManagersPageContent() {
                                 subValue="Average fleet size"
                                 icon={<Server className="w-4 h-4" />}
                             />
+                        </div>
+
+                        {/* Registry Header Section */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 animate-slide-in-bottom" style={{ animationDelay: '0.15s' }}>
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-[#F0A741]/10 rounded-lg">
+                                    <List className="w-5 h-5 text-[#F0A741]" />
+                                </div>
+                                <h2 className="text-lg font-bold">Operator Registry</h2>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center bg-card border border-border rounded-xl p-1 h-10">
+                                    <button
+                                        onClick={() => setViewMode('grid')}
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-[#F0A741] text-black font-bold' : 'text-foreground/40 hover:text-foreground'}`}
+                                        title="Grid View"
+                                    >
+                                        <LayoutGrid className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('leaderboard')}
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${viewMode === 'leaderboard' ? 'bg-[#F0A741] text-black font-bold' : 'text-foreground/40 hover:text-foreground'}`}
+                                        title="Leaderboard View"
+                                    >
+                                        <List className="w-4 h-4" />
+                                    </button>
+                                </div>
+
+                                <div className="relative flex-1 sm:w-64">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search by wallet..."
+                                        className="w-full pl-9 pr-9 py-2 bg-card border border-border rounded-xl text-sm h-10 focus:outline-none focus:ring-2 focus:ring-[#F0A741]/20 transition-all"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                    {searchQuery && (
+                                        <button
+                                            onClick={() => setSearchQuery('')}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 hover:text-foreground/80 text-foreground/40"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
                         </div>
 
                         {filteredManagers.length === 0 ? (

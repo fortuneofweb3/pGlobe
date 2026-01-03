@@ -60,10 +60,15 @@ export function CardSkeleton({ count = 4 }: { count?: number }) {
 
 export function StatCardSkeleton() {
   return (
-    <div className="card-stat animate-pulse">
-      <div className="h-4 w-20 bg-muted/30 rounded mb-3" />
-      <div className="h-8 w-16 bg-muted/40 rounded mb-2" />
-      <div className="h-3 w-24 bg-muted/20 rounded" />
+    <div className="card-stat bg-[#0a0a0a] border-white/5 backdrop-blur-md overflow-hidden animate-pulse">
+      <div className="flex items-center justify-between mb-2">
+        <div className="h-3 w-20 bg-muted/20 rounded" />
+        <div className="w-3.5 h-3.5 bg-muted/10 rounded-full" />
+      </div>
+      <div className="h-8 w-24 bg-muted/30 rounded mb-2" />
+      <div className="h-3 w-32 bg-muted/10 rounded" />
+      {/* Decorative blur circle placeholder */}
+      <div className="absolute -right-6 -bottom-6 w-12 h-12 bg-white/5 rounded-full blur-xl" />
     </div>
   );
 }
@@ -177,22 +182,43 @@ export function ManagerCardSkeleton({ count = 8 }: { count?: number }) {
     <>
       {[...Array(count)].map((_, i) => (
         <div key={i} className="card p-4 animate-pulse">
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-3 mb-4">
+            {/* Avatar placeholder */}
             <div className="w-12 h-12 rounded-full bg-muted/20" />
+
             <div className="flex-1 space-y-2">
               <div className="h-4 w-24 bg-muted/30 rounded" />
-              <div className="h-3 w-16 bg-muted/20 rounded" />
+              <div className="flex gap-2">
+                <div className="h-4 w-4 bg-muted/10 rounded" />
+                <div className="h-4 w-4 bg-muted/10 rounded" />
+                <div className="h-4 w-8 bg-muted/10 rounded" />
+              </div>
+            </div>
+
+            {/* Donut chart placeholder */}
+            <div className="w-12 h-12 rounded-full border-4 border-muted/10 flex items-center justify-center">
+              <div className="h-2 w-4 bg-muted/20 rounded" />
             </div>
           </div>
-          <div className="space-y-3 mt-4">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-muted/20 rounded" />
-              <div className="h-3 w-full bg-muted/20 rounded" />
+
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="bg-muted/5 rounded-lg p-2 flex flex-col items-center gap-1">
+              <div className="h-5 w-8 bg-muted/20 rounded" />
+              <div className="h-2 w-12 bg-muted/10 rounded" />
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-muted/20 rounded" />
-              <div className="h-3 w-3/4 bg-muted/20 rounded" />
+            <div className="bg-muted/5 rounded-lg p-2 flex flex-col items-center gap-1">
+              <div className="h-5 w-8 bg-muted/20 rounded" />
+              <div className="h-2 w-12 bg-muted/10 rounded" />
             </div>
+            <div className="col-span-2 bg-muted/5 rounded-lg p-2 flex flex-col items-center gap-1 border border-white/5">
+              <div className="h-5 w-24 bg-muted/20 rounded" />
+              <div className="h-2 w-16 bg-muted/10 rounded" />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between mt-1">
+            <div className="h-3 w-20 bg-muted/10 rounded" />
+            <div className="h-4 w-4 bg-muted/10 rounded" />
           </div>
         </div>
       ))}
