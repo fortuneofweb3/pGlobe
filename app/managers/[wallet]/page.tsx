@@ -87,7 +87,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
     const [nodes, setNodes] = useState<PNode[]>([]);
     const [rewards, setRewards] = useState<{ history: RewardHistoryItem[] } | null>(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'nodes' | 'rewards'>('nodes');
+    const [activeTab, setActiveTab] = useState<'nodes' | 'rewards' | 'activity'>('nodes');
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
     const [sortBy, setSortBy] = useState<string>('credits');
@@ -781,6 +781,14 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                 <span className="hidden xs:inline">Rewards & Vesting</span>
                                 <span className="xs:hidden">Rewards</span>
                             </button>
+                            <button
+                                onClick={() => setActiveTab('activity')}
+                                className={`flex items-center gap-1.5 sm:gap-2.5 px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all duration-300 shrink-0 ${activeTab === 'activity' ? 'bg-[#F0A741] text-black shadow-[0_4px_12px_rgba(240,167,65,0.3)]' : 'text-foreground/50 hover:text-foreground'}`}
+                            >
+                                <Activity className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${activeTab === 'activity' ? 'opacity-100' : 'opacity-50'}`} />
+                                <span className="hidden xs:inline">Live Feed</span>
+                                <span className="xs:hidden">Feed</span>
+                            </button>
                         </div>
 
                         {/* Content Area */}
@@ -799,7 +807,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                         onSort={handleSort}
                                     />
                                 )
-                            ) : (
+                            ) : activeTab === 'rewards' ? (
                                 <div className="space-y-6">
                                     {!rewards || !rewards.history || rewards.history.length === 0 ? (
                                         <div className="card p-20 text-center border-dashed border-white/10 bg-white/[0.01]">
@@ -916,17 +924,17 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                         </div>
                                     )}
                                 </div>
-                            )}
+                            ) : activeTab === 'activity' ? (
+                                <div className="h-[600px] overflow-hidden">
+                                    <ActivityLogList
+                                        allowedPubkeys={allowedPubkeys}
+                                        limit={50}
+                                        showFilters={true}
+                                    />
+                                </div>
+                            ) : null}
                         </div>
 
-                        {/* Activity Log List at Bottom */}
-                        <div className="max-w-7xl mx-auto mt-8 h-[600px] overflow-hidden">
-                            <ActivityLogList
-                                allowedPubkeys={allowedPubkeys}
-                                limit={50}
-                                showFilters={true}
-                            />
-                        </div>
                     </div>
                 </div>
             </main>
