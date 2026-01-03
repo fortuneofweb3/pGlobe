@@ -23,6 +23,9 @@ const ManagerMap = dynamic(() => import('@/components/ManagerMap'), {
     loading: () => <div className="h-full w-full bg-[#0a0a0a] animate-pulse flex items-center justify-center text-white/20">Loading Map...</div>
 });
 
+const ActivityLogList = dynamic(() => import('@/components/ActivityLogList'), { ssr: false });
+
+
 // Format XAND values with M/K notation and 2 decimal places
 const formatXandValue = (value: number): string => {
     if (value >= 1000000) {
@@ -90,7 +93,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
     const [sortBy, setSortBy] = useState<string>('credits');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [activeNodeIndex, setActiveNodeIndex] = useState(0);
-    const [selectedMetric, setSelectedMetric] = useState<'vesting' | 'activity' | 'resources' | 'credits'>('resources');
+    const [selectedMetric, setSelectedMetric] = useState<'vesting' | 'activity' | 'resources' | 'credits' | 'live_feed'>('resources');
     const [showMetricDropdown, setShowMetricDropdown] = useState(false);
     const [historyData, setHistoryData] = useState<Record<string, HistoryPoint[]>>({});
     const [historyLoading, setHistoryLoading] = useState(false);
@@ -452,6 +455,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                         <h3 className="text-sm font-medium text-foreground">
                                             {selectedMetric === 'vesting' && 'Vesting Schedule'}
                                             {selectedMetric === 'activity' && 'Network Activity'}
+                                            {selectedMetric === 'live_feed' && 'Live Activity Feed'}
                                             {selectedMetric === 'resources' && 'Resource Utilization'}
                                             {selectedMetric === 'credits' && 'Credits History'}
                                         </h3>
@@ -466,6 +470,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                     <span>
                                                         {selectedMetric === 'vesting' && 'Vesting'}
                                                         {selectedMetric === 'activity' && 'Activity'}
+                                                        {selectedMetric === 'live_feed' && 'Live Activity'}
                                                         {selectedMetric === 'resources' && 'Resources'}
                                                         {selectedMetric === 'credits' && 'Credits'}
                                                     </span>
@@ -476,7 +481,8 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                     <div className="absolute top-full right-0 mt-1 w-[140px] bg-[#0a0a0a] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50 flex flex-col py-1">
                                                         {[
                                                             { id: 'vesting', label: 'Vesting' },
-                                                            { id: 'activity', label: 'Activity' },
+                                                            { id: 'activity', label: 'Network Activity' },
+                                                            { id: 'live_feed', label: 'Live Activity' },
                                                             { id: 'resources', label: 'Resources' },
                                                             { id: 'credits', label: 'Credits' }
                                                         ].map((opt) => (
@@ -500,6 +506,19 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                     {/* Chart Area */}
                                     <div className="bg-muted/10 rounded-lg p-3 w-full h-[250px] relative">
                                         {(() => {
+                                            // 0. Live Activity Feed
+                                            if (selectedMetric === 'live_feed') {
+                                                return (
+                                                    <div className="h-full overflow-hidden">
+                                                        <ActivityLogList
+                                                            allowedPubkeys={nodes.map(n => n.pubkey || n.id).filter(Boolean)}
+                                                            limit={50}
+                                                            showFilters={false}
+                                                        />
+                                                    </div>
+                                                );
+                                            }
+
                                             // 1. Loading State
                                             if (historyLoading) {
                                                 return (

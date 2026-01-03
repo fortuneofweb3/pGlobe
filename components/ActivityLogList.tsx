@@ -16,6 +16,7 @@ interface ActivityLogListProps {
     limit?: number;
     showFilters?: boolean;
     watchlistOnly?: boolean;
+    allowedPubkeys?: string[]; // Optional: filter events by a list of pubkeys
 }
 
 const ACTIVITY_TYPES = [
@@ -224,7 +225,7 @@ function LogItem({ log }: { log: ActivityLog }) {
     );
 }
 
-export default function ActivityLogList({ pubkey, countryCode, limit = 50, watchlistOnly = false, showFilters = true }: ActivityLogListProps) {
+export default function ActivityLogList({ pubkey, countryCode, limit = 50, watchlistOnly = false, showFilters = true, allowedPubkeys }: ActivityLogListProps) {
     const [logs, setLogs] = useState<ActivityLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -240,6 +241,13 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50, watch
     const [localWatchlistOnly, setLocalWatchlistOnly] = useState(watchlistOnly || false);
 
     const fetchLogs = async (skip: number = 0, append: boolean = false) => {
+        // If allowedPubkeys is set, we skip initial fetch for now as the API doesn't support bulk pubkey filtering
+        // We rely on realtime socket events for "Live Activity"
+        if (allowedPubkeys && allowedPubkeys.length > 0) {
+            setLoading(false);
+            return;
+        }
+
         if (append) {
             setLoadingMore(true);
         } else {
@@ -377,6 +385,9 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50, watch
             if (countryCode && newLog.countryCode !== countryCode) return;
             if (localWatchlistOnly && newLog.pubkey && !watchlist.includes(newLog.pubkey)) return;
 
+            // Client-side filtering by allowedPubkeys list
+            if (allowedPubkeys && (!newLog.pubkey || !allowedPubkeys.includes(newLog.pubkey))) return;
+
             // Simple client-side network filtering for realtime events
             if (selectedNetwork && selectedNetwork !== 'all') {
                 const logNetwork = newLog.network || 'unknown';
@@ -405,7 +416,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50, watch
             bufferRef.current = [];
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pubkey, countryCode, limit, typeFilter, processBuffer, selectedNetwork]);
+    }, [pubkey, countryCode, limit, typeFilter, processBuffer, selectedNetwork, allowedPubkeys]);
 
     useEffect(() => {
         if (isPaused) {

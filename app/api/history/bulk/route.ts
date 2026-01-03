@@ -112,6 +112,32 @@ export async function GET(request: Request) {
       );
     }
 
+    // Optimization: Downsample data to prevent massive payloads to the browser
+    // If we have 50 nodes * 1440 points (24h) = 72,000 points, this crashes the browser.
+    // We downsample to ~100 points per node.
+    if (data.data) {
+      const MAX_POINTS = 100;
+      let totalPointsBefore = 0;
+      let totalPointsAfter = 0;
+
+      Object.keys(data.data).forEach(nodeId => {
+        const points = data.data[nodeId];
+        if (Array.isArray(points) && points.length > MAX_POINTS) {
+          totalPointsBefore += points.length;
+          const step = Math.ceil(points.length / MAX_POINTS);
+          data.data[nodeId] = points.filter((_: any, i: number) => i % step === 0);
+          totalPointsAfter += data.data[nodeId].length;
+        } else if (Array.isArray(points)) {
+          totalPointsBefore += points.length;
+          totalPointsAfter += points.length;
+        }
+      });
+
+      if (totalPointsBefore > totalPointsAfter) {
+        console.log(`[VercelProxy] 📉 Downsampled bulk history: ${totalPointsBefore} -> ${totalPointsAfter} points`);
+      }
+    }
+
     console.log(`[VercelProxy] ✅ Returning bulk historical data from API server:`, {
       hasData: !!data.data,
       dataType: typeof data.data,

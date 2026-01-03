@@ -141,8 +141,6 @@ function CountryCard({ country, flagUrl }: {
             <div className="text-2xl font-bold text-foreground">
               <AnimatedNumber value={(country as any).activeCount ?? 0} />
             </div>
-            <div className="text-xs text-foreground/60">Active pNodes</div>
-            <div className="text-[10px] text-foreground/40 mt-0.5">Total: {country.nodeCount}</div>
           </div>
         </div>
 

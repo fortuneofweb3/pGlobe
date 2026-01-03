@@ -186,6 +186,11 @@ export default function MetricChart({
             return;
         }
 
+        // Keep track of active animation frames and timeouts for cleanup
+        let animationFrameId: number;
+        let timeoutId: NodeJS.Timeout;
+        let isCancelled = false;
+
         // If same data key, show immediately
         if (dataKey === lastAnimatedKeyRef.current) {
             setShowCircle(true);
@@ -210,11 +215,13 @@ export default function MetricChart({
 
         // Use requestAnimationFrame for better performance
         const setupAnimation = () => {
+            if (isCancelled) return;
+
             const group = pathGroupRef.current;
             const paths = group?.querySelectorAll('path');
             if (!group || !paths || paths.length === 0) {
                 // Retry if not ready
-                requestAnimationFrame(setupAnimation);
+                animationFrameId = requestAnimationFrame(setupAnimation);
                 return;
             }
 
@@ -228,7 +235,8 @@ export default function MetricChart({
             });
 
             if (!allPathsReady) {
-                requestAnimationFrame(() => {
+                animationFrameId = requestAnimationFrame(() => {
+                    if (isCancelled) return;
                     const retryPaths = pathGroupRef.current?.querySelectorAll('path');
                     if (retryPaths) {
                         let retryReady = true;
@@ -271,9 +279,10 @@ export default function MetricChart({
             });
         };
 
-        requestAnimationFrame(setupAnimation);
+        animationFrameId = requestAnimationFrame(setupAnimation);
 
         function startAnimation(group: SVGGElement, path: SVGPathElement, length: number) {
+            if (isCancelled) return;
             group.classList.remove('line-initial-hidden');
 
             // Set initial state
@@ -287,12 +296,14 @@ export default function MetricChart({
             const animationDuration = 600; // 0.6 seconds
 
             // Use requestAnimationFrame to ensure initial state is painted before animation
-            requestAnimationFrame(() => {
+            animationFrameId = requestAnimationFrame(() => {
+                if (isCancelled) return;
                 path.style.transition = `stroke-dashoffset ${animationDuration}ms cubic-bezier(0.4, 0, 0.2, 1)`;
                 path.style.strokeDashoffset = '0';
 
                 // Show circle exactly when animation completes
-                setTimeout(() => {
+                timeoutId = setTimeout(() => {
+                    if (isCancelled) return;
                     setShowCircle(true);
                     path.style.strokeDasharray = 'none';
                     path.style.strokeDashoffset = '0';
@@ -301,6 +312,12 @@ export default function MetricChart({
                 }, animationDuration);
             });
         }
+
+        return () => {
+            isCancelled = true;
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            if (timeoutId) clearTimeout(timeoutId);
+        };
     }, [dataKey]);
 
     const smartYFormatter = useMemo(() => {

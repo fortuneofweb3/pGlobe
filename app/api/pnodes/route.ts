@@ -17,7 +17,8 @@ export async function GET(request: Request) {
   // DEVELOPMENT OVERRIDE:
   // If we are in development, use the local library logic directly.
   // This avoids needing to run a separate backend server or wait for remote deployment.
-  if (process.env.NODE_ENV === 'development') {
+  // UNLESS process.env.USE_REMOTE_BACKEND is set.
+  if (process.env.NODE_ENV === 'development' && !process.env.USE_REMOTE_BACKEND) {
     try {
       const { searchParams } = new URL(request.url);
       const network = searchParams.get('network') || 'all';

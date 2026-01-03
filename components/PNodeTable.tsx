@@ -210,8 +210,8 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
       const measureUncachedNodes = async () => {
         setMeasuringLatency(true);
         try {
-          // Measure latency for uncached nodes only
-          const newLatencies = await measureNodesLatency(nodes, 10, 2000);
+          // Measure latency for uncached nodes only - LOW CONCURRENCY to prevent memory spikes
+          const newLatencies = await measureNodesLatency(nodes, 3, 3000);
           if (mounted) {
             // Merge new measurements with cached values
             setNodeLatencies(prev => ({ ...prev, ...newLatencies }));
@@ -237,45 +237,91 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
     };
   }, [nodes.length]); // Re-measure when nodes change
 
-  // Fetch balances for nodes (only if not already set)
+  // Fetch balances for nodes with batching to reduce re-renders
   useEffect(() => {
+    let mounted = true;
+    const BATCH_SIZE = 50; // Update state after this many nodes
+    const CONCURRENCY = 5; // Parallel requests
+
     const fetchBalances = async () => {
-      for (const node of nodes) {
-        // Skip if already fetched or currently fetching
-        if (balances[node.id] !== undefined || fetchingBalances.has(node.id)) continue;
-        // Skip if node already has balance data (don't refetch unnecessarily)
-        if (node.balance !== undefined && node.balance !== null) continue;
-        // Skip if no pubkey
-        if (!node.pubkey && !node.publicKey) continue;
+      // Filter out nodes that need fetching
+      const nodesToFetch = nodes.filter(node =>
+        balances[node.id] === undefined &&
+        !fetchingBalances.has(node.id) &&
+        (node.balance === undefined || node.balance === null) &&
+        (node.pubkey || node.publicKey)
+      );
 
-        setFetchingBalances(prev => new Set(prev).add(node.id));
+      if (nodesToFetch.length === 0) return;
 
-        try {
-          const balance = await fetchNodeBalance(node);
-          // Only update if we got a valid balance (not null)
-          // Don't overwrite existing balances with null or 0
-          if (balance !== null && balance !== undefined) {
+      // Mark as fetching
+      setFetchingBalances(prev => {
+        const next = new Set(prev);
+        nodesToFetch.forEach(n => next.add(n.id));
+        return next;
+      });
+
+      // Process in chunks to limit concurrency
+      const chunks = [];
+      for (let i = 0; i < nodesToFetch.length; i += CONCURRENCY) {
+        chunks.push(nodesToFetch.slice(i, i + CONCURRENCY));
+      }
+
+      let newBalancesBuffer: Record<string, number | null> = {};
+      let processedCount = 0;
+
+      for (const chunk of chunks) {
+        if (!mounted) break;
+
+        const promises = chunk.map(async (node) => {
+          try {
+            const balance = await fetchNodeBalance(node);
+            return { id: node.id, balance };
+          } catch (error) {
+            console.warn(`Failed to fetch balance for node ${node.id}:`, error);
+            return { id: node.id, balance: null };
+          }
+        });
+
+        const results = await Promise.all(promises);
+
+        results.forEach(res => {
+          if (res.balance !== null && res.balance !== undefined) {
+            newBalancesBuffer[res.id] = res.balance;
+          }
+        });
+
+        processedCount += chunk.length;
+
+        // Update state periodically or at end
+        if (Object.keys(newBalancesBuffer).length >= BATCH_SIZE || processedCount >= nodesToFetch.length) {
+          if (mounted && Object.keys(newBalancesBuffer).length > 0) {
             setBalances(prev => ({
               ...prev,
-              [node.id]: balance,
+              ...newBalancesBuffer
             }));
+            // Reset buffer after flush to avoid re-merging same data
+            newBalancesBuffer = {};
           }
-        } catch (error) {
-          // Don't set balance to null on error - preserve existing value
-          console.warn(`Failed to fetch balance for node ${node.id}:`, error);
-        } finally {
-          setFetchingBalances(prev => {
-            const next = new Set(prev);
-            next.delete(node.id);
-            return next;
-          });
         }
+      }
+
+      if (mounted) {
+        setFetchingBalances(prev => {
+          const next = new Set(prev);
+          nodesToFetch.forEach(n => next.delete(n.id));
+          return next;
+        });
       }
     };
 
     fetchBalances();
+
+    return () => {
+      mounted = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes.length]);
+  }, [nodes.length]); // Only trigger when node count changes, internal logic handles already-fetched check
 
 
   const formatUptime = (uptime?: number) => {

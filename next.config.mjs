@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
+  reactStrictMode: false,
   eslint: {
     // Warning: This allows production builds to complete even if there are ESLint errors.
     // Pre-existing lint errors in chart components should be fixed in a separate cleanup PR.

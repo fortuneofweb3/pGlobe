@@ -77,6 +77,10 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [activeScanConnector, setActiveScanConnector] = useState<string | null>(null); // Track which connector was clicked
 
+  // Track active animation frames for cleanup
+  const tilePreserveRafRef = useRef<number | null>(null);
+  const rotationRafRef = useRef<number | null>(null);
+
   const [viewState, setViewState] = useState<Record<string, any> | null>(null);
   const [userHasInteracted, setUserHasInteracted] = useState(false);
   const [shouldAutoRotate, setShouldAutoRotate] = useState(autoRotate); // Track if auto-rotation should be active
@@ -701,7 +705,8 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
 
       // Continuously ensure tiles stay visible during animation using requestAnimationFrame
       // This provides smoother 60 FPS updates on all devices
-      let tilePreserveRafId: number | null = null;
+      // Continuously ensure tiles stay visible during animation using requestAnimationFrame
+      // This provides smoother 60 FPS updates on all devices
       let animationRunning = true;
 
       const preserveTilesFrame = () => {
@@ -741,15 +746,24 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
       };
 
       // Start tile preservation loop
-      tilePreserveRafId = requestAnimationFrame(preserveTilesFrame);
+      const startPreserveLoop = () => {
+        if (tilePreserveRafRef.current) cancelAnimationFrame(tilePreserveRafRef.current);
+        tilePreserveRafRef.current = requestAnimationFrame(function loop() {
+          preserveTilesFrame();
+          if (animationRunning) {
+            tilePreserveRafRef.current = requestAnimationFrame(loop);
+          }
+        });
+      };
+      startPreserveLoop();
 
       // Clean up after animation completes
       const onMoveEnd = () => {
         // Stop tile preservation loop
         animationRunning = false;
-        if (tilePreserveRafId !== null) {
-          cancelAnimationFrame(tilePreserveRafId);
-          tilePreserveRafId = null;
+        if (tilePreserveRafRef.current !== null) {
+          cancelAnimationFrame(tilePreserveRafRef.current);
+          tilePreserveRafRef.current = null;
         }
 
         // Restore normal tile behavior after animation
@@ -778,6 +792,18 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
       map.once('moveend', onMoveEnd);
     }
   }, [navigableNodes, nodeFeatures]);
+
+  // Ensure cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (tilePreserveRafRef.current !== null) {
+        cancelAnimationFrame(tilePreserveRafRef.current);
+      }
+      if (rotationRafRef.current !== null) {
+        cancelAnimationFrame(rotationRafRef.current);
+      }
+    };
+  }, []);
 
   // Handle scan connector click - toggle between scan location and node
   const handleScanConnectorClick = useCallback((targetNodeId: string, connectorId: string) => {

@@ -8,7 +8,7 @@
 
 import { PNode } from '../types/pnode';
 
-const CACHE_DURATION_MS = 10 * 60 * 1000; // 10 minutes
+const CACHE_DURATION_MS = 60 * 60 * 1000; // 60 minutes
 const CACHE_KEY_PREFIX = 'node_latency_';
 
 interface CachedLatency {
@@ -22,19 +22,19 @@ interface CachedLatency {
  */
 export function getCachedLatency(nodeId: string): number | null | undefined {
   if (typeof window === 'undefined') return undefined;
-  
+
   try {
     const cached = localStorage.getItem(`${CACHE_KEY_PREFIX}${nodeId}`);
     if (!cached) return undefined;
-    
+
     const data: CachedLatency = JSON.parse(cached);
     const age = Date.now() - data.timestamp;
-    
+
     // Return cached value if still valid
     if (age < CACHE_DURATION_MS) {
       return data.latency;
     }
-    
+
     // Cache expired, remove it
     localStorage.removeItem(`${CACHE_KEY_PREFIX}${nodeId}`);
     return undefined;
@@ -49,7 +49,7 @@ export function getCachedLatency(nodeId: string): number | null | undefined {
  */
 function setCachedLatency(nodeId: string, latency: number | null): void {
   if (typeof window === 'undefined') return;
-  
+
   try {
     const data: CachedLatency = {
       latency,
@@ -66,9 +66,9 @@ function setCachedLatency(nodeId: string, latency: number | null): void {
  */
 function getAllCachedLatencies(): Record<string, number | null> {
   if (typeof window === 'undefined') return {};
-  
+
   const results: Record<string, number | null> = {};
-  
+
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -83,7 +83,7 @@ function getAllCachedLatencies(): Record<string, number | null> {
   } catch (error) {
     console.warn('[ClientLatency] Failed to read all cached latencies:', error);
   }
-  
+
   return results;
 }
 
@@ -107,22 +107,22 @@ export async function measureProxyLatencyFromClient(): Promise<number | null> {
   const promises = endpoints.map(async (endpoint) => {
     try {
       const startTime = performance.now();
-      
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
-      
+
       // Use our API route to avoid CORS issues
       const response = await fetch('/api/measure-latency?target=' + encodeURIComponent(endpoint), {
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (!response.ok) return null;
-      
+
       const data = await response.json();
       const latency = data.latency || (performance.now() - startTime);
-      
+
       return Math.round(latency);
     } catch (error) {
       return null;
@@ -130,7 +130,7 @@ export async function measureProxyLatencyFromClient(): Promise<number | null> {
   });
 
   const results = await Promise.allSettled(promises);
-  
+
   for (const result of results) {
     if (result.status === 'fulfilled' && result.value !== null) {
       measurements.push(result.value);
@@ -151,22 +151,22 @@ export async function measureProxyLatencyFromClient(): Promise<number | null> {
 export async function measureLatencyToEndpoint(endpoint: string): Promise<number | null> {
   try {
     const startTime = performance.now();
-    
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000);
-    
+
     // Use our API route to avoid CORS issues
     const response = await fetch('/api/measure-latency?target=' + encodeURIComponent(endpoint), {
       signal: controller.signal,
     });
-    
+
     clearTimeout(timeoutId);
-    
+
     if (!response.ok) return null;
-    
+
     const data = await response.json();
     const latency = data.latency || (performance.now() - startTime);
-    
+
     return Math.round(latency);
   } catch (error) {
     return null;
@@ -191,7 +191,7 @@ export async function measureAllProxyLatencies(): Promise<Record<string, number>
   });
 
   const measurements = await Promise.allSettled(promises);
-  
+
   for (const result of measurements) {
     if (result.status === 'fulfilled' && result.value.latency !== null) {
       results[result.value.endpoint] = result.value.latency;
@@ -209,49 +209,49 @@ export async function measureAllProxyLatencies(): Promise<Record<string, number>
  */
 export async function measureNodeLatency(node: PNode, timeoutMs: number = 2000): Promise<number | null> {
   if (!node.address) return null;
-  
+
   // Check cache first
   const cached = getCachedLatency(node.id);
   if (cached !== undefined) {
     return cached;
   }
-  
+
   const addressParts = node.address.split(':');
   const ip = addressParts[0];
   const port = node.rpcPort?.toString() || addressParts[1] || '6000';
-  
+
   if (!ip) return null;
-  
+
   // Try to ping node directly via our API route
   // The API route will handle the actual HTTP request to avoid CORS issues
   try {
     const startTime = performance.now();
-    
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-    
+
     // Use our API route to measure latency to the node
     const response = await fetch(`/api/measure-latency?target=http://${ip}:${port}/rpc`, {
       signal: controller.signal,
     });
-    
+
     clearTimeout(timeoutId);
-    
+
     if (!response.ok) {
       // Cache null result (node not reachable)
       setCachedLatency(node.id, null);
       return null;
     }
-    
+
     const data = await response.json();
-    
+
     // Use the latency from the API response, or fallback to client-side measurement
     const latency = data.latency || (performance.now() - startTime);
     const roundedLatency = Math.round(latency);
-    
+
     // Cache the result
     setCachedLatency(node.id, roundedLatency);
-    
+
     return roundedLatency;
   } catch (error) {
     // Node is not reachable (timeout, CORS, firewall, etc.)
@@ -267,12 +267,12 @@ export async function measureNodeLatency(node: PNode, timeoutMs: number = 2000):
  */
 export function getCachedNodesLatencies(nodes: PNode[]): Record<string, number | null> {
   const results: Record<string, number | null> = {};
-  
+
   if (typeof window === 'undefined') return results;
-  
+
   // Load all cached latencies
   const cachedLatencies = getAllCachedLatencies();
-  
+
   // Return cached values for nodes that exist
   for (const node of nodes) {
     const cached = cachedLatencies[node.id];
@@ -280,7 +280,7 @@ export function getCachedNodesLatencies(nodes: PNode[]): Record<string, number |
       results[node.id] = cached;
     }
   }
-  
+
   return results;
 }
 
@@ -296,13 +296,13 @@ export async function measureNodesLatency(
   timeoutMs: number = 2000
 ): Promise<Record<string, number | null>> {
   const results: Record<string, number | null> = {};
-  
+
   // Load all cached latencies first
   const cachedLatencies = getAllCachedLatencies();
-  
+
   // Separate nodes into cached and uncached
   const uncachedNodes: PNode[] = [];
-  
+
   for (const node of nodes) {
     const cached = cachedLatencies[node.id];
     if (cached !== undefined) {
@@ -313,30 +313,30 @@ export async function measureNodesLatency(
       uncachedNodes.push(node);
     }
   }
-  
+
   // Only measure uncached nodes
   if (uncachedNodes.length === 0) {
     return results;
   }
-  
+
   // Process uncached nodes in batches to avoid overwhelming the browser
   for (let i = 0; i < uncachedNodes.length; i += concurrency) {
     const batch = uncachedNodes.slice(i, i + concurrency);
-    
+
     const promises = batch.map(async (node) => {
       const latency = await measureNodeLatency(node, timeoutMs);
       return { nodeId: node.id, latency };
     });
-    
+
     const batchResults = await Promise.allSettled(promises);
-    
+
     for (const result of batchResults) {
       if (result.status === 'fulfilled') {
         results[result.value.nodeId] = result.value.latency;
       }
     }
   }
-  
+
   return results;
 }
 
