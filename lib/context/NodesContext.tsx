@@ -91,7 +91,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   const [podCredits, setPodCredits] = useState<Record<string, number>>({});
 
   // Request deduplication - prevent multiple simultaneous requests
-  const fetchingRef = useRef(false);
+  const fetchingRef = useRef<string | boolean>(false);
   const fetchPromiseRef = useRef<Promise<void> | null>(null);
   // Track nodes length separately to avoid stale closure issues
   const nodesLengthRef = useRef(0);
@@ -100,6 +100,11 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     nodesLengthRef.current = nodes.length;
   }, [nodes.length]);
+
+  const selectedNetworkRef = useRef(selectedNetwork);
+  useEffect(() => {
+    selectedNetworkRef.current = selectedNetwork;
+  }, [selectedNetwork]);
 
   const cacheKey = (network: string) => `nodesCache:${network || 'default'}`;
 
@@ -167,12 +172,13 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   );
 
   const refreshNodes = useCallback(async () => {
-    // Request deduplication - if already fetching, return the existing promise
-    if (fetchingRef.current && fetchPromiseRef.current) {
+    // Request deduplication - if already fetching THIS network, return the existing promise
+    if (fetchingRef.current === selectedNetwork && fetchPromiseRef.current) {
       return fetchPromiseRef.current;
     }
 
-    fetchingRef.current = true;
+    fetchingRef.current = selectedNetwork;
+    const currentFetchNetwork = selectedNetwork;
 
     const fetchPromise = (async () => {
       try {
@@ -196,9 +202,16 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         ]);
 
         if (nodesData.nodes && Array.isArray(nodesData.nodes)) {
+          // RACE CONDITION CHECK: Only update state if this fetch is still relevant
+          if (selectedNetworkRef.current !== currentFetchNetwork) {
+            console.log(`[NodesContext] 🛑 Ignoring stale fetch for ${currentFetchNetwork} (current is ${selectedNetworkRef.current})`);
+            return;
+          }
+
           setNodes(nodesData.nodes);
 
           if (managersData.success) {
+            console.log(`[NodesContext] ✅ Updating managers for ${currentFetchNetwork} (${managersData.managers.length} managers)`);
             setManagers(managersData.managers);
             setManagerGlobalStats(managersData.stats);
           }
@@ -234,7 +247,9 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         setLoading(false);
       } finally {
-        fetchingRef.current = false;
+        if (fetchingRef.current === selectedNetwork) {
+          fetchingRef.current = false;
+        }
         fetchPromiseRef.current = null;
       }
     })();
@@ -253,6 +268,9 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
+
+    // Wait for network hydration before first fetch
+    if (!networkHydrated) return;
 
     if (hasInitializedRef.current) {
       // Already initialized, just load cache if needed
@@ -355,10 +373,10 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     // Only run in browser environment
     if (typeof window === 'undefined') return;
 
-    if (selectedNetwork) {
+    if (selectedNetwork && networkHydrated) {
       refreshNodes();
     }
-  }, [selectedNetwork, refreshNodes]);
+  }, [selectedNetwork, refreshNodes, networkHydrated]);
 
   // Fetch pod credits when nodes are loaded
   useEffect(() => {
@@ -430,10 +448,20 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     return { activeNodes: active, offlineNodes: offline };
   }, [filteredByNetwork]);
 
+  // Filter managers by selected network (safety measure)
+  const filteredManagers = useMemo(() => {
+    if (selectedNetwork === 'all') return managers;
+    return managers.filter(m => {
+      if (selectedNetwork === 'mainnet') return m.source === 'mainnet' || m.source === 'both';
+      if (selectedNetwork === 'devnet') return m.source === 'devnet' || m.source === 'both' || m.source === 'unknown' as any;
+      return true;
+    });
+  }, [managers, selectedNetwork]);
+
   // Calculate dead managers (managers with only offline nodes)
   const deadManagerCount = useMemo(() => {
-    return managers.filter(m => m.onlineCount === 0).length;
-  }, [managers]);
+    return filteredManagers.filter(m => m.onlineCount === 0).length;
+  }, [filteredManagers]);
 
   return (
     <NodesContext.Provider
@@ -441,10 +469,10 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         nodes: filteredByNetwork,
         activeNodes,
         offlineNodes,
-        managers,
+        managers: filteredManagers,
         managerGlobalStats,
         networkStats,
-        managerCount: managers.length,
+        managerCount: filteredManagers.length,
         offlineNodeCount: offlineNodes.length,
         deadManagerCount,
         loading,

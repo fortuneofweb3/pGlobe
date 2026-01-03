@@ -485,6 +485,8 @@ export async function getAllNodes(network?: string): Promise<PNode[]> {
       if (network && network !== 'all') {
         if (network === 'mainnet') {
           query.network = { $in: ['mainnet', 'both'] };
+        } else if (network === 'devnet') {
+          query.network = { $in: ['devnet', 'unknown'] };
         } else {
           query.network = network;
         }
@@ -577,6 +579,8 @@ export async function getNodesByManager(wallet: string, network?: string): Promi
     if (network && network !== 'all') {
       if (network === 'mainnet') {
         query.network = { $in: ['mainnet', 'both'] };
+      } else if (network === 'devnet') {
+        query.network = { $in: ['devnet', 'unknown'] };
       } else {
         query.network = network;
       }
@@ -627,6 +631,7 @@ export async function getAllNodesForManagers(): Promise<PNode[]> {
           eraBoost: 1,
           eraLabel: 1,
           boostFactor: 1,
+          network: 1,
           vestingStake: 1
         }
       }).batchSize(1000);
