@@ -217,7 +217,7 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
                             width={Math.max(barWidth, 1)}
                             height={cpuBarHeight}
                             fill={colors.cpu}
-                            rx={4}
+                            rx={6}
                             style={{ pointerEvents: 'all' }}
                             onMouseMove={(event) => {
                               const coords = localPoint(event);
@@ -237,7 +237,7 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
                             width={Math.max(barWidth, 1)}
                             height={ramBarHeight}
                             fill={colors.ram}
-                            rx={4}
+                            rx={6}
                             style={{ pointerEvents: 'all' }}
                             onMouseMove={(event) => {
                               const coords = localPoint(event);
@@ -289,7 +289,7 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
                       ...defaultStyles,
                       backgroundColor: 'rgba(0, 0, 0, 0.9)',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
-                      borderRadius: '8px',
+                      borderRadius: 'var(--radius)',
                       padding: '8px 12px',
                       pointerEvents: 'none',
                     }}
@@ -310,7 +310,7 @@ export default function ResourceUtilization({ nodes }: ResourceUtilizationProps)
       </div>
       <div className="flex items-center justify-center gap-4 mt-3 text-xs">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded" style={{ backgroundColor: colors.cpu }}></div>
+          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: colors.cpu }}></div>
           <span className="text-foreground/80">CPU</span>
         </div>
         <div className="flex items-center gap-2">

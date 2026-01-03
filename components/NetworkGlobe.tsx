@@ -215,7 +215,7 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
 
       <div className="relative">
         <div
-          style={{ height: '500px', width: '100%', borderRadius: '0.5rem', overflow: 'hidden', position: 'relative' }}
+          style={{ height: '500px', width: '100%', borderRadius: 'var(--radius)', overflow: 'hidden', position: 'relative' }}
           className="border border-border rounded-xl bg-background"
         >
           {isClient && nodesWithLocation.length > 0 ? (
@@ -246,7 +246,7 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
                       background: rgba(0, 0, 0, 0.9);
                       color: white;
                       padding: 8px 12px;
-                      border-radius: 6px;
+                      border-radius: var(--radius);
                       font-size: 12px;
                       font-family: system-ui, -apple-system, sans-serif;
                       border: 1px solid ${statusColors[status as keyof typeof statusColors] || statusColors.offline};
@@ -330,7 +330,7 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
               </div>
 
               {/* Zoom Level Indicator */}
-              <div className="absolute bottom-4 left-4 px-3 py-1 bg-card/90 border border-border rounded text-body-small text-muted-foreground">
+              <div className="absolute bottom-4 left-4 px-3 py-1 bg-card/90 border border-border rounded-lg text-body-small text-muted-foreground">
                 {cameraDistance < 150 ? 'City View' : cameraDistance < 200 ? 'Country View' : 'Global View'}
               </div>
             </>

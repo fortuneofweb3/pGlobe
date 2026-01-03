@@ -2767,8 +2767,8 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                   y={popupY}
                   width={popupWidth}
                   height={popupHeight}
-                  rx="18"
-                  ry="18"
+                  rx="12"
+                  ry="12"
                   fill="none"
                   stroke={statusColor}
                   strokeWidth="2"
@@ -2798,7 +2798,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                   width: `${popupWidth - 2}px`,
                   height: `${popupHeight - 2}px`,
                   backgroundColor: 'rgba(20, 24, 32, 0.95)',
-                  borderRadius: '18px', // 15 * 1.2
+                  borderRadius: 'var(--radius)',
                   zIndex: 20, // Above map but below modal (modal is z-50)
                   pointerEvents: 'auto',
                   animation: 'bubbleIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards',

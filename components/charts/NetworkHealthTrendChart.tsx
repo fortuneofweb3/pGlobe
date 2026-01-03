@@ -35,10 +35,10 @@ const formatTime = (date: Date): string => {
 
 const formatDateAxis = (date: Date, chartData: Array<{ timestamp: number }>): string => {
   if (chartData.length === 0) return '';
-  
+
   const timeSpan = Math.max(...chartData.map(d => d.timestamp)) - Math.min(...chartData.map(d => d.timestamp));
   const isSameDay = timeSpan < 86400000; // Less than 24 hours
-  
+
   if (isSameDay) {
     return formatTime(date);
   } else {
@@ -46,8 +46,8 @@ const formatDateAxis = (date: Date, chartData: Array<{ timestamp: number }>): st
   }
 };
 
-export default function NetworkHealthTrendChart({ 
-  historicalData, 
+export default function NetworkHealthTrendChart({
+  historicalData,
   height = 300,
   headerContent
 }: NetworkHealthTrendChartProps) {
@@ -156,7 +156,7 @@ export default function NetworkHealthTrendChart({
       const length = path.getTotalLength();
       if (length === 0) {
         // Path not ready, retry once more
-            requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
           const retryPath = pathGroupRef.current?.querySelector('path');
           if (retryPath) {
             const retryLength = retryPath.getTotalLength();
@@ -222,257 +222,257 @@ export default function NetworkHealthTrendChart({
           {headerContent}
         </div>
       )}
-    <div style={{ width: '100%', height, position: 'relative' }}>
-      <ParentSize>
-        {({ width: parentWidth = 800 }) => {
-          const width = parentWidth;
-          // Responsive margins - smaller on mobile for better chart size
-          const isMobile = width < 640;
-          const margin = { 
-            top: 30, 
-            right: isMobile ? 10 : 30, 
-            left: isMobile ? 40 : 60, 
-            bottom: isMobile ? 50 : 70 
-          };
-          const xMax = width - margin.left - margin.right;
-          const yMax = height - margin.top - margin.bottom;
+      <div style={{ width: '100%', height, position: 'relative' }}>
+        <ParentSize>
+          {({ width: parentWidth = 800 }) => {
+            const width = parentWidth;
+            // Responsive margins - smaller on mobile for better chart size
+            const isMobile = width < 640;
+            const margin = {
+              top: 30,
+              right: isMobile ? 10 : 30,
+              left: isMobile ? 40 : 60,
+              bottom: isMobile ? 50 : 70
+            };
+            const xMax = width - margin.left - margin.right;
+            const yMax = height - margin.top - margin.bottom;
 
-          const xScale = scaleTime<number>({
-            range: [0, xMax],
-            domain: chartData.length > 0
-              ? [
-              Math.min(...chartData.map(d => d.timestamp)),
-              Math.max(...chartData.map(d => d.timestamp))
+            const xScale = scaleTime<number>({
+              range: [0, xMax],
+              domain: chartData.length > 0
+                ? [
+                  Math.min(...chartData.map(d => d.timestamp)),
+                  Math.max(...chartData.map(d => d.timestamp))
                 ]
-              : defaultTimeDomain,
-          });
-
-          const yScale = scaleLinear<number>({
-            range: [yMax, 0],
-            domain: yDomain,
-            nice: true,
-          });
-
-          const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
-            const coords = localPoint(event);
-            if (!coords) return;
-
-            const x = coords.x - margin.left;
-            
-            let closestIndex = 0;
-            let minDistance = Infinity;
-            chartData.forEach((d, i) => {
-              const xPos = xScale(d.timestamp);
-              const distance = Math.abs(xPos - x);
-              if (distance < minDistance) {
-                minDistance = distance;
-                closestIndex = i;
-              }
+                : defaultTimeDomain,
             });
-            
-            const d = chartData[closestIndex];
 
-            if (d) {
-              setHoveredIndex(closestIndex);
-              const xPos = xScale(d.timestamp) + margin.left;
-              showTooltip({
-                tooltipData: d,
-                tooltipLeft: xPos,
-                tooltipTop: coords.y,
+            const yScale = scaleLinear<number>({
+              range: [yMax, 0],
+              domain: yDomain,
+              nice: true,
+            });
+
+            const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
+              const coords = localPoint(event);
+              if (!coords) return;
+
+              const x = coords.x - margin.left;
+
+              let closestIndex = 0;
+              let minDistance = Infinity;
+              chartData.forEach((d, i) => {
+                const xPos = xScale(d.timestamp);
+                const distance = Math.abs(xPos - x);
+                if (distance < minDistance) {
+                  minDistance = distance;
+                  closestIndex = i;
+                }
               });
-            }
-          };
 
-          const handleMouseLeave = () => {
-            setHoveredIndex(null);
-            hideTooltip();
-          };
+              const d = chartData[closestIndex];
 
-          // Split data for hover effect
-          const highlightedData = useMemo(() => {
-            if (hoveredIndex === null || chartData.length === 0) {
-              return chartData;
-            }
-            return chartData.slice(0, hoveredIndex + 1);
-          }, [chartData, hoveredIndex]);
+              if (d) {
+                setHoveredIndex(closestIndex);
+                const xPos = xScale(d.timestamp) + margin.left;
+                showTooltip({
+                  tooltipData: d,
+                  tooltipLeft: xPos,
+                  tooltipTop: coords.y,
+                });
+              }
+            };
 
-          const dimmedData = useMemo(() => {
-            if (hoveredIndex === null || chartData.length === 0) {
-              return [];
-            }
-            return chartData.slice(hoveredIndex);
-          }, [chartData, hoveredIndex]);
+            const handleMouseLeave = () => {
+              setHoveredIndex(null);
+              hideTooltip();
+            };
 
-          return (
-            <>
-              <svg
-                ref={svgRef}
-                width={width}
-                height={height}
-                onMouseMove={handleMouseMove}
-                onMouseLeave={handleMouseLeave}
-              >
-                <defs>
-                  {/* Animation styles */}
-                  <style>{`
+            // Split data for hover effect
+            const highlightedData = useMemo(() => {
+              if (hoveredIndex === null || chartData.length === 0) {
+                return chartData;
+              }
+              return chartData.slice(0, hoveredIndex + 1);
+            }, [chartData, hoveredIndex]);
+
+            const dimmedData = useMemo(() => {
+              if (hoveredIndex === null || chartData.length === 0) {
+                return [];
+              }
+              return chartData.slice(hoveredIndex);
+            }, [chartData, hoveredIndex]);
+
+            return (
+              <>
+                <svg
+                  ref={svgRef}
+                  width={width}
+                  height={height}
+                  onMouseMove={handleMouseMove}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  <defs>
+                    {/* Animation styles */}
+                    <style>{`
                     .line-initial-hidden path {
                       visibility: hidden;
                     }
                   `}</style>
-                </defs>
-                <Group transform={`translate(${margin.left},${margin.top})`}>
-                  <GridRows
-                    scale={yScale}
-                    width={xMax}
-                    strokeDasharray="3,3"
-                    stroke="#333"
-                    opacity={0.3}
-                  />
-                  <GridColumns
-                    scale={xScale}
-                    height={yMax}
-                    strokeDasharray="3,3"
-                    stroke="#333"
-                    opacity={0.3}
-                  />
+                  </defs>
+                  <Group transform={`translate(${margin.left},${margin.top})`}>
+                    <GridRows
+                      scale={yScale}
+                      width={xMax}
+                      strokeDasharray="3,3"
+                      stroke="#333"
+                      opacity={0.3}
+                    />
+                    <GridColumns
+                      scale={xScale}
+                      height={yMax}
+                      strokeDasharray="3,3"
+                      stroke="#333"
+                      opacity={0.3}
+                    />
 
-                  {/* Highlighted line - show if we have data, even if loading new data */}
-                  {highlightedData.length > 0 && (
-                    <g ref={pathGroupRef} key={`line-${dataKey || 'loading'}`} className="line-initial-hidden">
+                    {/* Highlighted line - show if we have data, even if loading new data */}
+                    {highlightedData.length > 0 && (
+                      <g ref={pathGroupRef} key={`line-${dataKey || 'loading'}`} className="line-initial-hidden">
+                        <LinePath
+                          data={highlightedData}
+                          x={(d) => xScale(d.timestamp)}
+                          y={(d) => yScale(d.overall)}
+                          stroke="#F0A741"
+                          strokeWidth={3}
+                          strokeOpacity={1}
+                          curve={curveMonotoneX}
+                        />
+                      </g>
+                    )}
+
+                    {/* Dimmed line (when hovering) - render AFTER highlighted line so it appears on top but dimmed */}
+                    {hoveredIndex !== null && dimmedData.length > 0 && (
                       <LinePath
-                        data={highlightedData}
+                        data={dimmedData}
                         x={(d) => xScale(d.timestamp)}
                         y={(d) => yScale(d.overall)}
                         stroke="#F0A741"
                         strokeWidth={3}
-                        strokeOpacity={1}
+                        strokeOpacity={0.25}
                         curve={curveMonotoneX}
                       />
-                    </g>
-                  )}
+                    )}
 
-                  {/* Dimmed line (when hovering) - render AFTER highlighted line so it appears on top but dimmed */}
-                  {hoveredIndex !== null && dimmedData.length > 0 && (
-                  <LinePath
-                      data={dimmedData}
-                    x={(d) => xScale(d.timestamp)}
-                    y={(d) => yScale(d.overall)}
-                    stroke="#F0A741"
-                    strokeWidth={3}
-                      strokeOpacity={0.25}
-                    curve={curveMonotoneX}
-                  />
-                  )}
+                    {tooltipOpen && tooltipData && (
+                      <>
+                        <line
+                          x1={xScale(tooltipData.timestamp)}
+                          x2={xScale(tooltipData.timestamp)}
+                          y1={0}
+                          y2={yMax}
+                          stroke="#9CA3AF"
+                          strokeWidth={1}
+                          strokeDasharray="4,4"
+                          opacity={0.5}
+                          pointerEvents="none"
+                        />
+                        {showCircle && (
+                          <Circle
+                            cx={xScale(tooltipData.timestamp)}
+                            cy={yScale(tooltipData.overall)}
+                            r={5}
+                            fill="#F0A741"
+                            stroke="#fff"
+                            strokeWidth={2}
+                            pointerEvents="none"
+                          />
+                        )}
+                      </>
+                    )}
 
-                  {tooltipOpen && tooltipData && (
-                    <>
-                      <line
-                        x1={xScale(tooltipData.timestamp)}
-                        x2={xScale(tooltipData.timestamp)}
-                        y1={0}
-                        y2={yMax}
-                        stroke="#9CA3AF"
-                        strokeWidth={1}
-                        strokeDasharray="4,4"
-                        opacity={0.5}
-                        pointerEvents="none"
-                      />
-                      {showCircle && (
-                      <Circle
-                        cx={xScale(tooltipData.timestamp)}
-                        cy={yScale(tooltipData.overall)}
-                        r={5}
-                        fill="#F0A741"
-                        stroke="#fff"
-                        strokeWidth={2}
-                        pointerEvents="none"
-                      />
-                      )}
-                    </>
-                  )}
-
-                  <AxisBottom
-                    top={yMax}
-                    scale={xScale}
-                    numTicks={Math.min(6, Math.floor(xMax / 100))}
-                    tickFormat={(d) => {
-                      const date = d as Date;
-                      if (chartData.length === 0) {
-                        // Default formatting when no data
-                        const timeSpan = defaultTimeDomain[1] - defaultTimeDomain[0];
-                        const isSameDay = timeSpan < 86400000;
-                        return isSameDay ? formatTime(date) : formatDate(date);
-                      }
-                      return formatDateAxis(date, chartData);
+                    <AxisBottom
+                      top={yMax}
+                      scale={xScale}
+                      numTicks={Math.min(6, Math.floor(xMax / 100))}
+                      tickFormat={(d) => {
+                        const date = d as Date;
+                        if (chartData.length === 0) {
+                          // Default formatting when no data
+                          const timeSpan = defaultTimeDomain[1] - defaultTimeDomain[0];
+                          const isSameDay = timeSpan < 86400000;
+                          return isSameDay ? formatTime(date) : formatDate(date);
+                        }
+                        return formatDateAxis(date, chartData);
+                      }}
+                      stroke="#6B7280"
+                      tickStroke="#6B7280"
+                      tickLabelProps={() => ({
+                        fill: '#9CA3AF',
+                        fontSize: 11,
+                        textAnchor: 'middle',
+                        angle: 0,
+                        dy: 10,
+                      })}
+                    />
+                    <AxisLeft
+                      scale={yScale}
+                      label="Health Score"
+                      labelProps={{
+                        fill: '#9CA3AF',
+                        fontSize: 11,
+                      }}
+                      stroke="#6B7280"
+                      tickStroke="#6B7280"
+                      tickFormat={(d) => `${d}%`}
+                      numTicks={5}
+                      tickLabelProps={() => ({
+                        fill: '#9CA3AF',
+                        fontSize: 11,
+                        textAnchor: 'end',
+                        dx: -5,
+                      })}
+                    />
+                  </Group>
+                </svg>
+                {tooltipOpen && tooltipData && (
+                  <TooltipWithBounds
+                    top={tooltipTop}
+                    left={tooltipLeft}
+                    style={{
+                      ...defaultStyles,
+                      backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: 'var(--radius)',
+                      padding: '8px 12px',
+                      zIndex: 1000,
                     }}
-                    stroke="#6B7280"
-                    tickStroke="#6B7280"
-                    tickLabelProps={() => ({
-                      fill: '#9CA3AF',
-                      fontSize: 11,
-                      textAnchor: 'middle',
-                      angle: 0,
-                      dy: 10,
-                    })}
-                  />
-                  <AxisLeft
-                    scale={yScale}
-                    label="Health Score"
-                    labelProps={{
-                      fill: '#9CA3AF',
-                      fontSize: 11,
-                    }}
-                    stroke="#6B7280"
-                    tickStroke="#6B7280"
-                    tickFormat={(d) => `${d}%`}
-                    numTicks={5}
-                    tickLabelProps={() => ({
-                      fill: '#9CA3AF',
-                      fontSize: 11,
-                      textAnchor: 'end',
-                      dx: -5,
-                    })}
-                  />
-                </Group>
-              </svg>
-              {tooltipOpen && tooltipData && (
-                <TooltipWithBounds
-                  top={tooltipTop}
-                  left={tooltipLeft}
-                  style={{
-                    ...defaultStyles,
-                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    borderRadius: '8px',
-                    padding: '8px 12px',
-                    zIndex: 1000,
-                  }}
-                >
-                  <div className="space-y-1">
-                    <div className="text-xs text-foreground/60">
-                      {timeFormat('%b %d, %H:%M')(new Date(tooltipData.timestamp))}
-                    </div>
-                    <div className="font-semibold text-foreground">
-                      Overall: <span className="text-[#F0A741]">{tooltipData.overall.toFixed(2)}%</span>
-                    </div>
-                    <div className="text-xs space-y-0.5">
-                      <div className="text-[#3F8277]">
-                        Availability: {tooltipData.availability.toFixed(2)}%
+                  >
+                    <div className="space-y-1">
+                      <div className="text-xs text-foreground/60">
+                        {timeFormat('%b %d, %H:%M')(new Date(tooltipData.timestamp))}
                       </div>
-                      <div className="text-gray-400">
-                        Version: {tooltipData.version.toFixed(2)}%
+                      <div className="font-semibold text-foreground">
+                        Overall: <span className="text-[#F0A741]">{tooltipData.overall.toFixed(2)}%</span>
                       </div>
-                      <div className="text-[#6366F1]">
-                        Distribution: {tooltipData.distribution.toFixed(2)}%
+                      <div className="text-xs space-y-0.5">
+                        <div className="text-[#3F8277]">
+                          Availability: {tooltipData.availability.toFixed(2)}%
+                        </div>
+                        <div className="text-gray-400">
+                          Version: {tooltipData.version.toFixed(2)}%
+                        </div>
+                        <div className="text-[#6366F1]">
+                          Distribution: {tooltipData.distribution.toFixed(2)}%
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </TooltipWithBounds>
-              )}
-            </>
-          );
-        }}
-      </ParentSize>
+                  </TooltipWithBounds>
+                )}
+              </>
+            );
+          }}
+        </ParentSize>
       </div>
     </div>
   );

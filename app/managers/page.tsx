@@ -153,7 +153,7 @@ function ManagersPageContent() {
     const { formatUsd } = useXandPrice();
     const [searchQuery, setSearchQuery] = useState('');
     const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<'grid' | 'leaderboard'>('leaderboard');
+    const [viewMode, setViewMode] = useState<'grid' | 'leaderboard'>('grid');
 
     const filteredManagers = useMemo(() => {
         if (!searchQuery) return managers;

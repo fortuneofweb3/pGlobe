@@ -638,7 +638,7 @@ function ChartContent({
             ...defaultStyles,
             backgroundColor: 'rgba(0, 0, 0, 0.95)',
             border: '1px solid #F0A741',
-            borderRadius: '8px',
+            borderRadius: 'var(--radius)',
             padding: '10px 14px',
             color: '#ffffff',
           }}

@@ -26,7 +26,7 @@ const tooltipStyles = {
     ...defaultStyles,
     backgroundColor: 'rgba(10,10,10,0.95)',
     border: '1px solid rgba(240,167,65,0.2)',
-    borderRadius: '8px',
+    borderRadius: 'var(--radius)',
     color: 'white',
     padding: '8px 12px',
 };
@@ -136,7 +136,7 @@ export default function CreditsDistributionChart({ nodes, height = 300 }: Credit
                                             width={barWidth}
                                             height={barHeight}
                                             fill={`rgba(240, 167, 65, ${opacity})`}
-                                            rx={4}
+                                            rx={6}
                                             onMouseMove={(event) => {
                                                 const coords = localPoint(event);
                                                 showTooltip({

@@ -716,7 +716,7 @@ function HomeContent() {
               }}
             />
             {geoEnriching && (
-              <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-50 bg-black/90 backdrop-blur-md rounded-2xl px-4 py-2">
+              <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-50 bg-black/90 backdrop-blur-md rounded-xl px-4 py-2">
                 <p className="text-xs text-foreground font-mono">
                   Loading geographic data...
                 </p>
@@ -729,7 +729,7 @@ function HomeContent() {
 
       {/* Error Banner - Floating Overlay */}
       {error && (
-        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-50 bg-black/90 backdrop-blur-md rounded-2xl px-4 py-2 pointer-events-auto shadow-lg">
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-50 bg-black/90 backdrop-blur-md rounded-xl px-4 py-2 pointer-events-auto shadow-lg">
           <p className="text-sm text-red-400 font-mono">{error}</p>
         </div>
       )}

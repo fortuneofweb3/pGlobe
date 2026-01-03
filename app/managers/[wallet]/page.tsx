@@ -299,7 +299,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                 <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
                                 <span>Back to Managers</span>
                             </Link>
-                            <div className="rounded-2xl border border-border/40 bg-card p-6 mb-8 overflow-hidden relative">
+                            <div className="rounded-xl border border-border/40 bg-card p-6 mb-8 overflow-hidden relative">
                                 <div className="h-8 w-1/2 bg-muted/20 animate-pulse rounded mb-4" />
                                 <div className="h-4 w-1/3 bg-muted/10 animate-pulse rounded" />
                             </div>
@@ -365,7 +365,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
 
                         {/* Cover Section */}
                         <div className="relative mb-8 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }}>
-                            <div className="relative rounded-2xl overflow-hidden border border-border/40 shadow-2xl bg-card">
+                            <div className="relative rounded-xl overflow-hidden border border-border/40 shadow-2xl bg-card">
                                 <div
                                     className="absolute inset-0 h-full w-full opacity-20 hover:opacity-30 transition-opacity duration-700"
                                     style={{
@@ -828,7 +828,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2 sm:gap-4 shrink-0">
-                                                    <div className="bg-black/60 border border-white/5 rounded-2xl px-3 sm:px-5 py-2 sm:py-3 flex flex-col items-end shadow-inner">
+                                                    <div className="bg-black/60 border border-white/5 rounded-xl px-3 sm:px-5 py-2 sm:py-3 flex flex-col items-end shadow-inner">
                                                         <span className="text-[9px] sm:text-[10px] text-foreground/30 font-black uppercase tracking-widest mb-0.5 sm:mb-1">Locked/Vesting</span>
                                                         <div className="flex items-baseline gap-1 sm:gap-2">
                                                             <span className="text-xl sm:text-2xl font-black text-[#F0A741]">{formatXandValue(manager.vestingStake || 0)}</span>

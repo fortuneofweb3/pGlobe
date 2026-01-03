@@ -74,7 +74,7 @@ export default function StoincPage() {
                 <main className="flex-1 overflow-auto">
                     <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 space-y-4">
                         {/* Hero */}
-                        <div className="card" style={{ borderRadius: '1rem', padding: '1.25rem 1.5rem' }}>
+                        <div className="card" style={{ borderRadius: 'var(--radius)', padding: '1.25rem 1.5rem' }}>
                             <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3 text-foreground">
                                 <Coins className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
                                 STOINC Dashboard

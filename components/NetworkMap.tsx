@@ -128,7 +128,7 @@ export default function NetworkMap({ nodes }: NetworkMapProps) {
 
       <div className="relative">
         <div
-          style={{ height: '400px', width: '100%', borderRadius: '0.5rem', overflow: 'hidden' }}
+          style={{ height: '400px', width: '100%', borderRadius: 'var(--radius)', overflow: 'hidden' }}
           className="border border-border rounded-xl"
         >
           {isClient && mapLoaded && nodesWithLocation.length > 0 ? (

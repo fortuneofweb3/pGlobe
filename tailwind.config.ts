@@ -39,9 +39,13 @@ const config: Config = {
         warning: 'rgb(var(--warning) / <alpha-value>)',
       },
       borderRadius: {
+        '3xl': '1.5rem',
+        '2xl': '1rem',
+        xl: 'var(--radius)',
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        DEFAULT: 'calc(var(--radius) - 4px)',
+        sm: 'calc(var(--radius) - 6px)',
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-out',

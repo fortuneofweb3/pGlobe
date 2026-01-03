@@ -766,7 +766,7 @@ function HistoricalLineChart({
                       ...defaultStyles,
                       backgroundColor: 'rgba(0, 0, 0, 0.9)',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
-                      borderRadius: '8px',
+                      borderRadius: 'var(--radius)',
                       padding: '8px 12px',
                       zIndex: 1000,
                     }}
@@ -1365,7 +1365,7 @@ function NodeDetailContent() {
                   <span>Back to pNodes</span>
                 </Link>
 
-                <div className="relative rounded-2xl overflow-hidden border border-border/40 shadow-2xl bg-card" style={{ minHeight: '234px', maxHeight: '260px' }}>
+                <div className="relative rounded-xl overflow-hidden border border-border/40 shadow-2xl bg-card" style={{ minHeight: '234px', maxHeight: '260px' }}>
                   {/* Map Background */}
                   <div className="absolute inset-0 h-full w-full" style={{ overflow: 'visible' }}>
                     <style jsx global>{`

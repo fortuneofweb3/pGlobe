@@ -747,7 +747,7 @@ function HistoricalLineChart({
                       ...defaultStyles,
                       backgroundColor: 'rgba(0, 0, 0, 0.9)',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
-                      borderRadius: '8px',
+                      borderRadius: 'var(--radius)',
                       padding: '8px 12px',
                       zIndex: 1000,
                     }}
@@ -1258,7 +1258,7 @@ function CountryDetailContent() {
               {(() => {
                 const countryNameFromUrl = decodeURIComponent(params.country as string);
                 return (
-                  <div className="relative h-56 sm:h-72 rounded-2xl overflow-hidden shadow-2xl mb-8 bg-muted/10">
+                  <div className="relative h-56 sm:h-72 rounded-xl overflow-hidden shadow-2xl mb-8 bg-muted/10">
                     <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black" />
                     <div className="relative h-full flex flex-col justify-end p-8">
                       <h1 className="text-4xl sm:text-5xl font-bold text-white drop-shadow-lg mb-3">
@@ -1381,7 +1381,7 @@ function CountryDetailContent() {
                   <span>Back to Regions</span>
                 </Link>
 
-                <div className="relative rounded-2xl overflow-hidden border border-border/40 shadow-2xl bg-card" style={{ minHeight: '280px', height: '280px' }}>
+                <div className="relative rounded-xl overflow-hidden border border-border/40 shadow-2xl bg-card" style={{ minHeight: '280px', height: '280px' }}>
                   {/* Map Background */}
                   <div className="absolute inset-0 h-full w-full">
                     <style jsx global>{`

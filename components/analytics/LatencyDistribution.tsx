@@ -279,7 +279,7 @@ function LatencyChart({
                 width={barWidth}
                 height={barHeight}
                 fill={hasData ? COLORS[index % COLORS.length] : 'transparent'}
-                rx={4}
+                rx={6}
                 style={{ pointerEvents: hasData ? 'all' : 'none' }}
                 opacity={hasData ? 1 : 0}
                 onMouseMove={hasData ? (event) => {
@@ -332,7 +332,7 @@ function LatencyChart({
             ...defaultStyles,
             backgroundColor: 'rgba(0, 0, 0, 0.9)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: '8px',
+            borderRadius: 'var(--radius)',
             padding: '8px 12px',
             pointerEvents: 'none',
           }}

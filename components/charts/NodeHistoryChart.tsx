@@ -239,7 +239,7 @@ function ChartContent({
                         ...defaultStyles,
                         backgroundColor: 'rgba(0, 0, 0, 0.9)',
                         border: `1px solid ${color}`,
-                        borderRadius: '6px',
+                        borderRadius: 'var(--radius)',
                         padding: '6px 10px',
                         color: '#fff',
                         fontSize: '11px',
