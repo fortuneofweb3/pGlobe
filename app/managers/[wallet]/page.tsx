@@ -187,7 +187,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
             const onlineCount = pnodes.filter(n => n.status === 'online').length;
 
             setManager(prev => {
-                const daoStake = Math.max(...pnodes.map(n => n.daoStake || 0), 0);
+                const daoStake = Math.max(...pnodes.map(n => n.daoStake || n.xandStake || 0), 0);
                 const vestingStake = Math.max(...pnodes.map(n => n.vestingStake || 0), 0);
 
                 return {

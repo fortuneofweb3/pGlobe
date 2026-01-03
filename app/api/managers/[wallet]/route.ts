@@ -62,7 +62,7 @@ export async function GET(
         }
 
         // Calculate stats from DB nodes
-        const freshDaoStake = managerNodes.reduce((max, n) => Math.max(max, n.daoStake || 0), 0);
+        const freshDaoStake = managerNodes.reduce((max, n) => Math.max(max, n.daoStake || n.xandStake || 0), 0);
         let freshVestingStake = managerNodes.reduce((max, n) => Math.max(max, n.vestingStake || 0), 0);
 
         // FALLBACK: If nodes don't have vesting stake but rewards collection does

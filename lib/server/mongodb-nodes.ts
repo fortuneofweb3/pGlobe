@@ -257,7 +257,14 @@ function nodeToDocument(node: Partial<PNode>): Partial<NodeDocument> {
   if (node.managerWallet !== undefined) doc.managerWallet = node.managerWallet;
   if (node.registrarWallet !== undefined) doc.registrarWallet = node.registrarWallet;
 
-  if (node.xandStake !== undefined) doc.xandStake = node.xandStake;
+  if (node.xandStake !== undefined) {
+    doc.xandStake = node.xandStake;
+    doc.daoStake = node.xandStake;
+  }
+  if (node.daoStake !== undefined) {
+    doc.daoStake = node.daoStake;
+    doc.xandStake = node.daoStake;
+  }
   if (node.nftBoost !== undefined) doc.nftBoost = node.nftBoost;
   if (node.nftDetails !== undefined) doc.nftDetails = node.nftDetails ? JSON.stringify(node.nftDetails) : undefined;
   if (node.eraBoost !== undefined) doc.eraBoost = node.eraBoost;
@@ -321,6 +328,7 @@ export function documentToNode(doc: NodeDocument): PNode {
     registrarWallet: doc.registrarWallet,
     // STOINC & Rewards fields
     xandStake: doc.xandStake || doc.daoStake,
+    daoStake: doc.daoStake || doc.xandStake,
     nftBoost: doc.nftBoost,
     nftDetails,
     eraBoost: doc.eraBoost,

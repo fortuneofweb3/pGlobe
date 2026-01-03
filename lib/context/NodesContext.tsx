@@ -513,12 +513,14 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         }
 
         manager.totalCredits += node.credits || 0;
-        if (node.xandStake && node.xandStake > manager.totalXandStake) {
-          manager.totalXandStake = node.xandStake;
+
+        // DAO / XAND Stake aggregation (use max across nodes)
+        const nodeDaoStake = node.daoStake || node.xandStake || 0;
+        if (nodeDaoStake > manager.daoStake) {
+          manager.daoStake = nodeDaoStake;
+          manager.totalXandStake = nodeDaoStake;
         }
-        if (node.daoStake && node.daoStake > manager.daoStake) {
-          manager.daoStake = node.daoStake;
-        }
+
         if (node.vestingStake && node.vestingStake > manager.vestingStake) {
           manager.vestingStake = node.vestingStake;
         }

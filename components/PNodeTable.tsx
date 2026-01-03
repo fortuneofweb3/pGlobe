@@ -751,10 +751,16 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                       </td>
                       {selectedNetwork === 'all' && (
                         <td className="px-2 sm:px-3 py-5 whitespace-nowrap text-center">
-                          <span className={`px-2.5 py-1 rounded text-xs uppercase font-bold tracking-tight ${node.network === 'mainnet' || node.network === 'both'
-                            ? 'bg-[#F0A741]/20 text-[#F0A741] border border-[#F0A741]/30'
-                            : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                            }`}>
+                          <span
+                            className={`inline-flex items-center justify-center px-2.5 py-1 rounded text-[11px] font-semibold tracking-tight ${node.network === 'mainnet' || node.network === 'both'
+                              ? 'bg-[#F0A741]/20 text-[#F0A741] border border-[#F0A741]/30'
+                              : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                              }`}
+                            title={node.network === 'mainnet' || node.network === 'both'
+                              ? "Xandeum Mainnet"
+                              : "Xandeum Devnet"
+                            }
+                          >
                             {node.network === 'mainnet' || node.network === 'both' ? 'Mainnet' : 'Devnet'}
                           </span>
                         </td>
@@ -781,7 +787,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           if (isPublic) {
                             return (
                               <span
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-green-500/20 text-green-400 border border-green-500/30"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold bg-green-500/20 text-green-400 border border-green-500/30"
                                 title="Public node - pRPC is publicly accessible"
                               >
                                 <Globe className="w-3 h-3" />
@@ -791,7 +797,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           } else if (isPrivate) {
                             return (
                               <span
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold bg-orange-500/20 text-orange-400 border border-orange-500/30"
                                 title="Private node - pRPC is not publicly accessible"
                               >
                                 <Lock className="w-3 h-3" />
