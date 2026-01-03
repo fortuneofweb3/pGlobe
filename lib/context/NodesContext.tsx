@@ -65,13 +65,22 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     }
   }, [networkHydrated]);
 
-  // Wrapper to persist network selection
-  const setSelectedNetwork = useCallback((network: string) => {
+  // Internal wrapper to persist network selection without reloading (for init/background)
+  const setNetworkInternal = useCallback((network: string) => {
     setSelectedNetworkState(network);
     if (typeof window !== 'undefined') {
       localStorage.setItem('pglobe:network', network);
     }
   }, []);
+
+  // Public wrapper - triggers reload (for UI interaction)
+  const setSelectedNetwork = useCallback((network: string) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pglobe:network', network);
+      window.location.reload();
+    }
+  }, []);
+
   const [availableNetworks, setAvailableNetworks] = useState<NetworkConfig[]>([]);
   const [currentNetwork, setCurrentNetwork] = useState<NetworkConfig | null>(null);
   const [podCredits, setPodCredits] = useState<Record<string, number>>({});
@@ -206,7 +215,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
           }
           if (data.currentNetwork) {
             setCurrentNetwork(data.currentNetwork);
-            setSelectedNetwork(data.currentNetwork.id);
+            setNetworkInternal(data.currentNetwork.id);
           }
 
           saveCache({
@@ -228,7 +237,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
 
     fetchPromiseRef.current = fetchPromise;
     return fetchPromise;
-  }, [selectedNetwork, saveCache, setSelectedNetwork]);
+  }, [selectedNetwork, saveCache, setNetworkInternal]);
 
   const hasInitializedRef = useRef(false);
 
@@ -251,7 +260,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         if (cached.availableNetworks) setAvailableNetworks(cached.availableNetworks);
         if (cached.currentNetwork) {
           setCurrentNetwork(cached.currentNetwork);
-          setSelectedNetwork(cached.currentNetwork.id);
+          setNetworkInternal(cached.currentNetwork.id);
         }
         setLoading(false);
       }
@@ -268,7 +277,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       if (cached.availableNetworks) setAvailableNetworks(cached.availableNetworks);
       if (cached.currentNetwork) {
         setCurrentNetwork(cached.currentNetwork);
-        setSelectedNetwork(cached.currentNetwork.id);
+        setNetworkInternal(cached.currentNetwork.id);
       }
       setLoading(false);
     } else {
@@ -352,7 +361,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         }, 2000);
       }
     }
-  }, [loadCache, refreshNodes, setSelectedNetwork]);
+  }, [loadCache, refreshNodes, setSelectedNetwork, setNetworkInternal]);
 
   // Passive polling: Fetch fresh data from MongoDB every 2 minutes
   // Reduced frequency to minimize flickering and improve performance
