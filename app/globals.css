@@ -55,29 +55,6 @@
   --status-syncing: 255 180 50;
 }
 
-.light {
-  --background: 255 255 255;
-  --foreground: 0 0 0;
-  --card: 250 250 250;
-  --card-foreground: 0 0 0;
-  --border: 220 220 220;
-  --input: 245 245 245;
-  --primary: 50 50 200;
-  --primary-foreground: 255 255 255;
-  --secondary: 100 100 100;
-  --secondary-foreground: 255 255 255;
-  --muted: 240 240 240;
-  --muted-foreground: 120 120 120;
-  --accent: 50 50 200;
-  --accent-foreground: 255 255 255;
-  --destructive: 200 50 50;
-  --success: 50 150 50;
-  --warning: 200 150 50;
-
-  --status-online: 50 150 50;
-  --status-offline: 200 50 50;
-  --status-syncing: 200 150 50;
-}
 
 /* stylelint-disable at-rule-no-unknown */
 * {

@@ -1,19 +1,18 @@
 import { NextResponse } from 'next/server';
-import { getAllNodesForManagers } from '@/lib/server/mongodb-nodes';
 import { SimpleCache } from '@/lib/server/cache-utils';
+import { aggregateManagers } from '@/lib/server/stats-helpers';
 
 const managerListCache = new SimpleCache<any>(2); // 2 minute cache
 
-interface Manager {
-    wallet: string; // The primary wallet (Buyer if known, otherwise Registrar)
-    associatedWallets: string[]; // Other wallets merged into this identity
+export const dynamic = 'force-dynamic';
 
-    registeredNodes: number; // Sum from all associated wallets
-    purchasedNodes: number;  // (In derived view, this is just equal to registeredNodes for now, or we can infer "1" per buyer?)
-    // Note: User said "just add buyer and registrar field under a node". 
-    // We can't know purely from node data how many "purchases" a buyer has if they haven't registered them.
-    // So for "Purchased Nodes", we will count 1 per unique Buyer wallet we see? 
-    // Or just set it to match registered count? Use registered count for now to be safe.
+export interface Manager {
+    wallet: string;
+    associatedWallets: string[];
+
+    registeredNodes: number;
+    purchasedNodes: number;
+    totalPurchases?: number;
 
     knownNodes: {
         pubkey: string;
@@ -23,129 +22,40 @@ interface Manager {
         location?: string;
         role?: 'buyer' | 'registrar';
         xandStake?: number;
+        vestingStake?: number;
         eraLabel?: string;
         eraBoost?: number;
     }[];
 
     totalCredits: number;
-    totalXandStake: number; // Staked in DAO
+    totalXandStake: number;
+    vestingStake: number;
     onlineCount: number;
     source: 'mainnet' | 'devnet' | 'both';
 }
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
-        const cached = managerListCache.get('all_managers');
+        const { searchParams } = new URL(request.url);
+        const network = searchParams.get('network') || 'all';
+        const cacheKey = `managers_${network}`;
+
+        const cached = managerListCache.get(cacheKey);
         if (cached) {
             return NextResponse.json(cached);
         }
 
-        // Fetch all nodes (lightweight)
-        const nodes = await getAllNodesForManagers();
-
-        // Initialize Manager Map
-        const managerMap = new Map<string, Manager>();
-
-        // Helper to get or create manager
-        const getOrCreateManager = (wallet: string): Manager => {
-            if (!managerMap.has(wallet)) {
-                managerMap.set(wallet, {
-                    wallet,
-                    associatedWallets: [],
-                    registeredNodes: 0,
-                    purchasedNodes: 0,
-                    knownNodes: [],
-                    totalCredits: 0,
-                    totalXandStake: 0,
-                    onlineCount: 0,
-                    source: 'devnet' // Default, will update
-                });
-            }
-            return managerMap.get(wallet)!;
-        };
-
-        // Process Nodes into Managers
-        for (const node of nodes) {
-            // STRICT LINKING:
-            // 1. If node.managerWallet exists (Buyer), use it.
-            // 2. If only node.registrarWallet exists, use it (Registrar).
-            // Do NOT infer Buyer from Registrar across different nodes.
-
-            let primaryWallet: string | undefined;
-            let role: 'buyer' | 'registrar' = 'registrar'; // Default
-
-            if (node.managerWallet) {
-                primaryWallet = node.managerWallet;
-                role = 'buyer'; // Direct buyer link (Strongest)
-            } else if (node.registrarWallet) {
-                primaryWallet = node.registrarWallet;
-                role = 'registrar'; // Standalone registrar (Weakest)
-            }
-
-            if (!primaryWallet) continue; // Skip if absolutely no wallet info
-
-            const manager = getOrCreateManager(primaryWallet);
-
-            // Update Source hint
-            if (role === 'buyer') {
-                if (manager.source === 'devnet') manager.source = 'both'; // If was devnet, now both
-                else if (manager.source !== 'both') manager.source = 'mainnet';
-            } else {
-                if (manager.source === 'mainnet') manager.source = 'both';
-            }
-
-            // Link Associated Wallet if present on THIS node specifically
-            if (node.registrarWallet && node.registrarWallet !== primaryWallet) {
-                if (!manager.associatedWallets.includes(node.registrarWallet)) {
-                    manager.associatedWallets.push(node.registrarWallet);
-                }
-            }
-
-            // Add Node Stats
-            if (!manager.knownNodes.some(kn => kn.pubkey === (node.pubkey || node.publicKey))) {
-                manager.knownNodes.push({
-                    pubkey: node.pubkey || node.publicKey || '',
-                    status: node.status || 'offline',
-                    version: node.version,
-                    credits: node.credits,
-                    location: node.location,
-                    role,
-                    xandStake: node.xandStake,
-                    eraLabel: node.eraLabel,
-                    eraBoost: node.eraBoost
-                });
-
-                manager.registeredNodes++;
-                // Heuristic: If we see a node with a Manager Wallet, that counts as a Purchase too.
-                if (role === 'buyer') {
-                    manager.purchasedNodes++;
-                }
-
-                manager.totalCredits += node.credits || 0;
-
-                // Aggregate DAO Stake (it's per-manager, so take max if nodes have it)
-                if (node.xandStake && node.xandStake > manager.totalXandStake) {
-                    manager.totalXandStake = node.xandStake;
-                }
-
-                if (node.status === 'online') manager.onlineCount++;
-            }
-        }
-
-        // Convert to array and sort
-        const managers = Array.from(managerMap.values())
-            .filter(m => m.knownNodes.length > 0) // Only show managers with nodes
-            .sort((a, b) => (b.totalXandStake || 0) - (a.totalXandStake || 0) || b.knownNodes.length - a.knownNodes.length);
+        const { managers, stats } = await aggregateManagers(network);
 
         const response = {
             success: true,
-            count: managers.length,
-            totalRegisteredNodes: managers.reduce((s, m) => s + m.registeredNodes, 0),
-            totalPurchasedNodes: managers.reduce((s, m) => s + m.purchasedNodes, 0),
+            stats,
             managers,
+            timestamp: Date.now(),
+            network
         };
 
-        managerListCache.set('all_managers', response);
+        managerListCache.set(cacheKey, response);
         return NextResponse.json(response);
 
     } catch (error) {

@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   reactStrictMode: false,
   eslint: {
     // Warning: This allows production builds to complete even if there are ESLint errors.

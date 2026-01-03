@@ -180,6 +180,7 @@ export interface NodeDocument {
   firstSeenSlot?: number;
   seenInGossip?: boolean;
   onChainError?: string;
+  vestingStake?: number; // Added field
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -274,6 +275,7 @@ function nodeToDocument(node: Partial<PNode>): Partial<NodeDocument> {
   if (node.firstSeenSlot !== undefined) doc.firstSeenSlot = node.firstSeenSlot;
   if (node.seenInGossip !== undefined) doc.seenInGossip = node.seenInGossip;
   if (node.onChainError !== undefined) doc.onChainError = node.onChainError;
+  if (node.vestingStake !== undefined) doc.vestingStake = node.vestingStake;
 
   return doc;
 }
@@ -338,6 +340,7 @@ export function documentToNode(doc: NodeDocument): PNode {
     firstSeenSlot: doc.firstSeenSlot,
     seenInGossip: doc.seenInGossip,
     onChainError: doc.onChainError,
+    vestingStake: doc.vestingStake,
     createdAt: doc.createdAt,
   };
 
@@ -623,7 +626,8 @@ export async function getAllNodesForManagers(): Promise<PNode[]> {
           nftBoost: 1,
           eraBoost: 1,
           eraLabel: 1,
-          boostFactor: 1
+          boostFactor: 1,
+          vestingStake: 1
         }
       }).batchSize(1000);
 

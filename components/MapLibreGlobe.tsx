@@ -773,12 +773,28 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
             Object.keys(style.sources).forEach(sourceId => {
               try {
                 const source = map.getSource(sourceId) as any;
-                if (source && source._tiles) {
-                  Object.values(source._tiles).forEach((tile: any) => {
-                    if (tile) {
-                      tile.holdingForFade = false;
+                if (source) {
+                  // CRITICAL FIX: Reset cache size to prevent memory leak
+                  // The animation bumps this to 1000, we must reset it to normal (default is usually ~20-30)
+                  if (source._tileCache) {
+                    source._tileCache.max = 30; // Reset to safe default
+                    // Trigger cache pruning
+                    if (source._tileCache.prune) {
+                      source._tileCache.prune();
                     }
-                  });
+                  }
+
+                  if (source._tiles) {
+                    Object.values(source._tiles).forEach((tile: any) => {
+                      if (tile) {
+                        tile.holdingForFade = false;
+                        // Reset usage counter so tiles can be evicted
+                        if (tile.uses && tile.uses > 10) {
+                          tile.uses = 1;
+                        }
+                      }
+                    });
+                  }
                 }
               } catch (e) { }
             });

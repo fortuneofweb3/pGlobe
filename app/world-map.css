@@ -1,0 +1,30 @@
+@keyframes drawPath {
+    from {
+        stroke-dashoffset: 1;
+    }
+
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes fadeInFill {
+    from {
+        fill-opacity: 0;
+    }
+
+    to {
+        fill-opacity: 1;
+    }
+}
+
+.country-path-anim {
+    fill-opacity: 0;
+}
+
+.country-path-anim.animate {
+    animation: fadeInFill 0.7s ease-out forwards;
+}
+
+/* We handle the stroke drawing via JS because path lengths vary, 
+   but we'll keep the fill animation in CSS for robustness */

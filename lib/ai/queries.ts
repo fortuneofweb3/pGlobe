@@ -53,47 +53,48 @@ export interface EraStats {
 // MANAGER QUERIES
 // ============================================================================
 
+import { aggregateManagers, aggregateNetworkStats } from '@/lib/server/stats-helpers';
+
 /**
  * Get detailed stats for a specific manager
  */
 export async function getManagerStats(wallet: string): Promise<ManagerStats> {
-    const nodes = await getNodesByManager(wallet);
+    const { managers } = await aggregateManagers();
+    const manager = managers.find(m => m.wallet === wallet || m.associatedWallets.includes(wallet));
 
-    const stats: ManagerStats = {
-        wallet,
-        totalNodes: nodes.length,
-        onlineNodes: 0,
-        totalCredits: 0,
-        totalXandStake: 0,
-        networkDistribution: {
-            mainnet: 0,
-            devnet: 0,
-            unknown: 0
-        },
-        topNodes: []
-    };
-
-    for (const node of nodes) {
-        if (node.status === 'online') stats.onlineNodes++;
-        stats.totalCredits += node.credits || 0;
-        stats.totalXandStake = Math.max(stats.totalXandStake, node.xandStake || 0); // Stake is often per wallet, so max is safer than sum if repeated
-
-        const net = node.network || 'unknown';
-        if (net === 'mainnet' || net === 'both') stats.networkDistribution.mainnet++;
-        else if (net === 'devnet') stats.networkDistribution.devnet++;
-        else stats.networkDistribution.unknown++;
+    if (!manager) {
+        return {
+            wallet,
+            totalNodes: 0,
+            onlineNodes: 0,
+            totalCredits: 0,
+            totalXandStake: 0,
+            networkDistribution: { mainnet: 0, devnet: 0, unknown: 0 },
+            topNodes: []
+        };
     }
 
-    // Get top 5 nodes by credits
-    stats.topNodes = nodes
-        .sort((a, b) => (b.credits || 0) - (a.credits || 0))
-        .slice(0, 5)
-        .map(n => ({
-            pubkey: n.pubkey || n.publicKey || 'unknown',
-            version: n.version || 'unknown',
-            status: n.status || 'unknown',
-            credits: n.credits || 0
-        }));
+    const stats: ManagerStats = {
+        wallet: manager.wallet,
+        totalNodes: manager.knownNodes.length,
+        onlineNodes: manager.onlineCount,
+        totalCredits: manager.totalCredits,
+        totalXandStake: manager.totalXandStake,
+        networkDistribution: {
+            mainnet: manager.knownNodes.filter(n => n.role === 'buyer').length,
+            devnet: manager.knownNodes.filter(n => n.role === 'registrar').length,
+            unknown: 0
+        },
+        topNodes: manager.knownNodes
+            .sort((a, b) => (b.credits || 0) - (a.credits || 0))
+            .slice(0, 5)
+            .map(n => ({
+                pubkey: n.pubkey,
+                version: n.version || 'unknown',
+                status: n.status,
+                credits: n.credits || 0
+            }))
+    };
 
     return stats;
 }
@@ -102,26 +103,15 @@ export async function getManagerStats(wallet: string): Promise<ManagerStats> {
  * Get top managers by total stake
  */
 export async function getTopManagers(limit: number = 10): Promise<Array<{ wallet: string; stake: number; nodes: number }>> {
-    // This is a heavy operation, effectively re-implementing the managers route logic
-    // In a real optimized scenario, we'd want a cached pre-aggregated collection
-    const nodes = await getAllNodes();
-    const managerMap = new Map<string, { wallet: string; stake: number; nodes: number }>();
+    const { managers } = await aggregateManagers();
 
-    for (const node of nodes) {
-        const wallet = node.managerWallet || node.registrarWallet;
-        if (!wallet) continue;
-
-        if (!managerMap.has(wallet)) {
-            managerMap.set(wallet, { wallet, stake: 0, nodes: 0 });
-        }
-        const entry = managerMap.get(wallet)!;
-        entry.nodes++;
-        entry.stake = Math.max(entry.stake, node.xandStake || 0); // Max assumption
-    }
-
-    return Array.from(managerMap.values())
-        .sort((a, b) => b.stake - a.stake)
-        .slice(0, limit);
+    return managers
+        .slice(0, limit)
+        .map(m => ({
+            wallet: m.wallet,
+            stake: m.totalXandStake,
+            nodes: m.knownNodes.length
+        }));
 }
 
 // ============================================================================
@@ -132,50 +122,7 @@ export async function getTopManagers(limit: number = 10): Promise<Array<{ wallet
  * Get aggregate stats for a specific network
  */
 export async function getNetworkStats(network: 'mainnet' | 'devnet' | 'all' = 'all'): Promise<NetworkStats> {
-    const nodes = await getAllNodes(network);
-
-    const stats: NetworkStats = {
-        network,
-        totalNodes: nodes.length,
-        onlineNodes: 0,
-        offlineNodes: 0,
-        totalCredits: 0,
-        avgUptime: 0,
-        versions: {}
-    };
-
-    let totalUptime = 0;
-    let uptimeCount = 0;
-
-    for (const node of nodes) {
-        if (node.status === 'online') stats.onlineNodes++;
-        else if (node.status === 'offline') stats.offlineNodes++;
-
-        stats.totalCredits += node.credits || 0;
-
-        // Versions
-        const v = node.version || 'unknown';
-        stats.versions[v] = (stats.versions[v] || 0) + 1;
-
-        // Uptime
-        if (node.uptime) {
-            totalUptime += node.uptime;
-            uptimeCount++;
-        }
-    }
-
-    stats.avgUptime = uptimeCount > 0 ? totalUptime / uptimeCount : 0;
-
-    // Attempt to get latest health score from history
-    try {
-        const snapshots = await getHistoricalSnapshots(undefined, undefined, 1, network === 'all' ? undefined : network);
-        if (snapshots && snapshots.length > 0) {
-            stats.latestHealthScore = snapshots[snapshots.length - 1].networkHealthScore;
-        }
-    } catch (e) {
-        // Ignore history error
-    }
-
+    const stats = await aggregateNetworkStats(network);
     return stats;
 }
 

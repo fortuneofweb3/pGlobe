@@ -31,6 +31,8 @@ interface NodesContextType {
   activeNodes: PNode[];
   offlineNodes: PNode[];
   managers: Manager[];
+  managerGlobalStats: any;
+  networkStats: any;
   loading: boolean;
   error: string | null;
   lastUpdate: Date | null;
@@ -48,6 +50,9 @@ const NodesContext = createContext<NodesContextType | undefined>(undefined);
 
 export function NodesProvider({ children }: { children: ReactNode }) {
   const [nodes, setNodes] = useState<PNode[]>([]);
+  const [managers, setManagers] = useState<Manager[]>([]);
+  const [managerGlobalStats, setManagerGlobalStats] = useState<any>(null);
+  const [networkStats, setNetworkStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -84,7 +89,6 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   const [availableNetworks, setAvailableNetworks] = useState<NetworkConfig[]>([]);
   const [currentNetwork, setCurrentNetwork] = useState<NetworkConfig | null>(null);
   const [podCredits, setPodCredits] = useState<Record<string, number>>({});
-  const [managerStats, setManagerStats] = useState<Record<string, number>>({});
 
   // Request deduplication - prevent multiple simultaneous requests
   const fetchingRef = useRef(false);
@@ -119,6 +123,9 @@ export function NodesProvider({ children }: { children: ReactNode }) {
 
       return parsed as {
         nodes: PNode[];
+        managers?: Manager[];
+        managerGlobalStats?: any;
+        networkStats?: any;
         lastUpdate?: string;
         availableNetworks?: NetworkConfig[];
         currentNetwork?: NetworkConfig | null;
@@ -131,6 +138,9 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   const saveCache = useCallback(
     (payload: {
       nodes: PNode[];
+      managers?: Manager[];
+      managerGlobalStats?: any;
+      networkStats?: any;
       lastUpdate?: Date | null;
       availableNetworks?: NetworkConfig[];
       currentNetwork?: NetworkConfig | null;
@@ -141,6 +151,9 @@ export function NodesProvider({ children }: { children: ReactNode }) {
           cacheKey(selectedNetwork),
           JSON.stringify({
             nodes: payload.nodes,
+            managers: payload.managers,
+            managerGlobalStats: payload.managerGlobalStats,
+            networkStats: payload.networkStats,
             lastUpdate: payload.lastUpdate ? payload.lastUpdate.toISOString() : null,
             availableNetworks: payload.availableNetworks,
             currentNetwork: payload.currentNetwork,
@@ -161,68 +174,59 @@ export function NodesProvider({ children }: { children: ReactNode }) {
 
     fetchingRef.current = true;
 
-    // Trigger background refresh on Render to update DB (fire-and-forget)
-    const triggerBackgroundRefresh = () => {
-      fetch('/api/refresh-nodes', { method: 'GET' })
-        .then(res => res.json())
-        .catch(() => { });
-    };
-
-    triggerBackgroundRefresh();
-
     const fetchPromise = (async () => {
       try {
         const params = new URLSearchParams();
         if (selectedNetwork) {
           params.set('network', selectedNetwork);
         }
-        const url = `/api/pnodes?${params.toString()}`;
+        const networkQuery = params.toString();
 
-        let response: Response;
-        try {
-          const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-          const timeoutId = controller ? setTimeout(() => controller.abort(), 30000) : null;
+        // Optimized: Fetch nodes, managers, and network stats in parallel
+        const [nodesRes, managersRes, networkRes] = await Promise.all([
+          fetch(`/api/pnodes?${networkQuery}`, { cache: 'no-store' }),
+          fetch(`/api/managers?${networkQuery}`, { cache: 'no-store' }),
+          fetch(`/api/network-stats?${networkQuery}`, { cache: 'no-store' })
+        ]);
 
-          response = await fetch(url, {
-            ...(controller ? { signal: controller.signal } : {}),
-            cache: 'no-store',
-          });
+        const [nodesData, managersData, networkData] = await Promise.all([
+          nodesRes.json(),
+          managersRes.json(),
+          networkRes.json()
+        ]);
 
-          if (timeoutId) clearTimeout(timeoutId);
-        } catch (err) {
-          const error = err as Error;
-          if (error?.name === 'AbortError') {
-            throw new Error('Request timeout - data fetch took too long');
+        if (nodesData.nodes && Array.isArray(nodesData.nodes)) {
+          setNodes(nodesData.nodes);
+
+          if (managersData.success) {
+            setManagers(managersData.managers);
+            setManagerGlobalStats(managersData.stats);
           }
-          throw error;
-        }
 
-        const data = await response.json();
-
-        if (data.nodes && Array.isArray(data.nodes)) {
-          // Always update nodes - the filtering happens in useMemo based on selectedNetwork
-          // Don't skip updates based on length checks as this causes race conditions
-          setNodes(data.nodes);
-          if (data.managerStats) {
-            setManagerStats(data.managerStats);
+          if (networkData.success) {
+            setNetworkStats(networkData.stats);
           }
+
           setLastUpdate(new Date());
           setError(null);
           setLoading(false);
 
-          if (data.networks && Array.isArray(data.networks)) {
-            setAvailableNetworks(data.networks);
+          if (nodesData.networks && Array.isArray(nodesData.networks)) {
+            setAvailableNetworks(nodesData.networks);
           }
-          if (data.currentNetwork) {
-            setCurrentNetwork(data.currentNetwork);
-            setNetworkInternal(data.currentNetwork.id);
+          if (nodesData.currentNetwork) {
+            setCurrentNetwork(nodesData.currentNetwork);
+            setNetworkInternal(nodesData.currentNetwork.id);
           }
 
           saveCache({
-            nodes: data.nodes,
+            nodes: nodesData.nodes,
+            managers: managersData.managers,
+            managerGlobalStats: managersData.stats,
+            networkStats: networkData.stats,
             lastUpdate: new Date(),
-            availableNetworks: data.networks,
-            currentNetwork: data.currentNetwork,
+            availableNetworks: nodesData.networks,
+            currentNetwork: nodesData.currentNetwork,
           });
         } else {
           setLoading(false);
@@ -255,7 +259,9 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       const cached = loadCache();
       if (cached?.nodes && cached.nodes.length > 0 && nodesLengthRef.current === 0) {
         setNodes(cached.nodes);
-        // Note: managerStats not currently cached, will fetch on refresh
+        if (cached.managers) setManagers(cached.managers);
+        if (cached.managerGlobalStats) setManagerGlobalStats(cached.managerGlobalStats);
+        if (cached.networkStats) setNetworkStats(cached.networkStats);
         setLastUpdate(cached.lastUpdate ? new Date(cached.lastUpdate) : null);
         if (cached.availableNetworks) setAvailableNetworks(cached.availableNetworks);
         if (cached.currentNetwork) {
@@ -273,6 +279,9 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     const cached = loadCache();
     if (cached?.nodes && cached.nodes.length > 0) {
       setNodes(cached.nodes);
+      if (cached.managers) setManagers(cached.managers);
+      if (cached.managerGlobalStats) setManagerGlobalStats(cached.managerGlobalStats);
+      if (cached.networkStats) setNetworkStats(cached.networkStats);
       setLastUpdate(cached.lastUpdate ? new Date(cached.lastUpdate) : null);
       if (cached.availableNetworks) setAvailableNetworks(cached.availableNetworks);
       if (cached.currentNetwork) {
@@ -310,58 +319,18 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     const oneMinuteAgo = now - 60 * 1000;
 
     if (!lastRefreshTime || parseInt(lastRefreshTime) < oneMinuteAgo) {
-      if ('requestIdleCallback' in window) {
-        requestIdleCallback(() => {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-          fetch('/api/refresh-nodes', {
-            method: 'GET',
-            signal: controller.signal,
+      setTimeout(() => {
+        fetch('/api/refresh-nodes', { method: 'GET' })
+          .then(res => {
+            if (res.ok) {
+              localStorage.setItem('lastServerRefresh', Date.now().toString());
+              refreshNodes();
+            }
           })
-            .then(async (res) => {
-              clearTimeout(timeoutId);
-              if (res.ok) {
-                localStorage.setItem('lastServerRefresh', Date.now().toString());
-                refreshNodes();
-              }
-            })
-            .catch((err) => {
-              clearTimeout(timeoutId);
-              // Only log if it's not a connection error (expected when backend isn't running)
-              if (err?.name !== 'AbortError' && err?.message !== 'fetch failed') {
-                console.warn('[NodesContext] ⚠️  Background refresh trigger failed:', {
-                  success: false,
-                  error: err?.message || 'fetch failed',
-                  timestamp: new Date().toISOString(),
-                });
-              }
-            });
-        }, { timeout: 5000 });
-      } else {
-        setTimeout(() => {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-          fetch('/api/refresh-nodes', {
-            method: 'GET',
-            signal: controller.signal,
-          })
-            .then(async (res) => {
-              clearTimeout(timeoutId);
-              if (res.ok) {
-                localStorage.setItem('lastServerRefresh', Date.now().toString());
-                refreshNodes();
-              }
-            })
-            .catch((err) => {
-              clearTimeout(timeoutId);
-              console.error('[NodesContext] ❌ Background refresh error:', err);
-            });
-        }, 2000);
-      }
+          .catch(() => { });
+      }, 5000);
     }
-  }, [loadCache, refreshNodes, setSelectedNetwork, setNetworkInternal]);
+  }, [loadCache, refreshNodes, setNetworkInternal]);
 
   // Passive polling: Fetch fresh data from MongoDB every 2 minutes
   // Reduced frequency to minimize flickering and improve performance
@@ -411,7 +380,6 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     }
   }, [nodes.length]);
 
-  // Fetch manager stats (purchase counts)
   // Fetch manager stats (purchase counts) - Merged into /api/pnodes response
 
   // Merge credits into nodes before providing to context
@@ -462,102 +430,6 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     return { activeNodes: active, offlineNodes: offline };
   }, [filteredByNetwork]);
 
-  // Derive managers from active nodes only (exclude offline nodes)
-  const managers = useMemo(() => {
-    const managerMap = new Map<string, Manager>();
-
-    const getOrCreateManager = (wallet: string): Manager => {
-      if (!managerMap.has(wallet)) {
-        managerMap.set(wallet, {
-          wallet,
-          registeredNodes: 0,
-          purchasedNodes: 0,
-          knownNodes: [],
-          totalCredits: 0,
-          totalXandStake: 0,
-          daoStake: 0,
-          vestingStake: 0,
-          onlineCount: 0,
-          source: 'devnet'
-        });
-      }
-      return managerMap.get(wallet)!;
-    };
-
-    filteredByNetwork.forEach(node => {
-      let primaryWallet: string | undefined;
-      let role: 'buyer' | 'registrar' = 'registrar';
-
-      if (node.managerWallet) {
-        primaryWallet = node.managerWallet;
-        role = 'buyer';
-      } else if (node.registrarWallet) {
-        primaryWallet = node.registrarWallet;
-        role = 'registrar';
-      }
-
-      if (!primaryWallet) return;
-
-      const manager = getOrCreateManager(primaryWallet);
-
-      // Update Source
-      if (role === 'buyer') {
-        if (manager.source === 'devnet') manager.source = 'both';
-        else if (manager.source !== 'both') manager.source = 'mainnet';
-      } else {
-        if (manager.source === 'mainnet') manager.source = 'both';
-      }
-
-      // Add Node Info
-      const nodePubkey = node.pubkey || node.publicKey || '';
-      if (!manager.knownNodes.some(kn => kn.pubkey === nodePubkey)) {
-        manager.knownNodes.push({
-          pubkey: nodePubkey,
-          status: node.status || 'offline',
-          credits: node.credits,
-          role,
-          xandStake: node.xandStake,
-          daoStake: node.daoStake,
-          vestingStake: node.vestingStake
-        });
-
-        manager.registeredNodes++;
-        if (role === 'buyer') {
-          manager.purchasedNodes++;
-        }
-
-        manager.totalCredits += node.credits || 0;
-
-        // DAO / XAND Stake aggregation (use max across nodes)
-        const nodeDaoStake = node.daoStake || node.xandStake || 0;
-        if (nodeDaoStake > manager.daoStake) {
-          manager.daoStake = nodeDaoStake;
-          manager.totalXandStake = nodeDaoStake;
-        }
-
-        if (node.vestingStake && node.vestingStake > manager.vestingStake) {
-          manager.vestingStake = node.vestingStake;
-        }
-        if (node.status === 'online' || node.status === 'syncing') manager.onlineCount++;
-      }
-    });
-
-    // Apply purchase stats
-    managerMap.forEach((manager, wallet) => {
-      if (managerStats[wallet]) {
-        manager.totalPurchases = managerStats[wallet];
-
-        // If we know they purchased more than we've found registered, update source to imply mainnet history
-        if (manager.totalPurchases > 0 && manager.source === 'devnet') {
-          manager.source = 'both'; // Has purchase history but only devnet nodes? likely both/migration
-        }
-      }
-    });
-
-    return Array.from(managerMap.values())
-      .sort((a, b) => b.totalXandStake - a.totalXandStake || b.registeredNodes - a.registeredNodes);
-  }, [filteredByNetwork, managerStats]);
-
   // Calculate dead managers (managers with only offline nodes)
   const deadManagerCount = useMemo(() => {
     return managers.filter(m => m.onlineCount === 0).length;
@@ -570,6 +442,8 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         activeNodes,
         offlineNodes,
         managers,
+        managerGlobalStats,
+        networkStats,
         managerCount: managers.length,
         offlineNodeCount: offlineNodes.length,
         deadManagerCount,

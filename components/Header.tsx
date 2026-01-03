@@ -332,10 +332,10 @@ export default function Header({
                   value={context.selectedNetwork}
                   onChange={(e) => context.setSelectedNetwork(e.target.value)}
                   className={`w-full appearance-none px-4 py-3 pr-10 rounded-xl border text-sm font-semibold transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#F0A741]/50 ${context.selectedNetwork === 'all'
-                      ? 'bg-green-500/10 border-green-500/40 text-green-400'
-                      : context.selectedNetwork === 'mainnet'
-                        ? 'bg-[#F0A741]/10 border-[#F0A741]/40 text-[#F0A741]'
-                        : 'bg-blue-500/10 border-blue-500/40 text-blue-400'
+                    ? 'bg-green-500/10 border-green-500/40 text-green-400'
+                    : context.selectedNetwork === 'mainnet'
+                      ? 'bg-[#F0A741]/10 border-[#F0A741]/40 text-[#F0A741]'
+                      : 'bg-blue-500/10 border-blue-500/40 text-blue-400'
                     }`}
                 >
                   <option value="all" className="bg-black text-green-400">All Networks</option>
@@ -343,10 +343,10 @@ export default function Header({
                   <option value="mainnet" className="bg-black text-[#F0A741]">Mainnet</option>
                 </select>
                 <ChevronDown className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${context.selectedNetwork === 'all'
-                    ? 'text-green-400'
-                    : context.selectedNetwork === 'mainnet'
-                      ? 'text-[#F0A741]'
-                      : 'text-blue-400'
+                  ? 'text-green-400'
+                  : context.selectedNetwork === 'mainnet'
+                    ? 'text-[#F0A741]'
+                    : 'text-blue-400'
                   }`} />
               </div>
             </div>

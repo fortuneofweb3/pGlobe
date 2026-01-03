@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import "./globals.css";
-import { NodesProvider } from "@/lib/context/NodesContext";
-import { UserRegionProvider } from "@/lib/context/UserRegionContext";
-import { WatchlistProvider } from "@/lib/context/WatchlistContext";
-import { NotificationProvider } from "@/lib/context/NotificationContext";
+import Providers from "@/components/Providers";
+
+export const dynamic = 'force-dynamic';
 import AISupportWidget from "@/components/AISupportWidget";
 import ProgressBar from "@/components/ProgressBar";
 import NotificationContainer from "@/components/NotificationContainer";
@@ -37,19 +36,9 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-                    const stored = localStorage.getItem('darkMode');
-                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                    const shouldBeDark = stored ? stored === 'true' : prefersDark;
-                    if (shouldBeDark) {
-                      document.documentElement.classList.add('dark');
-                    } else {
-                      document.documentElement.classList.add('light');
-                    }
-                  }
-                } catch (e) {
-                  // Silently fail during SSR
-                }
+                  document.documentElement.classList.add('dark');
+                  document.documentElement.classList.remove('light');
+                } catch (e) {}
               })();
             `,
           }}
@@ -59,18 +48,12 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <ProgressBar />
         </Suspense>
-        <NodesProvider>
-          <WatchlistProvider>
-            <NotificationProvider>
-              <UserRegionProvider>
-                {children}
-                <AISupportWidget />
-                <NotificationContainer />
-                <NotificationListener />
-              </UserRegionProvider>
-            </NotificationProvider>
-          </WatchlistProvider>
-        </NodesProvider>
+        <Providers>
+          {children}
+          <AISupportWidget />
+          <NotificationContainer />
+          <NotificationListener />
+        </Providers>
       </body>
     </html>
   );

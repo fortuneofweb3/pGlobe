@@ -7,6 +7,7 @@ import { PNode } from '@/lib/types/pnode';
 import { WORLD_MAP_PATHS } from '@/lib/data/world-map-paths';
 import { createPortal } from 'react-dom';
 import { ChevronUp, ChevronDown, Info } from 'lucide-react';
+import '@/app/world-map.css';
 
 interface CountryData {
   name: string;
@@ -459,90 +460,67 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
   useEffect(() => {
     if (!svgRef.current) return;
 
-    // Create a unique key based on nodes to reset animation when data changes significantly
     const nodesKey = `${nodes.length}-${Object.keys(countryData).length}`;
     const hasAnimatedKey = `animated-${nodesKey}`;
 
-    // Check if we've already animated this data set
-    if (hasAnimatedRef.current && (svgRef.current as unknown as { dataset: DOMStringMap }).dataset.animatedKey === hasAnimatedKey) {
+    if (hasAnimatedRef.current && (svgRef.current as any).dataset?.animatedKey === hasAnimatedKey) {
       return;
     }
 
     const cleanupTimers: NodeJS.Timeout[] = [];
+    const svg = svgRef.current;
 
-    // Wait for paths to render, then animate
     const timer = setTimeout(() => {
-      if (!svgRef.current) return;
-
-      // Find all country path elements
-      const paths = svgRef.current.querySelectorAll('path[d]');
-
+      const paths = svg.querySelectorAll('path[d]');
       if (paths.length === 0) return;
 
       paths.forEach((pathEl: Element, index) => {
         const svgPath = pathEl as SVGPathElement;
         try {
-          // Step 1: Animate border drawing
           const pathLength = svgPath.getTotalLength();
           if (pathLength > 0) {
-            // Store original fill for later (currently unused but may be needed for hover reset)
-            // const originalFill = svgPath.getAttribute('fill') || '';
-
-            // Set initial stroke state for drawing animation
+            // Initial state: hidden border, hidden fill
             svgPath.style.strokeDasharray = `${pathLength}`;
             svgPath.style.strokeDashoffset = `${pathLength}`;
+            svgPath.classList.add('country-path-anim');
 
-            // Set initial fill opacity to 0 (will fade in after border)
-            svgPath.style.fillOpacity = '0';
-
-            // Stagger the border drawing animation for visual effect
-            const borderDelay = index * 6; // 6ms delay between each country (faster stagger)
+            const borderDelay = index * 4; // Faster stagger
 
             const borderTimer = setTimeout(() => {
-              // Animate border drawing
-              svgPath.style.transition = 'stroke-dashoffset 0.9s ease-out';
+              // Start drawing border
+              svgPath.style.transition = 'stroke-dashoffset 0.8s ease-out';
               svgPath.style.strokeDashoffset = '0';
 
-              // After border finishes drawing, fade in the fill color
+              // Start fill fade-in slightly after border starts
               const fillTimer = setTimeout(() => {
-                svgPath.style.transition = 'fill-opacity 0.7s ease-out';
-                svgPath.style.fillOpacity = '1';
+                svgPath.classList.add('animate');
 
-                // Clean up stroke animation after fill animation completes
+                // Final cleanup: remove animation properties once done
                 const cleanupTimer = setTimeout(() => {
                   svgPath.style.strokeDasharray = 'none';
                   svgPath.style.strokeDashoffset = '0';
-                  // Keep transitions for hover states
-                  svgPath.style.transition = 'fill 0.15s ease';
-                }, 700);
-
+                  // Keep transition for smooth fill color changes on hover
+                  svgPath.style.transition = 'fill 0.2s ease, fill-opacity 0.2s ease';
+                }, 800);
                 cleanupTimers.push(cleanupTimer);
-              }, 900); // Start fill fade after border animation completes
-
+              }, 400);
               cleanupTimers.push(fillTimer);
             }, borderDelay);
-
             cleanupTimers.push(borderTimer);
           }
         } catch (e) {
-          // getTotalLength might fail on some elements, skip them
-          console.debug('[WorldMapHeatmap] Animation error for path:', e);
+          console.debug('[WorldMapHeatmap] Animation error:', e);
         }
       });
 
-      // Mark as animated with current data key
-      if (svgRef.current) {
-        (svgRef.current as unknown as { dataset: DOMStringMap }).dataset.animatedKey = hasAnimatedKey;
+      if (svg) {
+        (svg as any).dataset.animatedKey = hasAnimatedKey;
         hasAnimatedRef.current = true;
       }
-    }, 150);
+    }, 100);
 
     cleanupTimers.push(timer);
-
-    return () => {
-      cleanupTimers.forEach(t => clearTimeout(t));
-    };
-    // Using a stable key for countryData changes instead of Object.keys().join() to avoid dependency issues
+    return () => cleanupTimers.forEach(t => clearTimeout(t));
   }, [nodes.length, countryData]);
 
   return (
