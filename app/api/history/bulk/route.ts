@@ -1,7 +1,3 @@
-/**
- * Bulk historical data endpoint - Fetches history for multiple nodes in one request
- * This is much faster than fetching nodes one-by-one for region pages
- */
 
 import { NextResponse } from 'next/server';
 
@@ -41,68 +37,26 @@ export async function GET(request: Request) {
 
     const url = `${RENDER_API_URL}/api/history/bulk${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
     console.log('[VercelProxy] Proxying bulk history request to API server:', url);
-    console.log('[VercelProxy] Request params:', {
-      nodeIds: searchParams.get('nodeIds')?.substring(0, 50) + '...',
-      nodeCount: searchParams.get('nodeIds')?.split(',').length || 0,
-      startTime: searchParams.get('startTime'),
-      endTime: searchParams.get('endTime'),
-    });
 
     // Create AbortController for timeout
     // Increased timeout to 60 seconds for bulk requests
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
-    let response: Response;
-    try {
-      response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
-        },
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-    } catch (fetchError: any) {
-      clearTimeout(timeoutId);
-      if (fetchError.name === 'AbortError') {
-        console.error('[VercelProxy] ❌ Bulk request to API server timed out after 60 seconds');
-        return NextResponse.json(
-          {
-            error: 'Request timeout - API server took too long to respond',
-            data: {},
-            count: 0,
-          },
-          { status: 504 }
-        );
-      }
-      throw fetchError;
-    }
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(API_SECRET ? { 'Authorization': `Bearer ${API_SECRET}` } : {}),
+      },
+      signal: controller.signal,
+    });
 
-    let data: any;
-    try {
-      const text = await response.text();
-      data = text ? JSON.parse(text) : {};
-    } catch (parseError) {
-      console.error('[VercelProxy] ❌ Failed to parse response as JSON:', parseError);
-      return NextResponse.json(
-        {
-          error: 'Invalid response from API server',
-          data: {},
-          count: 0,
-        },
-        { status: 502 }
-      );
-    }
+    clearTimeout(timeoutId);
+
+    const data = await response.json();
 
     if (!response.ok) {
-      console.error('[VercelProxy] ❌ API server returned error:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: data.error || data.message,
-        data: data
-      });
       return NextResponse.json(
         {
           ...data,
@@ -112,40 +66,7 @@ export async function GET(request: Request) {
       );
     }
 
-    // Optimization: Downsample data to prevent massive payloads to the browser
-    // If we have 50 nodes * 1440 points (24h) = 72,000 points, this crashes the browser.
-    // We downsample to ~100 points per node.
-    if (data.data) {
-      const MAX_POINTS = 100;
-      let totalPointsBefore = 0;
-      let totalPointsAfter = 0;
-
-      Object.keys(data.data).forEach(nodeId => {
-        const points = data.data[nodeId];
-        if (Array.isArray(points) && points.length > MAX_POINTS) {
-          totalPointsBefore += points.length;
-          const step = Math.ceil(points.length / MAX_POINTS);
-          data.data[nodeId] = points.filter((_: any, i: number) => i % step === 0);
-          totalPointsAfter += data.data[nodeId].length;
-        } else if (Array.isArray(points)) {
-          totalPointsBefore += points.length;
-          totalPointsAfter += points.length;
-        }
-      });
-
-      if (totalPointsBefore > totalPointsAfter) {
-        console.log(`[VercelProxy] 📉 Downsampled bulk history: ${totalPointsBefore} -> ${totalPointsAfter} points`);
-      }
-    }
-
-    console.log(`[VercelProxy] ✅ Returning bulk historical data from API server:`, {
-      hasData: !!data.data,
-      dataType: typeof data.data,
-      dataKeys: data.data ? Object.keys(data.data) : [],
-      nodeCount: data.nodeCount || 0,
-      totalPoints: data.count || 0,
-    });
-
+    // Return exact data from backend (no downsampling) to match production behavior
     return NextResponse.json(data, {
       headers: {
         // Cache for 2 minutes, allow stale content for 5 minutes while revalidating

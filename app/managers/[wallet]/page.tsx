@@ -167,6 +167,8 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
         });
     }, [nodes, sortBy, sortOrder]);
 
+    const allowedPubkeys = useMemo(() => nodes.map(n => n.pubkey || n.id).filter(Boolean), [nodes]);
+
     // Immediate hydration from NodesContext
     useEffect(() => {
         if (!allNodes.length) return;
@@ -503,7 +505,6 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                         </div>
                                     </div>
 
-                                    {/* Chart Area */}
                                     <div className="bg-muted/10 rounded-lg p-3 w-full h-[250px] relative">
                                         {(() => {
                                             // 0. Live Activity Feed
@@ -511,7 +512,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                 return (
                                                     <div className="h-full overflow-hidden">
                                                         <ActivityLogList
-                                                            allowedPubkeys={nodes.map(n => n.pubkey || n.id).filter(Boolean)}
+                                                            allowedPubkeys={allowedPubkeys}
                                                             limit={50}
                                                             showFilters={false}
                                                         />
