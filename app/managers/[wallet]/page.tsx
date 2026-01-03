@@ -507,19 +507,6 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
 
                                     <div className="bg-muted/10 rounded-lg p-3 w-full h-[250px] relative">
                                         {(() => {
-                                            // 0. Live Activity Feed
-                                            if (selectedMetric === 'live_feed') {
-                                                return (
-                                                    <div className="h-full overflow-hidden">
-                                                        <ActivityLogList
-                                                            allowedPubkeys={allowedPubkeys}
-                                                            limit={50}
-                                                            showFilters={false}
-                                                        />
-                                                    </div>
-                                                );
-                                            }
-
                                             // 1. Loading State
                                             if (historyLoading) {
                                                 return (
