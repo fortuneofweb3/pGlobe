@@ -273,8 +273,8 @@ function NodesPageContent() {
     <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
       <Header activePage="nodes" lastUpdate={lastUpdate} loading={loading} onRefresh={refreshNodes} />
 
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 w-full p-3 sm:p-6 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto">
+        <div className="w-full p-3 sm:p-6 min-h-full">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="mb-4 sm:mb-6">

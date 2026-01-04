@@ -98,7 +98,13 @@ function ChartContent({
     showTooltip: (args: { tooltipData: NodeHistoryPoint; tooltipLeft: number; tooltipTop: number }) => void;
     hideTooltip: () => void;
 }) {
-    const margin = { top: 10, right: 10, left: 35, bottom: 25 };
+    const isMobile = width < 640;
+    const margin = {
+        top: 10,
+        right: 10,
+        left: isMobile ? 30 : 40,
+        bottom: isMobile ? 20 : 30
+    };
     const xMax = width - margin.left - margin.right;
     const yMax = height - margin.top - margin.bottom;
 

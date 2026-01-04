@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { scaleTime, scaleLinear } from '@visx/scale';
-import { LinePath, Circle } from '@visx/shape';
+import { LinePath, AreaClosed, Circle } from '@visx/shape';
 import { Group } from '@visx/group';
 import { AxisBottom, AxisLeft } from '@visx/axis';
 import { GridRows, GridColumns } from '@visx/grid';
@@ -10,6 +10,7 @@ import { curveMonotoneX } from '@visx/curve';
 import { useTooltip, TooltipWithBounds, defaultStyles } from '@visx/tooltip';
 import { localPoint } from '@visx/event';
 import { timeFormat } from 'd3-time-format';
+import { LinearGradient } from '@visx/gradient';
 import ParentSize from '@visx/responsive/lib/components/ParentSize';
 // HistoricalDataPoint definition
 export interface HistoricalDataPoint {
@@ -402,10 +403,10 @@ export default function MetricChart({
                 // Responsive margins - smaller on mobile for better chart size
                 const isMobile = width < 640;
                 const margin = {
-                    top: minimal ? 10 : 30,
-                    right: isMobile ? 10 : 30,
-                    left: isMobile ? 50 : 70,
-                    bottom: isMobile ? 50 : 70
+                    top: minimal ? 10 : 25,
+                    right: isMobile ? 10 : 25,
+                    left: isMobile ? 40 : 65,
+                    bottom: isMobile ? 40 : 65
                 };
                 const xMax = width - margin.left - margin.right;
                 const yMax = height - margin.top - margin.bottom;
@@ -518,8 +519,21 @@ export default function MetricChart({
                                                 const val = d[line.key];
                                                 return val !== undefined && val !== null && !isNaN(val);
                                             });
+                                            const gradientId = `gradient-${line.key}`;
                                             return (
                                                 <g key={line.key}>
+                                                    <LinearGradient id={gradientId} from={line.color} fromOpacity={0.2} to={line.color} toOpacity={0} />
+                                                    {/* Area Closed */}
+                                                    {validHighlightedData.length > 0 && (
+                                                        <AreaClosed<any>
+                                                            data={validHighlightedData}
+                                                            x={(d) => xScale(d.timestamp)}
+                                                            y={(d) => yScale(d[line.key] ?? 0)}
+                                                            yScale={yScale}
+                                                            fill={`url(#${gradientId})`}
+                                                            curve={curveMonotoneX}
+                                                        />
+                                                    )}
                                                     {/* Highlighted line */}
                                                     {validHighlightedData.length > 0 && (
                                                         <LinePath
@@ -527,20 +541,8 @@ export default function MetricChart({
                                                             x={(d) => xScale(d.timestamp)}
                                                             y={(d) => yScale(d[line.key] ?? 0)}
                                                             stroke={line.color}
-                                                            strokeWidth={3}
+                                                            strokeWidth={2.5}
                                                             strokeOpacity={1}
-                                                            curve={curveMonotoneX}
-                                                        />
-                                                    )}
-                                                    {/* Dimmed line (when hovering) */}
-                                                    {hoveredIndex !== null && validDimmedData.length > 0 && (
-                                                        <LinePath
-                                                            data={validDimmedData}
-                                                            x={(d) => xScale(d.timestamp)}
-                                                            y={(d) => yScale(d[line.key] ?? 0)}
-                                                            stroke={line.color}
-                                                            strokeWidth={3}
-                                                            strokeOpacity={0.25}
                                                             curve={curveMonotoneX}
                                                         />
                                                     )}
@@ -554,12 +556,23 @@ export default function MetricChart({
                                             const val = d.value;
                                             return val !== undefined && val !== null && !isNaN(val);
                                         });
-                                        const validDimmedData = dimmedData.filter(d => {
-                                            const val = d.value;
-                                            return val !== undefined && val !== null && !isNaN(val);
-                                        });
+                                        const gradientId = `gradient-${title.replace(/\s+/g, '-')}`;
                                         return (
                                             <g ref={pathGroupRef} key={`line-${dataKey || 'loading'}`} className="line-initial-hidden">
+                                                <LinearGradient id={gradientId} from={strokeColor} fromOpacity={0.4} to={strokeColor} toOpacity={0} />
+
+                                                {/* Area Closed */}
+                                                {validHighlightedData.length > 0 && (
+                                                    <AreaClosed<any>
+                                                        data={validHighlightedData}
+                                                        x={(d) => xScale(d.timestamp)}
+                                                        y={(d) => yScale(d.value ?? 0)}
+                                                        yScale={yScale}
+                                                        fill={`url(#${gradientId})`}
+                                                        curve={curveMonotoneX}
+                                                    />
+                                                )}
+
                                                 {/* Highlighted line */}
                                                 {validHighlightedData.length > 0 && (
                                                     <LinePath
@@ -569,18 +582,6 @@ export default function MetricChart({
                                                         stroke={strokeColor}
                                                         strokeWidth={3}
                                                         strokeOpacity={1}
-                                                        curve={curveMonotoneX}
-                                                    />
-                                                )}
-                                                {/* Dimmed line (when hovering) */}
-                                                {hoveredIndex !== null && validDimmedData.length > 0 && (
-                                                    <LinePath
-                                                        data={validDimmedData}
-                                                        x={(d) => xScale(d.timestamp)}
-                                                        y={(d) => yScale(d.value ?? 0)}
-                                                        stroke={strokeColor}
-                                                        strokeWidth={3}
-                                                        strokeOpacity={0.25}
                                                         curve={curveMonotoneX}
                                                     />
                                                 )}

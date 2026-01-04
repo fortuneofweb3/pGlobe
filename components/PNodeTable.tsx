@@ -263,6 +263,9 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
 
       // Process in chunks to limit concurrency
       const chunks = [];
+      const CONCURRENCY = 3; // Reduced concurrency to lower CPU pressure
+      const BATCH_SIZE = 100; // Larger batch size to reduce re-renders
+
       for (let i = 0; i < nodesToFetch.length; i += CONCURRENCY) {
         chunks.push(nodesToFetch.slice(i, i + CONCURRENCY));
       }
@@ -278,7 +281,6 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
             const balance = await fetchNodeBalance(node);
             return { id: node.id, balance };
           } catch (error) {
-            console.warn(`Failed to fetch balance for node ${node.id}:`, error);
             return { id: node.id, balance: null };
           }
         });
@@ -296,14 +298,18 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
         // Update state periodically or at end
         if (Object.keys(newBalancesBuffer).length >= BATCH_SIZE || processedCount >= nodesToFetch.length) {
           if (mounted && Object.keys(newBalancesBuffer).length > 0) {
+            const bufferToFlush = { ...newBalancesBuffer };
+            newBalancesBuffer = {}; // Clear immediately
+
             setBalances(prev => ({
               ...prev,
-              ...newBalancesBuffer
+              ...bufferToFlush
             }));
-            // Reset buffer after flush to avoid re-merging same data
-            newBalancesBuffer = {};
           }
         }
+
+        // Minor delay between chunks to keep UI responsive
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
 
       if (mounted) {
@@ -691,7 +697,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                   const isTrynet = node.version?.includes('-trynet') || false;
                   return (
                     <tr
-                      key={`${node.id || 'unknown'}-${index}`}
+                      key={node.id || `node-${index}`}
                       onClick={() => {
                         if (onNodeClick) {
                           onNodeClick(node);

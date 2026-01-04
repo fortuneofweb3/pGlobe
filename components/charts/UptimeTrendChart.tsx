@@ -3,13 +3,14 @@
 import { useMemo, useEffect, useRef, useState } from 'react';
 import { PNode } from '@/lib/types/pnode';
 import { scaleTime, scaleLinear } from '@visx/scale';
-import { LinePath } from '@visx/shape';
+import { LinePath, AreaClosed } from '@visx/shape';
 import { AxisBottom, AxisLeft, AxisRight } from '@visx/axis';
 import { GridRows, GridColumns } from '@visx/grid';
 import { curveMonotoneX } from '@visx/curve';
 import { useTooltip, TooltipWithBounds, defaultStyles } from '@visx/tooltip';
 import { localPoint } from '@visx/event';
 import { timeFormat } from 'd3-time-format';
+import { LinearGradient } from '@visx/gradient';
 import ParentSize from '@visx/responsive/lib/components/ParentSize';
 
 interface UptimeTrendChartProps {
@@ -332,9 +333,9 @@ function ChartContent({
   const isMobile = width < 640;
   const margin = {
     top: 20,
-    right: isMobile ? 20 : 80,
-    left: isMobile ? 40 : 60,
-    bottom: 40
+    right: isMobile ? 15 : 70,
+    left: isMobile ? 35 : 55,
+    bottom: isMobile ? 35 : 50
   };
   const xMax = width - margin.left - margin.right;
   const yMax = height - margin.top - margin.bottom;
@@ -483,12 +484,31 @@ function ChartContent({
           {/* Highlighted lines - show if we have data, even if loading new data */}
           {highlightedData.length > 0 && (
             <g ref={pathGroupRef} key={`lines-${dataKey || 'loading'}`} className="line-initial-hidden">
+              <LinearGradient id="uptime-gradient" from="#F0A741" fromOpacity={0.3} to="#F0A741" toOpacity={0} />
+              <LinearGradient id="online-gradient" from="#3F8277" fromOpacity={0.2} to="#3F8277" toOpacity={0} />
+
+              <AreaClosed<any>
+                data={highlightedData}
+                x={(d) => xScale(d.timestamp)}
+                y={(d) => yScaleUptime(d.uptime)}
+                yScale={yScaleUptime}
+                fill="url(#uptime-gradient)"
+                curve={curveMonotoneX}
+              />
+              <AreaClosed<any>
+                data={highlightedData}
+                x={(d) => xScale(d.timestamp)}
+                y={(d) => yScaleOnline(d.online)}
+                yScale={yScaleOnline}
+                fill="url(#online-gradient)"
+                curve={curveMonotoneX}
+              />
               <LinePath
                 data={highlightedData}
                 x={(d) => xScale(d.timestamp)}
                 y={(d) => yScaleUptime(d.uptime)}
                 stroke="#F0A741"
-                strokeWidth={2.5}
+                strokeWidth={2}
                 strokeOpacity={1}
                 curve={curveMonotoneX}
               />
@@ -497,7 +517,7 @@ function ChartContent({
                 x={(d) => xScale(d.timestamp)}
                 y={(d) => yScaleOnline(d.online)}
                 stroke="#3F8277"
-                strokeWidth={2.5}
+                strokeWidth={2}
                 strokeOpacity={1}
                 curve={curveMonotoneX}
               />

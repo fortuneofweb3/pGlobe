@@ -2,16 +2,16 @@
 
 import { useMemo, useEffect, useRef, useState } from 'react';
 import { scaleTime, scaleLinear } from '@visx/scale';
-import { LinePath } from '@visx/shape';
+import { LinePath, AreaClosed, Circle } from '@visx/shape';
 import { AxisBottom, AxisLeft } from '@visx/axis';
 import { GridRows, GridColumns } from '@visx/grid';
 import { curveMonotoneX } from '@visx/curve';
 import { useTooltip, TooltipWithBounds, defaultStyles } from '@visx/tooltip';
 import { localPoint } from '@visx/event';
 import { timeFormat } from 'd3-time-format';
+import { LinearGradient } from '@visx/gradient';
 import ParentSize from '@visx/responsive/lib/components/ParentSize';
 import { Group } from '@visx/group';
-import { Circle } from '@visx/shape';
 
 interface NetworkHealthTrendChartProps {
   historicalData: Array<{
@@ -229,10 +229,10 @@ export default function NetworkHealthTrendChart({
             // Responsive margins - smaller on mobile for better chart size
             const isMobile = width < 640;
             const margin = {
-              top: 30,
-              right: isMobile ? 10 : 30,
-              left: isMobile ? 40 : 60,
-              bottom: isMobile ? 50 : 70
+              top: 25,
+              right: isMobile ? 10 : 25,
+              left: isMobile ? 35 : 55,
+              bottom: isMobile ? 40 : 60
             };
             const xMax = width - margin.left - margin.right;
             const yMax = height - margin.top - margin.bottom;
@@ -339,12 +339,21 @@ export default function NetworkHealthTrendChart({
                     {/* Highlighted line - show if we have data, even if loading new data */}
                     {highlightedData.length > 0 && (
                       <g ref={pathGroupRef} key={`line-${dataKey || 'loading'}`} className="line-initial-hidden">
+                        <LinearGradient id="health-gradient" from="#F0A741" fromOpacity={0.4} to="#F0A741" toOpacity={0} />
+                        <AreaClosed<any>
+                          data={highlightedData}
+                          x={(d) => xScale(d.timestamp)}
+                          y={(d) => yScale(d.overall)}
+                          yScale={yScale}
+                          fill="url(#health-gradient)"
+                          curve={curveMonotoneX}
+                        />
                         <LinePath
                           data={highlightedData}
                           x={(d) => xScale(d.timestamp)}
                           y={(d) => yScale(d.overall)}
                           stroke="#F0A741"
-                          strokeWidth={3}
+                          strokeWidth={2.5}
                           strokeOpacity={1}
                           curve={curveMonotoneX}
                         />

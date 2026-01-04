@@ -272,8 +272,8 @@ function ManagersPageContent() {
                 onRefresh={refreshNodes}
             />
 
-            <main className="flex-1 flex flex-col overflow-hidden">
-                <div className="flex-1 w-full p-3 sm:p-6 overflow-y-auto">
+            <main className="flex-1 overflow-y-auto">
+                <div className="w-full p-3 sm:p-6 min-h-full">
                     <div className="max-w-7xl mx-auto">
                         {/* Page Title Row */}
                         <div className="mb-8 animate-slide-in-bottom">

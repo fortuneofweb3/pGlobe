@@ -723,62 +723,64 @@ body {
   animation: slideInFromLeft 0.5s ease-out;
 }
 
-/* Staggered children animations - varied and contextual */
+/* Staggered children animations - optimized to prevent flashes on re-render */
 .stagger-children>* {
-  opacity: 0;
+  /* Remove default opacity: 0 to prevent "missing" elements during re-renders */
+  /* Instead, we rely on the animation to handle the entry if needed */
+  will-change: opacity, transform;
 }
 
-/* Varied animation styles for visual interest */
+/* Specific stagger delays for initial load or manual entry */
 .stagger-children>*:nth-child(1) {
-  animation: fadeIn 0.4s ease-out 0.05s forwards;
+  animation: fadeIn 0.4s ease-out 0.05s both;
 }
 
 .stagger-children>*:nth-child(2) {
-  animation: slideInFromLeft 0.4s ease-out 0.1s forwards;
+  animation: slideInFromLeft 0.4s ease-out 0.1s both;
 }
 
 .stagger-children>*:nth-child(3) {
-  animation: scaleIn 0.4s ease-out 0.15s forwards;
+  animation: scaleIn 0.4s ease-out 0.15s both;
 }
 
 .stagger-children>*:nth-child(4) {
-  animation: slideInFromRight 0.4s ease-out 0.2s forwards;
+  animation: slideInFromRight 0.4s ease-out 0.2s both;
 }
 
 .stagger-children>*:nth-child(5) {
-  animation: fadeIn 0.4s ease-out 0.25s forwards;
+  animation: fadeIn 0.4s ease-out 0.25s both;
 }
 
 .stagger-children>*:nth-child(6) {
-  animation: scaleIn 0.4s ease-out 0.3s forwards;
+  animation: scaleIn 0.4s ease-out 0.3s both;
 }
 
 .stagger-children>*:nth-child(7) {
-  animation: slideInFromBottom 0.4s ease-out 0.35s forwards;
+  animation: slideInFromBottom 0.4s ease-out 0.35s both;
 }
 
 .stagger-children>*:nth-child(8) {
-  animation: fadeIn 0.4s ease-out 0.4s forwards;
+  animation: fadeIn 0.4s ease-out 0.4s both;
 }
 
 .stagger-children>*:nth-child(9) {
-  animation: slideInFromLeft 0.4s ease-out 0.45s forwards;
+  animation: slideInFromLeft 0.4s ease-out 0.45s both;
 }
 
 .stagger-children>*:nth-child(10) {
-  animation: scaleIn 0.4s ease-out 0.5s forwards;
+  animation: scaleIn 0.4s ease-out 0.5s both;
 }
 
 .stagger-children>*:nth-child(11) {
-  animation: fadeIn 0.4s ease-out 0.55s forwards;
+  animation: fadeIn 0.4s ease-out 0.55s both;
 }
 
 .stagger-children>*:nth-child(12) {
-  animation: slideInFromBottom 0.4s ease-out 0.6s forwards;
+  animation: slideInFromBottom 0.4s ease-out 0.6s both;
 }
 
 .stagger-children>*:nth-child(n+13) {
-  animation: fadeIn 0.4s ease-out 0.65s forwards;
+  animation: fadeIn 0.4s ease-out 0.65s both;
 }
 
 /* Fast fade-in for activity logs - optimized for 60fps */
@@ -796,6 +798,16 @@ body {
 
 .animate-fade-in-fast {
   animation: fadeInFast 0.15s ease-out forwards;
+  will-change: opacity, transform;
+}
+
+/* Optimization: Add will-change to common animation classes */
+.animate-fade-in,
+.animate-slide-in-left,
+.animate-slide-in-right,
+.animate-slide-in-top,
+.animate-slide-in-bottom,
+.animate-scale-in {
   will-change: opacity, transform;
 }
 

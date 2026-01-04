@@ -79,7 +79,7 @@ export default function StatsCard({
 
   if (loading) {
     return (
-      <div className={`card-stat bg-[#0a0a0a] border-white/5 backdrop-blur-md overflow-hidden ${className || ''}`}>
+      <div className={`card-stat bg-[#0d0d0d] border-white/5 overflow-hidden ${className || ''}`}>
         <div className="flex items-center justify-between mb-2">
           <div className="h-3 w-16 bg-muted/20 rounded" />
           {icon && <div className="w-3.5 h-3.5 bg-muted/10 rounded" />}
@@ -97,7 +97,7 @@ export default function StatsCard({
   return (
     <div
       onClick={onClick}
-      className={`card-stat bg-[#0a0a0a] border-white/5 backdrop-blur-md overflow-hidden group hover:bg-[#111] ${theme.hoverBorder} transition-all duration-300 ${onClick ? 'cursor-pointer hover:scale-105' : ''} ${className || ''}`}
+      className={`card-stat bg-[#0d0d0d] border-white/5 overflow-hidden group hover:bg-[#111] ${theme.hoverBorder} transition-all duration-300 ${onClick ? 'cursor-pointer hover:scale-[1.03]' : ''} ${className || ''}`}
     >
       <div className="flex flex-col relative">
         <div className="flex items-center justify-between mb-2">
