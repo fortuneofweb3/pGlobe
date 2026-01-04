@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
 import { useXandPrice } from '@/lib/hooks/useXandPrice';
-import { StatCardSkeleton } from '@/components/Skeletons';
+import { StatCardSkeleton, ChartSkeleton, PNodeTableSkeleton } from '@/components/Skeletons';
 import PNodeTable from '@/components/PNodeTable';
 import StatsCard from '@/components/StatsCard';
 import { PNode } from '@/lib/types/pnode';
@@ -292,25 +292,79 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
         return (
             <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
                 <Header activePage="managers" loading={true} onRefresh={() => { }} />
-                <main className="flex-1 overflow-hidden">
-                    <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
+
+                <main className="flex-1 flex flex-col overflow-hidden">
+                    <div className="flex-1 w-full p-3 sm:p-6 overflow-y-auto">
                         <div className="max-w-7xl mx-auto">
+                            {/* Back Link */}
                             <Link href="/managers" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6 transition-all duration-300 group">
                                 <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
                                 <span>Back to Managers</span>
                             </Link>
-                            <div className="rounded-xl border border-border/40 bg-card p-6 mb-8 overflow-hidden relative">
-                                <div className="h-8 w-1/2 bg-muted/20 animate-pulse rounded mb-4" />
-                                <div className="h-4 w-1/3 bg-muted/10 animate-pulse rounded" />
+
+                            {/* Cover Section */}
+                            <div className="relative mb-8">
+                                <div className="relative rounded-xl overflow-hidden border border-border/40 bg-card">
+                                    <div className="absolute inset-0 bg-gradient-to-r from-card via-card/70 to-transparent" />
+                                    <div className="relative px-6 py-10">
+                                        <div className="mb-6">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#F0A741]/20 border border-[#F0A741]/30">
+                                                    <div className="h-3 w-14 bg-[#F0A741]/30 rounded" />
+                                                </span>
+                                            </div>
+                                            <div className="h-8 w-2/3 bg-muted/20 rounded mb-4" />
+                                        </div>
+                                        <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4 pt-4 border-t border-white/5">
+                                            <div className="h-4 w-32 bg-muted/10 rounded" />
+                                            <div className="h-4 w-24 bg-muted/10 rounded" />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                                <StatCardSkeleton />
-                                <StatCardSkeleton />
-                                <StatCardSkeleton />
-                                <StatCardSkeleton />
+
+                            {/* Stats Row - 4 Columns */}
+                            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                                <StatsCard title="Online pNodes" value={0} icon={<Activity className="w-4 h-4" />} color="green" loading={true} subValue=" " />
+                                <StatsCard title="DAO Stake" value={0} icon={<Award className="w-4 h-4" />} color="orange" loading={true} subValue=" " />
+                                <StatsCard title="Vesting Rewards" value={0} icon={<Zap className="w-4 h-4" />} color="blue" loading={true} subValue=" " />
+                                <StatsCard title="Total Storage" value={0} icon={<HardDrive className="w-4 h-4" />} color="purple" loading={true} subValue=" " />
                             </div>
-                            <div className="card p-4">
-                                <div className="h-32 bg-muted/10 animate-pulse rounded" />
+
+                            {/* Analytics Section - Chart & Map */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+                                <div className="card">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="h-4 w-32 bg-muted/20 rounded" />
+                                        <div className="h-6 w-20 bg-muted/10 rounded" />
+                                    </div>
+                                    <div className="bg-muted/10 rounded-lg p-3 w-full h-[250px]">
+                                        <ChartSkeleton height={220} />
+                                    </div>
+                                </div>
+                                <div className="card h-full relative overflow-hidden p-0 bg-transparent">
+                                    <div className="h-full w-full bg-[#0a0a0a] min-h-[300px] flex items-center justify-center">
+                                        <div className="h-8 w-8 bg-muted/20 rounded" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Tabs */}
+                            <div className="flex gap-1 sm:gap-2 mb-8 bg-black/40 p-1 rounded-xl border border-white/5 w-fit">
+                                <div className="flex items-center gap-1.5 px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold bg-[#F0A741]">
+                                    <div className="h-3 w-12 bg-black/30 rounded" />
+                                </div>
+                                <div className="flex items-center gap-1.5 px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold">
+                                    <div className="h-3 w-12 bg-muted/20 rounded" />
+                                </div>
+                                <div className="flex items-center gap-1.5 px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold">
+                                    <div className="h-3 w-8 bg-muted/20 rounded" />
+                                </div>
+                            </div>
+
+                            {/* Table Skeleton */}
+                            <div className="card overflow-hidden" style={{ padding: 0 }}>
+                                <PNodeTableSkeleton rows={8} />
                             </div>
                         </div>
                     </div>

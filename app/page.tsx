@@ -60,10 +60,8 @@ function HomeContent() {
   const searchParams = useSearchParams();
   // Use shared nodes data from context (fetched once, updated passively)
   const { nodes, loading, error, lastUpdate, refreshNodes } = useNodes();
-  // Load cached latencies immediately (synchronous)
-  const [nodeLatencies, setNodeLatencies] = useState<Record<string, number | null>>(() => {
-    return getCachedNodesLatencies(nodes);
-  });
+  // Load cached latencies lazily (deferred to avoid blocking initial render)
+  const [nodeLatencies, setNodeLatencies] = useState<Record<string, number | null>>({});
 
   const [dataSource, setDataSource] = useState<'prpc' | 'mock' | 'gossip' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -417,50 +415,7 @@ function HomeContent() {
   // Show loading skeleton when loading or no data available
   const isLoading = loading || (nodes.length === 0 && !error);
 
-  // If loading and no data, show the loading skeleton
-  if (isLoading && nodes.length === 0) {
-    return (
-      <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
-        <Header
-          activePage="overview"
-          loading={true}
-          onRefresh={() => { }}
-        />
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex overflow-hidden relative">
-          {/* Left Sidebar */}
-          <aside className="hidden md:block w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-hidden">
-            <div className="pt-1.5 px-3 pb-3 sm:pt-2 sm:px-4 sm:pb-4 space-y-3 sm:space-y-4">
-              <EraCardSkeleton />
-              <SidebarStatsSkeleton />
-            </div>
-          </aside>
-
-          {/* Center - Globe */}
-          <main className="flex-1 relative overflow-hidden">
-            {/* Mobile Sidebar Toggle */}
-            <button className="md:hidden absolute top-4 left-4 z-50 p-2 bg-black border border-[#F0A741]/20 rounded-lg text-[#F0A741]">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-
-            {/* Search Bar */}
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4 md:px-0">
-              <div className="w-full pl-10 pr-4 py-3 bg-card border border-border/60 rounded-xl">
-                <div className="h-4 w-48 bg-muted/30 rounded animate-pulse" />
-              </div>
-            </div>
-
-            {/* Globe */}
-            <div className="absolute inset-0 w-full h-full bg-black">
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="fixed inset-0 w-full h-full flex flex-col" style={{ backgroundColor: '#000000' }}>
@@ -484,125 +439,139 @@ function HomeContent() {
 
         {/* Left Sidebar */}
         <aside className="hidden md:block md:relative w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-y-auto z-40 h-full">
-          <div className="pt-1.5 px-3 pb-3 sm:pt-2 sm:px-4 sm:pb-4 space-y-3 sm:space-y-4">
-            {/* Mobile close button */}
-            <div className="flex items-center justify-between mb-2 md:hidden">
-              <h2 className="text-sm font-semibold text-foreground/60 uppercase tracking-wide">Network Stats</h2>
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className="p-1 text-foreground/60 hover:text-foreground transition-all duration-300 hover:scale-110 active:scale-100 hover:rotate-90"
-                aria-label="Close sidebar"
-              >
-                <svg className="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+          {(isLoading && nodes.length === 0) ? (
+            <div className="pt-1.5 px-3 pb-3 sm:pt-2 sm:px-4 sm:pb-4 space-y-3 sm:space-y-4">
+              {/* Mobile close button - for structural consistency */}
+              <div className="flex items-center justify-between mb-2 md:hidden">
+                <h2 className="text-sm font-semibold text-foreground/60 uppercase tracking-wide">Network Stats</h2>
+              </div>
 
-            <MilestoneTracker nodes={nodes} variant="flat" className="pb-4 border-b border-border/30 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }} />
+              <div className="pb-4 border-b border-border/30">
+                <EraCardSkeleton />
+              </div>
+              <SidebarStatsSkeleton />
+            </div>
+          ) : (
+            <div className="pt-1.5 px-3 pb-3 sm:pt-2 sm:px-4 sm:pb-4 space-y-3 sm:space-y-4">
+              {/* Mobile close button */}
+              <div className="flex items-center justify-between mb-2 md:hidden">
+                <h2 className="text-sm font-semibold text-foreground/60 uppercase tracking-wide">Network Stats</h2>
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="p-1 text-foreground/60 hover:text-foreground transition-all duration-300 hover:scale-110 active:scale-100 hover:rotate-90"
+                  aria-label="Close sidebar"
+                >
+                  <svg className="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
 
-            <div className="pt-4 animate-fade-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
-              <h2 className="text-xs font-semibold text-foreground/60 mb-2 uppercase tracking-wide hidden md:block">Network Stats</h2>
-              <div className="space-y-1.5 sm:space-y-2">
-                <div className="flex items-center justify-between group">
-                  <span className="text-xs sm:text-sm text-foreground/70 transition-colors duration-300 group-hover:text-foreground">Total pNodes</span>
-                  <span className="text-xs sm:text-sm font-semibold text-foreground transition-all duration-300 group-hover:scale-110">
-                    <AnimatedNumber value={stats.totalNodes} />
-                  </span>
+              <MilestoneTracker nodes={nodes} variant="flat" className="pb-4 border-b border-border/30 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }} />
+
+              <div className="pt-4 animate-fade-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
+                <h2 className="text-xs font-semibold text-foreground/60 mb-2 uppercase tracking-wide hidden md:block">Network Stats</h2>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <div className="flex items-center justify-between group">
+                    <span className="text-xs sm:text-sm text-foreground/70 transition-colors duration-300 group-hover:text-foreground">Total pNodes</span>
+                    <span className="text-xs sm:text-sm font-semibold text-foreground transition-all duration-300 group-hover:scale-110">
+                      <AnimatedNumber value={stats.totalNodes} />
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between group">
+                    <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5 transition-colors duration-300 group-hover:text-foreground">
+                      Online
+                      <InfoTooltip content="Seen in gossip network within last 5 minutes" />
+                    </span>
+                    <span className="text-xs sm:text-sm font-semibold text-[#3F8277] transition-all duration-300 group-hover:scale-110">
+                      <AnimatedNumber value={stats.onlineNodes} />
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between group">
+                    <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5 transition-colors duration-300 group-hover:text-foreground">
+                      Syncing
+                      <InfoTooltip content="Seen within last hour, still synchronizing with network" />
+                    </span>
+                    <span className="text-xs sm:text-sm font-semibold text-[#F0A741] transition-all duration-300 group-hover:scale-110">
+                      <AnimatedNumber value={nodes.filter(n => n.status === 'syncing').length} />
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between group">
+                    <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5 transition-colors duration-300 group-hover:text-foreground">
+                      Offline
+                      <InfoTooltip content="Not seen in gossip network for over an hour" />
+                    </span>
+                    <span className="text-xs sm:text-sm font-semibold text-red-400 transition-all duration-300 group-hover:scale-110">
+                      <AnimatedNumber value={nodes.filter(n => n.status === 'offline').length} />
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between group">
-                  <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5 transition-colors duration-300 group-hover:text-foreground">
-                    Online
-                    <InfoTooltip content="Seen in gossip network within last 5 minutes" />
-                  </span>
-                  <span className="text-xs sm:text-sm font-semibold text-[#3F8277] transition-all duration-300 group-hover:scale-110">
-                    <AnimatedNumber value={stats.onlineNodes} />
-                  </span>
+              </div>
+
+              <div className="pt-4 sm:pt-6 border-t border-border animate-slide-in-left" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                  <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Performance</h2>
+                  <InfoTooltip content="Stats from pNodes with public pRPC only (~10 of 135 pNodes). Most operators keep pRPC private (localhost-only) for security.">
+                    <span className="text-xs text-muted-foreground hidden sm:inline">
+                      {nodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent > 0).length}/{nodes.length} reporting
+                    </span>
+                  </InfoTooltip>
                 </div>
-                <div className="flex items-center justify-between group">
-                  <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5 transition-colors duration-300 group-hover:text-foreground">
-                    Syncing
-                    <InfoTooltip content="Seen within last hour, still synchronizing with network" />
-                  </span>
-                  <span className="text-xs sm:text-sm font-semibold text-[#F0A741] transition-all duration-300 group-hover:scale-110">
-                    <AnimatedNumber value={nodes.filter(n => n.status === 'syncing').length} />
-                  </span>
+                <div className="space-y-2 sm:space-y-3">
+                  <MetricRow
+                    label="Avg Uptime"
+                    value={stats.avgUptime > 0 ? formatUptimeDuration(stats.avgUptime) : 'N/A'}
+                    valueColor="text-[#3F8277]"
+                    tooltip="Average time nodes have been running continuously. Calculated from nodes reporting uptime stats."
+                  />
+                  <MetricRow
+                    label="Avg CPU"
+                    value={stats.avgCPU}
+                    animateValue={true}
+                    valueFormatter={(v) => v > 0 ? `${v.toFixed(1)}%` : 'N/A'}
+                    tooltip="Average CPU utilization across all nodes with public stats. Shows how much of each node's processor capacity is being used. Lower typically means more headroom."
+                  />
+                  <MetricRow
+                    label="Avg RAM"
+                    value={stats.avgRAMUsage}
+                    animateValue={true}
+                    valueFormatter={(v) => v > 0 ? `${v.toFixed(1)}%` : 'N/A'}
+                    tooltip="Average memory (RAM) usage as percentage of total available RAM on each node. Shows how much memory pNode software is consuming."
+                  />
                 </div>
-                <div className="flex items-center justify-between group">
-                  <span className="text-xs sm:text-sm text-foreground/70 flex items-center gap-1.5 transition-colors duration-300 group-hover:text-foreground">
-                    Offline
-                    <InfoTooltip content="Not seen in gossip network for over an hour" />
-                  </span>
-                  <span className="text-xs sm:text-sm font-semibold text-red-400 transition-all duration-300 group-hover:scale-110">
-                    <AnimatedNumber value={nodes.filter(n => n.status === 'offline').length} />
-                  </span>
+              </div>
+
+              <div className="pt-4 sm:pt-6 border-t border-border animate-fade-in" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                  <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Storage & Memory</h2>
+                </div>
+                <div className="space-y-2 sm:space-y-3">
+                  <MetricRow
+                    label="Total Storage"
+                    value={formatStorageBytes(stats.totalCapacity)}
+                    tooltip="Total storage capacity across all pNodes."
+                  />
+                  <MetricRow
+                    label="Total RAM"
+                    value={formatStorageBytes(stats.totalRAM)}
+                    tooltip="Total RAM capacity across all pNodes."
+                  />
+                  <MetricRow
+                    label="Used RAM"
+                    value={formatStorageBytes(stats.usedRAM)}
+                    tooltip="Total RAM currently in use across all pNodes."
+                  />
+                  <MetricRow
+                    label="Avg RAM Usage"
+                    value={stats.avgRAMUsage}
+                    animateValue={true}
+                    valueFormatter={(v) => v > 0 ? `${v.toFixed(1)}%` : 'N/A'}
+                    tooltip="Average RAM usage percentage across all nodes."
+                  />
                 </div>
               </div>
             </div>
-
-            <div className="pt-4 sm:pt-6 border-t border-border animate-slide-in-left" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
-              <div className="flex items-center justify-between mb-3 sm:mb-4">
-                <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Performance</h2>
-                <InfoTooltip content="Stats from pNodes with public pRPC only (~10 of 135 pNodes). Most operators keep pRPC private (localhost-only) for security.">
-                  <span className="text-xs text-muted-foreground hidden sm:inline">
-                    {nodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent > 0).length}/{nodes.length} reporting
-                  </span>
-                </InfoTooltip>
-              </div>
-              <div className="space-y-2 sm:space-y-3">
-                <MetricRow
-                  label="Avg Uptime"
-                  value={stats.avgUptime > 0 ? formatUptimeDuration(stats.avgUptime) : 'N/A'}
-                  valueColor="text-[#3F8277]"
-                  tooltip="Average time nodes have been running continuously. Calculated from nodes reporting uptime stats."
-                />
-                <MetricRow
-                  label="Avg CPU"
-                  value={stats.avgCPU}
-                  animateValue={true}
-                  valueFormatter={(v) => v > 0 ? `${v.toFixed(1)}%` : 'N/A'}
-                  tooltip="Average CPU utilization across all nodes with public stats. Shows how much of each node's processor capacity is being used. Lower typically means more headroom."
-                />
-                <MetricRow
-                  label="Avg RAM"
-                  value={stats.avgRAMUsage}
-                  animateValue={true}
-                  valueFormatter={(v) => v > 0 ? `${v.toFixed(1)}%` : 'N/A'}
-                  tooltip="Average memory (RAM) usage as percentage of total available RAM on each node. Shows how much memory pNode software is consuming."
-                />
-              </div>
-            </div>
-
-            <div className="pt-4 sm:pt-6 border-t border-border animate-fade-in" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
-              <div className="flex items-center justify-between mb-3 sm:mb-4">
-                <h2 className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Storage & Memory</h2>
-              </div>
-              <div className="space-y-2 sm:space-y-3">
-                <MetricRow
-                  label="Total Storage"
-                  value={formatStorageBytes(stats.totalCapacity)}
-                  tooltip="Total storage capacity across all pNodes."
-                />
-                <MetricRow
-                  label="Total RAM"
-                  value={formatStorageBytes(stats.totalRAM)}
-                  tooltip="Total RAM capacity across all pNodes."
-                />
-                <MetricRow
-                  label="Used RAM"
-                  value={formatStorageBytes(stats.usedRAM)}
-                  tooltip="Total RAM currently in use across all pNodes."
-                />
-                <MetricRow
-                  label="Avg RAM Usage"
-                  value={stats.avgRAMUsage}
-                  animateValue={true}
-                  valueFormatter={(v) => v > 0 ? `${v.toFixed(1)}%` : 'N/A'}
-                  tooltip="Average RAM usage percentage across all nodes."
-                />
-              </div>
-            </div>
-          </div>
+          )}
         </aside>
 
         {/* Center - Map */}
@@ -610,7 +579,7 @@ function HomeContent() {
           {/* Mobile Sidebar Toggle Button */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="md:hidden absolute top-4 left-4 z-50 p-2 bg-black/90 backdrop-blur-md border border-[#F0A741]/20 rounded-lg text-[#F0A741] hover:bg-[#F0A741]/10 transition-all duration-300 hover:scale-110 active:scale-100 hover:border-[#F0A741]/40 hover:shadow-lg hover:shadow-[#F0A741]/20"
+            className="md:hidden absolute top-4 left-4 z-[60] p-2 bg-black/90 backdrop-blur-md border border-[#F0A741]/20 rounded-lg text-[#F0A741] hover:bg-[#F0A741]/10 transition-all duration-300 hover:scale-110 active:scale-100 hover:border-[#F0A741]/40 hover:shadow-lg hover:shadow-[#F0A741]/20"
             aria-label="Toggle sidebar"
           >
             <svg className="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -621,7 +590,7 @@ function HomeContent() {
           {/* Search Bar - Top of Globe */}
           <div
             ref={searchContainerRef}
-            className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4 md:px-0"
+            className="absolute top-4 left-16 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 z-50 w-auto md:w-full md:max-w-md"
           >
             <SearchBar
               value={globeSearchQuery}
@@ -740,7 +709,18 @@ function HomeContent() {
 
 export default function Home() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={
+      <div className="fixed inset-0 flex items-center justify-center bg-black">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="10" strokeWidth="2" strokeLinecap="round" strokeDasharray="32" strokeDashoffset="0">
+              <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite" />
+            </circle>
+          </svg>
+          <span>Loading...</span>
+        </div>
+      </div>
+    }>
       <HomeContent />
     </Suspense>
   );

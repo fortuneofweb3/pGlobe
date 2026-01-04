@@ -1245,87 +1245,132 @@ function CountryDetailContent() {
     return (
       <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
         <Header activePage="regions" nodeCount={0} lastUpdate={null} loading={true} onRefresh={() => { }} />
-        <main className="flex-1 overflow-hidden">
-          <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
+
+        <main className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 w-full p-3 sm:p-6 pt-5 sm:pt-8 overflow-y-auto">
             <div className="max-w-7xl mx-auto">
-              {/* Back button - show immediately */}
-              <Link href="/regions" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-4 transition-colors">
+              {/* Back button */}
+              <Link href="/regions" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6 transition-all duration-300 group">
                 <ArrowLeft className="w-4 h-4" />
-                Back to Regions
+                <div className="h-3 w-24 bg-muted/20 rounded" />
               </Link>
 
-              {/* Cover image - show immediately with known country info */}
-              {(() => {
-                const countryNameFromUrl = decodeURIComponent(params.country as string);
-                return (
-                  <div className="relative h-56 sm:h-72 rounded-xl overflow-hidden shadow-2xl mb-8 bg-muted/10">
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black" />
-                    <div className="relative h-full flex flex-col justify-end p-8">
-                      <h1 className="text-4xl sm:text-5xl font-bold text-white drop-shadow-lg mb-3">
-                        {countryNameFromUrl}
-                      </h1>
-                      <div className="h-6 w-64 bg-white/10 rounded animate-pulse" />
+              {/* Cover Section with Map Background */}
+              <div className="relative rounded-xl overflow-hidden border border-border/40 bg-card" style={{ minHeight: '280px', height: '280px' }}>
+                {/* Map Background Placeholder */}
+                <div className="absolute inset-0 h-full w-full bg-muted/10" />
+
+                {/* Content Overlay - Left Side */}
+                <div className="relative px-5 sm:px-7 lg:px-9 pt-8 pb-8 h-full flex flex-col justify-end">
+                  {/* Badges */}
+                  <div className="flex items-center gap-3 flex-wrap mb-4">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/10 border border-white/20">
+                      <div className="h-3 w-16 bg-white/20 rounded" />
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#3F8277]/20 border border-[#3F8277]/30">
+                      <div className="h-3 w-14 bg-[#3F8277]/30 rounded" />
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/20 border border-blue-500/30">
+                      <div className="h-3 w-6 bg-blue-400/30 rounded" />
+                    </span>
+                  </div>
+
+                  {/* Title */}
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 bg-muted/20 rounded" />
+                    <div className="h-10 w-48 bg-white/20 rounded" />
+                  </div>
+
+                  {/* Region Stats */}
+                  <div className="flex items-center gap-6 text-sm">
+                    <div className="flex flex-col gap-1">
+                      <div className="h-2 w-16 bg-white/10 rounded" />
+                      <div className="h-4 w-20 bg-white/20 rounded" />
+                    </div>
+                    <div className="h-8 w-[1px] bg-white/10" />
+                    <div className="flex flex-col gap-1">
+                      <div className="h-2 w-16 bg-white/10 rounded" />
+                      <div className="h-4 w-12 bg-white/20 rounded" />
+                    </div>
+                    <div className="h-8 w-[1px] bg-white/10" />
+                    <div className="flex flex-col gap-1">
+                      <div className="h-2 w-16 bg-white/10 rounded" />
+                      <div className="h-4 w-14 bg-white/20 rounded" />
                     </div>
                   </div>
-                );
-              })()}
-
-              {/* Stats grid skeleton (Static Labels) */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-                <StatsCard title="Total pNodes" value={0} icon={<Server className="w-4 h-4" />} loading={true} />
-                <StatsCard title="Online pNodes" value={0} icon={<Activity className="w-4 h-4" />} color="green" loading={true} />
-                <StatsCard title="Total Storage" value={0} icon={<HardDrive className="w-4 h-4" />} color="blue" loading={true} />
-                <StatsCard title="Total Credits" value={0} icon={<Coins className="w-4 h-4" />} color="emerald" loading={true} />
-                <StatsCard title="Avg Uptime" value={0} icon={<Clock className="w-4 h-4" />} color="purple" loading={true} />
-                <StatsCard title="Network Health" value={0} icon={<Zap className="w-4 h-4" />} color="red" loading={true} />
-                <StatsCard title="Packets Rx" value={0} icon={<Activity className="w-4 h-4" />} color="blue" loading={true} />
-                <StatsCard title="Packets Tx" value={0} icon={<Activity className="w-4 h-4" />} color="purple" loading={true} />
+                </div>
               </div>
 
-              {/* Historical Performance skeleton (Fixed structure) */}
-              <div className="mb-4 sm:mb-6 space-y-4">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-[#F0A741]" />
-                    <h2 className="text-xl font-bold text-foreground">Historical Performance</h2>
+              {/* Extra Stats Grid - 5 columns */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mt-8 mb-4 sm:mb-6">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="card-stat bg-[#0a0a0a] border-white/5 overflow-hidden">
+                    <div className="flex flex-col relative">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="h-2 w-16 bg-muted/20 rounded" />
+                        <div className="w-3.5 h-3.5 bg-muted/10 rounded" />
+                      </div>
+                      <div className="h-6 w-16 bg-muted/30 rounded mb-1" />
+                      <div className="h-2 w-20 bg-muted/10 rounded" />
+                    </div>
                   </div>
-                  <div className="h-9 w-40 bg-muted/20 border border-border/40 rounded-lg animate-pulse" />
+                ))}
+              </div>
+
+              {/* Analytics Section */}
+              <div className="mb-4 sm:mb-6 space-y-4">
+                {/* Header with Time Range */}
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-[#F0A741]" />
+                    Analytics
+                  </h2>
+                  <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
+                    {['30m', '1h', '24h', '1w'].map((range, i) => (
+                      <div key={range} className={`px-3 py-1 text-xs rounded ${i === 2 ? 'bg-[#F0A741]' : 'bg-transparent'}`}>
+                        <div className={`h-3 w-6 ${i === 2 ? 'bg-black/30' : 'bg-muted/30'} rounded`} />
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
+                {/* Charts Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                   <div className="card p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-medium text-foreground">Online pNodes</h3>
+                      <div className="h-4 w-24 bg-muted/20 rounded" />
                     </div>
-                    <div className="h-[250px] bg-muted/5 rounded-lg animate-pulse border border-border/10" />
+                    <ChartSkeleton height={250} />
                   </div>
                   <div className="card p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-medium text-foreground">Total Credits</h3>
+                      <div className="h-4 w-28 bg-muted/20 rounded" />
                     </div>
-                    <div className="h-[250px] bg-muted/5 rounded-lg animate-pulse border border-border/10" />
+                    <ChartSkeleton height={250} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div className="card p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-medium text-foreground">Packet Traffic</h3>
+                      <div className="h-4 w-20 bg-muted/20 rounded" />
                     </div>
-                    <div className="h-[250px] bg-muted/5 rounded-lg animate-pulse border border-border/10" />
+                    <ChartSkeleton height={250} />
                   </div>
                   <div className="card p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-medium text-foreground">Resource Utilization</h3>
+                      <div className="h-4 w-32 bg-muted/20 rounded" />
                     </div>
-                    <div className="h-[250px] bg-muted/5 rounded-lg animate-pulse border border-border/10" />
+                    <ChartSkeleton height={250} />
                   </div>
                 </div>
               </div>
 
-              {/* Table skeleton */}
-              <div className="card p-4 mb-4">
-                <div className="h-6 w-32 bg-muted/30 rounded animate-pulse mb-4" />
+              {/* Table Section */}
+              <div className="card mb-4" style={{ padding: 0 }}>
+                <div className="p-4 border-b border-border/40">
+                  <div className="h-5 w-32 bg-muted/20 rounded" />
+                </div>
                 <TableSkeleton rows={5} />
               </div>
             </div>

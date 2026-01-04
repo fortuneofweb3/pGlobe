@@ -34,7 +34,7 @@ import { Star } from 'lucide-react';
 // Dynamically import Leaflet components to avoid SSR issues - import from single module
 const NodeMap = dynamic(
   () => import('@/components/NodeMap'),
-  { ssr: false, loading: () => <div className="h-full w-full bg-muted/20 rounded-lg animate-pulse" /> }
+  { ssr: false, loading: () => <div className="h-full w-full bg-muted/20 rounded-lg" /> }
 );
 import ActivityLogList from '@/components/ActivityLogList';
 
@@ -1115,134 +1115,158 @@ function NodeDetailContent() {
     return (
       <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
         <Header activePage="nodes" nodeCount={0} lastUpdate={null} loading={true} onRefresh={() => { }} />
-        <main className="flex-1 overflow-hidden">
-          <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
+
+        <main className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 w-full p-3 sm:p-6 overflow-y-auto">
             <div className="max-w-7xl mx-auto">
-              {/* Breadcrumb (Static structure) */}
-              <div className="mb-4 sm:mb-6 flex items-center gap-2 text-sm text-foreground/60">
-                <Link href="/nodes" className="hover:text-foreground transition-colors">pNodes</Link>
-                <span>/</span>
-                <span className="h-4 w-48 bg-muted/20 rounded animate-pulse inline-block font-mono" />
-              </div>
+              {/* Back Link */}
+              <Link href="/nodes" className="inline-flex items-center gap-2 text-foreground/60 hover:text-foreground mb-6 transition-all duration-300 group">
+                <ArrowLeft className="w-4 h-4" />
+                <div className="h-3 w-24 bg-muted/20 rounded" />
+              </Link>
 
-              {/* Header Section */}
-              <div className="card mb-6">
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted/20 text-foreground/40 border border-border/30 animate-pulse">
-                          Status
-                        </span>
-                        <div>
-                          <h1 className="text-xl sm:text-2xl font-bold font-mono text-foreground">
-                            <span className="h-7 w-64 bg-muted/20 rounded animate-pulse inline-block" />
-                          </h1>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-foreground/60">Version</span>
-                            <span className="h-4 w-20 bg-muted/20 rounded animate-pulse inline-block" />
-                          </div>
-                        </div>
+              {/* Cover Section with Map Background */}
+              <div className="relative rounded-xl overflow-hidden border border-border/40 bg-card mb-8" style={{ minHeight: '234px', maxHeight: '260px' }}>
+                {/* Map Background Placeholder */}
+                <div className="absolute inset-0 h-full w-full bg-muted/10" />
+
+                {/* Content Overlay */}
+                <div className="relative px-5 sm:px-7 lg:px-9 pt-8 pb-8">
+                  <div className="mb-8">
+                    {/* Badges */}
+                    <div className="flex items-center gap-3 flex-wrap mb-4">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted/20 border border-border/30">
+                        <div className="h-3 w-12 bg-muted/30 rounded" />
+                      </span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 border border-green-500/30">
+                        <div className="h-3 w-10 bg-green-400/30 rounded" />
+                      </span>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-background/50 border border-border/30">
+                        <div className="h-3 w-32 bg-muted/20 rounded" />
+                      </span>
+                    </div>
+
+                    {/* Title with Server Icon */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <Server className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
+                      <div className="h-8 w-56 sm:w-72 bg-muted/30 rounded" />
+                    </div>
+
+                    {/* Location & Version */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-foreground/40" />
+                        <div className="h-4 w-36 bg-muted/20 rounded" />
                       </div>
-
-                      <div className="flex items-start gap-2 pt-2 border-t border-border/40">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs text-foreground/60 uppercase tracking-wide mb-1.5">Public Key</div>
-                          <p className="h-4 w-full bg-muted/30 rounded animate-pulse" />
-                        </div>
-                        <button className="p-2 hover:bg-muted/40 rounded transition-colors border border-border/60 mt-5" disabled>
-                          <Copy className="w-4 h-4 text-foreground/60" />
-                        </button>
+                      <div className="flex items-center gap-2">
+                        <div className="h-3 w-12 bg-muted/10 rounded" />
+                        <div className="h-4 w-16 bg-muted/20 rounded" />
                       </div>
                     </div>
 
-                    <button className="p-2 hover:bg-muted/40 rounded-lg transition-colors border border-border/60" disabled>
-                      <RefreshCw className="w-4 h-4" />
-                    </button>
+                    {/* Public Key Box */}
+                    <div className="mt-4 inline-flex items-center gap-2 p-2 bg-background/40 border border-border/40 rounded-lg">
+                      <div className="h-4 w-40 sm:w-56 bg-muted/30 rounded" />
+                      <div className="p-1.5 border border-border/60 rounded">
+                        <Copy className="w-3.5 h-3.5 text-foreground/40" />
+                      </div>
+                      <div className="p-1.5 border border-border/60 rounded">
+                        <div className="w-3.5 h-3.5 bg-muted/20 rounded" />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* 2D Map Section */}
-              <div className="card mb-6">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-foreground/40" />
-                    <h2 className="text-base font-semibold text-foreground">Location</h2>
-                  </div>
-                  <span className="text-xs text-foreground/60 flex items-center gap-1.5">
-                    <span className="h-4 w-12 bg-muted/20 rounded animate-pulse" /> other pNodes on map
-                  </span>
-                </div>
-                <div className="h-[300px] w-full bg-muted/10 rounded-lg animate-pulse" />
-              </div>
-
-              {/* Stats Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-                <StatsCard title="Uptime" value={0} icon={<Clock className="w-4 h-4" />} loading={true} />
-                <StatsCard title="CPU Usage" value={0} icon={<Cpu className="w-4 h-4" />} loading={true} />
-                <StatsCard title="RAM Usage" value={0} icon={<MemoryStick className="w-4 h-4" />} loading={true} />
-                <StatsCard title="Latency" value={0} icon={<Activity className="w-4 h-4" />} loading={true} />
-              </div>
-
-              {/* Main Content Grid (Fixed structure) */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mb-6">
-                {/* Location Details */}
+              {/* Performance Metrics Grid - 3 columns */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                {/* Resource Usage Card */}
                 <div className="card">
                   <div className="flex items-center gap-2 mb-4">
-                    <MapPin className="w-4 h-4 text-foreground/40" />
-                    <h3 className="text-sm font-semibold text-foreground">Location Details</h3>
+                    <Activity className="w-4 h-4 text-[#F0A741]" />
+                    <div className="h-4 w-28 bg-muted/20 rounded" />
                   </div>
                   <div className="space-y-3">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div key={i} className="flex justify-between items-center pb-2 border-b border-border/20 last:border-0">
-                        <div className="h-3 w-20 bg-muted/20 rounded animate-pulse" />
-                        <div className="h-3 w-32 bg-muted/30 rounded animate-pulse" />
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                        <div className="flex flex-col gap-1">
+                          <div className="h-3 w-16 bg-muted/20 rounded" />
+                          <div className="h-2 w-24 bg-muted/10 rounded" />
+                        </div>
+                        <div className="h-5 w-12 bg-muted/30 rounded" />
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Network Stats */}
+                {/* Status & Performance Card */}
                 <div className="card">
                   <div className="flex items-center gap-2 mb-4">
-                    <Network className="w-4 h-4 text-foreground/40" />
-                    <h3 className="text-sm font-semibold text-foreground">Network</h3>
+                    <TrendingUp className="w-4 h-4 text-[#3F8277]" />
+                    <div className="h-4 w-36 bg-muted/20 rounded" />
                   </div>
                   <div className="space-y-3">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div key={i} className="flex justify-between items-center pb-2 border-b border-border/20 last:border-0">
-                        <div className="h-3 w-24 bg-muted/20 rounded animate-pulse" />
-                        <div className="h-3 w-20 bg-muted/30 rounded animate-pulse" />
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                        <div className="flex flex-col gap-1">
+                          <div className="h-3 w-16 bg-muted/20 rounded" />
+                          <div className="h-2 w-20 bg-muted/10 rounded" />
+                        </div>
+                        <div className="h-5 w-14 bg-muted/30 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Network & Storage Card */}
+                <div className="card">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Network className="w-4 h-4 text-blue-400" />
+                    <div className="h-4 w-32 bg-muted/20 rounded" />
+                  </div>
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                        <div className="flex flex-col gap-1">
+                          <div className="h-3 w-20 bg-muted/20 rounded" />
+                          <div className="h-2 w-24 bg-muted/10 rounded" />
+                        </div>
+                        <div className="h-5 w-16 bg-muted/30 rounded" />
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
 
-              {/* Historical Data Section (Fixed structure) */}
+              {/* Historical Performance Section */}
               <div className="card mb-6" style={{ padding: '1.5rem' }}>
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-foreground/40" />
+                    <TrendingUp className="w-5 h-5 text-[#F0A741]" />
                     <h2 className="text-lg font-bold text-foreground">Historical Performance</h2>
                   </div>
-                  <div className="h-9 w-40 bg-muted/20 border border-border/40 rounded-lg animate-pulse" />
+                  <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
+                    {['30m', '1h', '24h', '1w'].map((range, i) => (
+                      <div key={range} className={`px-3 py-1 text-xs rounded ${i === 2 ? 'bg-[#F0A741]' : 'bg-transparent'}`}>
+                        <div className={`h-3 w-6 ${i === 2 ? 'bg-black/30' : 'bg-muted/30'} rounded`} />
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <div className="h-4 w-32 bg-muted/20 rounded animate-pulse" />
-                      <div className="h-4 w-24 bg-muted/10 rounded animate-pulse" />
+                      <div className="h-4 w-24 bg-muted/20 rounded" />
+                      <div className="h-4 w-16 bg-muted/10 rounded" />
                     </div>
-                    <div className="h-[250px] w-full bg-muted/5 rounded-lg animate-pulse border border-border/10" />
+                    <ChartSkeleton height={250} />
                   </div>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <div className="h-4 w-32 bg-muted/20 rounded animate-pulse" />
-                      <div className="h-4 w-24 bg-muted/10 rounded animate-pulse" />
+                      <div className="h-4 w-28 bg-muted/20 rounded" />
+                      <div className="h-4 w-16 bg-muted/10 rounded" />
                     </div>
-                    <div className="h-[250px] w-full bg-muted/5 rounded-lg animate-pulse border border-border/10" />
+                    <ChartSkeleton height={250} />
                   </div>
                 </div>
               </div>

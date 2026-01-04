@@ -241,55 +241,164 @@ export default function AnalyticsPage() {
           onRefresh={() => { }}
         />
 
-        <main className="flex-1 overflow-auto">
-          <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 space-y-3 sm:space-y-4">
-            {/* Hero */}
-            <div className="card" style={{ borderRadius: 'var(--radius)', padding: '1.25rem 1.5rem' }}>
-              <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
-                <BarChart3 className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
-                Network Analytics
-              </h1>
-              <p className="text-foreground/60 text-sm sm:text-base">
-                Comprehensive insights and metrics
-              </p>
-            </div>
+        <main className="flex-1 overflow-y-auto">
+          <div className="w-full px-3 sm:px-6 pt-3 sm:pt-6 pb-6">
+            <div className="max-w-7xl mx-auto">
+              {/* Header */}
+              <div className="mb-4 sm:mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                  <div className="flex-1">
+                    <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
+                      <BarChart3 className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
+                      Network Analytics
+                    </h1>
+                    <p className="text-foreground/60 text-sm sm:text-base">
+                      Comprehensive analytics and insights into the network
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-10 w-16 bg-muted/20 rounded-lg border border-border/40" />
+                    <div className="h-10 w-16 bg-muted/20 rounded-lg border border-border/40" />
+                  </div>
+                </div>
+              </div>
 
-            {/* Summary Stats (Static Labels) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-4">
-              <StatsCard title="Total pNodes" value={0} icon={<Server className="w-4 h-4" />} loading={true} />
-              <StatsCard title="Online" value={0} icon={<Activity className="w-4 h-4" />} color="green" loading={true} />
-              <StatsCard title="Storage" value={0} icon={<HardDrive className="w-4 h-4" />} loading={true} />
-              <StatsCard title="RAM" value={0} icon={<MemoryStick className="w-4 h-4" />} loading={true} />
-            </div>
+              {/* pNode Comparison Skeleton */}
+              <div className="card overflow-hidden mt-4 sm:mt-6" style={{ padding: 0 }}>
+                <div className="w-full px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="p-1.5 rounded-lg bg-muted/40">
+                        <Server className="w-4 h-4 text-foreground/20" />
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <div className="h-4 w-28 bg-muted/30 rounded" />
+                          <div className="h-4 w-10 bg-[#F0A741]/10 rounded" />
+                        </div>
+                        <div className="h-3 w-72 bg-muted/20 rounded" />
+                      </div>
+                    </div>
+                    <div className="w-4 h-4 bg-muted/20 rounded" />
+                  </div>
+                </div>
+              </div>
 
-            {/* pNode Comparison Skeleton */}
-            <div className="card h-[72px] mt-4 sm:mt-6 flex items-center px-4 gap-3 border-border/40 bg-muted/5 animate-pulse">
-              <div className="p-1.5 rounded-lg bg-muted/40 text-foreground/20">
-                <Server className="w-4 h-4" />
+              {/* Stats Cards - 8 cards in 4 columns */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-4 sm:mt-6">
+                <StatsCard title="Active pNodes" value={0} icon={<Server className="w-4 h-4" />} loading={true} subValue=" " />
+                <StatsCard title="Online" value={0} icon={<Activity className="w-4 h-4" />} color="green" loading={true} subValue=" " />
+                <StatsCard title="Storage" value={0} icon={<HardDrive className="w-4 h-4" />} loading={true} subValue=" " />
+                <StatsCard title="RAM" value={0} icon={<MemoryStick className="w-4 h-4" />} loading={true} subValue=" " />
+                <StatsCard title="CPU" value={0} icon={<Cpu className="w-4 h-4" />} loading={true} subValue=" " />
+                <StatsCard title="Avg Uptime" value={0} icon={<TrendingUp className="w-4 h-4" />} loading={true} subValue=" " />
+                <StatsCard title="Total Credits" value={0} icon={<Award className="w-4 h-4" />} color="orange" loading={true} subValue=" " />
+                <StatsCard title="Active Streams" value={0} icon={<Network className="w-4 h-4" />} color="green" loading={true} subValue=" " />
               </div>
-              <div className="space-y-2">
-                <div className="h-4 w-32 bg-muted/30 rounded" />
-                <div className="h-3 w-64 bg-muted/20 rounded" />
-              </div>
-            </div>
 
-            {/* Charts Grid Skeleton */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mt-4 sm:mt-6">
-              <div className="card h-[400px]">
-                <div className="h-6 w-40 bg-muted/20 rounded mb-6" />
-                <ChartSkeleton height={300} />
+              {/* World Map Heatmap Skeleton */}
+              <div className="mt-4 sm:mt-6">
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <div className="h-[300px] sm:h-[400px] bg-muted/10 flex items-center justify-center">
+                    <div className="text-foreground/20 text-sm">Loading map...</div>
+                  </div>
+                </div>
               </div>
-              <div className="lg:col-span-2 card h-[400px]">
-                <div className="h-6 w-64 bg-muted/20 rounded mb-6" />
-                <ChartSkeleton height={300} />
-              </div>
-              <div className="card h-[400px]">
-                <div className="h-6 w-40 bg-muted/20 rounded mb-6" />
-                <ChartSkeleton height={300} />
-              </div>
-              <div className="lg:col-span-2 card h-[400px]">
-                <div className="h-6 w-64 bg-muted/20 rounded mb-6" />
-                <ChartSkeleton height={300} />
+
+              {/* Main Analytics Sections Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mt-4 sm:mt-6 mb-0">
+                {/* Row 1: Health Score (1 col) */}
+                <div className="card flex flex-col">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-4 h-4 bg-muted/20 rounded" />
+                    <div className="h-5 w-32 bg-muted/30 rounded" />
+                  </div>
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-32 h-32 rounded-full border-8 border-muted/20" />
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <div className="h-3 w-full bg-muted/10 rounded" />
+                    <div className="h-3 w-3/4 bg-muted/10 rounded" />
+                  </div>
+                </div>
+
+                {/* Row 1: Network Health Trend Chart (2 cols) */}
+                <div className="lg:col-span-2 card flex flex-col">
+                  <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-foreground/20" />
+                      <div className="h-5 w-40 bg-muted/30 rounded" />
+                    </div>
+                    <div className="flex items-center gap-1 bg-muted/30 rounded-lg p-1 border border-border/40">
+                      {['1H', '6H', '24H', '7D', '30D'].map((p) => (
+                        <div key={p} className="px-2.5 py-1 text-xs text-foreground/30">{p}</div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex-1 min-h-[280px]">
+                    <ChartSkeleton height={280} />
+                  </div>
+                </div>
+
+                {/* Row 2: Version Distribution (1 col) */}
+                <div className="card flex flex-col">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-4 h-4 bg-muted/20 rounded" />
+                    <div className="h-5 w-36 bg-muted/30 rounded" />
+                  </div>
+                  <div className="flex-1">
+                    <ChartSkeleton height={200} />
+                  </div>
+                </div>
+
+                {/* Row 2: Performance Metrics (2 cols) */}
+                <div className="lg:col-span-2 card flex flex-col">
+                  <div className="flex items-center gap-2 mb-3">
+                    <TrendingUp className="w-4 h-4 text-foreground/20" />
+                    <div className="h-5 w-36 bg-muted/30 rounded" />
+                  </div>
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="bg-muted/5 rounded-lg p-4 border border-border/20">
+                      <div className="h-4 w-24 bg-muted/20 rounded mb-3" />
+                      <ChartSkeleton height={150} />
+                    </div>
+                    <div className="bg-muted/5 rounded-lg p-4 border border-border/20">
+                      <div className="h-4 w-28 bg-muted/20 rounded mb-3" />
+                      <ChartSkeleton height={150} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 3: Top pNodes (1 col) */}
+                <div className="card flex flex-col">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Server className="w-4 h-4 text-foreground/20" />
+                    <div className="h-5 w-24 bg-muted/30 rounded" />
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="flex items-center gap-2 p-2 rounded bg-muted/5">
+                        <div className="w-5 h-5 bg-muted/20 rounded" />
+                        <div className="flex-1 space-y-1">
+                          <div className="h-3 w-24 bg-muted/20 rounded" />
+                          <div className="h-2 w-16 bg-muted/10 rounded" />
+                        </div>
+                        <div className="h-3 w-12 bg-muted/20 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Row 3: Geographic Metrics (2 cols) */}
+                <div className="lg:col-span-2 card flex flex-col">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-4 h-4 bg-muted/20 rounded" />
+                    <div className="h-5 w-36 bg-muted/30 rounded" />
+                  </div>
+                  <div className="flex-1">
+                    <ChartSkeleton height={250} />
+                  </div>
+                </div>
               </div>
             </div>
           </div>

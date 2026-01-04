@@ -71,55 +71,82 @@ export default function StoincPage() {
         return (
             <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
                 <Header activePage="stoinc" loading={true} onRefresh={() => { }} />
-                <main className="flex-1 overflow-auto">
-                    <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 space-y-4">
-                        {/* Hero */}
-                        <div className="card" style={{ borderRadius: 'var(--radius)', padding: '1.25rem 1.5rem' }}>
-                            <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3 text-foreground">
-                                <Coins className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
-                                STOINC Dashboard
-                            </h1>
-                            <p className="text-foreground/60 text-sm sm:text-base">
-                                Detailed STOINC metrics, derived boosted credits, and revenue share
-                            </p>
-                        </div>
 
-                        {/* Top Stats Skeleton */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-                            <StatsCard title="Total Network Credits" value={0} icon={<TrendingUp className="w-4 h-4 text-green-400" />} color="green" loading={true} />
-                            <StatsCard title="Total Packets Rx" value={0} icon={<Activity className="w-4 h-4 text-blue-400" />} color="blue" loading={true} />
-                            <StatsCard title="Total Packets Tx" value={0} icon={<Activity className="w-4 h-4 text-emerald-400" />} color="emerald" loading={true} />
-                            <StatsCard title="Participating pNodes" value={0} icon={<Users className="w-4 h-4 text-purple-400" />} color="purple" loading={true} />
-                        </div>
-
-                        {/* Calculator Toggle Placeholder */}
-                        <div className="mb-6">
-                            <div className="h-9 w-48 bg-muted/20 border border-border/40 rounded-xl animate-pulse" />
-                        </div>
-
-                        {/* Charts & Leaderboard Skeleton */}
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                            <div className="lg:col-span-8 flex flex-col gap-6">
-                                <div className="card p-4 sm:p-6">
-                                    <div className="flex items-center gap-2 mb-6">
-                                        <BarChart3 className="w-5 h-5 text-[#F0A741]" />
-                                        <h2 className="text-lg font-bold text-foreground">Credits Distribution</h2>
+                <main className="flex-1 overflow-y-auto relative">
+                    <div className="w-full px-3 sm:px-6 pt-3 sm:pt-6 pb-6">
+                        <div className="max-w-7xl mx-auto">
+                            {/* Hero Section */}
+                            <div className="mb-6">
+                                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                                    <div className="flex-1">
+                                        <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
+                                            <Coins className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
+                                            STOINC Dashboard
+                                        </h1>
+                                        <p className="text-foreground/60 text-sm sm:text-base">
+                                            Detailed STOINC metrics, derived boosted credits, and revenue share
+                                        </p>
                                     </div>
-                                    <div className="h-[400px]">
-                                        <ChartSkeleton height={400} />
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-10 w-16 bg-muted/20 rounded-lg border border-border/40" />
+                                        <div className="h-10 w-16 bg-muted/20 rounded-lg border border-border/40" />
                                     </div>
                                 </div>
                             </div>
-                            <div className="lg:col-span-4 flex flex-col gap-6">
-                                <div className="card overflow-hidden">
-                                    <div className="p-4 border-b border-border/40 bg-muted/10">
-                                        <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
-                                            <Trophy className="w-4 h-4 text-[#F0A741]" />
-                                            Credits Leaderboard
-                                        </h2>
+
+                            {/* Top Stats */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                                <StatsCard title="Total Network Credits" value={0} icon={<TrendingUp className="w-4 h-4 text-green-400" />} color="green" loading={true} subValue=" " />
+                                <StatsCard title="Total Packets Rx" value={0} icon={<Activity className="w-4 h-4 text-blue-400" />} color="blue" loading={true} subValue=" " />
+                                <StatsCard title="Total Packets Tx" value={0} icon={<Activity className="w-4 h-4 text-emerald-400" />} color="emerald" loading={true} subValue=" " />
+                                <StatsCard title="Participating pNodes" value={0} icon={<Users className="w-4 h-4 text-purple-400" />} color="purple" loading={true} subValue=" " />
+                            </div>
+
+                            {/* Calculator Toggle */}
+                            <div className="mb-6">
+                                <div className="flex items-center gap-2 px-4 py-2 bg-muted/30 border border-border/40 rounded-xl w-fit">
+                                    <Calculator className="w-4 h-4 text-[#F0A741]" />
+                                    <span className="text-sm font-semibold text-[#F0A741]">Show STOINC Calculator</span>
+                                </div>
+                            </div>
+
+                            {/* Charts & Leaderboard */}
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                                <div className="lg:col-span-8 flex flex-col gap-6">
+                                    <div className="card p-4 sm:p-6">
+                                        <div className="flex items-center gap-2 mb-6">
+                                            <BarChart3 className="w-5 h-5 text-[#F0A741]" />
+                                            <h2 className="text-lg font-bold text-foreground">Credits Distribution</h2>
+                                        </div>
+                                        <div className="h-[400px]">
+                                            <ChartSkeleton height={400} />
+                                        </div>
                                     </div>
-                                    <div className="p-4">
-                                        <LeaderboardSkeleton rows={5} />
+                                </div>
+                                <div className="lg:col-span-4 flex flex-col gap-6">
+                                    <div className="card overflow-hidden">
+                                        <div className="p-4 border-b border-border/40 bg-muted/10">
+                                            <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                                                <Trophy className="w-4 h-4 text-[#F0A741]" />
+                                                Credits Leaderboard
+                                            </h2>
+                                        </div>
+                                        <div className="p-4">
+                                            <LeaderboardSkeleton rows={5} />
+                                        </div>
+                                    </div>
+
+                                    {/* Info Card Skeleton */}
+                                    <div className="card p-6 bg-gradient-to-br from-[#F0A741]/10 to-transparent border-[#F0A741]/20">
+                                        <h3 className="text-sm font-bold flex items-center gap-2 mb-3 text-[#F0A741]">
+                                            <Info className="w-4 h-4" />
+                                            What is STOINC?
+                                        </h3>
+                                        <div className="space-y-2">
+                                            <div className="h-3 w-full bg-muted/10 rounded" />
+                                            <div className="h-3 w-5/6 bg-muted/10 rounded" />
+                                            <div className="h-3 w-4/6 bg-muted/10 rounded" />
+                                        </div>
                                     </div>
                                 </div>
                             </div>

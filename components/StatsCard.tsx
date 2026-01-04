@@ -81,12 +81,15 @@ export default function StatsCard({
     return (
       <div className={`card-stat bg-[#0a0a0a] border-white/5 backdrop-blur-md overflow-hidden ${className || ''}`}>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] uppercase tracking-widest text-foreground/40 font-bold">
-            {title}
-          </span>
-          {icon && <div className="text-foreground/20">{icon}</div>}
+          <div className="h-3 w-16 bg-muted/20 rounded" />
+          {icon && <div className="w-3.5 h-3.5 bg-muted/10 rounded" />}
         </div>
-        <div className="h-8 w-24 bg-muted/40 rounded animate-pulse" />
+        <div className="h-7 w-24 bg-muted/30 rounded mb-1" />
+        {subValue && (
+          <div className="h-2.5 w-16 bg-muted/10 rounded mt-1" />
+        )}
+        {/* Decorative blur circle placeholder */}
+        <div className={`absolute -right-6 -bottom-6 w-12 h-12 ${theme.blurBg} rounded-full blur-xl opacity-50`} />
       </div>
     );
   }

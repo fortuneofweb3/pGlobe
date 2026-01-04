@@ -9,7 +9,7 @@ import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
 import { RefreshCw, Server, TrendingUp, Search, Filter, X, Activity, ChevronLeft, ChevronRight, Skull } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
-import { TableSkeleton, CardSkeleton } from '@/components/Skeletons';
+import { TableSkeleton, CardSkeleton, PNodeTableSkeleton } from '@/components/Skeletons';
 import AnimatedNumber from '@/components/AnimatedNumber';
 import StatsCard from '@/components/StatsCard';
 
@@ -216,9 +216,10 @@ function NodesPageContent() {
     return (
       <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
         <Header activePage="nodes" loading={true} onRefresh={() => { }} />
-        <main className="flex-1 overflow-hidden">
-          <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
-            <div className="max-w-7xl mx-auto h-full flex flex-col">
+
+        <main className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 w-full p-3 sm:p-6 overflow-y-auto">
+            <div className="max-w-7xl mx-auto">
               {/* Header */}
               <div className="mb-4 sm:mb-6">
                 <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
@@ -230,35 +231,36 @@ function NodesPageContent() {
                 </p>
               </div>
 
-              {/* Summary Stats - 4 cards */}
+              {/* Summary Stats - 4 cards matching loaded state */}
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6">
-                <StatsCard title="Total pNodes" value={0} icon={<Server className="w-4 h-4" />} loading={true} />
-                <StatsCard title="Online pNodes" value={0} icon={<TrendingUp className="w-4 h-4" />} loading={true} />
-                <StatsCard title="Syncing" value={0} icon={<Activity className="w-4 h-4" />} loading={true} />
-                <StatsCard title="Offline pNodes" value={0} icon={<Server className="w-4 h-4" />} loading={true} />
+                <StatsCard title="Active pNodes" value={0} icon={<Server className="w-4 h-4" />} color="orange" loading={true} subValue=" " />
+                <StatsCard title="Online pNodes" value={0} icon={<TrendingUp className="w-4 h-4" />} color="green" loading={true} subValue=" " />
+                <StatsCard title="Syncing" value={0} icon={<Activity className="w-4 h-4" />} color="blue" loading={true} subValue=" " />
+                <StatsCard title="Offline" value={0} icon={<Skull className="w-4 h-4" />} color="red" loading={true} subValue=" " />
               </div>
 
-              {/* Search and Filters - Compact (Fixed Structure) */}
+              {/* Search and Filters - Matching loaded structure */}
               <div className="mb-4 sm:mb-6">
                 <div className="flex flex-row gap-2 sm:gap-3 items-center">
                   {/* Search Bar Skeleton */}
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-foreground/20" />
-                    <div className="w-full h-[42px] bg-card border border-border/40 rounded-lg animate-pulse" />
+                    <div className="w-full h-[42px] bg-card border border-border/60 rounded-lg" />
                   </div>
 
                   {/* Filters Button Skeleton */}
-                  <div className="h-[42px] w-24 sm:w-32 bg-card border border-border/40 rounded-lg animate-pulse flex items-center justify-center gap-2">
+                  <div className="h-[42px] px-3 bg-card border border-border/60 rounded-lg flex items-center justify-center gap-2">
                     <Filter className="w-4 h-4 text-foreground/20" />
-                    <div className="h-4 w-12 bg-muted/20 rounded hidden sm:block" />
+                    <span className="hidden sm:inline text-sm text-foreground/30 font-medium">Filters</span>
                   </div>
                 </div>
               </div>
 
-              {/* Table Skeleton */}
-              <div className="card p-4 overflow-hidden">
-                <div className="h-6 w-48 bg-muted/20 rounded mb-4 animate-pulse" />
-                <TableSkeleton rows={12} />
+              {/* Table */}
+              <div className="flex flex-col">
+                <div className="card overflow-hidden flex flex-col" style={{ padding: 0 }}>
+                  <PNodeTableSkeleton rows={12} />
+                </div>
               </div>
             </div>
           </div>
@@ -497,7 +499,7 @@ function NodesPageContent() {
                 )}
 
                 {isLoading ? (
-                  <TableSkeleton rows={10} />
+                  <PNodeTableSkeleton rows={10} />
                 ) : (
                   <PNodeTable
                     nodes={paginatedNodes}

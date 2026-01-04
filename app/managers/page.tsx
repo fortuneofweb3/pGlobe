@@ -203,44 +203,59 @@ function ManagersPageContent() {
         return (
             <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
                 <Header activePage="managers" loading={true} />
-                <main className="flex-1 overflow-hidden">
-                    <div className="h-full w-full p-3 sm:p-6 overflow-y-auto">
-                        {/* Page Title Row Skeleton */}
-                        <div className="mb-8 animate-pulse">
-                            <div className="h-8 w-64 bg-muted/30 rounded mb-2" />
-                            <div className="h-4 w-96 bg-muted/20 rounded" />
-                        </div>
 
-                        {/* Stats Row 1: Counts Skeleton */}
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                            <StatCardSkeleton />
-                            <StatCardSkeleton />
-                            <StatCardSkeleton />
-                            <StatCardSkeleton />
-                        </div>
-
-                        {/* Stats Row 2: Financials & Averages Skeleton */}
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-                            <StatCardSkeleton />
-                            <StatCardSkeleton />
-                            <StatCardSkeleton />
-                            <StatCardSkeleton />
-                        </div>
-
-                        {/* Registry Header Section Skeleton */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 animate-pulse">
-                            <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 bg-muted/20 rounded-lg" />
-                                <div className="h-6 w-40 bg-muted/30 rounded" />
+                <main className="flex-1 flex flex-col overflow-hidden">
+                    <div className="flex-1 w-full p-3 sm:p-6 overflow-y-auto">
+                        <div className="max-w-7xl mx-auto">
+                            {/* Page Title Row */}
+                            <div className="mb-8">
+                                <h1 className="text-2xl sm:text-3xl font-bold mb-1 flex items-center gap-3">
+                                    <Users className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
+                                    Manager Wallets
+                                </h1>
+                                <p className="text-foreground/60 text-sm">pNode operators who run registered nodes</p>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <div className="h-10 w-24 bg-muted/20 rounded-xl" />
-                                <div className="h-10 w-64 bg-muted/20 rounded-xl" />
-                            </div>
-                        </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <ManagerCardSkeleton count={8} />
+                            {/* Stats Row 1: Counts */}
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                                <StatsCard title="Active Managers" value={0} icon={<Users className="w-4 h-4" />} color="orange" loading={true} subValue=" " />
+                                <StatsCard title="Registered" value={0} icon={<FileCheck className="w-4 h-4" />} color="green" loading={true} subValue=" " />
+                                <StatsCard title="Unregistered" value={0} icon={<ShoppingCart className="w-4 h-4" />} color="purple" loading={true} subValue=" " />
+                                <StatsCard title="Total Vested Rewards" value={0} icon={<Award className="w-4 h-4" />} color="red" loading={true} subValue=" " />
+                            </div>
+
+                            {/* Stats Row 2: Financials & Averages */}
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+                                <StatsCard title="Total Credits" value={0} icon={<Award className="w-4 h-4" />} color="orange" loading={true} subValue=" " />
+                                <StatsCard title="Avg Credits/Manager" value={0} icon={<Coins className="w-4 h-4" />} color="green" loading={true} subValue=" " />
+                                <StatsCard title="Total XAND Staked" value={0} icon={<TrendingUp className="w-4 h-4" />} color="purple" loading={true} subValue=" " />
+                                <StatsCard title="Avg Nodes/Manager" value={0} icon={<Server className="w-4 h-4" />} loading={true} subValue=" " />
+                            </div>
+
+                            {/* Registry Header Section */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-[#F0A741]/10 rounded-lg">
+                                        <List className="w-5 h-5 text-[#F0A741]" />
+                                    </div>
+                                    <h2 className="text-lg font-bold">Operator Registry</h2>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center bg-card border border-border rounded-xl p-1 h-10">
+                                        <div className="px-3 py-1.5 rounded-lg bg-muted/30"><LayoutGrid className="w-4 h-4 text-foreground/30" /></div>
+                                        <div className="px-3 py-1.5 rounded-lg text-foreground/30"><List className="w-4 h-4" /></div>
+                                    </div>
+                                    <div className="relative flex-1 sm:w-64">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/20" />
+                                        <div className="w-full h-10 bg-card border border-border rounded-xl" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Manager Cards Grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                <ManagerCardSkeleton count={8} />
+                            </div>
                         </div>
                     </div>
                 </main>

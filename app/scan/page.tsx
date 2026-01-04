@@ -7,10 +7,14 @@ import dynamic from 'next/dynamic';
 const MapLibreGlobe = dynamic(() => import('@/components/MapLibreGlobe'), {
   ssr: false,
   loading: () => (
-    <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black">
-      <div className="text-center">
-        <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#F0A741]" />
-        <p className="text-xs text-muted-foreground">Loading map...</p>
+    <div className="absolute inset-0 flex items-center justify-center text-muted-foreground z-10 bg-background/80">
+      <div className="flex items-center gap-2">
+        <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <circle cx="12" cy="12" r="10" strokeWidth="2" strokeLinecap="round" strokeDasharray="32" strokeDashoffset="0">
+            <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite" />
+          </circle>
+        </svg>
+        <span>Loading 3D Globe...</span>
       </div>
     </div>
   ),
@@ -231,103 +235,6 @@ export default function ScanPage() {
   };
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // Show loading skeleton when loading or no data available
-  const isLoading = loading || (nodes.length === 0 && !error);
-
-  // If loading and no data, show the loading skeleton
-  if (isLoading && nodes.length === 0) {
-    return (
-      <div className="flex flex-col h-screen bg-background overflow-hidden">
-        <Header
-          activePage="scan"
-          lastUpdate={null}
-          loading={true}
-          onRefresh={() => { }}
-        />
-
-        <div className="flex-1 flex overflow-hidden relative">
-          {/* Left Sidebar - Scan Controls */}
-          <aside className="hidden md:block w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-hidden">
-            <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-base sm:text-lg font-semibold text-foreground flex items-center gap-2">
-                    <Search className="w-4 h-4 sm:w-5 sm:h-5 text-foreground/40" />
-                    pNode Scanner
-                  </h2>
-                </div>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  Find the closest pNodes to any IP address
-                </p>
-              </div>
-
-              {/* IP Input */}
-              <div className="space-y-2">
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-foreground/70 mb-1.5">
-                    IP Address
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="e.g., 8.8.8.8"
-                      className="flex-1 px-3 py-2 text-sm bg-muted/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#F0A741]/50"
-                      disabled
-                    />
-                    <button
-                      disabled
-                      className="px-3 py-2 bg-[#F0A741]/20 text-[#F0A741] rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 min-w-[70px] text-xs sm:text-sm"
-                    >
-                      <Search className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Scan</span>
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  disabled
-                  className="w-full px-3 py-2 text-xs sm:text-sm bg-muted/50 text-foreground rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  <Navigation2 className="w-3.5 h-3.5" />
-                  Use My IP Address
-                </button>
-              </div>
-
-              <ScanSidebarSkeleton />
-            </div>
-          </aside>
-
-          {/* Main Content - Globe */}
-          <main className="flex-1 relative overflow-hidden">
-            {/* Mobile Sidebar Toggle Button */}
-            <button
-              className="md:hidden absolute top-4 left-4 z-50 p-2 bg-black border border-[#F0A741]/20 rounded-lg text-[#F0A741]"
-              disabled
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-
-            {/* Globe Skeleton */}
-            <div className="absolute inset-0 w-full h-full bg-black">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-3/4 h-3/4 rounded-full border-2 border-muted/30 animate-pulse">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-2 h-2 rounded-full bg-muted/40 animate-pulse" style={{ animationDelay: '0s' }} />
-                    <div className="w-2 h-2 rounded-full bg-muted/40 animate-pulse absolute" style={{ left: '30%', top: '40%', animationDelay: '0.2s' }} />
-                    <div className="w-2 h-2 rounded-full bg-muted/40 animate-pulse absolute" style={{ left: '60%', top: '20%', animationDelay: '0.4s' }} />
-                    <div className="w-2 h-2 rounded-full bg-muted/40 animate-pulse absolute" style={{ left: '70%', top: '60%', animationDelay: '0.6s' }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">

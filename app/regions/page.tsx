@@ -326,37 +326,63 @@ function RegionsPageContent() {
   // Show loading skeleton when loading and no data
   if (loading && nodes.length === 0) {
     return (
-      <div className="min-h-screen bg-black text-foreground">
+      <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
         <Header activePage="regions" loading={true} onRefresh={() => { }} />
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-          {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
-              <MapPin className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
-              Network Regions
-            </h1>
-            <p className="text-foreground/60 text-sm sm:text-base">
-              Geographic distribution of pNodes across regions
-            </p>
-          </div>
+        <main className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 w-full p-3 sm:p-6 overflow-y-auto">
+            <div className="max-w-7xl mx-auto">
+              {/* Header */}
+              <div className="mb-4 sm:mb-6">
+                <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
+                  <MapPin className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
+                  Network Regions
+                </h1>
+                <p className="text-foreground/60 text-sm sm:text-base">
+                  Geographic distribution of pNodes across countries
+                </p>
+              </div>
 
-          {/* Summary Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            {['Total Regions', 'Total pNodes', 'Online pNodes'].map((label) => (
-              <StatsCard
-                key={label}
-                title={label}
-                value={0}
-                icon={<MapPin className="w-4 h-4" />}
-                loading={true}
-              />
-            ))}
-          </div>
+              {/* Summary Stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <StatsCard title="Total pNodes" value={0} icon={<Server className="w-4 h-4" />} loading={true} subValue=" " />
+                <StatsCard title="Continents" value={0} icon={<MapPin className="w-4 h-4" />} loading={true} subValue=" " />
+                <StatsCard title="Countries" value={0} icon={<MapPin className="w-4 h-4" />} loading={true} subValue=" " />
+                <StatsCard title="Cities" value={0} icon={<MapPin className="w-4 h-4" />} loading={true} subValue=" " />
+              </div>
 
-          {/* Region Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <CardSkeleton count={6} />
+              {/* Country Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="card relative overflow-hidden">
+                    <div className="relative z-10">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="h-6 w-32 bg-muted/30 rounded" />
+                        <div className="h-8 w-10 bg-muted/20 rounded" />
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 mb-4">
+                        <div className="bg-[#3F8277]/25 border border-[#3F8277]/40 rounded-lg p-2">
+                          <div className="h-3 w-10 bg-muted/20 rounded mb-1" />
+                          <div className="h-5 w-6 bg-muted/30 rounded" />
+                        </div>
+                        <div className="bg-[#F0A741]/25 border border-[#F0A741]/40 rounded-lg p-2">
+                          <div className="h-3 w-10 bg-muted/20 rounded mb-1" />
+                          <div className="h-5 w-6 bg-muted/30 rounded" />
+                        </div>
+                        <div className="bg-gray-500/25 border border-gray-500/40 rounded-lg p-2">
+                          <div className="h-3 w-10 bg-muted/20 rounded mb-1" />
+                          <div className="h-5 w-6 bg-muted/30 rounded" />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between"><div className="h-3 w-20 bg-muted/10 rounded" /><div className="h-3 w-12 bg-muted/20 rounded" /></div>
+                        <div className="flex justify-between"><div className="h-3 w-20 bg-muted/10 rounded" /><div className="h-3 w-12 bg-muted/20 rounded" /></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </main>
       </div>

@@ -2863,7 +2863,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
             >
               <ChevronLeft className="w-5 h-5 text-foreground" />
             </button>
-            <div className="px-4 py-1 text-body-small font-mono min-w-[80px] text-center">
+            <div className="px-2 py-1 text-sm font-mono min-w-[90px] text-center whitespace-nowrap">
               <span className="text-foreground">
                 {currentNodeIndex >= 0 ? currentNodeIndex + 1 : 0}
               </span>
