@@ -28,6 +28,7 @@ export interface PNode {
   cpuPercent?: number; // CPU usage percentage (from stats.cpu_percent)
   ramUsed?: number; // RAM used in bytes (from stats.ram_used)
   ramTotal?: number; // Total RAM in bytes (from stats.ram_total)
+  ramPercent?: number; // RAM usage percentage (calculated from ramUsed/ramTotal)
   packetsReceived?: number; // Total packets received (cumulative counter from stats.packets_received)
   packetsSent?: number; // Total packets sent (cumulative counter from stats.packets_sent)
   activeStreams?: number; // Active network streams (from stats.active_streams)

@@ -1643,13 +1643,57 @@ function NodeDetailContent() {
                   )}
                 </div>
 
-                {/* Private Node Info Grid - Well-arranged layout */}
+                {/* Performance Metrics Grid - 2 columns for Private Node */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  {/* Basic Information Card */}
-                  <div className="card animate-slide-in-left" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
+                  {/* Basic Info Card */}
+                  <div className="card animate-slide-in-left" style={{ animationDelay: '0.15s', opacity: 0, animationFillMode: 'forwards' }}>
                     <div className="flex items-center gap-2 mb-4">
                       <Server className="w-4 h-4 text-[#F0A741]" />
-                      <h3 className="text-sm font-semibold text-foreground">Basic Information</h3>
+                      <h3 className="text-sm font-semibold text-foreground">Basic Info</h3>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <Activity className="w-4 h-4 text-foreground/60" />
+                            <span className="text-sm text-foreground/80">Status</span>
+                          </div>
+                          <span className="text-[10px] text-foreground/40 mt-1 font-semibold uppercase tracking-wider">Current state</span>
+                        </div>
+                        {getStatusBadge(node.status)}
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <Rocket className="w-4 h-4 text-foreground/60" />
+                            <span className="text-sm text-foreground/80">Version</span>
+                          </div>
+                          <span className="text-[10px] text-foreground/40 mt-1 font-semibold uppercase tracking-wider">Software release</span>
+                        </div>
+                        <span className="text-sm font-mono font-semibold text-foreground max-w-[120px] truncate" title={node.version}>
+                          {node.version ? abbreviateVersion(node.version) : '—'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <HardDrive className="w-4 h-4 text-foreground/60" />
+                            <span className="text-sm text-foreground/80">Storage</span>
+                          </div>
+                          <span className="text-[10px] text-foreground/40 mt-1 font-semibold uppercase tracking-wider">Allocated capacity</span>
+                        </div>
+                        <span className="text-lg font-bold text-foreground">
+                          {node.storageCapacity ? formatStorageBytes(node.storageCapacity) : '—'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status & Performance Card */}
+                  <div className="card animate-slide-in-right" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
+                    <div className="flex items-center gap-2 mb-4">
+                      <TrendingUp className="w-4 h-4 text-[#F0A741]" />
+                      <h3 className="text-sm font-semibold text-foreground">Status & Performance</h3>
                     </div>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
@@ -1665,48 +1709,17 @@ function NodeDetailContent() {
                       <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
                         <div className="flex flex-col">
                           <div className="flex items-center gap-2">
-                            <Activity className="w-4 h-4 text-foreground/60" />
-                            <span className="text-sm text-foreground/80">Status</span>
+                            <Award className="w-4 h-4 text-foreground/60" />
+                            <span className="text-sm text-foreground/80">Credits</span>
                           </div>
-                          <span className="text-[10px] text-foreground/40 mt-1 font-semibold uppercase tracking-wider">On-chain status</span>
+                          <span className="text-[10px] text-foreground/40 mt-1 font-semibold uppercase tracking-wider">Lifetime earnings</span>
                         </div>
-                        {getStatusBadge(node.status)}
+                        <span className="text-lg font-bold text-[#F0A741]">
+                          {node.credits !== undefined && node.credits !== null
+                            ? node.credits.toLocaleString()
+                            : '—'}
+                        </span>
                       </div>
-                      {node.version && (
-                        <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                          <div className="flex flex-col">
-                            <span className="text-sm text-foreground/80">Version</span>
-                            <span className="text-[10px] text-foreground/40 mt-1 font-semibold uppercase tracking-wider">Release version</span>
-                          </div>
-                          <span className="text-sm font-mono font-semibold text-foreground max-w-[150px] truncate" title={node.version}>{abbreviateVersion(node.version)}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-
-
-                  {/* Network & Registration Card */}
-                  <div className="card animate-slide-in-right" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
-                    <div className="flex items-center gap-2 mb-4">
-                      <Network className="w-4 h-4 text-[#3F8277]" />
-                      <h3 className="text-sm font-semibold text-foreground">Network & Registration</h3>
-                    </div>
-                    <div className="space-y-3">
-                      {node.credits !== undefined && node.credits !== null && (
-                        <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-2">
-                              <Award className="w-4 h-4 text-foreground/60" />
-                              <span className="text-sm text-foreground/80">Credits</span>
-                            </div>
-                            <span className="text-[10px] text-foreground/40 mt-1 font-semibold uppercase tracking-wider">Lifetime earnings</span>
-                          </div>
-                          <span className="text-lg font-bold text-[#F0A741]">
-                            {node.credits.toLocaleString()}
-                          </span>
-                        </div>
-                      )}
                       <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
                         <div className="flex flex-col">
                           <span className="text-sm text-foreground/80">Registered</span>
@@ -1726,19 +1739,6 @@ function NodeDetailContent() {
                           )}
                         </div>
                       </div>
-                      {/* ... era label section skip since it's simple ... */}
-                      {node.balance !== undefined && node.balance !== null && (
-                        <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                          <div className="flex flex-col">
-                            <span className="text-sm text-foreground/80">Balance</span>
-                            <span className="text-[10px] text-foreground/40 mt-1 font-semibold uppercase tracking-wider">Node wallet balance</span>
-                          </div>
-                          <BalanceDisplay
-                            balance={node.balance}
-                            className="text-sm font-mono"
-                          />
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>

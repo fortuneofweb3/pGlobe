@@ -303,11 +303,17 @@ export async function enrichWithStats(nodesMap: Map<string, PNode>): Promise<voi
         node.cpuPercent = stats.cpu_percent;
         node.ramUsed = stats.ram_used;
         node.ramTotal = stats.ram_total;
+        // Calculate RAM percentage
+        if (stats.ram_used && stats.ram_total && stats.ram_total > 0) {
+          node.ramPercent = (stats.ram_used / stats.ram_total) * 100;
+        }
         node.packetsReceived = stats.packets_received;
         node.packetsSent = stats.packets_sent;
         node.activeStreams = stats.active_streams;
         if (stats.uptime) node.uptime = stats.uptime;
         if (node.status !== 'online') node.status = 'online';
+        // If we can successfully fetch stats, the node is publicly accessible
+        node.isPublic = true;
 
         enrichedCount++;
       }
