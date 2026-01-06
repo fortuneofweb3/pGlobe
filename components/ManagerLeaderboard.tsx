@@ -3,29 +3,66 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Manager } from '@/lib/context/NodesContext';
+import { PNode } from '@/lib/types/pnode';
 import { startProgress } from '@/lib/nprogress';
 import {
-    Trophy, Medal, TrendingUp, ArrowUpDown, ArrowUp, ArrowDown,
-    Copy, Check, ExternalLink, ChevronRight, Filter,
-    Server, Users, Coins, Activity
+    ArrowUpDown, ArrowUp, ArrowDown,
+    Copy, Check, ExternalLink, ChevronRight, Filter
 } from 'lucide-react';
 
-type SortField = 'credits' | 'nodes' | 'uptime' | 'stake';
+type SortField = 'credits' | 'nodes' | 'uptime' | 'vestingRewards' | 'storage';
 type SortDirection = 'asc' | 'desc';
+
+// Format number with K, M abbreviation (2 decimal places)
+function formatAbbreviated(value: number): string {
+    if (value >= 1000000) {
+        return `${(value / 1000000).toFixed(2)}M`;
+    }
+    if (value >= 1000) {
+        return `${(value / 1000).toFixed(2)}K`;
+    }
+    return value.toLocaleString();
+}
+
+// Format storage bytes to B, KB, MB, GB, TB
+function formatStorage(bytes: number): string {
+    if (bytes === 0) return '0 B';
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    const size = sizes[Math.min(i, sizes.length - 1)];
+    const value = bytes / Math.pow(1024, Math.min(i, sizes.length - 1));
+    return `${value.toFixed(2)} ${size}`;
+}
 
 interface LeaderboardProps {
     managers: Manager[];
+    nodes: PNode[];
     copiedWallet: string | null;
     onCopyWallet: (wallet: string) => void;
 }
 
-export default function ManagerLeaderboard({ managers, copiedWallet, onCopyWallet }: LeaderboardProps) {
+export default function ManagerLeaderboard({ managers, nodes, copiedWallet, onCopyWallet }: LeaderboardProps) {
     const router = useRouter();
     const [sortField, setSortField] = useState<SortField>('credits');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
     const [networkFilter, setNetworkFilter] = useState<'all' | 'mainnet' | 'devnet' | 'both'>('all');
     const [nodeCountFilter, setNodeCountFilter] = useState<'all' | '1-5' | '6-10' | '10+'>('all');
     const [statusFilter, setStatusFilter] = useState<'all' | 'active'>('all');
+
+    // Create a map of manager wallet -> total storage from their nodes
+    const managerStorageMap = useMemo(() => {
+        const map = new Map<string, number>();
+        nodes.forEach(node => {
+            const wallet = node.managerWallet || node.registrarWallet;
+            if (wallet) {
+                const current = map.get(wallet) || 0;
+                map.set(wallet, current + (node.storageCapacity || node.sc || 0));
+            }
+        });
+        return map;
+    }, [nodes]);
+
+    const getManagerStorage = (wallet: string) => managerStorageMap.get(wallet) || 0;
 
     const truncateWallet = (wallet: string) => `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
 
@@ -77,9 +114,13 @@ export default function ManagerLeaderboard({ managers, copiedWallet, onCopyWalle
                     aVal = getUptime(a);
                     bVal = getUptime(b);
                     break;
-                case 'stake':
-                    aVal = a.totalXandStake || a.daoStake || 0;
-                    bVal = b.totalXandStake || b.daoStake || 0;
+                case 'vestingRewards':
+                    aVal = a.vestingStake || 0;
+                    bVal = b.vestingStake || 0;
+                    break;
+                case 'storage':
+                    aVal = getManagerStorage(a.wallet);
+                    bVal = getManagerStorage(b.wallet);
                     break;
                 default:
                     aVal = 0;
@@ -211,7 +252,6 @@ export default function ManagerLeaderboard({ managers, copiedWallet, onCopyWalle
                                 onClick={() => handleSort('credits')}
                             >
                                 <div className="flex items-center justify-end gap-1">
-                                    <Coins className="w-3 h-3" />
                                     Credits
                                     <SortIcon field="credits" />
                                 </div>
@@ -221,7 +261,6 @@ export default function ManagerLeaderboard({ managers, copiedWallet, onCopyWalle
                                 onClick={() => handleSort('nodes')}
                             >
                                 <div className="flex items-center justify-end gap-1">
-                                    <Server className="w-3 h-3" />
                                     Nodes
                                     <SortIcon field="nodes" />
                                 </div>
@@ -231,19 +270,26 @@ export default function ManagerLeaderboard({ managers, copiedWallet, onCopyWalle
                                 onClick={() => handleSort('uptime')}
                             >
                                 <div className="flex items-center justify-end gap-1">
-                                    <Activity className="w-3 h-3" />
                                     Uptime
                                     <SortIcon field="uptime" />
                                 </div>
                             </th>
                             <th
                                 className="text-right py-3 px-2 text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors hidden md:table-cell"
-                                onClick={() => handleSort('stake')}
+                                onClick={() => handleSort('vestingRewards')}
                             >
                                 <div className="flex items-center justify-end gap-1">
-                                    <TrendingUp className="w-3 h-3" />
-                                    XAND Stake
-                                    <SortIcon field="stake" />
+                                    Vesting Rewards
+                                    <SortIcon field="vestingRewards" />
+                                </div>
+                            </th>
+                            <th
+                                className="text-right py-3 px-2 text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors hidden lg:table-cell"
+                                onClick={() => handleSort('storage')}
+                            >
+                                <div className="flex items-center justify-end gap-1">
+                                    Storage
+                                    <SortIcon field="storage" />
                                 </div>
                             </th>
                             <th className="w-8"></th>
@@ -254,7 +300,8 @@ export default function ManagerLeaderboard({ managers, copiedWallet, onCopyWalle
                             const rank = idx + 1;
                             const uptime = getUptime(manager);
                             const nodeCount = getNodeCount(manager);
-                            const stake = manager.totalXandStake || manager.daoStake || 0;
+                            const vestingRewards = manager.vestingStake || 0;
+                            const storage = getManagerStorage(manager.wallet);
 
                             return (
                                 <tr
@@ -329,8 +376,13 @@ export default function ManagerLeaderboard({ managers, copiedWallet, onCopyWalle
                                         </span>
                                     </td>
                                     <td className="py-3 px-2 text-right hidden md:table-cell">
-                                        <span className="font-medium">
-                                            {stake.toLocaleString()}
+                                        <span className="font-medium text-[#F0A741]">
+                                            {formatAbbreviated(vestingRewards)}
+                                        </span>
+                                    </td>
+                                    <td className="py-3 px-2 text-right hidden lg:table-cell">
+                                        <span className="font-medium text-blue-400">
+                                            {formatStorage(storage)}
                                         </span>
                                     </td>
                                     <td className="py-3 px-2">

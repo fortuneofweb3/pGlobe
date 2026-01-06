@@ -14,6 +14,17 @@ import {
 } from 'lucide-react';
 import ManagerLeaderboard from '@/components/ManagerLeaderboard';
 
+// Format number with K, M abbreviation (2 decimal places)
+function formatAbbreviated(value: number): string {
+    if (value >= 1000000) {
+        return `${(value / 1000000).toFixed(2)}M`;
+    }
+    if (value >= 1000) {
+        return `${(value / 1000).toFixed(2)}K`;
+    }
+    return value.toLocaleString();
+}
+
 function ManagerCard({ manager, allNodesCount, onClick, copyWallet, copiedWallet, formatUsd }: {
     manager: Manager,
     allNodesCount: number,
@@ -133,9 +144,10 @@ function ManagerCard({ manager, allNodesCount, onClick, copyWallet, copiedWallet
                 </div>
                 <div className="col-span-2 bg-[#F0A741]/10 rounded-lg p-2 text-center border border-[#F0A741]/20">
                     <div className="text-lg font-bold text-[#F0A741]">
-                        {manager.totalXandStake?.toLocaleString() || '0'}
+                        {formatAbbreviated(manager.vestingStake || 0)}
+                        <span className="text-xs ml-1 opacity-50 font-normal">XAND</span>
                     </div>
-                    <div className="text-[10px] text-[#F0A741]/50 uppercase font-semibold">XAND Stake</div>
+                    <div className="text-[10px] text-[#F0A741]/50 uppercase font-semibold">Vesting Rewards</div>
                 </div>
             </div>
 
@@ -156,11 +168,15 @@ function ManagersPageContent() {
     const [viewMode, setViewMode] = useState<'grid' | 'leaderboard'>('grid');
 
     const filteredManagers = useMemo(() => {
-        if (!searchQuery) return managers;
-        const query = searchQuery.toLowerCase();
-        return managers.filter(m =>
-            m.wallet.toLowerCase().includes(query)
-        );
+        let result = managers;
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            result = result.filter(m =>
+                m.wallet.toLowerCase().includes(query)
+            );
+        }
+        // Sort by vesting rewards (highest first) for cards view
+        return [...result].sort((a, b) => (b.vestingStake || 0) - (a.vestingStake || 0));
     }, [managers, searchQuery]);
 
     const stats = useMemo(() => {
@@ -430,6 +446,7 @@ function ManagersPageContent() {
                                     <div className="animate-fade-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
                                         <ManagerLeaderboard
                                             managers={filteredManagers}
+                                            nodes={nodes}
                                             copiedWallet={copiedWallet}
                                             onCopyWallet={copyWallet}
                                         />
