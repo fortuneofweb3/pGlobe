@@ -25,6 +25,7 @@ export interface MergedIPEntry {
   uptime?: number;
   lastSeen?: number;
   dataOperationsHandled?: number;
+  createdAt?: string | Date;
   locationData?: {
     lat: number;
     lon: number;
