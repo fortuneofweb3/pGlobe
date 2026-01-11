@@ -43,35 +43,25 @@ export function mergeDuplicateIPNodes(nodes: PNode[]): PNode[] {
         return { pk, ip };
     };
 
-    // BFS to find all connected nodes (Aggressive Merge)
+    // Simple grouping by pubkey ONLY
+    const pubkeyGroups = new Map<string, PNode[]>();
+
     for (const node of nodes) {
-        if (visited.has(node)) continue;
-
-        const cluster: PNode[] = [];
-        const queue: PNode[] = [node];
-        visited.add(node);
-
-        while (queue.length > 0) {
-            const current = queue.shift()!;
-            cluster.push(current);
-
-            const { pk: currentPK, ip: currentIP } = getIdentifiers(current);
-
-            for (const other of nodes) {
-                if (visited.has(other)) continue;
-
-                const { pk: otherPK, ip: otherIP } = getIdentifiers(other);
-
-                const sharePK = !!currentPK && !!otherPK && currentPK === otherPK;
-                const shareIP = !!currentIP && !!otherIP && currentIP === otherIP;
-
-                if (sharePK || shareIP) {
-                    visited.add(other);
-                    queue.push(other);
-                }
-            }
+        const pk = node.pubkey || node.publicKey || '';
+        if (!pk) {
+            // Nodes without pubkey stay as individual entries
+            clusters.push([node]);
+            continue;
         }
-        clusters.push(cluster);
+        if (!pubkeyGroups.has(pk)) {
+            pubkeyGroups.set(pk, []);
+        }
+        pubkeyGroups.get(pk)!.push(node);
+    }
+
+    // Convert groups to clusters
+    for (const group of pubkeyGroups.values()) {
+        clusters.push(group);
     }
 
     const mergedNodes: PNode[] = [];

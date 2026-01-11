@@ -384,8 +384,12 @@ export async function upsertNodes(nodes: PNode[], skipMarkOffline: boolean = fal
       const pubkey = node.pubkey || node.publicKey;
       if (!address) continue;
 
+      // Use IP only (strip port) as the document ID
+      // This prevents duplicate entries when same IP has different ephemeral ports
+      const ip = address.split(':')[0];
+      const docId = ip;
 
-      incomingAddresses.add(address);
+      incomingAddresses.add(docId);
       const doc = nodeToDocument(node);
 
       // Build update: overwrite stats, preserve balance/location if not in new data
@@ -437,7 +441,7 @@ export async function upsertNodes(nodes: PNode[], skipMarkOffline: boolean = fal
 
       operations.push({
         updateOne: {
-          filter: { _id: address },
+          filter: { _id: docId },
           update: { $set: setFields, $setOnInsert: setOnInsert },
           upsert: true,
         },
