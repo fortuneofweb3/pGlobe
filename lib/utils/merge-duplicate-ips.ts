@@ -77,12 +77,24 @@ export function mergeDuplicateIPNodes(nodes: PNode[]): PNode[] {
         const primaryNode = sorted[0];
 
         // Unique IPs for display
+        // Unique IPs for display - ensure we only have one entry per unique IP (no port)
         const uniqueEntries: MergedIPEntry[] = [];
-        const seenAddrs = new Set<string>();
+        const seenIps = new Set<string>();
 
-        // We track all original entries in case they have different stats even on same IP
-        for (const node of cluster) {
-            uniqueEntries.push(createMergedEntry(node));
+        // Sort cluster so we pick the best entry for each IP (online first, then lastSeen)
+        const clusterSorted = [...cluster].sort((a, b) => {
+            if (a.status === 'online' && b.status !== 'online') return -1;
+            if (b.status === 'online' && a.status !== 'online') return 1;
+            return (b.lastSeen || 0) - (a.lastSeen || 0);
+        });
+
+        for (const node of clusterSorted) {
+            const address = node.address || '';
+            const ip = address.split(':')[0];
+            if (ip && !seenIps.has(ip)) {
+                seenIps.add(ip);
+                uniqueEntries.push(createMergedEntry(node));
+            }
         }
 
         // Sum stats
@@ -110,15 +122,14 @@ export function mergeDuplicateIPNodes(nodes: PNode[]): PNode[] {
             storageCapacity: hasStorage ? totalStorage : primaryNode.storageCapacity,
             credits: hasCredits ? totalCredits : primaryNode.credits,
             packetsReceived: hasPackets ? totalPacketsRecv : primaryNode.packetsReceived,
-            packetsSent: hasPackets ? totalPacketsSent : primaryNode.packetsSent,
+            packetsSent: hasPackets ? totalPacketsSent : (primaryNode.packetsSent || 0),
             dataOperationsHandled: hasDataOps ? totalDataOps : primaryNode.dataOperationsHandled,
             mergedIPs: uniqueEntries,
             isMerged: true,
-            // Consolidate IPs for previousAddresses if needed
-            previousAddresses: Array.from(new Set([
-                ...(primaryNode.previousAddresses || []),
-                ...cluster.map(n => n.address).filter(Boolean) as string[]
-            ]))
+            // Consolidate unique full addresses for HISTORY tracking, but prioritize online ones
+            previousAddresses: Array.from(new Set(
+                clusterSorted.map(n => n.address).filter(Boolean) as string[]
+            ))
         };
 
         mergedNodes.push(mergedNode);

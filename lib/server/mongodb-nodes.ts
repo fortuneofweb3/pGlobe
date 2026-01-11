@@ -72,9 +72,9 @@ async function getClient(retries: number = 3): Promise<MongoClient> {
         const isLocalDev = process.env.NODE_ENV === 'development' && !isVercel;
 
         const newClient = new MongoClient(uri, {
-          serverSelectionTimeoutMS: isVercel ? 15000 : 5000,
-          connectTimeoutMS: isVercel ? 15000 : 5000,
-          socketTimeoutMS: 45000,
+          serverSelectionTimeoutMS: 30000,
+          connectTimeoutMS: 30000,
+          socketTimeoutMS: 60000,
           maxPoolSize: isVercel ? 1 : (isLocalDev ? 3 : 10),
           minPoolSize: 0,
           retryWrites: true,
@@ -410,6 +410,10 @@ export async function upsertNodes(nodes: PNode[], skipMarkOffline: boolean = fal
         if (value !== undefined) {
           setFields[field] = value;
         }
+      }
+
+      if (node.network === 'mainnet') {
+        console.log(`[MongoDB] Deduced Mainnet Node: ${docId} (pubkey: ${node.pubkey || 'missing'})`);
       }
 
       // Preserved fields - only set if provided (don't overwrite with undefined)

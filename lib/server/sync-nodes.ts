@@ -206,19 +206,32 @@ export async function discoverFromOnChain(nodesMap: Map<string, PNode>): Promise
 
   const rpcs = [DEVNET_RPC, XANDEUM_MAINNET_RPC];
   let newFound = 0;
+  // Create a mapping of pubkey to nodes for efficient lookup
+  const pubkeyToNodes = new Map<string, PNode[]>();
+  for (const node of nodesMap.values()) {
+    const pk = node.pubkey || node.publicKey || '';
+    if (pk) {
+      if (!pubkeyToNodes.has(pk)) pubkeyToNodes.set(pk, []);
+      pubkeyToNodes.get(pk)!.push(node);
+    }
+  }
 
   for (const rpc of rpcs) {
     try {
       const onChainPubkeys = await fetchPNodesFromOnChain(rpc);
       for (const pk of onChainPubkeys) {
-        if (!nodesMap.has(pk)) {
+        if (!pubkeyToNodes.has(pk)) {
           // User requested NOT to add placeholder nodes that aren't in gossip
           // We just track the count for logging
           newFound++;
         } else {
-          // Mark as on-chain verified if already in gossip
-          const node = nodesMap.get(pk);
-          if (node) node.seenOnChain = true;
+          // Mark all IPs for this pubkey as on-chain verified
+          const nodes = pubkeyToNodes.get(pk);
+          if (nodes) {
+            for (const node of nodes) {
+              node.seenOnChain = true;
+            }
+          }
         }
       }
     } catch (err) {
@@ -243,7 +256,8 @@ export async function fetchAllNodes(): Promise<Map<string, PNode>> {
   for (const result of results) {
     if (result.status === 'fulfilled') {
       for (const node of result.value) {
-        const key = node.address;
+        // Strip port for the key to ensure IP-based uniqueness from the start
+        const key = node.address?.split(':')[0];
         if (key && !nodesMap.has(key)) {
           nodesMap.set(key, node);
         }
@@ -371,7 +385,10 @@ export async function enrichWithLocation(nodesMap: Map<string, PNode>): Promise<
 // STEP 4: ENRICH WITH CREDITS (from both mainnet and devnet APIs)
 // ============================================================================
 
-export async function enrichWithCredits(nodesMap: Map<string, PNode>): Promise<void> {
+export async function enrichWithCredits(
+  nodesMap: Map<string, PNode>,
+  existingNodesMap?: Map<string, PNode>
+): Promise<void> {
   console.log('[Sync] Fetching pod credits via centralized Xandeum API utility...');
 
   const currentMonth = new Date().toISOString().slice(0, 7);
@@ -381,41 +398,31 @@ export async function enrichWithCredits(nodesMap: Map<string, PNode>): Promise<v
 
   console.log(`[Sync] Credits API returned ${mainnetPods.size} mainnet and ${devnetPods.size} devnet pods`);
 
-  // Enrich nodes with credits and determine network
-  let mainnetCount = 0;
-  let devnetCount = 0;
-  let bothCount = 0;
+  // Create a fast lookup for all pubkeys that have credits
+  const allCreditPubkeys = new Set([...mainnetPods.keys(), ...devnetPods.keys()]);
 
-  for (const [pubkey, node] of nodesMap) {
-    const mainnetCredits = mainnetPods.get(pubkey);
-    const devnetCredits = devnetPods.get(pubkey);
+  // 1. Enrich existing nodes in the gossip map
+  for (const [_key, node] of nodesMap) {
+    const nodePubkey = node.pubkey || node.publicKey || '';
+    if (!nodePubkey) continue;
+
+    const mainnetCredits = mainnetPods.get(nodePubkey);
+    const devnetCredits = devnetPods.get(nodePubkey);
 
     const inMainnet = mainnetCredits !== undefined;
     const inDevnet = devnetCredits !== undefined;
 
-    // Store granular credits
-    if (inMainnet) {
-      node.mainnetCredits = mainnetCredits;
-    }
-    if (inDevnet) {
-      node.devnetCredits = devnetCredits;
-    }
+    if (inMainnet) node.mainnetCredits = mainnetCredits;
+    if (inDevnet) node.devnetCredits = devnetCredits;
 
-    // Use merged map for primary credits (already prioritized by utility)
-    const credits = creditsMap.get(pubkey);
-    if (credits !== undefined) {
-      node.credits = credits;
-    }
+    const credits = creditsMap.get(nodePubkey);
+    if (credits !== undefined) node.credits = credits;
 
     // Determine network classification
     if (inMainnet) {
-      // Prioritize Mainnet: If in Mainnet (even if also in Devnet), it's a Mainnet node
       node.network = 'mainnet';
-      mainnetCount++;
-      if (inDevnet) bothCount++;
     } else if (inDevnet) {
       node.network = 'devnet';
-      devnetCount++;
     } else {
       node.network = 'unknown';
     }
@@ -423,7 +430,49 @@ export async function enrichWithCredits(nodesMap: Map<string, PNode>): Promise<v
     node.creditsResetMonth = currentMonth;
   }
 
-  console.log(`[Sync] Credits enrichment complete: ${mainnetCount} mainnet, ${devnetCount} devnet, ${bothCount} both`);
+  // 2. IMPORTANT: Find nodes in DB that have credits but were NOT in gossip
+  // We add them back to nodesMap so they get updated and PROTECTED from being marked offline
+  if (existingNodesMap) {
+    let recoveredCount = 0;
+    for (const pubkey of allCreditPubkeys) {
+      // For each pubkey with credits, find all IPs in the DB
+      for (const existingNode of existingNodesMap.values()) {
+        const existingPk = existingNode.pubkey || existingNode.publicKey;
+        if (existingPk === pubkey) {
+          const ip = existingNode.address?.split(':')[0];
+          if (ip && !nodesMap.has(ip)) {
+            // Found a node in DB that should be online/active but gossip missed it
+            const recoveredNode = { ...existingNode };
+
+            // Apply credits
+            const mainnetCredits = mainnetPods.get(pubkey);
+            const devnetCredits = devnetPods.get(pubkey);
+            if (mainnetCredits !== undefined) recoveredNode.mainnetCredits = mainnetCredits;
+            if (devnetCredits !== undefined) recoveredNode.devnetCredits = devnetCredits;
+
+            const credits = creditsMap.get(pubkey);
+            if (credits !== undefined) recoveredNode.credits = credits;
+
+            recoveredNode.network = mainnetCredits !== undefined ? 'mainnet' : 'devnet';
+            recoveredNode.creditsResetMonth = currentMonth;
+
+            // Mark as offline in terms of connectivity, but seenInGossip=false ensures 
+            // the DB keeps it if we want, or at least we update its stats here.
+            // If it has credits, we keep it "online" in a sense or at least "syncing"
+            // Let's keep status as 'offline' but it's now in the batch
+            recoveredNode.status = 'offline';
+            recoveredNode.seenInGossip = false;
+
+            nodesMap.set(ip, recoveredNode);
+            recoveredCount++;
+          }
+        }
+      }
+    }
+    if (recoveredCount > 0) {
+      console.log(`[Sync] Recovered ${recoveredCount} offline nodes from DB because they have active credits`);
+    }
+  }
 }
 
 // ============================================================================
@@ -760,24 +809,24 @@ export async function syncNodes(): Promise<{ success: boolean; count: number; er
     // Step 3: Enrich with location data
     await enrichWithLocation(nodesMap);
 
-    // Step 4: Enrich with credits
-    await enrichWithCredits(nodesMap);
-
-    // Step 5: Get existing nodes for balance check
+    // Step 4: Get existing nodes early (needed for credit recovery and balance)
     const { getAllNodes: getExistingNodesFromDB } = await import('./mongodb-nodes');
     const existingNodesMap = new Map<string, PNode>();
     try {
       const existing = await getExistingNodesFromDB();
       existing.forEach(n => {
-        const key = n.address;
+        const key = n.address?.split(':')[0] || n.id;
         if (key) existingNodesMap.set(key, n);
       });
-    } catch {
-      // Continue without existing nodes
+    } catch (err) {
+      console.warn('[Sync] Could not fetch existing nodes from DB:', (err as Error).message);
     }
 
+    // Step 5: Enrich with credits
+    // Pass existingNodesMap so we can recover nodes missed by gossip
+    await enrichWithCredits(nodesMap, existingNodesMap);
+
     // Step 6: Enrich with balance (new nodes only)
-    // We fetch from Devnet first (Legacy) and then Mainnet (Main Era)
     await enrichWithBalance(nodesMap, existingNodesMap);
 
     // Step 7: Deduplicate
@@ -786,8 +835,9 @@ export async function syncNodes(): Promise<{ success: boolean; count: number; er
     // Step 8: Detect and Log Activity
     console.log(`[Sync] Detecting activity for ${dedupedNodes.length} nodes...`);
     for (const node of dedupedNodes) {
-      if (node.address) {
-        const oldNode = existingNodesMap.get(node.address);
+      const ip = node.address?.split(':')[0];
+      if (ip) {
+        const oldNode = existingNodesMap.get(ip);
         await detectAndLogActivity(node, oldNode);
       }
     }

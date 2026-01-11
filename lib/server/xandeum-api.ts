@@ -24,7 +24,7 @@ export interface MergedCredits {
  * Fetch credits from both Mainnet and Devnet APIs and merge them.
  * Mainnet credits are prioritized for nodes present in both for the 'creditsMap'.
  */
-export async function fetchMergedCredits(timeoutMs: number = 10000): Promise<MergedCredits> {
+export async function fetchMergedCredits(timeoutMs: number = 30000): Promise<MergedCredits> {
     const creditsMap = new Map<string, number>();
     const mainnetPods = new Map<string, number>();
     const devnetPods = new Map<string, number>();
