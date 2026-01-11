@@ -738,9 +738,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           )}
                         </div>
                       </th>
-                      <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                        Location
-                      </th>
+
                       <th
                         className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                         onClick={() => onSort('latency')}
@@ -836,9 +834,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                       <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                         RAM
                       </th>
-                      <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                        Location
-                      </th>
+
                       <th className="px-3 sm:px-5 py-4 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                         Latency
                       </th>
@@ -867,7 +863,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
               <tbody className="divide-y divide-border/40">
                 {nodes.length === 0 ? (
                   <tr>
-                    <td colSpan={19} className="px-4 py-12 text-center text-foreground/50">
+                    <td colSpan={18} className="px-4 py-12 text-center text-foreground/50">
                       No pNodes found
                     </td>
                   </tr>
@@ -1068,35 +1064,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                             return renderEmptyCell();
                           })()}
                         </td>
-                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap">
-                          {(() => {
-                            if (!node.location) return renderEmptyCell();
 
-                            const flag = node.locationData?.countryCode
-                              ? getFlagForCountry(node.locationData.country, node.locationData.countryCode)
-                              : '';
-
-                            const country = node.locationData?.country;
-
-                            return country ? (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  router.push(`/regions?country=${encodeURIComponent(country)}`);
-                                }}
-                                className="text-xs sm:text-sm text-foreground/80 flex items-center gap-1.5 hover:text-[#F0A741] transition-colors cursor-pointer group"
-                              >
-                                {flag && <span className="text-base leading-none">{flag}</span>}
-                                <span>{node.location}</span>
-                              </button>
-                            ) : (
-                              <span className="text-xs sm:text-sm text-foreground/80 flex items-center gap-1.5">
-                                {flag && <span className="text-base leading-none">{flag}</span>}
-                                {node.location}
-                              </span>
-                            );
-                          })()}
-                        </td>
                         <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-right">
                           {(() => {
                             // Don't show latency for nodes not seen in gossip (offline)
