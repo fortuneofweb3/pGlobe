@@ -1032,6 +1032,9 @@ function NodeDetailContent() {
                     ? node.mergedIPs[activeIPIndex].address
                     : node.address;
 
+                const endTime = Date.now();
+                const startTime = endTime - (7 * 24 * 60 * 60 * 1000);
+
                 const url = `/api/history?nodeId=${encodeURIComponent(pubkey)}&startTime=${startTime}&endTime=${endTime}${address ? `&address=${encodeURIComponent(address)}` : ''}`;
 
                 const response = await fetch(url, {
