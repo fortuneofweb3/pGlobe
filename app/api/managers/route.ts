@@ -32,6 +32,7 @@ export interface Manager {
     vestingStake: number;
     onlineCount: number;
     source: 'mainnet' | 'devnet' | 'both';
+    createdAt?: string; // When manager was first discovered (ISO date string)
 }
 
 export async function GET(request: Request) {

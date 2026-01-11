@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { startProgress } from '@/lib/nprogress';
 import { PNode } from '@/lib/types/pnode';
+import { mergeDuplicateIPNodes } from '@/lib/utils/merge-duplicate-ips';
 // Latency is server-side but adjusted for user's region
 import {
   getLatencyContext,
@@ -16,7 +17,7 @@ import BalanceDisplay from './BalanceDisplay';
 import { formatBytes, formatStorageBytes } from '@/lib/utils/storage';
 import { formatRelativeTime } from '@/lib/utils/time';
 import { getFlagForCountry } from '@/lib/utils/country-flags';
-import { Check, X, ArrowUp, ArrowDown, Globe, Lock, Star, LayoutGrid, List } from 'lucide-react';
+import { Check, X, ArrowUp, ArrowDown, Globe, Lock, Star, LayoutGrid, List, Network } from 'lucide-react';
 import InfoTooltip from './InfoTooltip';
 import { useWatchlist } from '@/lib/context/WatchlistContext';
 import { useNodes } from '@/lib/context/NodesContext';
@@ -166,7 +167,10 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
   const router = useRouter();
   const { isWatched, toggleWatchlist } = useWatchlist();
   const { selectedNetwork } = useNodes();
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid');
+
+
+
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [balances, setBalances] = useState<Record<string, number | null>>({});
   const [fetchingBalances, setFetchingBalances] = useState<Set<string>>(new Set());
   // Load cached latencies immediately (synchronous)
@@ -404,23 +408,6 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
     return '—';
   };
 
-  // Detect duplicate pubkeys
-  const pubkeyCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    nodes.forEach((node) => {
-      const pubkey = node.pubkey || node.publicKey;
-      if (pubkey) {
-        counts[pubkey] = (counts[pubkey] || 0) + 1;
-      }
-    });
-    return counts;
-  }, [nodes]);
-
-  const isDuplicate = (node: PNode) => {
-    const pubkey = node.pubkey || node.publicKey;
-    return pubkey ? (pubkeyCounts[pubkey] || 0) > 1 : false;
-  };
-
   // Calculate stats for info banner
   const statsWithData = useMemo(() => {
     const withUptime = nodes.filter(n => n.uptime && n.uptime > 0).length;
@@ -432,7 +419,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
     }).length;
 
     return { withUptime, withStorage, withCPU, withLatency, total: nodes.length };
-  }, [nodes]);
+  }, [nodes, nodeLatencies]);
 
   return (
     <div className="card flex flex-col h-full overflow-hidden" style={{ padding: 0 }}>
@@ -477,14 +464,58 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                   const balance = balances[node.id] !== undefined ? balances[node.id] : node.balance;
                   const isRegistered = balance !== undefined && balance !== null && balance > 0;
                   const status = node.status || 'offline';
-                  const ip = node.address?.split(':')[0] || '—';
-                  const location = node.locationData?.city
-                    ? `${node.locationData.city}, ${node.locationData.country || ''}`
-                    : node.locationData?.country || node.location || '';
-                  const flag = node.locationData?.countryCode ? getFlagForCountry(node.locationData.countryCode) : '';
                   const network = node.network || 'unknown';
                   // Nodes without credit data are treated as Devnet
                   const displayNetwork = network === 'unknown' ? 'devnet' : network;
+
+                  // Unique locations and IPs extraction
+                  const uniqueLocations: { text: string; flag: string }[] = [];
+                  const uniqueIps: string[] = [];
+                  const seenIpSet = new Set<string>();
+                  const seenLocSet = new Set<string>();
+
+                  if (node.isMerged && node.mergedIPs && node.mergedIPs.length > 0) {
+                    for (const entry of node.mergedIPs) {
+                      // IP Extraction
+                      const entryIp = entry.address?.split(':')[0];
+                      if (entryIp && !seenIpSet.has(entryIp)) {
+                        seenIpSet.add(entryIp);
+                        uniqueIps.push(entryIp);
+                      }
+
+                      // Location Extraction
+                      const city = entry.locationData?.city;
+                      const country = entry.locationData?.country;
+                      const locText = city
+                        ? `${city}${country ? `, ${country}` : ''}`
+                        : country || '';
+
+                      const locKey = locText.toLowerCase().trim();
+                      if (locText && !seenLocSet.has(locKey)) {
+                        seenLocSet.add(locKey);
+                        uniqueLocations.push({
+                          text: locText,
+                          flag: entry.locationData?.countryCode ? getFlagForCountry(entry.locationData.countryCode) : ''
+                        });
+                      }
+                    }
+                  } else {
+                    // Single node fallback
+                    const ip = node.address?.split(':')[0] || '—';
+                    uniqueIps.push(ip);
+                    const city = node.locationData?.city;
+                    const country = node.locationData?.country;
+                    const locText = city
+                      ? `${city}${country ? `, ${country}` : ''}`
+                      : country || node.location || '';
+                    uniqueLocations.push({
+                      text: locText,
+                      flag: node.locationData?.countryCode ? getFlagForCountry(node.locationData.countryCode) : ''
+                    });
+                  }
+
+                  const displayIps = uniqueIps.slice(0, 2);
+                  const displayLocations = uniqueLocations.slice(0, 2);
 
                   return (
                     <div
@@ -512,7 +543,14 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           >
                             <Star className={`w-4 h-4 ${watched ? 'fill-[#FFD700] text-[#FFD700]' : ''}`} />
                           </button>
-                          <span className="text-base font-mono font-bold text-[#F0A741]">{ip}</span>
+                          <span className="text-base font-mono font-bold text-[#F0A741]" title={node.pubkey || node.publicKey}>
+                            {formatPublicKey(node.pubkey || node.publicKey) || '—'}
+                          </span>
+                          {node.isMerged && node.mergedIPs && node.mergedIPs.length > 1 && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 font-semibold">
+                              {node.mergedIPs.length} IPs
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${status === 'online' ? 'bg-green-500/20 text-green-400' :
@@ -523,21 +561,28 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         </div>
                       </div>
 
-                      {/* Location */}
-                      <div className="text-sm text-foreground/60 mb-3 truncate">
-                        {location ? (
-                          <span className="flex items-center gap-1.5">
-                            {flag && <span className="text-base">{flag}</span>}
-                            <span>{location}</span>
-                          </span>
+                      {/* Locations */}
+                      <div className="space-y-1 mb-3 min-h-[40px]">
+                        {displayLocations.length > 0 ? (
+                          displayLocations.map((loc, i) => (
+                            <div key={`${nodeId}-loc-${i}`} className="text-sm text-foreground/60 truncate flex items-center gap-1.5">
+                              {loc.flag && <span className="text-base shrink-0">{loc.flag}</span>}
+                              <span className="truncate">{loc.text}</span>
+                            </div>
+                          ))
                         ) : (
-                          <span className="text-foreground/30">Unknown location</span>
+                          <div className="text-sm text-foreground/30">Unknown location</div>
                         )}
                       </div>
 
-                      {/* Public Key */}
-                      <div className="text-sm font-mono text-foreground/50 truncate mb-3 bg-black/20 rounded px-2 py-1">
-                        {formatPublicKey(node.pubkey || node.publicKey) || '—'}
+                      {/* IP Addresses */}
+                      <div className="space-y-1 mb-3">
+                        {displayIps.map((ipAddr, i) => (
+                          <div key={`${nodeId}-ip-${i}`} className="text-sm font-mono text-foreground/50 truncate bg-black/20 rounded px-2 py-1 flex items-center gap-1 group/ip">
+                            <Network className="w-3 h-3 shrink-0" />
+                            <span className="select-text cursor-text">{ipAddr}</span>
+                          </div>
+                        ))}
                       </div>
 
                       {/* Stats Row */}
@@ -583,7 +628,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                       {/* Footer: Network + Registered */}
                       <div className="flex items-center justify-between pt-2 border-t border-border/30">
                         <span className={`text-xs px-2 py-1 rounded-lg font-semibold ${displayNetwork === 'mainnet' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                            'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                          'bg-purple-500/20 text-purple-400 border border-purple-500/30'
                           }`}>
                           {displayNetwork === 'mainnet' ? 'Mainnet' : 'Devnet'}
                         </span>
@@ -607,38 +652,14 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
           /* Table View */
           <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0 bg-card" style={{ margin: 0, padding: 0, marginTop: '-1px' }}>
             <table className="min-w-full border-collapse m-0 border-spacing-0" style={{ minWidth: '800px', borderCollapse: 'collapse', margin: 0, padding: 0 }}>
-              <colgroup>
-                <col className="w-[3%]" />
-                <col className="w-[7%]" />
-                <col className="w-[4%]" />
-                <col className="w-[6%]" />
-                <col className="w-[6%]" />
-                {selectedNetwork === 'all' && <col className="w-[6%]" />}
-                <col className="w-[7%]" />
-                <col className="w-[5%]" />
-                <col className="w-[6%]" />
-                <col className="w-[7%]" />
-                <col className="w-[7%]" />
-                <col className="w-[7%]" />
-                <col className="w-[6%]" />
-                <col className="w-[6%]" />
-                <col className="w-[6%]" />
-                <col className="w-[7%]" />
-                <col className="w-[8%]" />
-                <col className="w-[8%]" />
-                <col className="w-[6%]" />
-              </colgroup>
               <thead className="sticky top-0 z-10 bg-muted border-b border-border/60" style={{ margin: 0, padding: 0 }}>
                 <tr>
                   <th className="px-2 py-4"></th>
                   <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                    IP Address
+                    Public Key
                   </th>
                   <th className="px-2 sm:px-3 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                     Status
-                  </th>
-                  <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                    Public Key
                   </th>
                   <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                     Registered
@@ -852,7 +873,6 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                   </tr>
                 ) : (
                   nodes.map((node, index) => {
-                    const duplicate = isDuplicate(node);
                     const isTrynet = node.version?.includes('-trynet') || false;
                     return (
                       <tr
@@ -872,7 +892,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         cursor-pointer border-b border-white/[0.03]
                         bg-white/[0.01] hover:bg-white/[0.04] 
                         transition-colors duration-200
-                        ${duplicate ? 'bg-orange-500/[0.05]' : ''} 
+                        ${node.isMerged ? 'bg-purple-500/[0.03]' : ''} 
                         ${isTrynet ? 'bg-orange-500/[0.02]' : ''}
                       `}
                       >
@@ -899,9 +919,15 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                               router.push(`/?node=${encodeURIComponent(nodeIdentifier)}`);
                             }}
                             className="text-sm font-mono text-[#F0A741] font-bold hover:brightness-110 transition-all cursor-pointer no-underline"
+                            title={node.pubkey || node.publicKey}
                           >
-                            {formatNodeId(node.id, node.address)}
+                            {formatPublicKey(node.pubkey || node.publicKey) || '—'}
                           </a>
+                          {node.isMerged && node.mergedIPs && node.mergedIPs.length > 1 && (
+                            <span className="ml-2 text-[10px] px-1 py-0.5 bg-purple-500/20 text-purple-400 rounded border border-purple-500/30 font-semibold">
+                              {node.mergedIPs.length} IPs
+                            </span>
+                          )}
                         </td>
                         <td className="px-2 sm:px-3 py-5 whitespace-nowrap text-center">
                           {(() => {
@@ -929,21 +955,6 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                               );
                             }
                           })()}
-                        </td>
-                        <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs sm:text-sm font-mono text-foreground/70">
-                              {formatPublicKey(node.pubkey || node.publicKey) || renderEmptyCell('Public key not available')}
-                            </span>
-                            {duplicate && (
-                              <span
-                                className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-warning/20 text-warning text-[10px] font-bold"
-                                title={`Duplicate pubkey detected(appears ${pubkeyCounts[node.pubkey || node.publicKey]} times)`}
-                              >
-                                !
-                              </span>
-                            )}
-                          </div>
                         </td>
                         <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-center">
                           {(() => {

@@ -1,0 +1,138 @@
+/**
+ * Utility to merge pNodes that share either the same pubkey OR the same IP address.
+ * Nodes that are linked through either identifier are clustered and merged.
+ */
+
+import { PNode, MergedIPEntry } from '@/lib/types/pnode';
+
+/**
+ * Creates a MergedIPEntry from a PNode for tracking individual stats
+ */
+function createMergedEntry(node: PNode): MergedIPEntry {
+    return {
+        address: node.address,
+        pubkey: node.pubkey || node.publicKey,
+        status: node.status,
+        storageCapacity: node.storageCapacity,
+        credits: node.credits,
+        packetsReceived: node.packetsReceived,
+        packetsSent: node.packetsSent,
+        uptime: node.uptime,
+        lastSeen: node.lastSeen,
+        dataOperationsHandled: node.dataOperationsHandled,
+        locationData: node.locationData,
+    };
+}
+
+/**
+ * Merge nodes that are logically the same (share Pubkey or IP)
+ * 
+ * @param nodes - Array of PNodes
+ * @returns Array of merged PNodes
+ */
+export function mergeDuplicateIPNodes(nodes: PNode[]): PNode[] {
+    if (!nodes || nodes.length === 0) return [];
+
+    const clusters: PNode[][] = [];
+    const visited = new Set<PNode>();
+
+    // Unified identifier extraction
+    const getIdentifiers = (node: PNode) => {
+        const pk = node.pubkey || node.publicKey;
+        const ip = node.address?.split(':')[0];
+        return { pk, ip };
+    };
+
+    // BFS to find all connected nodes (Aggressive Merge)
+    for (const node of nodes) {
+        if (visited.has(node)) continue;
+
+        const cluster: PNode[] = [];
+        const queue: PNode[] = [node];
+        visited.add(node);
+
+        while (queue.length > 0) {
+            const current = queue.shift()!;
+            cluster.push(current);
+
+            const { pk: currentPK, ip: currentIP } = getIdentifiers(current);
+
+            for (const other of nodes) {
+                if (visited.has(other)) continue;
+
+                const { pk: otherPK, ip: otherIP } = getIdentifiers(other);
+
+                const sharePK = !!currentPK && !!otherPK && currentPK === otherPK;
+                const shareIP = !!currentIP && !!otherIP && currentIP === otherIP;
+
+                if (sharePK || shareIP) {
+                    visited.add(other);
+                    queue.push(other);
+                }
+            }
+        }
+        clusters.push(cluster);
+    }
+
+    const mergedNodes: PNode[] = [];
+
+    for (const cluster of clusters) {
+        if (cluster.length === 1 && !cluster[0].isMerged) {
+            mergedNodes.push(cluster[0]);
+            continue;
+        }
+
+        // Sort by uptime descending to pick the primary node info (status, version etc)
+        const sorted = [...cluster].sort((a, b) => (b.uptime || 0) - (a.uptime || 0));
+        const primaryNode = sorted[0];
+
+        // Unique IPs for display
+        const uniqueEntries: MergedIPEntry[] = [];
+        const seenAddrs = new Set<string>();
+
+        // We track all original entries in case they have different stats even on same IP
+        for (const node of cluster) {
+            uniqueEntries.push(createMergedEntry(node));
+        }
+
+        // Sum stats
+        let totalStorage = 0;
+        let totalCredits = 0;
+        let totalPacketsRecv = 0;
+        let totalPacketsSent = 0;
+        let totalDataOps = 0;
+
+        let hasStorage = false;
+        let hasCredits = false;
+        let hasPackets = false;
+        let hasDataOps = false;
+
+        for (const node of cluster) {
+            if (node.storageCapacity != null) { totalStorage += node.storageCapacity; hasStorage = true; }
+            if (node.credits != null) { totalCredits += node.credits; hasCredits = true; }
+            if (node.packetsReceived != null) { totalPacketsRecv += node.packetsReceived; hasPackets = true; }
+            if (node.packetsSent != null) { totalPacketsSent += node.packetsSent; hasPackets = true; }
+            if (node.dataOperationsHandled != null) { totalDataOps += node.dataOperationsHandled; hasDataOps = true; }
+        }
+
+        const mergedNode: PNode = {
+            ...primaryNode,
+            storageCapacity: hasStorage ? totalStorage : primaryNode.storageCapacity,
+            credits: hasCredits ? totalCredits : primaryNode.credits,
+            packetsReceived: hasPackets ? totalPacketsRecv : primaryNode.packetsReceived,
+            packetsSent: hasPackets ? totalPacketsSent : primaryNode.packetsSent,
+            dataOperationsHandled: hasDataOps ? totalDataOps : primaryNode.dataOperationsHandled,
+            mergedIPs: uniqueEntries,
+            isMerged: true,
+            // Consolidate IPs for previousAddresses if needed
+            previousAddresses: Array.from(new Set([
+                ...(primaryNode.previousAddresses || []),
+                ...cluster.map(n => n.address).filter(Boolean) as string[]
+            ]))
+        };
+
+        mergedNodes.push(mergedNode);
+    }
+
+    return mergedNodes;
+}

@@ -9,6 +9,7 @@ import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
 import { RefreshCw, Server, TrendingUp, Search, Filter, X, Activity, ChevronLeft, ChevronRight, Skull } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
+import { mergeDuplicateIPNodes } from '@/lib/utils/merge-duplicate-ips';
 import { TableSkeleton, CardSkeleton, PNodeTableSkeleton } from '@/components/Skeletons';
 import AnimatedNumber from '@/components/AnimatedNumber';
 import StatsCard from '@/components/StatsCard';
@@ -102,11 +103,14 @@ function NodesPageContent() {
       });
     }
 
-    // Sort by the selected column (overrides all default sorting)
+    // Sort by the selected column
     if (sortBy) {
       filtered.sort((a, b) => {
         let aVal: any = a[sortBy as keyof PNode];
         let bVal: any = b[sortBy as keyof PNode];
+
+        // Special case for Latency (stored in separate state sometimes, but let's check field)
+        // If sortBy is latency, we need to handle it
 
         // Handle undefined/null values
         if (aVal === undefined || aVal === null) aVal = sortOrder === 'asc' ? Infinity : -Infinity;
@@ -127,6 +131,14 @@ function NodesPageContent() {
         } else {
           return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
         }
+      });
+    } else {
+      // DEFAULT SORT: Multi-IP nodes first (by count descending), then by uptime
+      filtered.sort((a, b) => {
+        const aIPs = a.mergedIPs?.length || 1;
+        const bIPs = b.mergedIPs?.length || 1;
+        if (aIPs !== bIPs) return bIPs - aIPs;
+        return (b.uptime || 0) - (a.uptime || 0);
       });
     }
 

@@ -315,10 +315,16 @@ app.get('/api/pnodes', authenticate, async (req, res) => {
 app.get('/api/nodes/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
+    const address = req.query.address as string | undefined;
     let node: PNode | null = null;
 
     try {
-      node = await getNodeByPubkey(id);
+      if (address) {
+        const { getNodeByAddress } = await import('./lib/server/mongodb-nodes');
+        node = await getNodeByAddress(address);
+      } else {
+        node = await getNodeByPubkey(id);
+      }
     } catch (dbError: any) {
       console.error('[RenderAPI] ⚠️  DB read failed:', dbError?.message);
       return res.status(500).json({
@@ -372,10 +378,16 @@ app.get('/api/activity-logs', authenticate, async (req, res) => {
 app.get('/api/nodes/:id/stats', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
+    const address = req.query.address as string | undefined;
     let node: PNode | null = null;
 
     try {
-      node = await getNodeByPubkey(id);
+      if (address) {
+        const { getNodeByAddress } = await import('./lib/server/mongodb-nodes');
+        node = await getNodeByAddress(address);
+      } else {
+        node = await getNodeByPubkey(id);
+      }
     } catch (dbError: any) {
       console.error('[RenderAPI] ⚠️  DB read failed:', dbError?.message);
       return res.status(500).json({
@@ -426,7 +438,8 @@ app.get('/api/nodes/:id/history', authenticate, async (req, res) => {
         startTime = now - (7 * 24 * 60 * 60 * 1000); // Default to 7d
     }
 
-    const history = await getNodeHistory(id, startTime, now);
+    const address = req.query.address as string | undefined;
+    const history = await getNodeHistory(id, address, startTime, now);
     res.json({
       success: true,
       history,
@@ -1009,20 +1022,24 @@ app.get('/api/history', authenticate, async (req, res) => {
 
     // Get node-specific history
     if (nodeId) {
+      const address = req.query.address as string | undefined;
       console.log('[RenderAPI] Fetching node history:', {
         nodeId,
+        address,
         startTime: startTime ? new Date(startTime).toISOString() : undefined,
         endTime: endTime ? new Date(endTime).toISOString() : undefined,
       });
-      const nodeHistory = await getNodeHistory(nodeId, startTime, endTime);
+      const nodeHistory = await getNodeHistory(nodeId, address, startTime, endTime);
       console.log('[RenderAPI] Node history result:', {
         nodeId,
+        address,
         count: nodeHistory.length,
         firstTimestamp: nodeHistory[0]?.timestamp ? new Date(nodeHistory[0].timestamp).toISOString() : undefined,
         lastTimestamp: nodeHistory[nodeHistory.length - 1]?.timestamp ? new Date(nodeHistory[nodeHistory.length - 1].timestamp).toISOString() : undefined,
       });
       return res.json({
         nodeId,
+        address,
         data: nodeHistory,
         count: nodeHistory.length,
       });
@@ -1241,7 +1258,7 @@ app.get('/api/history/bulk', authenticate, async (req, res) => {
     // Fetch histories for all nodes in parallel
     const historyPromises = nodeIds.map(async (nodeId) => {
       try {
-        const history = await getNodeHistory(nodeId, startTime, endTime);
+        const history = await getNodeHistory(nodeId, undefined, startTime, endTime);
         return { nodeId, history };
       } catch (err) {
         console.warn(`[RenderAPI] Failed to fetch history for node ${nodeId}:`, err);

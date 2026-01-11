@@ -26,7 +26,8 @@ export async function aggregateManagers(network: string = 'all'): Promise<{ mana
                 totalXandStake: 0,
                 vestingStake: 0,
                 onlineCount: 0,
-                source: 'devnet'
+                source: 'devnet',
+                createdAt: undefined
             });
         }
         return managerMap.get(wallet)!;
@@ -97,6 +98,14 @@ export async function aggregateManagers(network: string = 'all'): Promise<{ mana
             }
 
             if (node.status === 'online' || node.status === 'syncing') manager.onlineCount++;
+
+            // Track earliest node createdAt as manager's join date
+            const nodeCreatedAt = node.createdAt ? new Date(node.createdAt).toISOString() : undefined;
+            if (nodeCreatedAt) {
+                if (!manager.createdAt || nodeCreatedAt < manager.createdAt) {
+                    manager.createdAt = nodeCreatedAt;
+                }
+            }
         }
     }
 

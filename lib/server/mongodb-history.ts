@@ -59,6 +59,7 @@ export interface HistoricalSnapshot {
   // (e.g., if uptime stops increasing, node went offline)
   nodeSnapshots: Array<{
     pubkey: string;
+    address: string;
     // Variable status metrics
     status: 'online' | 'offline' | 'syncing';
     cpuPercent?: number; // % - changes frequently
@@ -108,12 +109,14 @@ export async function createHistoryIndexes(): Promise<void> {
 
     // Index on nodeSnapshots.pubkey for efficient node-specific queries
     await collection.createIndex({ 'nodeSnapshots.pubkey': 1 });
+    await collection.createIndex({ 'nodeSnapshots.address': 1 });
 
     // Index on date for daily queries
     await collection.createIndex({ date: 1 });
 
     // Compound index for node-specific queries
     await collection.createIndex({ 'nodeSnapshots.pubkey': 1, timestamp: -1 });
+    await collection.createIndex({ 'nodeSnapshots.address': 1, timestamp: -1 });
 
     // Index for region queries (by country in nodeLocation)
     await collection.createIndex({ 'nodeSnapshots.nodeLocation.country': 1, timestamp: -1 });
@@ -702,6 +705,7 @@ export async function getRegionHistory(
  */
 export async function getNodeHistory(
   pubkey: string,
+  address?: string,
   startTime?: number,
   endTime?: number
 ): Promise<Array<HistoricalSnapshot['nodeSnapshots'][0] & {
@@ -722,6 +726,7 @@ export async function getNodeHistory(
 
     console.log('[MongoDB History] Querying node history:', {
       pubkey,
+      address,
       startTime: startTime ? new Date(startTime).toISOString() : undefined,
       endTime: endTime ? new Date(endTime).toISOString() : undefined,
     });
@@ -733,7 +738,7 @@ export async function getNodeHistory(
       // This uses the compound index { 'nodeSnapshots.pubkey': 1, timestamp: -1 } efficiently
       {
         $match: {
-          'nodeSnapshots.pubkey': pubkey, // Uses index - matches documents containing this node
+          ...(address ? { 'nodeSnapshots.address': address } : { 'nodeSnapshots.pubkey': pubkey }),
           ...timeQuery, // Time range filter
         }
       },
@@ -745,7 +750,9 @@ export async function getNodeHistory(
             $filter: {
               input: '$nodeSnapshots',
               as: 'node',
-              cond: { $eq: ['$$node.pubkey', pubkey] }
+              cond: address
+                ? { $eq: ['$$node.address', address] }
+                : { $eq: ['$$node.pubkey', pubkey] }
             }
           }
         }
@@ -759,6 +766,7 @@ export async function getNodeHistory(
           serverRegionId: 1,
           serverLocation: 1,
           pubkey: '$nodeSnapshots.pubkey',
+          address: '$nodeSnapshots.address',
           status: '$nodeSnapshots.status',
           // latency: removed - client-side measurement
           // latencyByRegion: removed - client-side measurement
@@ -797,7 +805,7 @@ export async function getNodeHistory(
       console.warn('[MongoDB History] Aggregation failed, falling back to find query:', error?.message);
       // Fallback to simpler query if aggregation fails
       const simpleQuery: Record<string, unknown> = {
-        'nodeSnapshots.pubkey': pubkey,
+        ...(address ? { 'nodeSnapshots.address': address } : { 'nodeSnapshots.pubkey': pubkey }),
         ...timeQuery,
       };
       const snapshots = await collection
@@ -813,7 +821,9 @@ export async function getNodeHistory(
         const snap = snapshot as unknown as HistoricalSnapshot;
         // Check if nodeSnapshots exists before accessing find
         if (snap.nodeSnapshots) {
-          const nodeSnapshot = snap.nodeSnapshots.find((n) => n.pubkey === pubkey);
+          const nodeSnapshot = snap.nodeSnapshots.find((n) =>
+            address ? n.address === address : n.pubkey === pubkey
+          );
           if (nodeSnapshot) {
             results.push({
               timestamp: snapshot.timestamp,
@@ -830,6 +840,7 @@ export async function getNodeHistory(
       return {
         timestamp: res.timestamp as number,
         pubkey: res.pubkey as string,
+        address: res.address as string,
         status: res.status as 'online' | 'offline' | 'syncing',
         cpuPercent: res.cpuPercent as number | undefined,
         ramPercent: res.ramPercent as number | undefined,
@@ -955,6 +966,7 @@ function groupNodesByRegion(nodeSnapshots: HistoricalSnapshot['nodeSnapshots']):
 function createNodeSnapshots(nodes: PNode[]): HistoricalSnapshot['nodeSnapshots'] {
   const snapshots = nodes.map(node => {
     const pubkey = node.pubkey || node.publicKey || node.id || '';
+    const address = node.address || '';
     const ramPercent = node.ramUsed && node.ramTotal && node.ramTotal > 0
       ? ((node.ramUsed / node.ramTotal) * 100)
       : undefined;
@@ -979,6 +991,7 @@ function createNodeSnapshots(nodes: PNode[]): HistoricalSnapshot['nodeSnapshots'
 
     return {
       pubkey,
+      address,
       // Variable status metrics (change frequently) - these are the key metrics we track
       status,
       cpuPercent: node.cpuPercent,

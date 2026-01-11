@@ -12,9 +12,10 @@ import { PNode } from '@/lib/types/pnode';
 import { formatStorageBytes } from '@/lib/utils/storage';
 import {
     Server, TrendingUp, ArrowLeft, ExternalLink, Copy, Check,
-    Award, HardDrive, Users, Zap, Activity, MapPin, Clock, ShieldCheck, ChevronDown
+    Award, HardDrive, Users, Zap, Activity, MapPin, Clock, ShieldCheck, ChevronDown, CalendarDays
 } from 'lucide-react';
 import MetricChart from '@/components/charts/MetricChart';
+import { formatRelativeTime } from '@/lib/utils/time';
 
 import dynamic from 'next/dynamic';
 
@@ -51,6 +52,7 @@ interface ManagerDetails {
     daoStake: number;
     vestingStake: number;
     associatedWallets?: string[];
+    createdAt?: string; // When manager first joined (ISO date string)
 }
 
 interface RewardHistoryItem {
@@ -462,6 +464,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                     <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4 text-sm text-foreground/60 border-t border-white/5 pt-4">
                                         {topLocationData && <div className="flex items-center gap-2 hover:text-foreground transition-colors"><MapPin className="w-4 h-4 text-[#F0A741]" /> {topLocationData.location}</div>}
                                         {totalUptime && <div className="flex items-center gap-2 hover:text-foreground transition-colors"><Clock className="w-4 h-4 text-[#F0A741]" /> Total Uptime: {totalUptime}</div>}
+                                        {manager.createdAt && <div className="flex items-center gap-2 hover:text-foreground transition-colors"><CalendarDays className="w-4 h-4 text-[#F0A741]" /> Joined {formatRelativeTime(new Date(manager.createdAt).getTime())}</div>}
                                     </div>
                                 </div>
                             </div>

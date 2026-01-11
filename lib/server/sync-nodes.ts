@@ -243,7 +243,7 @@ export async function fetchAllNodes(): Promise<Map<string, PNode>> {
   for (const result of results) {
     if (result.status === 'fulfilled') {
       for (const node of result.value) {
-        const key = node.pubkey || node.publicKey;
+        const key = node.address;
         if (key && !nodesMap.has(key)) {
           nodesMap.set(key, node);
         }
@@ -542,53 +542,17 @@ export async function enrichWithBalance(
 // STEP 6: DEDUPLICATE (merge same pubkey with different IPs)
 // ============================================================================
 
+export function deduplicateNodesByAddress(nodesMap: Map<string, PNode>): PNode[] {
+  // Since fetchAllNodes already uses address as key, this is mostly a pass-through
+  // but ensures we have an array of unique-address nodes.
+  return Array.from(nodesMap.values());
+}
+
+/**
+ * Deprecated: We now allow multiple nodes per pubkey.
+ */
 export function deduplicateNodes(nodesMap: Map<string, PNode>): PNode[] {
-  const byPubkey = new Map<string, PNode>();
-
-  for (const node of nodesMap.values()) {
-    const pubkey = node.pubkey || node.publicKey;
-    if (!pubkey) continue;
-
-    const existing = byPubkey.get(pubkey);
-    if (!existing) {
-      byPubkey.set(pubkey, node);
-      continue;
-    }
-
-    // Merge: keep newer data, track previous addresses
-    const merged: PNode = {
-      ...existing,
-      ...node,
-      // Preserve identifiers
-      id: existing.id || node.id,
-      pubkey: existing.pubkey || node.pubkey,
-      publicKey: existing.publicKey || node.publicKey,
-      // Track IP changes
-      previousAddresses: existing.address && existing.address !== node.address
-        ? [...(existing.previousAddresses || []), existing.address]
-        : existing.previousAddresses,
-      // Preserve balance if not in new data
-      balance: node.balance ?? existing.balance,
-      managerPDA: node.managerPDA || existing.managerPDA,
-      // STOINC & Rewards - preserve if not in new data
-      xandStake: node.xandStake ?? existing.xandStake,
-      daoStake: node.daoStake ?? existing.daoStake,
-      vestingStake: node.vestingStake ?? existing.vestingStake,
-      nftBoost: node.nftBoost ?? existing.nftBoost,
-      nftDetails: node.nftDetails || existing.nftDetails,
-      eraBoost: node.eraBoost ?? existing.eraBoost,
-      eraLabel: node.eraLabel || existing.eraLabel,
-      boostFactor: node.boostFactor ?? existing.boostFactor,
-      // Preserve location if not in new data
-      location: node.location || existing.location,
-      locationData: node.locationData || existing.locationData,
-    };
-
-    byPubkey.set(pubkey, merged);
-  }
-
-  console.log(`[Sync] Deduplicated to ${byPubkey.size} unique nodes`);
-  return Array.from(byPubkey.values());
+  return deduplicateNodesByAddress(nodesMap);
 }
 
 // ============================================================================
@@ -805,7 +769,7 @@ export async function syncNodes(): Promise<{ success: boolean; count: number; er
     try {
       const existing = await getExistingNodesFromDB();
       existing.forEach(n => {
-        const key = n.pubkey || n.publicKey;
+        const key = n.address;
         if (key) existingNodesMap.set(key, n);
       });
     } catch {
@@ -822,9 +786,8 @@ export async function syncNodes(): Promise<{ success: boolean; count: number; er
     // Step 8: Detect and Log Activity
     console.log(`[Sync] Detecting activity for ${dedupedNodes.length} nodes...`);
     for (const node of dedupedNodes) {
-      const pubkey = node.pubkey || node.publicKey;
-      if (pubkey) {
-        const oldNode = existingNodesMap.get(pubkey);
+      if (node.address) {
+        const oldNode = existingNodesMap.get(node.address);
         await detectAndLogActivity(node, oldNode);
       }
     }
@@ -837,13 +800,12 @@ export async function syncNodes(): Promise<{ success: boolean; count: number; er
     const { getAllNodes } = await import('./mongodb-nodes');
     const allDbNodes = await getAllNodes();
 
-    // Create a set of pubkeys we saw in gossip this cycle
-    const seenPubkeys = new Set(dedupedNodes.map(n => n.pubkey || n.publicKey));
+    // Create a set of addresses we saw in gossip this cycle
+    const seenAddresses = new Set(dedupedNodes.map(n => n.address));
 
     // Mark nodes not seen in gossip as offline, keep others as-is
     const completeNodes = allDbNodes.map(node => {
-      const pubkey = node.pubkey || node.publicKey;
-      if (pubkey && !seenPubkeys.has(pubkey)) {
+      if (node.address && !seenAddresses.has(node.address)) {
         // Node wasn't seen in gossip - mark as offline
         return {
           ...node,
@@ -855,12 +817,12 @@ export async function syncNodes(): Promise<{ success: boolean; count: number; er
       return node;
     });
 
-    const offlineCount = completeNodes.length - seenPubkeys.size;
+    const offlineCount = completeNodes.length - seenAddresses.size;
 
     // Step 10: Store historical snapshot with ALL nodes
     try {
       const { storeHistoricalSnapshot } = await import('./mongodb-history');
-      console.log(`[Sync] Storing historical snapshot for ${completeNodes.length} nodes (${seenPubkeys.size} online, ${offlineCount} offline)...`);
+      console.log(`[Sync] Storing historical snapshot for ${completeNodes.length} nodes (${seenAddresses.size} online, ${offlineCount} offline)...`);
       await storeHistoricalSnapshot(completeNodes);
       console.log('[Sync] ✅ Historical snapshot stored successfully');
     } catch (err) {

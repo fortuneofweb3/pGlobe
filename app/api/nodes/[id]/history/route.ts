@@ -22,6 +22,7 @@ export async function GET(
         const nodeId = params.id;
         const { searchParams } = new URL(request.url);
         const period = searchParams.get('period') || '7d';
+        const address = searchParams.get('address');
 
         if (!nodeId) {
             return NextResponse.json(
@@ -30,9 +31,13 @@ export async function GET(
             );
         }
 
-        console.log(`[VercelProxy] Proxying node history request for ${nodeId} to Render...`);
+        console.log(`[VercelProxy] Proxying node history request for ${nodeId} (Address: ${address || 'any'}) to Render...`);
 
-        const response = await fetch(`${RENDER_API_URL}/api/nodes/${nodeId}/history?period=${period}`, {
+        const queryParams = new URLSearchParams();
+        queryParams.set('period', period);
+        if (address) queryParams.set('address', address);
+
+        const response = await fetch(`${RENDER_API_URL}/api/nodes/${nodeId}/history?${queryParams.toString()}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',

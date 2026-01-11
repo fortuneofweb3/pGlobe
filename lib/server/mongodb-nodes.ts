@@ -210,9 +210,11 @@ export function isValidPubkey(pubkey: string | null | undefined): boolean {
 
 function nodeToDocument(node: Partial<PNode>): Partial<NodeDocument> {
   const doc: any = {};
+  if (node.address) {
+    doc._id = node.address;
+  }
   const pubkey = node.pubkey || node.publicKey;
   if (pubkey) {
-    doc._id = pubkey;
     doc.pubkey = pubkey;
     doc.publicKey = pubkey;
   }
@@ -374,15 +376,15 @@ export async function upsertNodes(nodes: PNode[], skipMarkOffline: boolean = fal
     const collection = await getNodesCollection();
     const now = new Date();
 
-    // Collect all pubkeys from incoming nodes
-    const incomingPubkeys = new Set<string>();
+    const incomingAddresses = new Set<string>();
     const operations: AnyBulkWriteOperation<NodeDocument>[] = [];
 
     for (const node of nodes) {
+      const address = node.address;
       const pubkey = node.pubkey || node.publicKey;
-      if (!pubkey || !isValidPubkey(pubkey)) continue;
+      if (!address) continue;
 
-      incomingPubkeys.add(pubkey);
+      incomingAddresses.add(address);
       const doc = nodeToDocument(node);
 
       // Build update: overwrite stats, preserve balance/location if not in new data
@@ -434,7 +436,7 @@ export async function upsertNodes(nodes: PNode[], skipMarkOffline: boolean = fal
 
       operations.push({
         updateOne: {
-          filter: { _id: pubkey },
+          filter: { _id: address },
           update: { $set: setFields, $setOnInsert: setOnInsert },
           upsert: true,
         },
@@ -448,7 +450,7 @@ export async function upsertNodes(nodes: PNode[], skipMarkOffline: boolean = fal
       // Mark nodes NOT in this sync as offline (skip if requested)
       if (!skipMarkOffline) {
         const markOfflineResult = await collection.updateMany(
-          { _id: { $nin: Array.from(incomingPubkeys) } },
+          { _id: { $nin: Array.from(incomingAddresses) } },
           { $set: { seenInGossip: false, status: 'offline', updatedAt: now } }
         );
 
@@ -657,20 +659,42 @@ export async function getAllNodesForManagers(): Promise<PNode[]> {
   return [];
 }
 
-/**
- * Get node by pubkey
- */
-export async function getNodeByPubkey(pubkey: string): Promise<PNode | null> {
+export async function getNodesByPubkey(pubkey: string): Promise<PNode[]> {
   try {
     await getClient();
     const collection = await getNodesCollection();
-    const doc = await collection.findOne({ _id: pubkey });
+    const cursor = collection.find({ $or: [{ pubkey: pubkey }, { publicKey: pubkey }] });
+    const docs = await cursor.toArray();
+    return docs.map(doc => documentToNode(doc as unknown as NodeDocument));
+  } catch (err) {
+    const error = err as Error;
+    console.error('[MongoDB] Error fetching nodes by pubkey:', error.message);
+    return [];
+  }
+}
+
+/**
+ * Get node by address (primary key)
+ */
+export async function getNodeByAddress(address: string): Promise<PNode | null> {
+  try {
+    await getClient();
+    const collection = await getNodesCollection();
+    const doc = await collection.findOne({ _id: address });
     return doc ? documentToNode(doc as unknown as NodeDocument) : null;
   } catch (err) {
     const error = err as Error;
-    console.error('[MongoDB] Error fetching node:', error.message);
+    console.error('[MongoDB] Error fetching node by address:', error.message);
     return null;
   }
+}
+
+/**
+ * Deprecated: Use getNodesByPubkey or getNodeByAddress
+ */
+export async function getNodeByPubkey(pubkey: string): Promise<PNode | null> {
+  const nodes = await getNodesByPubkey(pubkey);
+  return nodes.length > 0 ? nodes[0] : null;
 }
 
 /**
@@ -686,7 +710,7 @@ export async function updateNode(pubkey: string, updates: Partial<PNode>): Promi
     delete doc._id;
 
     await collection.updateOne(
-      { _id: pubkey },
+      { _id: updates.address || pubkey },
       {
         $set: {
           ...doc,

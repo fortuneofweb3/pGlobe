@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, ReactNode } from 'react';
 import { PNode } from '@/lib/types/pnode';
 import { NetworkConfig } from '@/lib/server/network-config';
+import { mergeDuplicateIPNodes } from '@/lib/utils/merge-duplicate-ips';
 
 export interface Manager {
   wallet: string;
@@ -24,6 +25,7 @@ export interface Manager {
   onlineCount: number;
   source: 'mainnet' | 'devnet' | 'both';
   totalPurchases?: number; // Actual on-chain purchase count (from Mainnet purchase accounts)
+  createdAt?: string; // When manager first joined (ISO date string)
 }
 
 interface NodesContextType {
@@ -95,57 +97,33 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   const fetchPromiseRef = useRef<Promise<void> | null>(null);
   // Track nodes length separately to avoid stale closure issues
   const nodesLengthRef = useRef(0);
+  const selectedNetworkRef = useRef(selectedNetwork);
 
-  // Keep ref in sync with state
+  // Update refs when state changes
   useEffect(() => {
     nodesLengthRef.current = nodes.length;
-  }, [nodes.length]);
-
-  const selectedNetworkRef = useRef(selectedNetwork);
-  useEffect(() => {
     selectedNetworkRef.current = selectedNetwork;
-  }, [selectedNetwork]);
+  }, [nodes, selectedNetwork]);
 
-  const cacheKey = (network: string) => `nodesCache:${network || 'default'}`;
+  const cacheKey = (network: string) => `pglobe:cache:${network}`;
 
   const loadCache = useCallback(() => {
     if (typeof window === 'undefined') return null;
     try {
       const cached = localStorage.getItem(cacheKey(selectedNetwork));
-      if (!cached) return null;
-      const parsed = JSON.parse(cached);
-      if (!parsed?.nodes) return null;
-
-      // Validate cache age - invalidate if older than 5 minutes
-      if (parsed.lastUpdate) {
-        const cacheAge = Date.now() - new Date(parsed.lastUpdate).getTime();
-        const maxAge = 5 * 60 * 1000; // 5 minutes
-        if (cacheAge > maxAge) {
-          localStorage.removeItem(cacheKey(selectedNetwork));
-          return null;
-        }
-      }
-
-      return parsed as {
-        nodes: PNode[];
-        managers?: Manager[];
-        managerGlobalStats?: any;
-        networkStats?: any;
-        lastUpdate?: string;
-        availableNetworks?: NetworkConfig[];
-        currentNetwork?: NetworkConfig | null;
-      };
+      if (cached) return JSON.parse(cached);
     } catch {
       return null;
     }
+    return null;
   }, [selectedNetwork]);
 
   const saveCache = useCallback(
     (payload: {
       nodes: PNode[];
-      managers?: Manager[];
-      managerGlobalStats?: any;
-      networkStats?: any;
+      managers: Manager[];
+      managerGlobalStats: any;
+      networkStats: any;
       lastUpdate?: Date | null;
       availableNetworks?: NetworkConfig[];
       currentNetwork?: NetworkConfig | null;
@@ -211,7 +189,6 @@ export function NodesProvider({ children }: { children: ReactNode }) {
           setNodes(nodesData.nodes);
 
           if (managersData.success) {
-            console.log(`[NodesContext] ✅ Updating managers for ${currentFetchNetwork} (${managersData.managers.length} managers)`);
             setManagers(managersData.managers);
             setManagerGlobalStats(managersData.stats);
           }
@@ -260,20 +237,15 @@ export function NodesProvider({ children }: { children: ReactNode }) {
 
   const hasInitializedRef = useRef(false);
 
-  // Initial fetch - load from cache instantly, then fetch in background
-  // Only run once on mount, not on every page switch
   useEffect(() => {
-    // Only run in browser environment
     if (typeof window === 'undefined') {
       setLoading(false);
       return;
     }
 
-    // Wait for network hydration before first fetch
     if (!networkHydrated) return;
 
     if (hasInitializedRef.current) {
-      // Already initialized, just load cache if needed
       const cached = loadCache();
       if (cached?.nodes && cached.nodes.length > 0 && nodesLengthRef.current === 0) {
         setNodes(cached.nodes);
@@ -293,7 +265,6 @@ export function NodesProvider({ children }: { children: ReactNode }) {
 
     hasInitializedRef.current = true;
 
-    // Hydrate from cache FIRST - show existing data immediately (no loading state)
     const cached = loadCache();
     if (cached?.nodes && cached.nodes.length > 0) {
       setNodes(cached.nodes);
@@ -311,27 +282,16 @@ export function NodesProvider({ children }: { children: ReactNode }) {
       setLoading(true);
     }
 
-    // STEP 1: ALWAYS fetch fresh data - don't rely on cache alone
-    // This ensures we show current data, even if cache exists
-    // Defer fetch until after initial render to avoid blocking navigation
     const triggerFetch = () => {
-      refreshNodes().catch(err => {
-        console.error('[NodesContext] Failed to refresh nodes:', err);
-        // If we have cached data, keep showing it, but log that it might be stale
-        if (cached?.nodes && cached.nodes.length > 0) {
-          console.warn('[NodesContext] Using cached data - may be stale');
-        }
-      });
+      refreshNodes().catch(() => { });
     };
 
     if ('requestIdleCallback' in window) {
-      requestIdleCallback(() => triggerFetch(), { timeout: 500 });
+      (window as any).requestIdleCallback(() => triggerFetch(), { timeout: 500 });
     } else {
       setTimeout(triggerFetch, 50);
     }
 
-    // STEP 2: Trigger server-side refresh AFTER fetching MongoDB data
-    // This keeps MongoDB updated in the background
     const lastRefreshTime = localStorage.getItem('lastServerRefresh');
     const now = Date.now();
     const oneMinuteAgo = now - 60 * 1000;
@@ -348,41 +308,27 @@ export function NodesProvider({ children }: { children: ReactNode }) {
           .catch(() => { });
       }, 5000);
     }
-  }, [loadCache, refreshNodes, setNetworkInternal]);
+  }, [loadCache, refreshNodes, setNetworkInternal, networkHydrated]);
 
-  // Passive polling: Fetch fresh data from MongoDB every 2 minutes
-  // Reduced frequency to minimize flickering and improve performance
-  // Only poll if we have nodes (don't poll if initial load failed)
   useEffect(() => {
-    // Only run in browser environment
     if (typeof window === 'undefined') return;
-
-    // Only start polling if we have nodes
     if (nodesLengthRef.current === 0) return;
 
     const interval = setInterval(() => {
       refreshNodes();
-    }, 120 * 1000); // 2 minutes - reduced from 1 minute to prevent excessive updates
-    return () => {
-      clearInterval(interval);
-    };
+    }, 120 * 1000);
+    return () => clearInterval(interval);
   }, [refreshNodes]);
 
-  // Refresh when network changes
   useEffect(() => {
-    // Only run in browser environment
     if (typeof window === 'undefined') return;
-
     if (selectedNetwork && networkHydrated) {
       refreshNodes();
     }
   }, [selectedNetwork, refreshNodes, networkHydrated]);
 
-  // Fetch pod credits when nodes are loaded
   useEffect(() => {
-    // Only run in browser environment
     if (typeof window === 'undefined') return;
-
     const fetchCredits = async () => {
       try {
         const response = await fetch('/api/pod-credits');
@@ -392,63 +338,42 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         }
       } catch { }
     };
-
-    if (nodes.length > 0) {
-      fetchCredits();
-    }
+    if (nodes.length > 0) fetchCredits();
   }, [nodes.length]);
 
-  // Fetch manager stats (purchase counts) - Merged into /api/pnodes response
-
-  // Merge credits into nodes before providing to context
+  // Merge credits into nodes
   const nodesWithCredits = useMemo(() => {
     if (Object.keys(podCredits).length === 0) return nodes;
-    return nodes.map(node => {
-      const pubkey = node.pubkey || node.publicKey || '';
-      const credits = podCredits[pubkey];
-      return {
-        ...node,
-        credits: credits ?? node.credits,
-      };
-    });
+    return nodes.map(node => ({
+      ...node,
+      credits: podCredits[node.pubkey || node.publicKey || ''] ?? node.credits,
+    }));
   }, [nodes, podCredits]);
 
-  // Filter nodes by selected network
-  // 'mainnet' shows nodes where network === 'mainnet' or 'both'
-  // 'devnet' shows nodes where network === 'devnet' or 'both'
-  // 'all' shows all nodes (for future use)
+  // Filter nodes by network
   const filteredByNetwork = useMemo(() => {
     if (selectedNetwork === 'all') return nodesWithCredits;
-
     return nodesWithCredits.filter(node => {
       const nodeNetwork = node.network || 'unknown';
-      if (selectedNetwork === 'mainnet') {
-        return nodeNetwork === 'mainnet' || nodeNetwork === 'both';
-      }
-      if (selectedNetwork === 'devnet') {
-        return nodeNetwork === 'devnet' || nodeNetwork === 'unknown';
-      }
+      if (selectedNetwork === 'mainnet') return nodeNetwork === 'mainnet' || nodeNetwork === 'both';
+      if (selectedNetwork === 'devnet') return nodeNetwork === 'devnet' || nodeNetwork === 'unknown';
       return true;
     });
   }, [nodesWithCredits, selectedNetwork]);
 
-  // Separate active nodes (online + syncing) from offline nodes
-  const { activeNodes, offlineNodes } = useMemo(() => {
-    const active: PNode[] = [];
-    const offline: PNode[] = [];
-
-    filteredByNetwork.forEach(node => {
-      if (node.status === 'online' || node.status === 'syncing') {
-        active.push(node);
-      } else {
-        offline.push(node);
-      }
-    });
-
-    return { activeNodes: active, offlineNodes: offline };
+  // AGGRESSIVE MERGE: group by Pubkey or IP
+  const mergedNodes = useMemo(() => {
+    return mergeDuplicateIPNodes(filteredByNetwork);
   }, [filteredByNetwork]);
 
-  // Filter managers by selected network (safety measure)
+  const activeNodes = useMemo(() => {
+    return mergedNodes.filter(n => n.status === 'online' || n.status === 'syncing');
+  }, [mergedNodes]);
+
+  const offlineNodes = useMemo(() => {
+    return mergedNodes.filter(n => n.status === 'offline' || !n.status);
+  }, [mergedNodes]);
+
   const filteredManagers = useMemo(() => {
     if (selectedNetwork === 'all') return managers;
     return managers.filter(m => {
@@ -458,23 +383,15 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     });
   }, [managers, selectedNetwork]);
 
-  // Calculate dead managers (managers with only offline nodes)
-  const deadManagerCount = useMemo(() => {
-    return filteredManagers.filter(m => m.onlineCount === 0).length;
-  }, [filteredManagers]);
-
   return (
     <NodesContext.Provider
       value={{
-        nodes: filteredByNetwork,
+        nodes: mergedNodes,
         activeNodes,
         offlineNodes,
         managers: filteredManagers,
         managerGlobalStats,
         networkStats,
-        managerCount: filteredManagers.length,
-        offlineNodeCount: offlineNodes.length,
-        deadManagerCount,
         loading,
         error,
         lastUpdate,
@@ -483,6 +400,9 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         availableNetworks,
         currentNetwork,
         refreshNodes,
+        managerCount: filteredManagers.length,
+        offlineNodeCount: offlineNodes.length,
+        deadManagerCount: filteredManagers.filter(m => m.onlineCount === 0).length,
       }}
     >
       {children}
@@ -492,9 +412,6 @@ export function NodesProvider({ children }: { children: ReactNode }) {
 
 export function useNodes() {
   const context = useContext(NodesContext);
-  if (context === undefined) {
-    throw new Error('useNodes must be used within a NodesProvider');
-  }
+  if (context === undefined) throw new Error('useNodes must be used within a NodesProvider');
   return context;
 }
-

@@ -11,6 +11,29 @@ export interface PNodePeer {
   last_seen_timestamp?: number;
 }
 
+/**
+ * Represents individual IP stats when multiple IPs share the same pubkey
+ */
+export interface MergedIPEntry {
+  address: string;
+  pubkey?: string;
+  status?: 'online' | 'offline' | 'syncing';
+  storageCapacity?: number;
+  credits?: number;
+  packetsReceived?: number;
+  packetsSent?: number;
+  uptime?: number;
+  lastSeen?: number;
+  dataOperationsHandled?: number;
+  locationData?: {
+    lat: number;
+    lon: number;
+    city?: string;
+    country?: string;
+    countryCode?: string;
+  };
+}
+
 export interface PNode {
   id: string;
   address: string;
@@ -113,6 +136,10 @@ export interface PNode {
   ps?: number; // packetsSent
   as?: number; // activeStreams
   cpu?: number; // cpuPercent
+
+  // Merged node fields (for nodes with same pubkey but different IPs)
+  mergedIPs?: MergedIPEntry[]; // Individual stats for each IP when merged
+  isMerged?: boolean; // True if this node was merged from multiple IPs
 
   [key: string]: unknown; // Allow additional fields safely
 }
