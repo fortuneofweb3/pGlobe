@@ -58,11 +58,14 @@ export async function aggregateManagers(network: string = 'all'): Promise<{ mana
 
         const manager = getOrCreateManager(primaryWallet);
 
-        if (role === 'buyer') {
+        // Determine source based on node's actual network
+        const nodeNetwork = node.network || 'unknown';
+        if (nodeNetwork === 'mainnet') {
             if (manager.source === 'devnet') manager.source = 'both';
             else if (manager.source !== 'both') manager.source = 'mainnet';
-        } else {
+        } else if (nodeNetwork === 'devnet' || nodeNetwork === 'unknown') {
             if (manager.source === 'mainnet') manager.source = 'both';
+            // else keep as devnet (default)
         }
 
         if (node.registrarWallet && node.registrarWallet !== primaryWallet) {

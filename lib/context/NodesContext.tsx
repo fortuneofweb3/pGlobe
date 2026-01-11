@@ -374,14 +374,9 @@ export function NodesProvider({ children }: { children: ReactNode }) {
     return mergedNodes.filter(n => n.status === 'offline' || !n.status);
   }, [mergedNodes]);
 
-  const filteredManagers = useMemo(() => {
-    if (selectedNetwork === 'all') return managers;
-    return managers.filter(m => {
-      if (selectedNetwork === 'mainnet') return m.source === 'mainnet' || m.source === 'both';
-      if (selectedNetwork === 'devnet') return m.source === 'devnet' || m.source === 'both' || m.source === 'unknown' as any;
-      return true;
-    });
-  }, [managers, selectedNetwork]);
+  // Managers are already filtered by network in the API response
+  // No additional frontend filtering needed
+  const filteredManagers = managers;
 
   return (
     <NodesContext.Provider
