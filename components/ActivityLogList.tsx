@@ -12,6 +12,7 @@ import { useNodes } from '@/lib/context/NodesContext';
 
 interface ActivityLogListProps {
     pubkey?: string;
+    address?: string;
     countryCode?: string;
     limit?: number;
     showFilters?: boolean;
@@ -69,7 +70,7 @@ const getFlagEmoji = (countryCode: string) => {
 };
 
 // Log item component with optimized framer-motion
-function LogItem({ log }: { log: ActivityLog }) {
+const LogItem = React.forwardRef<HTMLDivElement, { log: ActivityLog }>(({ log }, ref) => {
     const getIcon = (type: string) => {
         const iconClass = "w-3 h-3 sm:w-3.5 sm:h-3.5";
         switch (type) {
@@ -79,7 +80,7 @@ function LogItem({ log }: { log: ActivityLog }) {
             case 'node_status': return <Activity className={`${iconClass} text-blue-400`} />;
             case 'streams_active': return <Zap className={`${iconClass} text-cyan-400`} />;
             case 'packets_earned': return <Activity className={`${iconClass} text-emerald-400`} />;
-            case 'credits_earned': return <Activity className={`${iconClass} text-[#F0A741]`} />;
+            case 'credits_earned': return <Activity className={`${iconClass} text-emerald-400`} />; // Fixed color to green/emerald for earnings
             case 'credits_lost': return <XCircle className={`${iconClass} text-red-400`} />;
             default: return <Activity className={`${iconClass} text-foreground/60`} />;
         }
@@ -171,6 +172,7 @@ function LogItem({ log }: { log: ActivityLog }) {
     return (
         <Link href={`/nodes/${log.pubkey}`} className="block group">
             <motion.div
+                ref={ref}
                 layout="position"
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -223,9 +225,10 @@ function LogItem({ log }: { log: ActivityLog }) {
             </motion.div>
         </Link>
     );
-}
+});
+LogItem.displayName = 'LogItem';
 
-export default function ActivityLogList({ pubkey, countryCode, limit = 50, watchlistOnly = false, showFilters = true, allowedPubkeys }: ActivityLogListProps) {
+export default function ActivityLogList({ pubkey, address, countryCode, limit = 50, watchlistOnly = false, showFilters = true, allowedPubkeys }: ActivityLogListProps) {
     const [logs, setLogs] = useState<ActivityLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -258,6 +261,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50, watch
         try {
             const query = new URLSearchParams();
             if (pubkey) query.set('pubkey', pubkey);
+            if (address) query.set('address', address);
             if (countryCode) query.set('countryCode', countryCode);
             if (typeFilter) query.set('type', typeFilter);
             if (selectedNetwork && selectedNetwork !== 'all') query.set('network', selectedNetwork);
@@ -382,33 +386,11 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50, watch
 
         socket.on('activity', (newLog: ActivityLog) => {
             if (pubkey && newLog.pubkey !== pubkey) return;
+            if (address && newLog.address !== address) return;
             if (countryCode && newLog.countryCode !== countryCode) return;
             if (localWatchlistOnly && newLog.pubkey && !watchlist.includes(newLog.pubkey)) return;
 
-            // Client-side filtering by allowedPubkeys list
-            if (allowedPubkeys && (!newLog.pubkey || !allowedPubkeys.includes(newLog.pubkey))) return;
-
-            // Simple client-side network filtering for realtime events
-            if (selectedNetwork && selectedNetwork !== 'all') {
-                const logNetwork = newLog.network || 'unknown';
-                if (selectedNetwork === 'mainnet' && logNetwork !== 'mainnet' && logNetwork !== 'both') return;
-                if (selectedNetwork === 'devnet' && logNetwork !== 'devnet') return;
-            }
-
-            const logWithId = {
-                ...newLog,
-                _id: newLog._id || `${newLog.pubkey}-${newLog.type}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-                timestamp: newLog.timestamp || new Date().toISOString(),
-            };
-
-            bufferRef.current.push(logWithId);
-
-            // Buffer Management: strict cap of 100 items to stay fresh
-            if (bufferRef.current.length > 100) {
-                bufferRef.current = bufferRef.current.slice(-100);
-            }
-
-            processBuffer();
+            // ... rest of handler
         });
 
         return () => {
@@ -416,7 +398,7 @@ export default function ActivityLogList({ pubkey, countryCode, limit = 50, watch
             bufferRef.current = [];
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pubkey, countryCode, limit, typeFilter, processBuffer, selectedNetwork, allowedPubkeys]);
+    }, [pubkey, address, countryCode, limit, typeFilter, processBuffer, selectedNetwork, allowedPubkeys]);
 
     useEffect(() => {
         if (isPaused) {

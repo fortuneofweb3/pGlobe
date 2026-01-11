@@ -408,6 +408,126 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
     return '—';
   };
 
+  // Aggregation Logic
+  const processedNodes = useMemo(() => {
+    const groups = new Map<string, PNode[]>();
+
+    // Group by pubkey
+    nodes.forEach(node => {
+      // Prioritize pubkey, fall back to ID if it looks like a pubkey (not an IP)
+      // The backend now stores ID as IP:Port, but Pubkey field is reliable.
+      const key = node.pubkey || node.publicKey || '';
+
+      // If we somehow don't have a pubkey, use ID (fallback for old data/devnet)
+      const groupKey = key || node.id;
+
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, []);
+      }
+      groups.get(groupKey)!.push(node);
+    });
+
+    return Array.from(groups.values()).map(group => {
+      // Single node - return as is (but ensure isMerged logic is consistent if needed)
+      if (group.length === 1) {
+        return group[0];
+      }
+
+      // Multiple nodes - Aggregate
+      const primary = group[0]; // Use first node as base for metadata
+
+      // Sums
+      // storageCapacity, storageUsed, activeStreams, packetsReceived, packetsSent, peerCount
+      const storageCapacity = group.reduce((sum, n) => sum + (n.storageCapacity || 0), 0);
+      const storageUsed = group.reduce((sum, n) => sum + (n.storageUsed || 0), 0);
+      const activeStreams = group.reduce((sum, n) => sum + (n.activeStreams || 0), 0);
+      const packetsReceived = group.reduce((sum, n) => sum + (n.packetsReceived || 0), 0);
+      const packetsSent = group.reduce((sum, n) => sum + (n.packetsSent || 0), 0);
+
+      // Averages (ignoring zero/undefined for better accuracy?)
+      // uptime, cpuPercent
+      const uptimeNodes = group.filter(n => n.uptime && n.uptime > 0);
+      const totalUptime = uptimeNodes.reduce((sum, n) => sum + (n.uptime || 0), 0);
+      const avgUptime = uptimeNodes.length > 0 ? totalUptime / uptimeNodes.length : 0;
+
+      const cpuNodes = group.filter(n => n.cpuPercent !== undefined);
+      const totalCpu = cpuNodes.reduce((sum, n) => sum + (n.cpuPercent || 0), 0);
+      const avgCpu = cpuNodes.length > 0 ? totalCpu / cpuNodes.length : 0;
+
+      // Latency is special - we might have it in `nodeLatencies` state
+      // We'll calculate it dynamically during render or here if we assume nodeLatencies is stable enough
+      // But nodeLatencies updates asynchronously. PNode object doesn't have it usually.
+      // We'll leave latency aggregation to the render time helper or average the base props if valid.
+
+      // Construct Merged PNode
+      const merged: PNode = {
+        ...primary,
+        isMerged: true,
+        mergedIPs: group, // Store original nodes
+
+        // Overwrite stats
+        storageCapacity,
+        storageUsed,
+        activeStreams,
+        packetsReceived,
+        packetsSent,
+        uptime: avgUptime,
+        cpuPercent: avgCpu,
+
+        // Peer count: Summing might double count same peers, but it shows "total connections handled"
+        peerCount: group.reduce((sum, n) => sum + (n.peerCount || 0), 0),
+
+        // Address: Show count or primary? UI handles this via `mergedIPs` check
+
+        // Joined Date: Use the oldest (min) createdAt
+        createdAt: group.reduce((min, n) => {
+          if (!n.createdAt) return min;
+          if (!min) return n.createdAt;
+          return new Date(n.createdAt) < new Date(min) ? n.createdAt : min;
+        }, primary.createdAt),
+        address: `${group.length} IPs`,
+      };
+
+      return merged;
+    });
+  }, [nodes]);
+
+  // Apply sorting to the PROCESSED (aggregated) nodes
+  const sortedNodes = useMemo(() => {
+    if (!sortBy) return processedNodes;
+
+    return [...processedNodes].sort((a, b) => {
+      let aVal: any = a[sortBy as keyof PNode];
+      let bVal: any = b[sortBy as keyof PNode];
+
+      // Special handling for latency (from state)
+      if (sortBy === 'latency') {
+        aVal = nodeLatencies[a.id] || 999999;
+        bVal = nodeLatencies[b.id] || 999999;
+      }
+
+      // Special handling for merged latency?
+      if (a.isMerged && sortBy === 'latency') {
+        // calculate avg latency for A
+        const aLats = a.mergedIPs?.map(ip => nodeLatencies[ip.address]).filter(l => l !== null && l !== undefined) as number[] || [];
+        aVal = aLats.length > 0 ? aLats.reduce((s, v) => s + v, 0) / aLats.length : 999999;
+      }
+      if (b.isMerged && sortBy === 'latency') {
+        const bLats = b.mergedIPs?.map(ip => nodeLatencies[ip.address]).filter(l => l !== null && l !== undefined) as number[] || [];
+        bVal = bLats.length > 0 ? bLats.reduce((s, v) => s + v, 0) / bLats.length : 999999;
+      }
+
+      // Handle undefined/nulls
+      if (aVal === undefined || aVal === null) aVal = -1;
+      if (bVal === undefined || bVal === null) bVal = -1;
+
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [processedNodes, sortBy, sortOrder, nodeLatencies]);
+
+
   // Calculate stats for info banner
   const statsWithData = useMemo(() => {
     const withUptime = nodes.filter(n => n.uptime && n.uptime > 0).length;
@@ -418,8 +538,8 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
       return nodeLatencies[n.id] !== null && nodeLatencies[n.id] !== undefined;
     }).length;
 
-    return { withUptime, withStorage, withCPU, withLatency, total: nodes.length };
-  }, [nodes, nodeLatencies]);
+    return { withUptime, withStorage, withCPU, withLatency, total: nodes.length, uniqueOperators: processedNodes.length };
+  }, [nodes, nodeLatencies, processedNodes.length]);
 
   return (
     <div className="card flex flex-col h-full overflow-hidden" style={{ padding: 0 }}>
@@ -428,8 +548,11 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
         <div className="px-3 sm:px-4 py-2 bg-muted border-b border-border/60 text-xs text-muted-foreground flex-shrink-0 flex items-center justify-between gap-2">
           <div className="flex-1 min-w-0">
             <span className="font-medium text-foreground/60">Note: </span>
-            <span className="hidden sm:inline">Most operators keep pRPC private for security. Stats shown: {statsWithData.withUptime} uptime, {statsWithData.withStorage} storage, {statsWithData.withCPU} CPU, {statsWithData.withLatency} latency (of {statsWithData.total} total pNodes)</span>
-            <span className="sm:hidden">Limited stats: {statsWithData.withUptime}/{statsWithData.total} nodes with data</span>
+            <span className="hidden sm:inline">
+              Running {statsWithData.total} nodes across {statsWithData.uniqueOperators} unique operators.
+              Stats: {statsWithData.withUptime} uptime, {statsWithData.withStorage} storage
+            </span>
+            <span className="sm:hidden">{statsWithData.uniqueOperators} operators / {statsWithData.total} IPs</span>
           </div>
           <div className="flex items-center bg-card border border-border rounded-lg p-0.5 flex-shrink-0">
             <button
@@ -454,11 +577,11 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
         {viewMode === 'grid' ? (
           /* Grid View */
           <div className="overflow-y-auto flex-1 min-h-0 p-3 sm:p-4">
-            {nodes.length === 0 ? (
+            {sortedNodes.length === 0 ? (
               <div className="text-center py-12 text-foreground/50">No pNodes found</div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {nodes.map((node, index) => {
+                {sortedNodes.map((node, index) => {
                   const nodeId = node.pubkey || node.publicKey || node.id || '';
                   const watched = isWatched(nodeId);
                   const balance = balances[node.id] !== undefined ? balances[node.id] : node.balance;
@@ -523,9 +646,12 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                       onClick={() => {
                         if (onNodeClick) {
                           onNodeClick(node);
-                        } else if (nodeId) {
-                          startProgress();
-                          router.push(`/nodes/${encodeURIComponent(nodeId)}`);
+                        } else {
+                          const nodeId = node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '';
+                          if (nodeId) {
+                            startProgress();
+                            router.push(`/nodes/${encodeURIComponent(nodeId)}`);
+                          }
                         }
                       }}
                       className="bg-gradient-to-br from-muted/80 to-muted/40 border border-border rounded-xl p-4 cursor-pointer hover:border-[#F0A741]/50 hover:shadow-lg hover:shadow-[#F0A741]/5 transition-all duration-200 group"
@@ -861,14 +987,14 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
-                {nodes.length === 0 ? (
+                {sortedNodes.length === 0 ? (
                   <tr>
                     <td colSpan={18} className="px-4 py-12 text-center text-foreground/50">
                       No pNodes found
                     </td>
                   </tr>
                 ) : (
-                  nodes.map((node, index) => {
+                  sortedNodes.map((node, index) => {
                     const isTrynet = node.version?.includes('-trynet') || false;
                     return (
                       <tr
@@ -877,7 +1003,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           if (onNodeClick) {
                             onNodeClick(node);
                           } else {
-                            const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';
+                            const nodeId = node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '';
                             if (nodeId) {
                               startProgress();
                               router.push(`/nodes/${encodeURIComponent(nodeId)}`);

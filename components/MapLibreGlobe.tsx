@@ -141,33 +141,24 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
   const currentPopupPosRef = useRef<{ x: number; y: number } | null>(null);
   const targetPopupPosRef = useRef<{ x: number; y: number } | null>(null);
 
-  // Filter nodes with valid location data and remove duplicates - memoized
-  // If no location data, still show nodes (they'll just be at 0,0 or we can skip them)
+  // Filter nodes with valid location data
+  // Must allow multiple nodes with same pubkey (if they have different IPs/IDs)
   const nodesWithLocation = useMemo(() => {
     const withLocation = nodes.filter((node) => node.locationData?.lat !== undefined && node.locationData?.lon !== undefined);
 
-    // Deduplicate by ID and pubkey only (NOT by coordinates!)
-    // Multiple nodes at same location are VALID - they're different machines in same data center
+    // Deduplicate by ID only
     const seenIds = new Set<string>();
-    const seenPubkeys = new Set<string>();
 
     const deduplicated = withLocation.filter((node) => {
       const nodeId = node.id || '';
-      const pubkey = node.pubkey || node.publicKey || '';
 
-      // Check if we've seen this exact ID before
+      // Check if we've seen this exact ID (IP) before
       if (nodeId && seenIds.has(nodeId)) {
         return false; // Duplicate by ID
       }
 
-      // Check if we've seen this exact pubkey before
-      if (pubkey && seenPubkeys.has(pubkey)) {
-        return false; // Duplicate by pubkey
-      }
-
       // Mark as seen
       if (nodeId) seenIds.add(nodeId);
-      if (pubkey) seenPubkeys.add(pubkey);
 
       return true;
     });

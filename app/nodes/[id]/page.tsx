@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState, useEffect, Suspense, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PNode, MergedIPEntry } from '@/lib/types/pnode';
@@ -807,7 +808,10 @@ function NodeDetailContent() {
     const [measuringLatency, setMeasuringLatency] = useState(false);
     const [isClient, setIsClient] = useState(false);
     const [pinIconsReady, setPinIconsReady] = useState(false);
-    const [activeIPIndex, setActiveIPIndex] = useState(0);
+    const [activeIPIndex, setActiveIPIndex] = useState(-1);
+    const [ipDropdownOpen, setIpDropdownOpen] = useState(false);
+    const [dropdownCoords, setDropdownCoords] = useState({ top: 0, left: 0, width: 0 });
+    const dropdownTriggerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setIsClient(true);
@@ -874,8 +878,10 @@ function NodeDetailContent() {
 
         if (!seedNode) return undefined;
 
-        // Use our utility to get all merged nodes, then find the one that contains our seed
-        const allMerged = mergeDuplicateIPNodes(allNodes);
+
+        // The nodes from useNodes() are ALREADY merged by NodesContext.
+        // We should not merge them again, as that strips the granular 'mergedIPs' data.
+        const allMerged = allNodes;
 
         // Find which merged group our seed node belongs to
         // We check if the merged node's pubkey or IP matches, 
@@ -898,6 +904,34 @@ function NodeDetailContent() {
             });
         });
     }, [allNodes, nodeId]);
+
+    // Current view node: either the primary node (for common info) or the specific IP entry (for stats)
+    const viewNode = useMemo(() => {
+        if (!node) return undefined;
+
+        // Aggregated view: use base node but ensure createdAt is the oldest among all IPs
+        if (activeIPIndex === -1) {
+            if (node.isMerged && node.mergedIPs && node.mergedIPs.length > 0) {
+                const initialCreatedAt = typeof node.createdAt === 'string' ? node.createdAt :
+                    (node.createdAt instanceof Date ? node.createdAt.toISOString() : undefined);
+
+                const oldestCreatedAt = node.mergedIPs.reduce<string | undefined>((min, n) => {
+                    const nCreatedAt = typeof n.createdAt === 'string' ? n.createdAt :
+                        (n.createdAt instanceof Date ? n.createdAt.toISOString() : undefined);
+                    if (!nCreatedAt) return min;
+                    if (!min) return nCreatedAt;
+                    return new Date(nCreatedAt) < new Date(min) ? nCreatedAt : min;
+                }, initialCreatedAt);
+                return { ...node, createdAt: oldestCreatedAt };
+            }
+            return node;
+        }
+
+        // Specific IP view: merge base with specific IP data
+        return node.isMerged && node.mergedIPs && node.mergedIPs[activeIPIndex]
+            ? { ...node, ...node.mergedIPs[activeIPIndex] }
+            : node;
+    }, [node, activeIPIndex]);
 
     // Pre-create pin icons immediately when Leaflet is available
     const [pinIcons, setPinIcons] = useState<Record<string, any>>({});
@@ -1028,9 +1062,11 @@ function NodeDetailContent() {
                     return;
                 }
 
-                const address = (node.isMerged && node.mergedIPs && node.mergedIPs[activeIPIndex])
-                    ? node.mergedIPs[activeIPIndex].address
-                    : node.address;
+                const address = activeIPIndex === -1
+                    ? undefined
+                    : (node.isMerged && node.mergedIPs && node.mergedIPs[activeIPIndex])
+                        ? node.mergedIPs[activeIPIndex].address
+                        : node.address;
 
                 const endTime = Date.now();
                 const startTime = endTime - (7 * 24 * 60 * 60 * 1000);
@@ -1104,21 +1140,21 @@ function NodeDetailContent() {
     }, [node?.pubkey || node?.publicKey || node?.id, activeIPIndex]);
 
     const nodeStats = useMemo(() => {
-        if (!node) return null;
+        if (!viewNode) return null;
 
         const networkAvgCpu = allNodes.length > 0
             ? allNodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null).reduce((sum, n) => sum + (n.cpuPercent || 0), 0) / allNodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null).length
             : 0;
 
-        const ramUtilization = node.ramTotal && node.ramUsed
-            ? (node.ramUsed / node.ramTotal) * 100
+        const ramUtilization = viewNode.ramTotal && viewNode.ramUsed
+            ? (viewNode.ramUsed / viewNode.ramTotal) * 100
             : 0;
 
         return {
             networkAvgCpu,
             ramUtilization,
         };
-    }, [node, allNodes]);
+    }, [viewNode, allNodes]);
 
     const formatUptime = (uptime?: number) => {
         if (uptime === undefined || uptime === null) return '—';
@@ -1142,9 +1178,126 @@ function NodeDetailContent() {
         if (status === 'syncing') {
             return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[#F0A741]/20 text-[#F0A741] border border-[#F0A741]/30">Syncing</span>;
         }
-        return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-500/20 text-gray-400 border border-gray-500/30">Offline</span>;
     };
 
+    // Helper to render the IP Switcher Dropdown
+    // Helper to render the IP Switcher Dropdown
+    const renderIPSwitcher = () => {
+        if (!node) return null;
+        // Only show if there are merged IPs (more than 1 IP or just merged structure)
+        // If it's a single IP node without merged structure, we don't need a switcher
+        if (!node.isMerged || !node.mergedIPs || node.mergedIPs.length === 0) return null;
+
+        const currentSelection = activeIPIndex === -1
+            ? { label: 'All IPs (Aggregated)', status: null }
+            : {
+                label: node.mergedIPs[activeIPIndex].address || 'Unknown IP',
+                status: node.mergedIPs[activeIPIndex].status
+            };
+
+        return (
+            <div className="relative mb-6 w-fit">
+                <div
+                    ref={dropdownTriggerRef}
+                    className="flex items-center justify-between w-auto min-w-[260px] px-3 py-2 bg-background/60 border border-border/40 rounded-lg cursor-pointer hover:bg-muted/40 transition-colors backdrop-blur-sm group"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        // Calculate position on open
+                        if (!ipDropdownOpen && dropdownTriggerRef.current) {
+                            const rect = dropdownTriggerRef.current.getBoundingClientRect();
+                            // Position below the trigger, aligning left
+                            setDropdownCoords({
+                                top: rect.bottom + 6,
+                                left: rect.left,
+                                width: rect.width
+                            });
+                        }
+                        setIpDropdownOpen(!ipDropdownOpen);
+                    }}
+                >
+                    <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${activeIPIndex === -1 ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.4)]' :
+                            currentSelection.status === 'online' ? 'bg-green-500' :
+                                currentSelection.status === 'syncing' ? 'bg-orange-500' : 'bg-red-500'
+                            }`} />
+                        <span className="text-sm font-mono text-foreground font-medium truncate max-w-[180px]">
+                            {currentSelection.label}
+                        </span>
+                    </div>
+                    <ChevronDown className={`w-4 h-4 text-foreground/50 transition-transform duration-300 ${ipDropdownOpen ? 'rotate-180' : ''}`} />
+                </div>
+
+                {/* Dropdown Menu Portal */}
+                {ipDropdownOpen && typeof document !== 'undefined' && createPortal(
+                    <div className="fixed inset-0 z-[9999]" style={{ pointerEvents: 'none' }}>
+                        {/* Overlay to close */}
+                        <div
+                            className="absolute inset-0 bg-transparent"
+                            style={{ pointerEvents: 'auto' }}
+                            onClick={() => setIpDropdownOpen(false)}
+                        />
+
+                        {/* Dropdown Content */}
+                        <div
+                            className="absolute bg-black/95 border border-border/40 rounded-lg shadow-2xl backdrop-blur-md overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                            style={{
+                                top: dropdownCoords.top,
+                                left: dropdownCoords.left,
+                                width: dropdownCoords.width,
+                                zIndex: 10000,
+                                pointerEvents: 'auto'
+                            }}
+                        >
+                            <div className="max-h-64 overflow-y-auto py-1">
+                                {/* All IPs Option */}
+                                <div
+                                    className={`px-3 py-2.5 flex items-center gap-2 cursor-pointer transition-colors ${activeIPIndex === -1 ? 'bg-cyan-500/10 text-cyan-400' : 'hover:bg-muted/30 text-foreground/70 hover:text-foreground'
+                                        }`}
+                                    onClick={() => {
+                                        setActiveIPIndex(-1);
+                                        setIpDropdownOpen(false);
+                                    }}
+                                >
+                                    <Server className="w-4 h-4 shrink-0" />
+                                    <span className="text-sm font-mono flex-1">All IPs (Aggregated)</span>
+                                    {activeIPIndex === -1 && <Check className="w-3.5 h-3.5" />}
+                                </div>
+
+                                <div className="h-px bg-border/20 my-1 mx-2" />
+
+                                {/* Individual IPs */}
+                                {node.mergedIPs.map((ip, idx) => (
+                                    <div
+                                        key={idx}
+                                        className={`px-3 py-2.5 flex items-center gap-2 cursor-pointer transition-colors ${activeIPIndex === idx ? 'bg-cyan-500/10 text-cyan-400' : 'hover:bg-muted/30 text-foreground/70 hover:text-foreground'
+                                            }`}
+                                        onClick={() => {
+                                            setActiveIPIndex(idx);
+                                            setIpDropdownOpen(false);
+                                        }}
+                                    >
+                                        <div className={`w-2 h-2 rounded-full shrink-0 ${ip.status === 'online' ? 'bg-green-500' :
+                                            ip.status === 'syncing' ? 'bg-orange-500' : 'bg-red-500'
+                                            }`} />
+                                        <div className="flex flex-col min-w-0 flex-1">
+                                            <span className="text-sm font-mono truncate">{ip.address}</span>
+                                            {ip.locationData?.city && (
+                                                <span className="text-[10px] text-muted-foreground truncate">
+                                                    {ip.locationData.city}, {ip.locationData.country}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {activeIPIndex === idx && <Check className="w-3.5 h-3.5" />}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>,
+                    document.body
+                )}
+            </div>
+        );
+    };
     // Show loading skeleton when loading or no data
     const isLoading = loading || (allNodes.length === 0);
 
@@ -1407,14 +1560,13 @@ function NodeDetailContent() {
         return null;
     }
 
-    const pubkey = node.pubkey || node.publicKey || node.id || (node.address ? node.address.split(':')[0] : '') || '';
-    const truncatedPubkey = pubkey.length > 16 ? `${pubkey.slice(0, 8)}...${pubkey.slice(-8)}` : pubkey;
-    const gossipAddress = node.address || '—';
+    if (!viewNode) return null;
 
-    // Current view node: either the primary node (for common info) or the specific IP entry (for stats)
-    const viewNode = node.isMerged && node.mergedIPs && node.mergedIPs[activeIPIndex]
-        ? { ...node, ...node.mergedIPs[activeIPIndex] }
-        : node;
+    const pubkey = viewNode.pubkey || viewNode.publicKey || viewNode.id || (viewNode.address ? viewNode.address.split(':')[0] : '') || '';
+    const truncatedPubkey = pubkey.length > 16 ? `${pubkey.slice(0, 8)}...${pubkey.slice(-8)}` : pubkey;
+    const gossipAddress = viewNode.address || '—';
+
+
 
     return (
         <div className="fixed inset-0 w-full h-full flex flex-col bg-black text-foreground">
@@ -1531,10 +1683,10 @@ function NodeDetailContent() {
                                                 <div className="space-y-2">
                                                     <p className="text-foreground/60 text-sm sm:text-base flex items-center gap-2">
                                                         <MapPin className="w-4 h-4" />
-                                                        {node.isMerged && node.mergedIPs && node.mergedIPs.length > 1
+                                                        {activeIPIndex === -1 && node.isMerged && node.mergedIPs && node.mergedIPs.length > 1
                                                             ? 'Multiple locations'
-                                                            : node.locationData?.city
-                                                                ? `${node.locationData.city}${node.locationData.country ? `, ${node.locationData.country}` : ''}`
+                                                            : viewNode?.locationData?.city
+                                                                ? `${viewNode.locationData.city}${viewNode.locationData.country ? `, ${viewNode.locationData.country}` : ''}`
                                                                 : 'Unknown location'
                                                         }
                                                     </p>
@@ -1545,54 +1697,11 @@ function NodeDetailContent() {
                                                         </div>
                                                     )}
                                                 </div>
-
-                                                {/* Unified Identifier & IP Switcher Row */}
-                                                <div className="mt-4 flex flex-wrap items-center gap-2">
-                                                    {/* Gossip Address Indicator */}
-                                                    <div className="inline-flex items-center gap-2 p-1.5 bg-background/40 border border-border/40 rounded-lg backdrop-blur-sm shadow-sm group">
-                                                        <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground/40 font-mono bg-muted/30 rounded border border-border/10">
-                                                            Gossip
-                                                        </div>
-                                                        <div className="text-foreground/50 text-sm font-mono flex items-center gap-1.5 px-1">
-                                                            <Network className="w-3.5 h-3.5 shrink-0" />
-                                                            <span className="select-text cursor-text">{gossipAddress || '—'}</span>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* IP Switcher Buttons */}
-                                                    {node.isMerged && node.mergedIPs && node.mergedIPs.length > 0 && node.mergedIPs.map((ipEntry: MergedIPEntry, idx: number) => {
-                                                        const isActive = activeIPIndex === idx;
-                                                        const ipOnly = ipEntry.address?.split(':')[0] || '—';
-
-                                                        return (
-                                                            <div key={`ip-switch-${idx}`} className="inline-flex items-center gap-1 p-1 bg-background/40 border border-border/40 rounded-lg backdrop-blur-sm group/ip">
-                                                                <div
-                                                                    onClick={() => setActiveIPIndex(idx)}
-                                                                    className={`px-3 py-1.5 rounded-md text-sm font-mono transition-all flex items-center gap-2 cursor-pointer ${isActive
-                                                                        ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
-                                                                        : 'hover:bg-muted/40 text-foreground/50 hover:text-foreground/80'
-                                                                        }`}
-                                                                >
-                                                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ipEntry.status === 'online' ? 'bg-green-500' :
-                                                                        ipEntry.status === 'syncing' ? 'bg-orange-500' : 'bg-red-500'
-                                                                        }`} />
-                                                                    <span className="select-text cursor-text">{ipOnly}</span>
-                                                                </div>
-                                                                <button
-                                                                    onClick={async (e) => {
-                                                                        e.stopPropagation();
-                                                                        await navigator.clipboard.writeText(ipEntry.address || '');
-                                                                        // Silent copy or add small notification
-                                                                    }}
-                                                                    className="p-1.5 hover:bg-muted/40 rounded transition-colors text-foreground/10 group-hover/ip:text-foreground/40"
-                                                                    title="Copy IP Address"
-                                                                >
-                                                                    <Copy className="w-3 h-3" />
-                                                                </button>
-                                                            </div>
-                                                        );
-                                                    })}
+                                                <div className="mt-4">
+                                                    {renderIPSwitcher()}
                                                 </div>
+
+
 
 
                                             </div>
@@ -1636,6 +1745,9 @@ function NodeDetailContent() {
                                             <span className="font-semibold text-foreground">{node.version}</span>
                                         </div>
                                     )}
+                                    <div className="mt-4">
+                                        {renderIPSwitcher()}
+                                    </div>
                                 </div>
                             </>
                         )}
@@ -1812,6 +1924,7 @@ function NodeDetailContent() {
                         ) : (
                             /* Public Node View - Full Details */
                             <>
+
                                 {/* Performance Metrics Grid */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                                     {/* Resource Usage Card */}
@@ -2280,8 +2393,52 @@ function NodeDetailContent() {
                                 '1w': 7 * 24 * 60 * 60 * 1000,
                             };
                             const cutoffTime = now - timeRangeMs[timeRange];
-                            const filteredData = historicalData.length > 0
-                                ? historicalData.filter(d => d.timestamp >= cutoffTime)
+
+                            // Client-side aggregation for "All IPs" view (activeIPIndex === -1)
+                            let processedData = historicalData;
+                            if (activeIPIndex === -1 && historicalData.length > 0) {
+                                // Group by timestamp (bucket to nearest minute to align slightly offset snapshots)
+                                const buckets: Record<number, any[]> = {};
+                                historicalData.forEach(d => {
+                                    // Round to nearest minute to catch snapshots that are slightly off
+                                    const key = Math.floor(d.timestamp / 60000) * 60000;
+                                    if (!buckets[key]) buckets[key] = [];
+                                    buckets[key].push(d);
+                                });
+
+                                processedData = Object.keys(buckets).map(key => {
+                                    const ts = parseInt(key);
+                                    const points = buckets[ts];
+
+                                    // Helpers
+                                    const sum = (metric: string) => points.reduce((acc, p) => acc + (p[metric] || 0), 0);
+                                    const avg = (metric: string) => {
+                                        const validPoints = points.filter(p => p[metric] !== undefined && p[metric] !== null);
+                                        if (validPoints.length === 0) return 0;
+                                        return validPoints.reduce((acc, p) => acc + (p[metric] || 0), 0) / validPoints.length;
+                                    };
+
+                                    // Pick status from the first point, or 'online' if any are online
+                                    const isAnyOnline = points.some(p => p.status === 'online');
+                                    const isAnySyncing = points.some(p => p.status === 'syncing');
+                                    const status = isAnyOnline ? 'online' : isAnySyncing ? 'syncing' : points[0].status;
+
+                                    return {
+                                        ...points[0], // Keep basic props from first point
+                                        timestamp: ts,
+                                        credits: sum('credits'),
+                                        packetsReceived: sum('packetsReceived'),
+                                        packetsSent: sum('packetsSent'),
+                                        storageTotal: sum('storageTotal'),
+                                        cpuPercent: avg('cpuPercent'),
+                                        ramPercent: avg('ramPercent'),
+                                        status: status
+                                    };
+                                });
+                            }
+
+                            const filteredData = processedData.length > 0
+                                ? processedData.filter(d => d.timestamp >= cutoffTime)
                                 : [];
 
                             return (
@@ -2718,7 +2875,11 @@ function NodeDetailContent() {
                         )}
 
                         <div className="mt-8 h-[500px] overflow-hidden">
-                            <ActivityLogList pubkey={viewNode.pubkey || viewNode.publicKey} limit={20} />
+                            <ActivityLogList
+                                pubkey={viewNode.pubkey || viewNode.publicKey}
+                                address={activeIPIndex !== -1 ? viewNode.address : undefined}
+                                limit={20}
+                            />
                         </div>
                     </div>
                 </div >

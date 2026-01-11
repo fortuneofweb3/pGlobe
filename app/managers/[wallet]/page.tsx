@@ -197,6 +197,13 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                 const daoStake = Math.max(...pnodes.map(n => n.daoStake || n.xandStake || 0), 0);
                 const vestingStake = Math.max(...pnodes.map(n => n.vestingStake || 0), 0);
 
+                // Calculate oldest createdAt from all nodes
+                const oldestCreatedAt = pnodes.reduce((min: string | undefined, n: any) => {
+                    if (!n.createdAt) return min;
+                    if (!min) return n.createdAt;
+                    return new Date(n.createdAt) < new Date(min) ? n.createdAt : min;
+                }, prev?.createdAt || undefined);
+
                 return {
                     wallet,
                     nodeCount: pnodes.length,
@@ -210,6 +217,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                     totalXandStake: daoStake,
                     daoStake: daoStake,
                     vestingStake: vestingStake,
+                    createdAt: oldestCreatedAt, // Use the oldest createdAt
                     ...prev
                 };
             });

@@ -410,6 +410,40 @@ function HomeContent() {
     setTimeout(() => setNavigateToNodeId(null), 100);
   }, []);
 
+  // Flatten merged nodes into individual IP entries for the globe
+  // This ensures every single IP address is visualized, even if they share a pubkey
+  const allNodesForGlobe = useMemo(() => {
+    return nodesWithGeo.flatMap(node => {
+      // If duplicate/merged node, explode it
+      if (node.isMerged && node.mergedIPs && node.mergedIPs.length > 0) {
+        return node.mergedIPs.map((ip, idx) => {
+          // Use IP-specific location if available, otherwise fallback to main node location
+          // (Nodes with same pubkey usually in same datacenter)
+          const locationData = ip.locationData || node.locationData;
+
+          if (!locationData?.lat || !locationData?.lon) return null;
+
+          return {
+            ...node, // Inherit shared props (version, etc)
+            id: ip.address, // CRITICAL: Use IP as ID for globe
+            address: ip.address,
+            status: ip.status || node.status,
+            locationData: locationData,
+            // Add a flag to indicate this is a child IP
+            _isChildIp: true,
+            _parentPubkey: node.pubkey || node.publicKey
+          } as PNode;
+        }).filter((n): n is PNode => n !== null);
+      }
+
+      // Standard single node
+      if (node.locationData?.lat && node.locationData?.lon) {
+        return [node];
+      }
+      return [];
+    });
+  }, [nodesWithGeo]);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Show loading skeleton when loading or no data available
@@ -666,7 +700,7 @@ function HomeContent() {
 
           <div className="absolute inset-0 w-full h-full">
             <MapLibreGlobe
-              nodes={nodesWithGeo.length > 0 ? nodesWithGeo : nodes}
+              nodes={allNodesForGlobe}
               navigateToNodeId={navigateToNodeId}
               onNodeClick={(node) => {
                 // Navigate to the node via URL parameter
@@ -677,7 +711,10 @@ function HomeContent() {
               }}
               onPopupClick={(node) => {
                 // Navigate to node details page when popup is clicked
-                const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';
+                // If it's a child IP, we navigate to the parent pubkey page, 
+                // but the details page will likely default to "Merged" view unless we pass param
+                // For now just navigate to ID/PubKey
+                const nodeId = node.pubkey || node.publicKey || node.id || '';
                 if (nodeId) {
                   startProgress();
                   router.push(`/nodes/${encodeURIComponent(nodeId)}`);

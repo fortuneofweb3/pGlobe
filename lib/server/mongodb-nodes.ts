@@ -384,12 +384,13 @@ export async function upsertNodes(nodes: PNode[], skipMarkOffline: boolean = fal
       const pubkey = node.pubkey || node.publicKey;
       if (!address) continue;
 
+
       incomingAddresses.add(address);
       const doc = nodeToDocument(node);
 
       // Build update: overwrite stats, preserve balance/location if not in new data
       const setFields: Record<string, unknown> = { updatedAt: now };
-      const setOnInsert: Record<string, unknown> = { _id: pubkey, createdAt: now };
+      const setOnInsert: Record<string, unknown> = { createdAt: now };
 
       // Stats fields - always overwrite (fresh from gossip)
       const statsFields = [
