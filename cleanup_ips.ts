@@ -21,14 +21,14 @@ async function cleanup() {
     const ipGroups = new Map<string, any[]>();
 
     for (const doc of allDocs) {
-        const address = (doc._id as string) || doc.address || '';
+        const address = String(doc._id) || doc.address || '';
         const ip = address.split(':')[0];
         if (!ip) continue;
         if (!ipGroups.has(ip)) ipGroups.set(ip, []);
         ipGroups.get(ip)!.push(doc);
     }
 
-    const deleteIds: string[] = [];
+    const deleteIds: any[] = [];
     for (const [ip, docs] of ipGroups.entries()) {
         if (docs.length <= 1) continue;
         docs.sort((a, b) => {

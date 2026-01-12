@@ -143,7 +143,7 @@ function NodeCard({ node, index, onNodeClick, latency, watched, toggleWatchlist,
           {latency !== null && latency !== undefined && (
             <span
               className={`text-xs font-mono font-medium ${getLatencyColor(latency)}`}
-              title={getLatencyTooltip(latency)}
+              title={getLatencyTooltip(latency, null, null, null)}
             >
               {latency}ms
             </span>
