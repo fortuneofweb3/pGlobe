@@ -539,7 +539,19 @@ export async function enrichWithBalance(
     return;
   }
 
+
   console.log(`[Sync] Fetching on-chain data for ${nodesNeedingBalance.length} nodes...`);
+
+  // CRITICAL: Preserve vestingStake from existing DB nodes
+  // The rewards sync sets this value, and we don't want to lose it during regular node sync
+  for (const node of nodesMap.values()) {
+    const pubkey = node.pubkey || node.publicKey || '';
+    const existing = existingNodes.get(pubkey);
+
+    if (existing?.vestingStake !== undefined && existing.vestingStake !== null && existing.vestingStake > 0) {
+      node.vestingStake = existing.vestingStake;
+    }
+  }
 
   let enrichedCount = 0;
   let walletAssignedCount = 0;
@@ -562,7 +574,9 @@ export async function enrichWithBalance(
         // STOINC & Rewards fields
         node.xandStake = balanceData.xandStake;
         node.daoStake = balanceData.daoStake;
-        node.vestingStake = balanceData.vestingStake;
+        if (balanceData.vestingStake !== undefined && balanceData.vestingStake !== null) {
+          node.vestingStake = balanceData.vestingStake;
+        }
         node.nftBoost = balanceData.nftBoost;
         node.nftDetails = balanceData.nftDetails;
         node.eraBoost = balanceData.eraBoost;
@@ -809,12 +823,18 @@ export async function syncNodes(): Promise<{ success: boolean; count: number; er
 
     // Step 4: Get existing nodes early (needed for credit recovery and balance)
     const { getAllNodes: getExistingNodesFromDB } = await import('./mongodb-nodes');
-    const existingNodesMap = new Map<string, PNode>();
+    const existingNodesMap = new Map<string, PNode>(); // Keyed by IP
+    const existingNodesByPubkey = new Map<string, PNode>(); // Keyed by Pubkey
     try {
       const existing = await getExistingNodesFromDB();
       existing.forEach(n => {
-        const key = n.address?.split(':')[0] || n.id;
-        if (key) existingNodesMap.set(key, n);
+        // Map by IP
+        const ipKey = n.address?.split(':')[0] || n.id;
+        if (ipKey) existingNodesMap.set(ipKey, n);
+
+        // Map by Pubkey
+        const pubkey = n.pubkey || n.publicKey;
+        if (pubkey) existingNodesByPubkey.set(pubkey, n);
       });
     } catch (err) {
       console.warn('[Sync] Could not fetch existing nodes from DB:', (err as Error).message);
@@ -825,7 +845,8 @@ export async function syncNodes(): Promise<{ success: boolean; count: number; er
     await enrichWithCredits(nodesMap, existingNodesMap);
 
     // Step 6: Enrich with balance (new nodes only)
-    await enrichWithBalance(nodesMap, existingNodesMap);
+    // Pass existingNodesByPubkey because enrichment logic looks up by pubkey
+    await enrichWithBalance(nodesMap, existingNodesByPubkey);
 
     // Step 7: Deduplicate
     const dedupedNodes = deduplicateNodes(nodesMap);

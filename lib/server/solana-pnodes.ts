@@ -231,7 +231,7 @@ export async function enrichPNodeWithOnChainData(pubkey: string, connection: Con
       fetchDAOStake(mainnetConn, ownerPubkey)
     ]);
 
-    const vestingStake = 0; // We no longer fetch unclaimed balance here. Handled by sync-rewards.
+
 
     let nftBoost = 1;
     try {
@@ -245,7 +245,7 @@ export async function enrichPNodeWithOnChainData(pubkey: string, connection: Con
     return {
       balance, isValidator, isRegistered, managerWallet, registrarWallet,
       daoStake,
-      vestingStake, // This is current vault balance (unclaimed rewards)
+
       xandStake: daoStake, // Map xandStake ONLY to DAO stake
       nftBoost, eraBoost, eraLabel, milestoneItem, validatorInfo
     };
