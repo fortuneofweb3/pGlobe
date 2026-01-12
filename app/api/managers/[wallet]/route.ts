@@ -157,7 +157,6 @@ export async function GET(
                             {
                                 $set: {
                                     daoStake: freshData.daoStake || 0,
-                                    vestingStake: freshData.vestingStake || 0,
                                     xandStake: freshData.daoStake || 0,
                                     updatedAt: new Date()
                                 }

@@ -111,14 +111,9 @@ async function fetchVestingHistory(connection: Connection, managerWallet: Public
                     });
                 }
 
-                // If we have tranches, we count the vault balance. 
-                // Note: This logic is slightly different from sync-rewards.ts which sums tranches,
-                // but here it sums vault balance. We should probably stick to tranches sum for "fucked" rewards.
-                // Actually, the user wants "vestingStake = unclaimed rewards (vault balance)" according to comments in this file.
-                // But we should only count vault balance if it's from DAO grants.
-                if (tranches.length > 0) {
-                    result.totalVested += vaultBalance;
-                }
+                // SUM the tranches linked to a DAO proposal for the total staking metric
+                const daoTranchesSum = tranches.reduce((sum, t) => sum + t.amount, 0);
+                result.totalVested += daoTranchesSum;
             }
             return result;
         } catch (err: any) {
