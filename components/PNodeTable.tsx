@@ -22,6 +22,230 @@ import InfoTooltip from './InfoTooltip';
 import { useWatchlist } from '@/lib/context/WatchlistContext';
 import { useNodes } from '@/lib/context/NodesContext';
 
+// ============================================================================
+// NodeCard Component
+// ============================================================================
+
+interface NodeCardProps {
+  node: PNode;
+  index: number;
+  onNodeClick?: (node: PNode) => void;
+  latency: number | null;
+  watched: boolean;
+  toggleWatchlist: (id: string) => void;
+  router: any;
+  selectedNetwork: string;
+}
+
+function NodeCard({ node, index, onNodeClick, latency, watched, toggleWatchlist, router, selectedNetwork }: NodeCardProps) {
+  const [ipsExpanded, setIpsExpanded] = useState(false);
+
+  // Extract unique IPs and Locations (moved from table loop)
+  const { uniqueIps, uniqueLocations, displayNetwork, isRegistered, nodeId } = useMemo(() => {
+    const uniqueIps: string[] = [];
+    const uniqueLocations: { text: string; flag: string }[] = [];
+    const seenIpSet = new Set<string>();
+    const seenLocSet = new Set<string>();
+    const nodeId = node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '';
+
+    if (node.isMerged && node.mergedIPs && node.mergedIPs.length > 0) {
+      for (const entry of node.mergedIPs) {
+        // IP Extraction
+        const entryIp = entry.address?.split(':')[0];
+        if (entryIp && !seenIpSet.has(entryIp)) {
+          seenIpSet.add(entryIp);
+          uniqueIps.push(entryIp);
+        }
+
+        // Location Extraction
+        const city = entry.locationData?.city;
+        const country = entry.locationData?.country;
+        const locText = city
+          ? `${city}${country ? `, ${country}` : ''}`
+          : country || '';
+
+        const locKey = locText.toLowerCase().trim();
+        if (locText && !seenLocSet.has(locKey)) {
+          seenLocSet.add(locKey);
+          uniqueLocations.push({
+            text: locText,
+            flag: entry.locationData?.countryCode ? getFlagForCountry(entry.locationData.countryCode) : ''
+          });
+        }
+      }
+    } else {
+      // Single node fallback
+      const ip = node.address?.split(':')[0] || '—';
+      uniqueIps.push(ip);
+      const city = node.locationData?.city;
+      const country = node.locationData?.country;
+      const locText = city
+        ? `${city}${country ? `, ${country}` : ''}`
+        : country || node.location || '';
+      uniqueLocations.push({
+        text: locText,
+        flag: node.locationData?.countryCode ? getFlagForCountry(node.locationData.countryCode) : ''
+      });
+    }
+
+    const displayNetwork = selectedNetwork !== 'all'
+      ? selectedNetwork
+      : (node.network === 'both' ? 'mainnet' : (node.network || node.status === 'online' ? 'mainnet' : 'devnet')); // Fallback logic
+
+    const isRegistered = node.isRegistered || (node.balance !== undefined && node.balance > 0);
+
+    return { uniqueIps, uniqueLocations, displayNetwork, isRegistered, nodeId };
+  }, [node, selectedNetwork]);
+
+  const displayLocations = uniqueLocations.slice(0, 2); // Show max 2 locations summary
+
+  // Format Public Key
+  const formatPublicKey = (key: string | undefined) => {
+    if (!key) return '';
+    return `${key.slice(0, 4)}...${key.slice(-4)}`;
+  };
+
+  const status = node.status || 'offline';
+
+  return (
+    <div
+      onClick={() => {
+        if (onNodeClick) {
+          onNodeClick(node);
+        } else {
+          if (nodeId) {
+            startProgress();
+            router.push(`/nodes/${encodeURIComponent(nodeId)}`);
+          }
+        }
+      }}
+      className="bg-gradient-to-br from-muted/80 to-muted/40 border border-border rounded-xl p-4 cursor-pointer hover:border-[#F0A741]/50 hover:shadow-lg hover:shadow-[#F0A741]/5 transition-all duration-200 group flex flex-col h-full"
+      style={{ animationDelay: `${Math.min(index * 0.05, 1)}s` }} // Staggered animation handled by parent usually but inline here works if parent doesn't override
+    >
+      {/* Header: Watchlist, Pubkey, Status */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleWatchlist(nodeId);
+            }}
+            className={`p-1.5 rounded-lg transition-all ${watched ? 'bg-yellow-500/20' : 'text-foreground/30 hover:text-foreground/50 hover:bg-muted'}`}
+            title={watched ? 'Remove from Watchlist' : 'Add to Watchlist'}
+          >
+            <Star className={`w-4 h-4 ${watched ? 'fill-[#FFD700] text-[#FFD700]' : ''}`} />
+          </button>
+          <span className="text-base font-mono font-bold text-[#F0A741]" title={node.pubkey || node.publicKey}>
+            {formatPublicKey(node.pubkey || node.publicKey) || '—'}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {latency !== null && latency !== undefined && (
+            <span
+              className={`text-xs font-mono font-medium ${getLatencyColor(latency)}`}
+              title={getLatencyTooltip(latency)}
+            >
+              {latency}ms
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${status === 'online' ? 'bg-green-500/20 text-green-400' :
+            status === 'syncing' ? 'bg-orange-500/20 text-orange-400' : 'bg-red-500/20 text-red-400'
+            }`}>
+            {status}
+          </span>
+        </div>
+      </div>
+
+      {/* Location - Single display with indicator */}
+      <div className="mb-3 min-h-[24px]">
+        {uniqueLocations.length > 0 ? (
+          <div className="text-sm text-foreground/60 truncate flex items-center gap-1.5">
+            {uniqueLocations[0].flag && <span className="text-base shrink-0">{uniqueLocations[0].flag}</span>}
+            <span className="truncate">{uniqueLocations[0].text}</span>
+            {uniqueLocations.length > 1 && (
+              <span className="text-xs text-foreground/40">+ {uniqueLocations.length - 1} more</span>
+            )}
+          </div>
+        ) : (
+          <div className="text-sm text-foreground/30">Unknown location</div>
+        )}
+      </div>
+
+      {/* IP Addresses - Simple display with indicator */}
+      <div className="space-y-1.5 mb-4 flex-1">
+        {/* Primary IP */}
+        <div className="text-sm font-mono text-foreground/70 truncate bg-black/20 rounded px-2.5 py-1.5 flex items-center gap-2 border border-white/5">
+          <Network className="w-3.5 h-3.5 shrink-0 text-foreground/40" />
+          <span className="select-text cursor-text flex-1">{uniqueIps[0]}</span>
+          {uniqueIps.length > 1 && (
+            <span className="text-xs text-foreground/40">+ {uniqueIps.length - 1} more</span>
+          )}
+        </div>
+      </div>
+
+      {/* Stats Row */}
+      <div className="grid grid-cols-3 gap-2 bg-black/30 rounded-lg p-3 mb-3">
+        <div className="text-center">
+          <div className="text-sm font-bold text-foreground whitespace-nowrap">
+            {(() => {
+              if (!node.uptime || node.uptime === 0) return '—';
+              const days = Math.floor(node.uptime / 86400);
+              const hours = Math.floor((node.uptime % 86400) / 3600);
+              if (days > 0) return `${days}d`;
+              if (hours > 0) return `${hours}h`;
+              return `${Math.floor((node.uptime % 3600) / 60)}m`;
+            })()}
+          </div>
+          <div className="text-[10px] text-foreground/50 uppercase tracking-wide">Uptime</div>
+        </div>
+        <div className="text-center border-x border-border/30">
+          <div className="text-sm font-bold text-foreground whitespace-nowrap">
+            {(() => {
+              if (!node.storageCapacity) return '—';
+              const gb = node.storageCapacity / (1024 * 1024 * 1024);
+              if (gb >= 1000) return `${Math.round(gb / 1000)}TB`;
+              if (gb >= 1) return `${Math.round(gb)}GB`;
+              return `${Math.round(node.storageCapacity / (1024 * 1024))}MB`;
+            })()}
+          </div>
+          <div className="text-[10px] text-foreground/50 uppercase tracking-wide">Storage</div>
+        </div>
+        <div className="text-center">
+          <div className="text-sm font-bold text-[#F0A741] whitespace-nowrap">
+            {(() => {
+              if (node.credits === undefined || node.credits === null) return '—';
+              if (node.credits >= 1000000) return `${(node.credits / 1000000).toFixed(1)}M`;
+              if (node.credits >= 1000) return `${(node.credits / 1000).toFixed(0)}K`;
+              return node.credits.toString();
+            })()}
+          </div>
+          <div className="text-[10px] text-foreground/50 uppercase tracking-wide">Credits</div>
+        </div>
+      </div>
+
+      {/* Footer: Network + Registered */}
+      <div className="flex items-center justify-between pt-2 border-t border-border/30 mt-auto">
+        <span className={`text-xs px-2 py-1 rounded-lg font-semibold ${displayNetwork === 'mainnet' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+          'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+          }`}>
+          {displayNetwork === 'mainnet' ? 'Mainnet' : 'Devnet'}
+        </span>
+        {isRegistered ? (
+          <span className="flex items-center gap-1 text-xs text-green-400">
+            <Check className="w-3.5 h-3.5" /> Registered
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 text-xs text-foreground/40">
+            <X className="w-3.5 h-3.5" /> Unregistered
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface PNodeTableProps {
   nodes: PNode[];
   onNodeClick?: (node: PNode) => void;
@@ -408,95 +632,11 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
     return '—';
   };
 
-  // Aggregation Logic
-  const processedNodes = useMemo(() => {
-    const groups = new Map<string, PNode[]>();
-
-    // Group by pubkey
-    nodes.forEach(node => {
-      // Prioritize pubkey, fall back to ID if it looks like a pubkey (not an IP)
-      // The backend now stores ID as IP:Port, but Pubkey field is reliable.
-      const key = node.pubkey || node.publicKey || '';
-
-      // If we somehow don't have a pubkey, use ID (fallback for old data/devnet)
-      const groupKey = key || node.id;
-
-      if (!groups.has(groupKey)) {
-        groups.set(groupKey, []);
-      }
-      groups.get(groupKey)!.push(node);
-    });
-
-    return Array.from(groups.values()).map(group => {
-      // Single node - return as is (but ensure isMerged logic is consistent if needed)
-      if (group.length === 1) {
-        return group[0];
-      }
-
-      // Multiple nodes - Aggregate
-      const primary = group[0]; // Use first node as base for metadata
-
-      // Sums
-      // storageCapacity, storageUsed, activeStreams, packetsReceived, packetsSent, peerCount
-      const storageCapacity = group.reduce((sum, n) => sum + (n.storageCapacity || 0), 0);
-      const storageUsed = group.reduce((sum, n) => sum + (n.storageUsed || 0), 0);
-      const activeStreams = group.reduce((sum, n) => sum + (n.activeStreams || 0), 0);
-      const packetsReceived = group.reduce((sum, n) => sum + (n.packetsReceived || 0), 0);
-      const packetsSent = group.reduce((sum, n) => sum + (n.packetsSent || 0), 0);
-
-      // Averages (ignoring zero/undefined for better accuracy?)
-      // uptime, cpuPercent
-      const uptimeNodes = group.filter(n => n.uptime && n.uptime > 0);
-      const totalUptime = uptimeNodes.reduce((sum, n) => sum + (n.uptime || 0), 0);
-      const avgUptime = uptimeNodes.length > 0 ? totalUptime / uptimeNodes.length : 0;
-
-      const cpuNodes = group.filter(n => n.cpuPercent !== undefined);
-      const totalCpu = cpuNodes.reduce((sum, n) => sum + (n.cpuPercent || 0), 0);
-      const avgCpu = cpuNodes.length > 0 ? totalCpu / cpuNodes.length : 0;
-
-      // Latency is special - we might have it in `nodeLatencies` state
-      // We'll calculate it dynamically during render or here if we assume nodeLatencies is stable enough
-      // But nodeLatencies updates asynchronously. PNode object doesn't have it usually.
-      // We'll leave latency aggregation to the render time helper or average the base props if valid.
-
-      // Construct Merged PNode
-      const merged: PNode = {
-        ...primary,
-        isMerged: true,
-        mergedIPs: group, // Store original nodes
-
-        // Overwrite stats
-        storageCapacity,
-        storageUsed,
-        activeStreams,
-        packetsReceived,
-        packetsSent,
-        uptime: avgUptime,
-        cpuPercent: avgCpu,
-
-        // Peer count: Summing might double count same peers, but it shows "total connections handled"
-        peerCount: group.reduce((sum, n) => sum + (n.peerCount || 0), 0),
-
-        // Address: Show count or primary? UI handles this via `mergedIPs` check
-
-        // Joined Date: Use the oldest (min) createdAt
-        createdAt: group.reduce((min, n) => {
-          if (!n.createdAt) return min;
-          if (!min) return n.createdAt;
-          return new Date(n.createdAt) < new Date(min) ? n.createdAt : min;
-        }, primary.createdAt),
-        address: `${group.length} IPs`,
-      };
-
-      return merged;
-    });
-  }, [nodes]);
-
-  // Apply sorting to the PROCESSED (aggregated) nodes
+  // Sorting Logic (Applied to nodes prop)
   const sortedNodes = useMemo(() => {
-    if (!sortBy) return processedNodes;
+    if (!sortBy) return nodes;
 
-    return [...processedNodes].sort((a, b) => {
+    return [...nodes].sort((a, b) => {
       let aVal: any = a[sortBy as keyof PNode];
       let bVal: any = b[sortBy as keyof PNode];
 
@@ -506,40 +646,28 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
         bVal = nodeLatencies[b.id] || 999999;
       }
 
-      // Special handling for merged latency?
-      if (a.isMerged && sortBy === 'latency') {
-        // calculate avg latency for A
-        const aLats = a.mergedIPs?.map(ip => nodeLatencies[ip.address]).filter(l => l !== null && l !== undefined) as number[] || [];
-        aVal = aLats.length > 0 ? aLats.reduce((s, v) => s + v, 0) / aLats.length : 999999;
-      }
-      if (b.isMerged && sortBy === 'latency') {
-        const bLats = b.mergedIPs?.map(ip => nodeLatencies[ip.address]).filter(l => l !== null && l !== undefined) as number[] || [];
-        bVal = bLats.length > 0 ? bLats.reduce((s, v) => s + v, 0) / bLats.length : 999999;
-      }
-
       // Handle undefined/nulls
-      if (aVal === undefined || aVal === null) aVal = -1;
-      if (bVal === undefined || bVal === null) bVal = -1;
+      if (aVal === undefined || aVal === null) aVal = (sortOrder === 'asc' ? 999999999 : -1);
+      if (bVal === undefined || bVal === null) bVal = (sortOrder === 'asc' ? 999999999 : -1);
 
       if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
       if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [processedNodes, sortBy, sortOrder, nodeLatencies]);
-
+  }, [nodes, sortBy, sortOrder, nodeLatencies]);
 
   // Calculate stats for info banner
   const statsWithData = useMemo(() => {
     const withUptime = nodes.filter(n => n.uptime && n.uptime > 0).length;
-    const withStorage = nodes.filter(n => n.storageCapacity && n.storageCapacity > 0).length;
+    const withStorage = nodes.filter(n => (n.storageCapacity || 0) > 0).length;
     const withCPU = nodes.filter(n => n.cpuPercent !== undefined && n.cpuPercent !== null).length;
-    const withLatency = nodes.filter(n => {
-      // Check for client-side latency measurement
-      return nodeLatencies[n.id] !== null && nodeLatencies[n.id] !== undefined;
-    }).length;
+    const withLatency = nodes.filter(n => nodeLatencies[n.id] !== null && nodeLatencies[n.id] !== undefined).length;
 
-    return { withUptime, withStorage, withCPU, withLatency, total: nodes.length, uniqueOperators: processedNodes.length };
-  }, [nodes, nodeLatencies, processedNodes.length]);
+    // Approximate unique operators by looking at pubkey
+    const pubkeys = new Set(nodes.map(n => n.pubkey || n.publicKey).filter(Boolean));
+
+    return { withUptime, withStorage, withCPU, withLatency, total: nodes.length, uniqueOperators: pubkeys.size };
+  }, [nodes, nodeLatencies]);
 
   return (
     <div className="card flex flex-col h-full overflow-hidden" style={{ padding: 0 }}>
@@ -583,192 +711,21 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {sortedNodes.map((node, index) => {
                   const nodeId = node.pubkey || node.publicKey || node.id || '';
+                  const latency = nodeLatencies[nodeId] || null;
                   const watched = isWatched(nodeId);
-                  const balance = balances[node.id] !== undefined ? balances[node.id] : node.balance;
-                  const isRegistered = balance !== undefined && balance !== null && balance > 0;
-                  const status = node.status || 'offline';
-                  const network = node.network || 'unknown';
-                  // Nodes without credit data are treated as Devnet
-                  const displayNetwork = network === 'unknown' ? 'devnet' : network;
-
-                  // Unique locations and IPs extraction
-                  const uniqueLocations: { text: string; flag: string }[] = [];
-                  const uniqueIps: string[] = [];
-                  const seenIpSet = new Set<string>();
-                  const seenLocSet = new Set<string>();
-
-                  if (node.isMerged && node.mergedIPs && node.mergedIPs.length > 0) {
-                    for (const entry of node.mergedIPs) {
-                      // IP Extraction
-                      const entryIp = entry.address?.split(':')[0];
-                      if (entryIp && !seenIpSet.has(entryIp)) {
-                        seenIpSet.add(entryIp);
-                        uniqueIps.push(entryIp);
-                      }
-
-                      // Location Extraction
-                      const city = entry.locationData?.city;
-                      const country = entry.locationData?.country;
-                      const locText = city
-                        ? `${city}${country ? `, ${country}` : ''}`
-                        : country || '';
-
-                      const locKey = locText.toLowerCase().trim();
-                      if (locText && !seenLocSet.has(locKey)) {
-                        seenLocSet.add(locKey);
-                        uniqueLocations.push({
-                          text: locText,
-                          flag: entry.locationData?.countryCode ? getFlagForCountry(entry.locationData.countryCode) : ''
-                        });
-                      }
-                    }
-                  } else {
-                    // Single node fallback
-                    const ip = node.address?.split(':')[0] || '—';
-                    uniqueIps.push(ip);
-                    const city = node.locationData?.city;
-                    const country = node.locationData?.country;
-                    const locText = city
-                      ? `${city}${country ? `, ${country}` : ''}`
-                      : country || node.location || '';
-                    uniqueLocations.push({
-                      text: locText,
-                      flag: node.locationData?.countryCode ? getFlagForCountry(node.locationData.countryCode) : ''
-                    });
-                  }
-
-                  const displayIps = uniqueIps.slice(0, 2);
-                  const displayLocations = uniqueLocations.slice(0, 2);
 
                   return (
-                    <div
+                    <NodeCard
                       key={node.id || `node-${index}`}
-                      onClick={() => {
-                        if (onNodeClick) {
-                          onNodeClick(node);
-                        } else {
-                          const nodeId = node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '';
-                          if (nodeId) {
-                            startProgress();
-                            router.push(`/nodes/${encodeURIComponent(nodeId)}`);
-                          }
-                        }
-                      }}
-                      className="bg-gradient-to-br from-muted/80 to-muted/40 border border-border rounded-xl p-4 cursor-pointer hover:border-[#F0A741]/50 hover:shadow-lg hover:shadow-[#F0A741]/5 transition-all duration-200 group"
-                    >
-                      {/* Header: Watchlist, IP, Status */}
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleWatchlist(nodeId);
-                            }}
-                            className={`p-1.5 rounded-lg transition-all ${watched ? 'bg-yellow-500/20' : 'text-foreground/30 hover:text-foreground/50 hover:bg-muted'}`}
-                            title={watched ? 'Remove from Watchlist' : 'Add to Watchlist'}
-                          >
-                            <Star className={`w-4 h-4 ${watched ? 'fill-[#FFD700] text-[#FFD700]' : ''}`} />
-                          </button>
-                          <span className="text-base font-mono font-bold text-[#F0A741]" title={node.pubkey || node.publicKey}>
-                            {formatPublicKey(node.pubkey || node.publicKey) || '—'}
-                          </span>
-                          {node.isMerged && node.mergedIPs && node.mergedIPs.length > 1 && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 font-semibold">
-                              {node.mergedIPs.length} IPs
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${status === 'online' ? 'bg-green-500/20 text-green-400' :
-                            status === 'syncing' ? 'bg-orange-500/20 text-orange-400' : 'bg-red-500/20 text-red-400'
-                            }`}>
-                            {status}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Locations */}
-                      <div className="space-y-1 mb-3 min-h-[40px]">
-                        {displayLocations.length > 0 ? (
-                          displayLocations.map((loc, i) => (
-                            <div key={`${nodeId}-loc-${i}`} className="text-sm text-foreground/60 truncate flex items-center gap-1.5">
-                              {loc.flag && <span className="text-base shrink-0">{loc.flag}</span>}
-                              <span className="truncate">{loc.text}</span>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-sm text-foreground/30">Unknown location</div>
-                        )}
-                      </div>
-
-                      {/* IP Addresses */}
-                      <div className="space-y-1 mb-3">
-                        {displayIps.map((ipAddr, i) => (
-                          <div key={`${nodeId}-ip-${i}`} className="text-sm font-mono text-foreground/50 truncate bg-black/20 rounded px-2 py-1 flex items-center gap-1 group/ip">
-                            <Network className="w-3 h-3 shrink-0" />
-                            <span className="select-text cursor-text">{ipAddr}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Stats Row */}
-                      <div className="grid grid-cols-3 gap-2 bg-black/30 rounded-lg p-3 mb-3">
-                        <div className="text-center">
-                          <div className="text-sm font-bold text-foreground whitespace-nowrap">
-                            {(() => {
-                              if (!node.uptime || node.uptime === 0) return '—';
-                              const days = Math.floor(node.uptime / 86400);
-                              const hours = Math.floor((node.uptime % 86400) / 3600);
-                              if (days > 0) return `${days}d`;
-                              if (hours > 0) return `${hours}h`;
-                              return `${Math.floor((node.uptime % 3600) / 60)}m`;
-                            })()}
-                          </div>
-                          <div className="text-[10px] text-foreground/50 uppercase tracking-wide">Uptime</div>
-                        </div>
-                        <div className="text-center border-x border-border/30">
-                          <div className="text-sm font-bold text-foreground whitespace-nowrap">
-                            {(() => {
-                              if (!node.storageCapacity) return '—';
-                              const gb = node.storageCapacity / (1024 * 1024 * 1024);
-                              if (gb >= 1000) return `${Math.round(gb / 1000)}TB`;
-                              if (gb >= 1) return `${Math.round(gb)}GB`;
-                              return `${Math.round(node.storageCapacity / (1024 * 1024))}MB`;
-                            })()}
-                          </div>
-                          <div className="text-[10px] text-foreground/50 uppercase tracking-wide">Storage</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-sm font-bold text-[#F0A741] whitespace-nowrap">
-                            {(() => {
-                              if (node.credits === undefined || node.credits === null) return '—';
-                              if (node.credits >= 1000000) return `${(node.credits / 1000000).toFixed(1)}M`;
-                              if (node.credits >= 1000) return `${(node.credits / 1000).toFixed(0)}K`;
-                              return node.credits.toString();
-                            })()}
-                          </div>
-                          <div className="text-[10px] text-foreground/50 uppercase tracking-wide">Credits</div>
-                        </div>
-                      </div>
-
-                      {/* Footer: Network + Registered */}
-                      <div className="flex items-center justify-between pt-2 border-t border-border/30">
-                        <span className={`text-xs px-2 py-1 rounded-lg font-semibold ${displayNetwork === 'mainnet' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                          'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                          }`}>
-                          {displayNetwork === 'mainnet' ? 'Mainnet' : 'Devnet'}
-                        </span>
-                        {isRegistered ? (
-                          <span className="flex items-center gap-1 text-xs text-green-400">
-                            <Check className="w-3.5 h-3.5" /> Registered
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-xs text-foreground/40">
-                            <X className="w-3.5 h-3.5" /> Unregistered
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                      node={node}
+                      index={index}
+                      onNodeClick={onNodeClick}
+                      latency={latency}
+                      watched={watched}
+                      toggleWatchlist={toggleWatchlist}
+                      router={router}
+                      selectedNetwork={selectedNetwork}
+                    />
                   );
                 })}
               </div>

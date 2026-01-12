@@ -10,7 +10,7 @@ import { StatCardSkeleton, ManagerCardSkeleton } from '@/components/Skeletons';
 import { startProgress } from '@/lib/nprogress';
 import {
     Users, Search, X, ChevronRight, ExternalLink, Copy, Check,
-    Award, ShoppingCart, FileCheck, Server, TrendingUp, Coins, LayoutGrid, List, Sparkles
+    Award, ShoppingCart, FileCheck, Server, TrendingUp, Coins, LayoutGrid, List
 } from 'lucide-react';
 import ManagerLeaderboard from '@/components/ManagerLeaderboard';
 import InfoTooltip from '@/components/InfoTooltip';
@@ -166,24 +166,10 @@ function ManagersPageContent() {
     const { formatUsd } = useXandPrice();
     const [searchQuery, setSearchQuery] = useState('');
     const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<'grid' | 'leaderboard'>('grid');
-    const [showNewOnly, setShowNewOnly] = useState(false);
 
-    // Consider managers "new" if they joined within the last 7 days
-    const NEW_MANAGER_DAYS = 7;
-    const newManagerCutoff = Date.now() - (NEW_MANAGER_DAYS * 24 * 60 * 60 * 1000);
 
     const filteredManagers = useMemo(() => {
         let result = managers;
-
-        // Filter new managers if toggle is on
-        if (showNewOnly) {
-            result = result.filter(m => {
-                if (!m.createdAt) return false;
-                const createdTime = new Date(m.createdAt).getTime();
-                return createdTime >= newManagerCutoff;
-            });
-        }
 
         if (searchQuery) {
             const query = searchQuery.toLowerCase();
@@ -193,7 +179,8 @@ function ManagersPageContent() {
         }
         // Sort by vesting rewards (highest first) for cards view
         return [...result].sort((a, b) => (b.vestingStake || 0) - (a.vestingStake || 0));
-    }, [managers, searchQuery, showNewOnly, newManagerCutoff]);
+    }, [managers, searchQuery]);
+    const [viewMode, setViewMode] = useState<'grid' | 'leaderboard'>('grid');
 
     const stats = useMemo(() => {
         const allNodes = nodes.length;
@@ -414,21 +401,6 @@ function ManagersPageContent() {
                                     </button>
                                 </div>
 
-                                {/* New Managers Toggle */}
-                                <div className="flex items-center gap-1">
-                                    <button
-                                        onClick={() => setShowNewOnly(!showNewOnly)}
-                                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all border h-10 ${showNewOnly
-                                            ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                                            : 'bg-card text-foreground/50 border-border hover:text-foreground hover:border-border/80'
-                                            }`}
-                                        title="Show only managers who joined in the last 7 days"
-                                    >
-                                        <Sparkles className="w-4 h-4" />
-                                        <span className="hidden sm:inline">New</span>
-                                    </button>
-                                    <InfoTooltip content="Filter to show only managers who registered their first node within the last 7 days" />
-                                </div>
 
                                 <div className="relative flex-1 sm:w-64">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />

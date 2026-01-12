@@ -81,11 +81,11 @@ export function mergeDuplicateIPNodes(nodes: PNode[]): PNode[] {
         const uniqueEntries: MergedIPEntry[] = [];
         const seenIps = new Set<string>();
 
-        // Sort cluster so we pick the best entry for each IP (online first, then lastSeen)
+        // Sort cluster so we pick the best entry for each IP (online first, then highest uptime)
         const clusterSorted = [...cluster].sort((a, b) => {
             if (a.status === 'online' && b.status !== 'online') return -1;
             if (b.status === 'online' && a.status !== 'online') return 1;
-            return (b.lastSeen || 0) - (a.lastSeen || 0);
+            return (b.uptime || 0) - (a.uptime || 0); // Highest uptime first
         });
 
         for (const node of clusterSorted) {
@@ -97,33 +97,52 @@ export function mergeDuplicateIPNodes(nodes: PNode[]): PNode[] {
             }
         }
 
-        // Sum stats
-        let totalStorage = 0;
-        let totalCredits = 0;
-        let totalPacketsRecv = 0;
-        let totalPacketsSent = 0;
-        let totalDataOps = 0;
+        // Pick the highest value for each stat (no aggregation)
+        let maxStorage = 0;
+        let maxCredits = 0;
+        let maxPacketsRecv = 0;
+        let maxPacketsSent = 0;
+        let maxDataOps = 0;
+        let maxUptime = 0;
 
         let hasStorage = false;
         let hasCredits = false;
         let hasPackets = false;
         let hasDataOps = false;
 
+        let network: 'mainnet' | 'devnet' | 'both' | 'unknown' = 'unknown';
+        let foundMainnet = false;
+        let foundDevnet = false;
+
         for (const node of cluster) {
-            if (node.storageCapacity != null) { totalStorage += node.storageCapacity; hasStorage = true; }
-            if (node.credits != null) { totalCredits += node.credits; hasCredits = true; }
-            if (node.packetsReceived != null) { totalPacketsRecv += node.packetsReceived; hasPackets = true; }
-            if (node.packetsSent != null) { totalPacketsSent += node.packetsSent; hasPackets = true; }
-            if (node.dataOperationsHandled != null) { totalDataOps += node.dataOperationsHandled; hasDataOps = true; }
+            if (node.storageCapacity != null && node.storageCapacity > maxStorage) { maxStorage = node.storageCapacity; hasStorage = true; }
+            if (node.credits != null && node.credits > maxCredits) { maxCredits = node.credits; hasCredits = true; }
+            if (node.packetsReceived != null && node.packetsReceived > maxPacketsRecv) { maxPacketsRecv = node.packetsReceived; hasPackets = true; }
+            if (node.packetsSent != null && node.packetsSent > maxPacketsSent) { maxPacketsSent = node.packetsSent; hasPackets = true; }
+            if (node.dataOperationsHandled != null && node.dataOperationsHandled > maxDataOps) { maxDataOps = node.dataOperationsHandled; hasDataOps = true; }
+            if (node.uptime != null && node.uptime > maxUptime) { maxUptime = node.uptime; }
+
+            // Resolve network
+            const n = node.network;
+            if (n === 'mainnet') foundMainnet = true;
+            if (n === 'devnet') foundDevnet = true;
+            if (n === 'both') { foundMainnet = true; foundDevnet = true; }
         }
+
+        if (foundMainnet && foundDevnet) network = 'both';
+        else if (foundMainnet) network = 'mainnet';
+        else if (foundDevnet) network = 'devnet';
+        else network = primaryNode.network || 'unknown';
 
         const mergedNode: PNode = {
             ...primaryNode,
-            storageCapacity: hasStorage ? totalStorage : primaryNode.storageCapacity,
-            credits: hasCredits ? totalCredits : primaryNode.credits,
-            packetsReceived: hasPackets ? totalPacketsRecv : primaryNode.packetsReceived,
-            packetsSent: hasPackets ? totalPacketsSent : (primaryNode.packetsSent || 0),
-            dataOperationsHandled: hasDataOps ? totalDataOps : primaryNode.dataOperationsHandled,
+            uptime: maxUptime > 0 ? maxUptime : primaryNode.uptime,
+            storageCapacity: hasStorage ? maxStorage : primaryNode.storageCapacity,
+            credits: hasCredits ? maxCredits : primaryNode.credits,
+            packetsReceived: hasPackets ? maxPacketsRecv : primaryNode.packetsReceived,
+            packetsSent: hasPackets ? maxPacketsSent : (primaryNode.packetsSent || 0),
+            dataOperationsHandled: hasDataOps ? maxDataOps : primaryNode.dataOperationsHandled,
+            network,
             mergedIPs: uniqueEntries,
             isMerged: true,
             // Consolidate unique full addresses for HISTORY tracking, but prioritize online ones

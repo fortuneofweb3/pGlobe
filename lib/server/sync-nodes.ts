@@ -456,11 +456,9 @@ export async function enrichWithCredits(
             recoveredNode.network = mainnetCredits !== undefined ? 'mainnet' : 'devnet';
             recoveredNode.creditsResetMonth = currentMonth;
 
-            // Mark as offline in terms of connectivity, but seenInGossip=false ensures 
-            // the DB keeps it if we want, or at least we update its stats here.
-            // If it has credits, we keep it "online" in a sense or at least "syncing"
-            // Let's keep status as 'offline' but it's now in the batch
-            recoveredNode.status = 'offline';
+            // If it has credits, we treat it as 'syncing' so it stays in the active list
+            // even if gossip missed it temporarily.
+            recoveredNode.status = 'syncing';
             recoveredNode.seenInGossip = false;
 
             nodesMap.set(ip, recoveredNode);

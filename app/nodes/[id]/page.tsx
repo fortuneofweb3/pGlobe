@@ -2410,13 +2410,8 @@ function NodeDetailContent() {
                                     const ts = parseInt(key);
                                     const points = buckets[ts];
 
-                                    // Helpers
-                                    const sum = (metric: string) => points.reduce((acc, p) => acc + (p[metric] || 0), 0);
-                                    const avg = (metric: string) => {
-                                        const validPoints = points.filter(p => p[metric] !== undefined && p[metric] !== null);
-                                        if (validPoints.length === 0) return 0;
-                                        return validPoints.reduce((acc, p) => acc + (p[metric] || 0), 0) / validPoints.length;
-                                    };
+                                    // Helper: pick highest value
+                                    const max = (metric: string) => Math.max(...points.map(p => p[metric] ?? 0));
 
                                     // Pick status from the first point, or 'online' if any are online
                                     const isAnyOnline = points.some(p => p.status === 'online');
@@ -2426,12 +2421,12 @@ function NodeDetailContent() {
                                     return {
                                         ...points[0], // Keep basic props from first point
                                         timestamp: ts,
-                                        credits: sum('credits'),
-                                        packetsReceived: sum('packetsReceived'),
-                                        packetsSent: sum('packetsSent'),
-                                        storageTotal: sum('storageTotal'),
-                                        cpuPercent: avg('cpuPercent'),
-                                        ramPercent: avg('ramPercent'),
+                                        credits: max('credits'),
+                                        packetsReceived: max('packetsReceived'),
+                                        packetsSent: max('packetsSent'),
+                                        storageTotal: max('storageTotal'),
+                                        cpuPercent: max('cpuPercent'),
+                                        ramPercent: max('ramPercent'),
                                         status: status
                                     };
                                 });
