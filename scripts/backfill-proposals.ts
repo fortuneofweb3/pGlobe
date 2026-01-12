@@ -34,13 +34,16 @@ async function fetchVestingHistory(connection: Connection, walletStr: string, pr
                 let proposalId = proposalMap.get(mappingKey);
                 if (!proposalId) proposalId = proposalMap.get(`${walletStr}:${amount.toFixed(0)}`);
 
-                schedule.push({
-                    amount,
-                    unlockDate: new Date(tStart * 1000),
-                    status,
-                    isGenesis: tStart === 0,
-                    proposalId
-                });
+                // ONLY include tranches linked to a DAO proposal
+                if (proposalId) {
+                    schedule.push({
+                        amount,
+                        unlockDate: new Date(tStart * 1000),
+                        status,
+                        isGenesis: tStart === 0,
+                        proposalId
+                    });
+                }
             }
         }
     } catch (e) {

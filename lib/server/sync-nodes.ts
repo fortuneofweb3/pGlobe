@@ -548,7 +548,7 @@ export async function enrichWithBalance(
     const pubkey = node.pubkey || node.publicKey || '';
     const existing = existingNodes.get(pubkey);
 
-    if (existing?.vestingStake !== undefined && existing.vestingStake !== null && existing.vestingStake > 0) {
+    if (existing?.vestingStake !== undefined && existing.vestingStake !== null) {
       node.vestingStake = existing.vestingStake;
     }
   }

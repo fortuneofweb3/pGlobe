@@ -5,6 +5,7 @@ import { XANDEUM_NFT_COLLECTIONS } from '../lib/constants/nft';
 import * as bs58 from 'bs58';
 import dotenv from 'dotenv';
 import path from 'path';
+import { getProposalMapping } from '../lib/server/proposal-scanner';
 
 // Load environment variables
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
@@ -54,15 +55,16 @@ async function fetchDAOStake(connection: Connection, ownerPubkey: PublicKey): Pr
     return 0; // Return 0 if we can't fetch after retries
 }
 
-async function fetchVestingHistory(connection: Connection, managerWallet: PublicKey) {
+async function fetchVestingHistory(connection: Connection, managerWallet: PublicKey, proposalMap: Map<string, string>) {
     let retries = 5;
     let delay = 2000;
+    const walletStr = managerWallet.toBase58();
 
     while (retries > 0) {
         try {
             const result = { totalVested: 0, schedule: [] as any[] };
             const grantAccounts = await connection.getProgramAccounts(VESTING_PROGRAM, {
-                filters: [{ memcmp: { offset: 8, bytes: managerWallet.toBase58() } }]
+                filters: [{ memcmp: { offset: 8, bytes: walletStr } }]
             });
 
             for (const { pubkey: grantAccount, account } of grantAccounts) {
@@ -82,14 +84,19 @@ async function fetchVestingHistory(connection: Connection, managerWallet: Public
                     }
                 }
 
-                let grantTotal = 0;
                 const tranches: any[] = [];
                 for (let i = START; i <= data.length - STRIDE; i += STRIDE) {
                     const amount = Number(data.readBigUInt64LE(i)) / 1e9;
                     if (amount === 0) break;
                     const tStart = Number(data.readBigUInt64LE(i + 56));
-                    tranches.push({ amount, unlockDate: new Date(tStart * 1000), timestamp: tStart });
-                    grantTotal += amount;
+
+                    const mappingKey = `${walletStr}:${amount.toFixed(0)}:${tStart}`;
+                    let proposalId = proposalMap.get(mappingKey);
+                    if (!proposalId) proposalId = proposalMap.get(`${walletStr}:${amount.toFixed(0)}`);
+
+                    if (proposalId) {
+                        tranches.push({ amount, unlockDate: new Date(tStart * 1000), timestamp: tStart, proposalId });
+                    }
                 }
 
                 for (const t of tranches) {
@@ -99,10 +106,19 @@ async function fetchVestingHistory(connection: Connection, managerWallet: Public
                         amount: t.amount,
                         unlockDate: t.unlockDate,
                         status,
-                        isGenesis: t.timestamp === 0
+                        isGenesis: t.timestamp === 0,
+                        proposalId: t.proposalId
                     });
                 }
-                result.totalVested += vaultBalance; // vestingStake = what's left in vault
+
+                // If we have tranches, we count the vault balance. 
+                // Note: This logic is slightly different from sync-rewards.ts which sums tranches,
+                // but here it sums vault balance. We should probably stick to tranches sum for "fucked" rewards.
+                // Actually, the user wants "vestingStake = unclaimed rewards (vault balance)" according to comments in this file.
+                // But we should only count vault balance if it's from DAO grants.
+                if (tranches.length > 0) {
+                    result.totalVested += vaultBalance;
+                }
             }
             return result;
         } catch (err: any) {
@@ -132,6 +148,8 @@ async function enrichManagers() {
     const uniqueManagers = Array.from(new Set(nodes.map((n: any) => n.managerWallet)));
     console.log(`Processing ${uniqueManagers.length} unique managers.`);
 
+    const proposalMap = await getProposalMapping();
+
     let processedCount = 0;
     for (const managerWallet of uniqueManagers) {
         processedCount++;
@@ -142,7 +160,7 @@ async function enrichManagers() {
 
             // 1. Fetch Stake & Vesting
             const daoStake = await fetchDAOStake(connection, ownerPubkey);
-            const vestingData = await fetchVestingHistory(connection, ownerPubkey);
+            const vestingData = await fetchVestingHistory(connection, ownerPubkey, proposalMap);
 
             // Redefine metrics as per user request:
             // xandStake = daoStake

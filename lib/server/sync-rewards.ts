@@ -27,22 +27,27 @@ async function fetchVestingHistory(connection: Connection, walletStr: string, pr
                 const amount = Number(data.readBigUInt64LE(i)) / 1e9;
                 if (amount === 0) break;
 
-                totalVestingStake += amount; // Sum all tranches for total grant
-
                 const tStart = Number(data.readBigUInt64LE(i + 56));
-                const status = (tStart < Date.now() / 1000) ? 'Claimable' : 'Locked';
 
+                // Determine proposalId BEFORE adding to totals
                 const mappingKey = `${walletStr}:${amount.toFixed(0)}:${tStart}`;
                 let proposalId = proposalMap.get(mappingKey);
                 if (!proposalId) proposalId = proposalMap.get(`${walletStr}:${amount.toFixed(0)}`);
 
-                schedule.push({
-                    amount,
-                    unlockDate: new Date(tStart * 1000),
-                    status,
-                    isGenesis: tStart === 0,
-                    proposalId
-                });
+                // ONLY include tranches linked to a DAO proposal
+                if (proposalId) {
+                    totalVestingStake += amount; // Sum only filtered tranches
+
+                    const status = (tStart < Date.now() / 1000) ? 'Claimable' : 'Locked';
+
+                    schedule.push({
+                        amount,
+                        unlockDate: new Date(tStart * 1000),
+                        status,
+                        isGenesis: tStart === 0,
+                        proposalId
+                    });
+                }
             }
         }
     } catch (e) {
@@ -65,31 +70,30 @@ export async function syncRewardsForAllManagers() {
 
         for (const wallet of managers) {
             const { history, totalVestingStake } = await fetchVestingHistory(connection, wallet, proposalMap);
-            if (history.length > 0) {
-                await db.collection('manager_rewards').updateOne(
-                    { managerWallet: wallet },
-                    {
-                        $set: {
-                            managerWallet: wallet,
-                            history,
-                            totalRewards: totalVestingStake,
-                            updatedAt: new Date()
-                        }
-                    },
-                    { upsert: true }
-                );
 
-                // Also update the nodes collection so the manager list stat is correct
-                await db.collection('nodes').updateMany(
-                    { $or: [{ managerWallet: wallet }, { registrarWallet: wallet }] },
-                    {
-                        $set: {
-                            vestingStake: totalVestingStake,
-                            updatedAt: new Date()
-                        }
+            await db.collection('manager_rewards').updateOne(
+                { managerWallet: wallet },
+                {
+                    $set: {
+                        managerWallet: wallet,
+                        history,
+                        totalRewards: totalVestingStake,
+                        updatedAt: new Date()
                     }
-                );
-            }
+                },
+                { upsert: true }
+            );
+
+            // Also update the nodes collection so the manager list stat is correct
+            await db.collection('nodes').updateMany(
+                { managerWallet: wallet },
+                {
+                    $set: {
+                        vestingStake: totalVestingStake,
+                        updatedAt: new Date()
+                    }
+                }
+            );
         }
 
         const duration = Date.now() - startTime;
@@ -111,34 +115,30 @@ export async function syncRewardsForManager(wallet: string) {
 
         const { history, totalVestingStake } = await fetchVestingHistory(connection, wallet, proposalMap);
 
-        if (history.length > 0) {
-            await db.collection('manager_rewards').updateOne(
-                { managerWallet: wallet },
-                {
-                    $set: {
-                        managerWallet: wallet,
-                        history,
-                        totalRewards: totalVestingStake,
-                        updatedAt: new Date()
-                    }
-                },
-                { upsert: true }
-            );
-
-            // Also update the nodes collection
-            await db.collection('nodes').updateMany(
-                { $or: [{ managerWallet: wallet }, { registrarWallet: wallet }] },
-                {
-                    $set: {
-                        vestingStake: totalVestingStake,
-                        updatedAt: new Date()
-                    }
+        await db.collection('manager_rewards').updateOne(
+            { managerWallet: wallet },
+            {
+                $set: {
+                    managerWallet: wallet,
+                    history,
+                    totalRewards: totalVestingStake,
+                    updatedAt: new Date()
                 }
-            );
-            console.log(`[SyncRewards] ✅ Target sync complete for ${wallet}`);
-        } else {
-            console.log(`[SyncRewards] ℹ️ No rewards found for ${wallet}`);
-        }
+            },
+            { upsert: true }
+        );
+
+        // Also update the nodes collection
+        await db.collection('nodes').updateMany(
+            { managerWallet: wallet },
+            {
+                $set: {
+                    vestingStake: totalVestingStake,
+                    updatedAt: new Date()
+                }
+            }
+        );
+        console.log(`[SyncRewards] ✅ Target sync complete for ${wallet} (${history.length} DAO tranches)`);
         return { success: true };
     } catch (err) {
         console.error(`[SyncRewards] ❌ Target sync failed for ${wallet}:`, err);
