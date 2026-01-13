@@ -134,14 +134,14 @@ function ManagerCard({ manager, allNodesCount, onClick, copyWallet, copiedWallet
                         <FileCheck className="w-3 h-3" />
                         <span className="text-lg font-bold">{manager.registeredNodes}</span>
                     </div>
-                    <div className="text-[10px] text-foreground/50">Registered</div>
+                    <div className="text-[10px] text-foreground/50">Active Nodes</div>
                 </div>
                 <div className="bg-green-500/10 rounded-lg p-2 text-center">
                     <div className="flex items-center justify-center gap-1 text-green-400">
                         <ShoppingCart className="w-3 h-3" />
                         <span className="text-lg font-bold">{manager.totalPurchases || manager.purchasedNodes}</span>
                     </div>
-                    <div className="text-[10px] text-foreground/50">Purchased</div>
+                    <div className="text-[10px] text-foreground/50">Licenses</div>
                 </div>
                 <div className="col-span-2 bg-[#F0A741]/10 rounded-lg p-2 text-center border border-[#F0A741]/20">
                     <div className="text-lg font-bold text-[#F0A741]">
@@ -313,7 +313,7 @@ function ManagersPageContent() {
                                 color="orange"
                             />
                             <StatsCard
-                                title="Registered"
+                                title="Active Nodes"
                                 value={stats.registeredNodes}
                                 subValue="Nodes with on-chain identity"
                                 icon={<FileCheck className="w-4 h-4" />}

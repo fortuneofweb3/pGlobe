@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { SimpleCache } from '@/lib/server/cache-utils';
 import { getProposalMapping } from '@/lib/server/proposal-scanner';
-import { getNodesByManager, getDb } from '@/lib/server/mongodb-nodes';
+import { getNodesByManager, getDb, getManagerStatsCollection } from '@/lib/server/mongodb-nodes';
 import { enrichPNodeWithOnChainData } from '@/lib/server/solana-pnodes';
 import { syncRewardsForManager } from '@/lib/server/sync-rewards';
 
@@ -32,9 +32,19 @@ export async function GET(
 
         // 2. Fetch all data from DB FIRST
         let managerNodes;
+        let purchasedNodes = 0;
         try {
             console.log(`[API] 📥 Fetching nodes for ${wallet} (${network})...`);
-            managerNodes = await getNodesByManager(wallet, network);
+            const [nodes, statsCollection] = await Promise.all([
+                getNodesByManager(wallet, network),
+                getManagerStatsCollection()
+            ]);
+            managerNodes = nodes;
+
+            const statsDoc = await statsCollection.findOne({ wallet });
+            if (statsDoc) {
+                purchasedNodes = statsDoc.purchaseCount || 0;
+            }
         } catch (dbError: any) {
             console.error('[API] Database error:', dbError.message);
             return NextResponse.json(
@@ -83,6 +93,7 @@ export async function GET(
         const stats = {
             wallet,
             nodeCount: managerNodes.length,
+            purchasedNodes,
             onlineCount: managerNodes.filter(n => n.status === 'online').length,
             syncingCount: managerNodes.filter(n => n.status === 'syncing').length,
             offlineCount: managerNodes.filter(n => n.status === 'offline' || !n.status).length,
@@ -186,4 +197,3 @@ export async function GET(
         );
     }
 }
-

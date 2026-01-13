@@ -13,7 +13,7 @@ import { PNode } from '@/lib/types/pnode';
 import { formatStorageBytes } from '@/lib/utils/storage';
 import {
     Server, TrendingUp, ArrowLeft, ExternalLink, Copy, Check,
-    Award, HardDrive, Users, Zap, Activity, MapPin, Clock, ShieldCheck, ChevronDown, CalendarDays
+    Award, HardDrive, Users, Zap, Activity, MapPin, Clock, ShieldCheck, ChevronDown, CalendarDays, ShoppingCart
 } from 'lucide-react';
 import MetricChart from '@/components/charts/MetricChart';
 import { formatRelativeTime } from '@/lib/utils/time';
@@ -42,6 +42,7 @@ const formatXandValue = (value: number): string => {
 interface ManagerDetails {
     wallet: string;
     nodeCount: number;
+    purchasedNodes?: number;
     onlineCount: number;
     syncingCount: number;
     offlineCount: number;
@@ -487,11 +488,19 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                         {/* Stats Row - 4 Columns */}
                         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 stagger-children">
                             <StatsCard
-                                title="Online pNodes"
+                                title="Active Nodes"
                                 value={manager.onlineCount}
                                 subValue={`${uptimePercent}% Manager availability`}
                                 icon={<Activity className="w-4 h-4" />}
                                 color="green"
+                            />
+
+                            <StatsCard
+                                title="Licenses"
+                                value={manager.purchasedNodes || 0}
+                                subValue="Mainnet Capacity"
+                                icon={<ShoppingCart className="w-4 h-4" />}
+                                color="purple"
                             />
 
                             <StatsCard
