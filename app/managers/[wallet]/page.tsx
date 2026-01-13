@@ -8,6 +8,7 @@ import { useXandPrice } from '@/lib/hooks/useXandPrice';
 import { StatCardSkeleton, ChartSkeleton, PNodeTableSkeleton } from '@/components/Skeletons';
 import PNodeTable from '@/components/PNodeTable';
 import StatsCard from '@/components/StatsCard';
+import { mergeDuplicateIPNodes } from '@/lib/utils/merge-duplicate-ips';
 import { PNode } from '@/lib/types/pnode';
 import { formatStorageBytes } from '@/lib/utils/storage';
 import {
@@ -185,7 +186,10 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                 id: n.pubkey || n.publicKey || '',
                 role: n.managerWallet === wallet ? 'buyer' : 'registrar',
             }));
-            setNodes(pnodes);
+
+            // Group duplicate IPs/Pubkeys
+            const groupedNodes = mergeDuplicateIPNodes(pnodes);
+            setNodes(groupedNodes);
 
             // Initial stats from context
             const totalCredits = pnodes.reduce((sum, n) => sum + (n.credits || 0), 0);
@@ -240,7 +244,9 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
 
             if (data.success) {
                 setManager(data.manager);
-                setNodes(data.nodes);
+                if (data.nodes) {
+                    setNodes(mergeDuplicateIPNodes(data.nodes));
+                }
                 if (data.rewards) {
                     setRewards(data.rewards);
                 }

@@ -244,13 +244,6 @@ export default function ActivityLogList({ pubkey, address, countryCode, limit = 
     const [localWatchlistOnly, setLocalWatchlistOnly] = useState(watchlistOnly || false);
 
     const fetchLogs = async (skip: number = 0, append: boolean = false) => {
-        // If allowedPubkeys is set, we skip initial fetch for now as the API doesn't support bulk pubkey filtering
-        // We rely on realtime socket events for "Live Activity"
-        if (allowedPubkeys && allowedPubkeys.length > 0) {
-            setLoading(false);
-            return;
-        }
-
         if (append) {
             setLoadingMore(true);
         } else {
@@ -266,9 +259,9 @@ export default function ActivityLogList({ pubkey, address, countryCode, limit = 
             if (typeFilter) query.set('type', typeFilter);
             if (selectedNetwork && selectedNetwork !== 'all') query.set('network', selectedNetwork);
 
-            // If we're in watchlist only mode and have a watchlist, we ideally want to fetch only those.
-            // But since the backend only supports one pubkey, we fetch all and filter client-side for now
-            // or we could fetch in parallel but that's expensive.
+            if (allowedPubkeys && allowedPubkeys.length > 0) {
+                query.set('pubkeys', allowedPubkeys.join(','));
+            }
 
             query.set('limit', limit.toString());
             query.set('skip', skip.toString());
@@ -390,7 +383,15 @@ export default function ActivityLogList({ pubkey, address, countryCode, limit = 
             if (countryCode && newLog.countryCode !== countryCode) return;
             if (localWatchlistOnly && newLog.pubkey && !watchlist.includes(newLog.pubkey)) return;
 
-            // ... rest of handler
+            // Optional: Filter by allowed pubkeys if provided and we received a log from someone else
+            if (allowedPubkeys && allowedPubkeys.length > 0 && newLog.pubkey && !allowedPubkeys.includes(newLog.pubkey)) {
+                return;
+            }
+
+            bufferRef.current.push(newLog);
+            if (isVisibleRef.current && !processingRef.current) {
+                processBuffer();
+            }
         });
 
         return () => {

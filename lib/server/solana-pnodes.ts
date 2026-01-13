@@ -128,9 +128,9 @@ export async function enrichPNodeWithOnChainData(pubkey: string, connection: Con
     const [registryAddress] = PublicKey.findProgramAddressSync([Buffer.from('registry'), nodePubkey.toBuffer()], programId);
     const [managerAddress] = PublicKey.findProgramAddressSync([Buffer.from('manager'), nodePubkey.toBuffer()], programId);
 
-    const [balanceRes, voteRes, regRes, manRes] = await Promise.allSettled([
+    const [balanceRes, regRes, manRes] = await Promise.allSettled([
       connection.getBalance(nodePubkey),
-      connection.getVoteAccounts(),
+      // connection.getVoteAccounts(), // Too heavy for quick check
       connection.getAccountInfo(registryAddress),
       connection.getAccountInfo(managerAddress)
     ]);
@@ -138,6 +138,7 @@ export async function enrichPNodeWithOnChainData(pubkey: string, connection: Con
     let balance = balanceRes.status === 'fulfilled' ? balanceRes.value / 1e9 : 0;
     let isValidator = false;
     let validatorInfo: any = undefined;
+    /*
     if (voteRes.status === 'fulfilled') {
       const va = [...voteRes.value.current, ...voteRes.value.delinquent].find(v => v.nodePubkey === pubkey);
       if (va) {
@@ -145,6 +146,7 @@ export async function enrichPNodeWithOnChainData(pubkey: string, connection: Con
         validatorInfo = { votePubkey: va.votePubkey, activatedStakeSOL: Number(va.activatedStake) / 1e9 };
       }
     }
+    */
 
     let managerWallet: string | undefined;
     let registrarWallet: string | undefined;
@@ -227,13 +229,15 @@ export async function enrichPNodeWithOnChainData(pubkey: string, connection: Con
 
     const mainnetConn = new Connection(MAINNET_RPC, 'confirmed');
 
+    /*
     const [daoStake] = await Promise.all([
       fetchDAOStake(mainnetConn, ownerPubkey)
     ]);
-
-
+    */
+    const daoStake = 0;
 
     let nftBoost = 1;
+    /*
     try {
       const tas = await mainnetConn.getParsedTokenAccountsByOwner(ownerPubkey, { programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') });
       for (const ta of tas.value) {
@@ -241,6 +245,7 @@ export async function enrichPNodeWithOnChainData(pubkey: string, connection: Con
         if (match && ta.account.data.parsed.info.tokenAmount.uiAmount >= 1) nftBoost = Math.max(nftBoost, match.multiplier);
       }
     } catch (e) { }
+    */
 
     return {
       balance, isValidator, isRegistered, managerWallet, registrarWallet,

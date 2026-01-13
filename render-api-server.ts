@@ -356,6 +356,8 @@ import { getActivityLogs, ActivityType } from './lib/server/mongodb-activity';
 app.get('/api/activity-logs', authenticate, async (req, res) => {
   try {
     const pubkey = req.query.pubkey as string | undefined;
+    const pubkeysStr = req.query.pubkeys as string | undefined;
+    const pubkeys = pubkeysStr ? pubkeysStr.split(',').filter(Boolean) : undefined;
     const address = req.query.address as string | undefined;
     const countryCode = req.query.countryCode as string | undefined;
     const type = req.query.type as ActivityType | undefined;
@@ -363,7 +365,7 @@ app.get('/api/activity-logs', authenticate, async (req, res) => {
     const limit = parseInt(req.query.limit as string || '50');
     const skip = parseInt(req.query.skip as string || '0');
 
-    const logs = await getActivityLogs({ pubkey, address, countryCode, type, limit, skip, network });
+    const logs = await getActivityLogs({ pubkey, pubkeys, address, countryCode, type, limit, skip, network });
     res.json({ logs });
   } catch (error: any) {
     console.error('[RenderAPI] ❌ Failed to get activity logs:', error);

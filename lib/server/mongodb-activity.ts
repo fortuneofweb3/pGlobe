@@ -45,6 +45,7 @@ export async function storeActivityLog(log: Omit<ActivityLog, 'timestamp'>): Pro
 
 export async function getActivityLogs(options: {
     pubkey?: string,
+    pubkeys?: string[],
     address?: string,
     countryCode?: string,
     network?: string,
@@ -56,7 +57,12 @@ export async function getActivityLogs(options: {
         const collection = await getActivityCollection();
         const query: import('mongodb').Filter<ActivityLog> = {};
 
-        if (options.pubkey) query.pubkey = options.pubkey;
+        if (options.pubkeys && options.pubkeys.length > 0) {
+            query.pubkey = { $in: options.pubkeys };
+        } else if (options.pubkey) {
+            query.pubkey = options.pubkey;
+        }
+
         if (options.address) query.address = options.address;
         if (options.countryCode) query.countryCode = options.countryCode;
         if (options.type) query.type = options.type;

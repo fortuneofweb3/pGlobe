@@ -11,6 +11,7 @@ export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
         const pubkey = searchParams.get('pubkey');
+        const pubkeys = searchParams.get('pubkeys');
         const address = searchParams.get('address');
         const countryCode = searchParams.get('countryCode');
         const network = searchParams.get('network');
@@ -20,6 +21,7 @@ export async function GET(request: Request) {
 
         const queryParams = new URLSearchParams();
         if (pubkey) queryParams.set('pubkey', pubkey);
+        if (pubkeys) queryParams.set('pubkeys', pubkeys);
         if (address) queryParams.set('address', address);
         if (countryCode) queryParams.set('countryCode', countryCode);
         if (network) queryParams.set('network', network);
