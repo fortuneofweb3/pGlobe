@@ -384,10 +384,12 @@ export async function upsertNodes(nodes: PNode[], skipMarkOffline: boolean = fal
       const pubkey = node.pubkey || node.publicKey;
       if (!address) continue;
 
-      // Use IP only (strip port) as the document ID
-      // This prevents duplicate entries when same IP has different ephemeral ports
+      // Use Composite ID: Pubkey + IP
+      // This allows:
+      // 1. Same Pubkey at Diff IP -> New Record (History preserved)
+      // 2. Diff Pubkey at Same IP -> New Record (Multi-tenancy)
       const ip = address.split(':')[0];
-      const docId = ip;
+      const docId = pubkey ? `${pubkey}_${ip}` : ip;
 
       incomingAddresses.add(docId);
       const doc = nodeToDocument(node);
@@ -689,7 +691,8 @@ export async function getNodeByAddress(address: string): Promise<PNode | null> {
   try {
     await getClient();
     const collection = await getNodesCollection();
-    const doc = await collection.findOne({ _id: address });
+    // Query by 'address' field, not _id, since _id is now Pubkey
+    const doc = await collection.findOne({ address: address });
     return doc ? documentToNode(doc as unknown as NodeDocument) : null;
   } catch (err) {
     const error = err as Error;
@@ -718,8 +721,11 @@ export async function updateNode(pubkey: string, updates: Partial<PNode>): Promi
     // Remove _id from doc to avoid update error
     delete doc._id;
 
-    await collection.updateOne(
-      { _id: updates.address || pubkey },
+    // Use updateMany to ensure all instances of this Pubkey (at different IPs)
+    // are updated with the new metadata (e.g. Manager Wallet, Stake, Version).
+    // These are properties of the Identity, not the Location.
+    await collection.updateMany(
+      { pubkey: pubkey }, // Filter by Pubkey field, not _id
       {
         $set: {
           ...doc,

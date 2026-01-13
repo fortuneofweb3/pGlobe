@@ -50,5 +50,4 @@ prisma/dev.db-journal
 tmp/
 local-pnodes.json
 
-# Xandeum Repos
-XandeumRepos/
+

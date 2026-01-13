@@ -1,32 +1,32 @@
 
-import { MongoClient } from "mongodb";
-import path from "path";
-import dotenv from "dotenv";
+import * as dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
+dotenv.config();
 
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
+import { MongoClient } from 'mongodb';
 
-async function listCollections() {
-    const uri = process.env.MONGODB_URI;
-    if (!uri) {
-        console.error("MONGODB_URI not found");
-        process.exit(1);
-    }
+const uri = process.env.MONGODB_URI;
+const client = new MongoClient(uri as string);
 
-    const client = new MongoClient(uri);
+async function main() {
     try {
         await client.connect();
-        const db = client.db("pGlobe");
+        const db = client.db('xglobe'); // Default DB
+
+        console.log('Connected to DB. Listing collections...');
         const collections = await db.listCollections().toArray();
+        collections.forEach(c => console.log(`- ${c.name}`));
 
-        console.log("Collections in pGlobe:");
-        for (const col of collections) {
-            const count = await db.collection(col.name).countDocuments();
-            console.log(`- ${col.name}: ${count} documents`);
-        }
+        // Also check if there are other DBs
+        console.log('\nListing Databases:');
+        const dbs = await client.db().admin().listDatabases();
+        dbs.databases.forEach(d => console.log(`- ${d.name}`));
 
+    } catch (e) {
+        console.error(e);
     } finally {
         await client.close();
     }
 }
 
-listCollections().catch(console.error);
+main();
