@@ -1552,21 +1552,25 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
             console.debug('Node clicked! ID:', nodeId, 'Feature:', feature, 'Properties:', feature.properties);
 
             if (nodeId && typeof nodeId === 'string') {
-              // Find the node
-              const clickedNode = navigableNodes.find(n => n.id === nodeId);
+              // Find the node and its index
+              const nodeIndex = navigableNodes.findIndex(n => n.id === nodeId);
+              const clickedNode = nodeIndex >= 0 ? navigableNodes[nodeIndex] : null;
 
-              if (clickedNode && onNodeClick) {
-                // Call the onNodeClick callback to open node detail modal
-                onNodeClick(clickedNode);
-                handleUserInteraction();
-              } else {
-                // Fallback to existing popup behavior if no callback provided
-                const nodeIndex = navigableNodes.findIndex(n => n.id === nodeId);
+              if (clickedNode) {
+                // OPTIMISTIC NAVIGATION: Navigate immediately!
+                // This ensures the zoom feels fast like the arrow buttons
                 if (nodeIndex >= 0) {
-                  // Navigate to the node (this will open the popup after navigation completes)
                   navigateToNode(nodeIndex);
                 }
+
+                // THEN call the parent callback if provided
+                if (onNodeClick) {
+                  onNodeClick(clickedNode);
+                }
+
                 handleUserInteraction();
+              } else {
+                console.warn('Node clicked but not found in navigable nodes:', nodeId);
               }
 
               // Reset flag after a short delay to allow map handler to check it
