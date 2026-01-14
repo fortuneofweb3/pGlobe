@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useState, useEffect, useMemo, Suspense, useRef } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import { useNodes } from '@/lib/context/NodesContext';
@@ -101,6 +101,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
     const [showMetricDropdown, setShowMetricDropdown] = useState(false);
     const [historyData, setHistoryData] = useState<Record<string, HistoryPoint[]>>({});
     const [historyLoading, setHistoryLoading] = useState(false);
+    const isFetchingRef = useRef(false);
 
     // XAND price from Jupiter
     const { formatUsd } = useXandPrice();
@@ -112,7 +113,9 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
 
             // Only fetch if we haven't already (or simple cache check)
             if (Object.keys(historyData).length > 0) return;
+            if (isFetchingRef.current) return;
 
+            isFetchingRef.current = true;
             setHistoryLoading(true);
             try {
                 // Take top 50 active nodes to avoid URL limits and useless data
@@ -132,13 +135,18 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                 const res = await fetch(`/api/history/bulk?nodeIds=${nodeIds}&startTime=${startTime}&endTime=${endTime}`);
                 const data = await res.json();
 
-                if (data.data) {
+                // Only update if we got valid data back
+                if (data.data && Object.keys(data.data).length > 0) {
+                    setHistoryData(data.data);
+                } else if (data.data && Object.keys(historyData).length === 0) {
+                    // Start with empty data only if we have nothing
                     setHistoryData(data.data);
                 }
             } catch (err) {
                 console.error("Failed to fetch fleet history", err);
             } finally {
                 setHistoryLoading(false);
+                isFetchingRef.current = false;
             }
         };
 

@@ -172,10 +172,8 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
       // Filter to only include nodes that are in scanTopNodes and have location data
       const scanNodeIds = new Set(scanTopNodes.map(n => n.id));
       const filtered = nodesWithLocation.filter(node => scanNodeIds.has(node.id));
-      console.debug('[MapLibreGlobe] Scan mode: navigableNodes =', filtered.length, 'out of', nodesWithLocation.length, 'total nodes');
       return filtered;
     }
-    console.debug('[MapLibreGlobe] Normal mode: navigableNodes =', nodesWithLocation.length);
     return nodesWithLocation;
   }, [scanTopNodes, nodesWithLocation]);
 
@@ -380,11 +378,6 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
   // Scan connections: lines from scan location to top 20 nodes
   const scanConnections = useMemo(() => {
     if (!scanLocation || !scanTopNodes || scanTopNodes.length === 0) {
-      console.debug('[ScanConnections] Missing data:', {
-        hasScanLocation: !!scanLocation,
-        hasScanTopNodes: !!scanTopNodes,
-        scanTopNodesLength: scanTopNodes?.length || 0
-      });
       return [];
     }
 
@@ -399,11 +392,6 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
         connectorId: string;
       };
     }> = [];
-
-    console.debug('[ScanConnections] Creating connections:', {
-      scanLocation,
-      topNodesCount: scanTopNodes.length,
-    });
 
     scanTopNodes.forEach((node) => {
       if (node.locationData?.lat && node.locationData?.lon) {
@@ -423,11 +411,10 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
           },
         });
       } else {
-        console.warn('[ScanConnections] Node missing location data:', node.id, node.locationData);
+        // Node missing location data
       }
     });
 
-    console.debug('[ScanConnections] Created', connections.length, 'connections');
     return connections;
   }, [scanLocation, scanTopNodes]);
 
