@@ -820,7 +820,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
 
                             {/* Right: Interactive Map */}
                             <div className="card h-full relative group overflow-hidden p-0 bg-transparent">
-                                <div className="h-full w-full bg-[#0a0a0a] absolute inset-0">
+                                <div className="h-full w-full bg-black absolute inset-0">
                                     <ManagerMap
                                         nodes={nodes}
                                         selectedNode={nodes[activeNodeIndex]}

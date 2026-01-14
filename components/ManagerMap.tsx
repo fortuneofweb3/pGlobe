@@ -85,7 +85,7 @@ export default function ManagerMap({ nodes, selectedNode, onNodeSelect }: Manage
     const validNodes = useMemo(() => nodes.filter(n => n.locationData?.lat && n.locationData?.lon), [nodes]);
 
     return (
-        <div className="h-full w-full rounded-xl overflow-hidden border border-white/10 relative z-0">
+        <div className="h-full w-full rounded-xl overflow-hidden border border-white/10 relative z-0 bg-black">
             <MapContainer
                 center={center}
                 zoom={2}
@@ -93,7 +93,8 @@ export default function ManagerMap({ nodes, selectedNode, onNodeSelect }: Manage
                 zoomControl={false}
                 doubleClickZoom={false}
                 touchZoom={false}
-                className="h-full w-full bg-[#0a0a0a]"
+                style={{ height: '100%', width: '100%', backgroundColor: '#000' }}
+                className="h-full w-full bg-black"
                 attributionControl={false}
             >
                 <TileLayer
