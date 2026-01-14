@@ -575,10 +575,13 @@ export async function enrichWithBalance(
         node.balance = balanceData.balance;
         node.isRegistered = balanceData.isRegistered;
         if (balanceData.managerPDA) node.managerPDA = balanceData.managerPDA;
-        if (balanceData.managerWallet) {
-          node.managerWallet = balanceData.managerWallet;
+
+        // Always update managerWallet with fresh data (clears it if not registered)
+        node.managerWallet = balanceData.managerWallet;
+        if (node.managerWallet) {
           walletAssignedCount++;
         }
+
         if (balanceData.registrarWallet) node.registrarWallet = balanceData.registrarWallet;
         // STOINC & Rewards fields
         node.xandStake = balanceData.xandStake;

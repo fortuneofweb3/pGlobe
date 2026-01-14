@@ -71,6 +71,7 @@ export async function fetchBalanceForPubkey(
 
     if (onChainData.error) {
       console.warn(`[Balance Cache] Enrichment error for ${publicKey}:`, onChainData.error);
+      return null;
     }
 
     const balanceData: BalanceData = {
