@@ -89,7 +89,10 @@ export default function ManagerMap({ nodes, selectedNode, onNodeSelect }: Manage
             <MapContainer
                 center={center}
                 zoom={2}
-                scrollWheelZoom={true}
+                scrollWheelZoom={false}
+                zoomControl={false}
+                doubleClickZoom={false}
+                touchZoom={false}
                 className="h-full w-full bg-[#0a0a0a]"
                 attributionControl={false}
             >
