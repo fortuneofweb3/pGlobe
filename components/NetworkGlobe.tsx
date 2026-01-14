@@ -27,7 +27,7 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
   const globeEl = useRef<any>(null);
-  const [cameraDistance, setCameraDistance] = useState(250);
+  const [cameraDistance, setCameraDistance] = useState(2.5);
   const [globeRotation, setGlobeRotation] = useState({ lat: 0, lng: 0 });
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
       return {
         lat: node.locationData!.lat,
         lng: node.locationData!.lon,
-        size: Math.max(0.3, Math.min(1.5, cameraDistance / 200)), // Size based on zoom
+        size: Math.max(0.3, Math.min(1.5, cameraDistance / 2)), // Size based on zoom
         color: color,
         node: node, // Store full node data for tooltip
       };
@@ -59,7 +59,7 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
 
   // Prepare labels data - show cities/countries based on zoom level (Google Earth style)
   const labels = useMemo(() => {
-    const labelMap = new Map<string, { lat: number; lng: number; text: string; size: number; type: 'city' | 'country' }>();
+    const labelMap = new Map<string, { lat: number; lng: number; text: string; size: number; type: 'city' | 'country'; priority: number }>();
 
     // Group nodes by location to avoid duplicate labels
     const locationGroups = new Map<string, PNode[]>();
@@ -79,8 +79,8 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
 
       const { city, country, lat, lon } = node.locationData;
 
-      // Very zoomed in (< 120): Show all cities with node counts
-      if (cameraDistance < 120 && city) {
+      // Very zoomed in (< 1.2): Show all cities with node counts
+      if (cameraDistance < 1.2 && city) {
         const cityKey = `${city}-${country}`;
         if (!labelMap.has(cityKey)) {
           labelMap.set(cityKey, {
@@ -89,11 +89,12 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
             text: `${city} (${nodes.length})`,
             size: 1.0,
             type: 'city',
+            priority: nodes.length,
           });
         }
       }
-      // Moderately zoomed (120-180): Show major cities only
-      else if (cameraDistance < 180 && city && nodes.length > 1) {
+      // Moderately zoomed (1.2-1.8): Show major cities only
+      else if (cameraDistance < 1.8 && city && nodes.length > 1) {
         const cityKey = `${city}-${country}`;
         if (!labelMap.has(cityKey)) {
           labelMap.set(cityKey, {
@@ -102,11 +103,12 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
             text: city,
             size: 0.9,
             type: 'city',
+            priority: nodes.length,
           });
         }
       }
-      // Zoomed out (180-250): Show countries with node counts
-      else if (cameraDistance < 250 && country) {
+      // Zoomed out (1.8-2.5): Show countries with node counts
+      else if (cameraDistance < 2.5 && country) {
         const countryKey = country;
         if (!labelMap.has(countryKey)) {
           // Calculate average position for country
@@ -118,11 +120,12 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
             text: `${country} (${nodes.length})`,
             size: 1.3,
             type: 'country',
+            priority: nodes.length,
           });
         }
       }
-      // Very zoomed out (> 250): Show only countries with many nodes
-      else if (cameraDistance >= 250 && country && nodes.length >= 3) {
+      // Very zoomed out (> 2.5): Show only countries with many nodes
+      else if (cameraDistance >= 2.5 && country && nodes.length >= 3) {
         const countryKey = country;
         if (!labelMap.has(countryKey)) {
           const avgLat = nodes.reduce((sum, n) => sum + (n.locationData?.lat || 0), 0) / nodes.length;
@@ -133,12 +136,15 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
             text: country,
             size: 1.5,
             type: 'country',
+            priority: nodes.length,
           });
         }
       }
     });
 
-    return Array.from(labelMap.values());
+    return Array.from(labelMap.values())
+      .sort((a, b) => b.priority - a.priority)
+      .slice(0, 30);
   }, [nodesWithLocation, cameraDistance]);
 
   // Calculate region counts
@@ -166,15 +172,20 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
 
   // Zoom controls
   const handleZoomIn = () => {
-    setCameraDistance(prev => Math.max(100, prev - 50));
+    if (globeEl.current) {
+      const newDist = Math.max(0.2, cameraDistance - 0.5);
+      globeEl.current.pointOfView({ altitude: newDist }, 1000);
+    }
   };
 
   const handleZoomOut = () => {
-    setCameraDistance(prev => Math.min(400, prev + 50));
+    if (globeEl.current) {
+      const newDist = Math.min(5.0, cameraDistance + 0.5);
+      globeEl.current.pointOfView({ altitude: newDist }, 1000);
+    }
   };
 
   const handleReset = () => {
-    setCameraDistance(250);
     setGlobeRotation({ lat: 0, lng: 0 });
     if (globeEl.current) {
       globeEl.current.pointOfView({ lat: 0, lng: 0, altitude: 2.5 }, 1000);
@@ -279,7 +290,8 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
                 onLabelClick={(label: any) => {
                   // Zoom to label location
                   if (globeEl.current && label.lat !== undefined && label.lng !== undefined) {
-                    globeEl.current.pointOfView({ lat: label.lat, lng: label.lng, altitude: Math.max(1.5, cameraDistance / 2) }, 1000);
+                    const targetAltitude = Math.max(1.5, cameraDistance / 2);
+                    globeEl.current.pointOfView({ lat: label.lat, lng: label.lng, altitude: targetAltitude }, 1000);
                   }
                 }}
                 onPointClick={handlePointClick}
@@ -331,7 +343,7 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
 
               {/* Zoom Level Indicator */}
               <div className="absolute bottom-4 left-4 px-3 py-1 bg-card/90 border border-border rounded-lg text-body-small text-muted-foreground">
-                {cameraDistance < 150 ? 'City View' : cameraDistance < 200 ? 'Country View' : 'Global View'}
+                {cameraDistance < 1.5 ? 'City View' : cameraDistance < 2.0 ? 'Country View' : 'Global View'}
               </div>
             </>
           ) : nodesWithLocation.length === 0 ? (

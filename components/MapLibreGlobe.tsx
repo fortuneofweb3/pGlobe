@@ -595,11 +595,16 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
 
                 // For SYMBOL layers (labels), prevent culling but don't reset opacity/color
                 // This prevents labels from disappearing during animation without resetting styles
+                // For SYMBOL layers (labels), prevent culling but don't reset opacity/color
+                // This prevents labels from disappearing during animation without resetting styles
                 if (layer.type === 'symbol') {
-                  map.setLayoutProperty(layer.id, 'text-allow-overlap', true);
-                  map.setLayoutProperty(layer.id, 'icon-allow-overlap', true);
-                  map.setLayoutProperty(layer.id, 'text-optional', false);
-                  map.setLayoutProperty(layer.id, 'icon-optional', false);
+                  // REMOVED: Force rendering labels - this caused the "label explosion"
+                  // We want MapLibre to handle collision detection naturally during flight
+                  // map.setLayoutProperty(layer.id, 'text-allow-overlap', true);
+                  // map.setLayoutProperty(layer.id, 'icon-allow-overlap', true);
+                  // map.setLayoutProperty(layer.id, 'text-optional', false);
+                  // map.setLayoutProperty(layer.id, 'icon-optional', false);
+
                   // Don't reset text-opacity here - it's set by the style application below
                   map.setPaintProperty(layer.id, 'icon-opacity', 1.0);
                 }
@@ -2152,15 +2157,16 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                           } else if (isCityLabel) {
                             // City labels - smallest and thinnest
                             // Start showing at zoom 2, gradually increase to max at zoom 8
+                            // City labels - smallest and thinnest
+                            // Start showing at zoom 3.5 (was 2), gradually increase to max at zoom 8
                             map.setLayoutProperty(layer.id, 'text-size', [
                               'interpolate',
                               ['linear'],
                               ['zoom'],
-                              2, 6,       // Small size at zoom 2
-                              3, 7,       // Slightly larger at zoom 3
-                              4, 9,       // Medium size at zoom 4
-                              5.5, 10,    // Larger at zoom 5.5
-                              7, 12,      // Larger at zoom 7
+                              3, 6,       // Small size at zoom 3 (was 2)
+                              4, 7,       // Slightly larger at zoom 4 (was 3)
+                              5, 9,       // Medium size at zoom 5
+                              6.5, 10,    // Larger at zoom 6.5
                               8, 12,      // Max size at zoom 8
                               10, 12      // Maintain max size at higher zoom
                             ]);
@@ -2171,15 +2177,16 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                               // Some layers might not support this property
                             }
                             // City labels: gradually increase visibility as zoom increases
+                            // City labels: gradually increase visibility as zoom increases
                             map.setPaintProperty(layer.id, 'text-opacity', [
                               'interpolate',
                               ['linear'],
                               ['zoom'],
-                              2, 0.1,     // Very low opacity at zoom 2 (only major cities)
-                              3, 0.3,     // Some cities at zoom 3
-                              4, 0.6,     // More cities at zoom 4
-                              5, 0.8,     // Many cities at zoom 5
-                              6, 0.9,     // Full opacity at zoom 6
+                              3, 0.1,     // Very low opacity at zoom 3 (was 2)
+                              4, 0.3,     // Some cities at zoom 4 (was 3)
+                              5, 0.6,     // More cities at zoom 5
+                              6, 0.8,     // Many cities at zoom 6
+                              7, 0.9,     // Full opacity at zoom 7
                               8, 0.9,     // Maintain at higher zoom
                               10, 0.9     // Keep max at very high zoom
                             ]);
@@ -2188,16 +2195,18 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                           } else {
                             // Other place labels - default styling
                             // Start showing at zoom 1.5, gradually increase to max at zoom 7
+                            // Other place labels - default styling
+                            // Start showing at zoom 2.5 (was 1.5), gradually increase to max at zoom 7
                             map.setLayoutProperty(layer.id, 'text-size', [
                               'interpolate',
                               ['linear'],
                               ['zoom'],
-                              1.5, 7,     // Small size at zoom 1.5
-                              2.2, 9,     // Default zoom (~2.2) - small-medium
-                              3.5, 11,    // Medium size at zoom 3.5
-                              5, 13,      // Larger at zoom 5
-                              7, 14,      // Max size at zoom 7
-                              8, 14       // Maintain max size at higher zoom
+                              2.5, 7,     // Small size at zoom 2.5 (was 1.5)
+                              3, 9,       // Default zoom - small-medium
+                              4, 11,      // Medium size at zoom 4
+                              6, 13,      // Larger at zoom 6
+                              8, 14,      // Max size at zoom 8
+                              9, 14       // Maintain max size at higher zoom
                             ]);
                             // Other labels use normal case (not uppercase)
                             try {
@@ -2209,13 +2218,13 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
                               'interpolate',
                               ['linear'],
                               ['zoom'],
-                              1.5, 0.3,   // Low opacity at zoom 1.5
-                              2.2, 0.5,   // Default zoom (~2.2) - some labels
-                              3, 0.7,     // More visible at zoom 3
-                              4, 0.85,    // Mostly visible at zoom 4
-                              5, 0.9,     // Full opacity at zoom 5
-                              7, 0.9,     // Maintain at higher zoom
-                              8, 0.9      // Keep max at very high zoom
+                              2.5, 0.3,   // Low opacity at zoom 2.5 (was 1.5)
+                              3.5, 0.5,   // Default zoom - some labels
+                              4.5, 0.7,   // More visible at zoom 4.5
+                              5.5, 0.85,  // Mostly visible at zoom 5.5
+                              6.5, 0.9,   // Full opacity at zoom 6.5
+                              8, 0.9,     // Maintain at higher zoom
+                              9, 0.9      // Keep max at very high zoom
                             ]);
                             map.setPaintProperty(layer.id, 'text-halo-width', 1);
                             map.setPaintProperty(layer.id, 'text-halo-color', 'rgba(0, 0, 0, 0.5)');
