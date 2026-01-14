@@ -482,6 +482,7 @@ export async function enrichWithBalance(
   existingNodes: Map<string, PNode>
 ): Promise<void> {
   const { fetchBalanceForPubkey } = await import('./balance-cache');
+  const { getManagerForNode } = await import('./registry');
 
   // Filter for nodes that need on-chain enrichment:
   // 1. New nodes (no existing record in DB)
@@ -501,8 +502,11 @@ export async function enrichWithBalance(
     }
 
     // Case 2: Existing node without balance data (unless balance is explicitly 0)
+    // We also check if managerWallet is missing, as we now strictly want to find it
     const hasBalance = existing.balance !== undefined && existing.balance !== null;
-    if (!hasBalance) {
+    const hasManager = !!existing.managerWallet;
+
+    if (!hasBalance || !hasManager) {
       return true;
     }
 
@@ -551,10 +555,15 @@ export async function enrichWithBalance(
     if (existing?.vestingStake !== undefined && existing.vestingStake !== null) {
       node.vestingStake = existing.vestingStake;
     }
+    // Also preserve managerWallet if we have it and the new fetch doesn't
+    if (existing?.managerWallet && !node.managerWallet) {
+      node.managerWallet = existing.managerWallet;
+    }
   }
 
   let enrichedCount = 0;
   let walletAssignedCount = 0;
+  let registryFoundCount = 0;
 
   for (const node of nodesNeedingBalance) {
     const pubkey = node.pubkey || node.publicKey;
@@ -591,12 +600,28 @@ export async function enrichWithBalance(
         }
         enrichedCount++;
       }
+
+      // XANDEUM REGISTRY FALLBACK
+      // If we still don't have a manager wallet, try the specific Xandeum Registry program
+      if (!node.managerWallet) {
+        const registryManager = await getManagerForNode(pubkey);
+        if (registryManager) {
+          node.managerWallet = registryManager;
+          // If we found it in the registry, it is effectively "registered" even if balance=0
+          // But 'isRegistered' usually implies positive SOL balance or on-chain stake.
+          // We won't force 'isRegistered = true' just for manager presence, 
+          // as that might affect other logic.
+          walletAssignedCount++;
+          registryFoundCount++;
+        }
+      }
+
     } catch {
       // Silent fail for individual balance fetches
     }
   }
 
-  console.log(`[Sync] On-chain enrichment complete: ${enrichedCount} nodes enriched, ${walletAssignedCount} wallets assigned`);
+  console.log(`[Sync] On-chain enrichment complete: ${enrichedCount} nodes enriched, ${walletAssignedCount} wallets assigned (${registryFoundCount} from Registry)`);
 }
 
 // ============================================================================
@@ -813,7 +838,8 @@ export async function syncNodes(): Promise<{ success: boolean; count: number; er
     }
 
     // Step 1.5: Discover from on-chain index (nodes that might be offline)
-    await discoverFromOnChain(nodesMap);
+    // DISABLED by user request - Gossip only
+    // await discoverFromOnChain(nodesMap);
 
     // Step 2: Enrich with detailed stats (CPU, RAM, packets)
     await enrichWithStats(nodesMap);

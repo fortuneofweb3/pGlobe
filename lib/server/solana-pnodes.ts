@@ -4,7 +4,7 @@
  */
 
 import { Connection, PublicKey } from '@solana/web3.js';
-import * as bs58 from 'bs58';
+import bs58 from 'bs58';
 import { PNode } from '../types/pnode';
 import { XANDEUM_NFT_COLLECTIONS } from '../constants/nft';
 import { XANDEUM_ERAS, getItemForVersion, getMilestoneLabel } from '../constants/eras';
@@ -125,28 +125,23 @@ export async function enrichPNodeWithOnChainData(pubkey: string, connection: Con
     // Use the program ID appropriate for the cluster if it ever changes, for now both are same
     const programId = DEVNET_PROGRAM;
 
-    const [registryAddress] = PublicKey.findProgramAddressSync([Buffer.from('registry'), nodePubkey.toBuffer()], programId);
-    const [managerAddress] = PublicKey.findProgramAddressSync([Buffer.from('manager'), nodePubkey.toBuffer()], programId);
+    // REPLACED OLD PDA LOGIC WITH MEMCMP LOOKUP
+    // The registry account is NOT a predictable PDA based on 'registry' seed anymore.
+    // We must find it by searching for the pNode Identity at Offset 0.
 
-    const [balanceRes, regRes, manRes] = await Promise.allSettled([
+    const [balanceRes, regAccountsRes] = await Promise.allSettled([
       connection.getBalance(nodePubkey),
-      // connection.getVoteAccounts(), // Too heavy for quick check
-      connection.getAccountInfo(registryAddress),
-      connection.getAccountInfo(managerAddress)
+      connection.getProgramAccounts(programId, {
+        filters: [
+          { dataSize: 1040 },
+          { memcmp: { offset: 0, bytes: nodePubkey.toBase58() } }
+        ]
+      })
     ]);
 
     let balance = balanceRes.status === 'fulfilled' ? balanceRes.value / 1e9 : 0;
     let isValidator = false;
     let validatorInfo: any = undefined;
-    /*
-    if (voteRes.status === 'fulfilled') {
-      const va = [...voteRes.value.current, ...voteRes.value.delinquent].find(v => v.nodePubkey === pubkey);
-      if (va) {
-        isValidator = true;
-        validatorInfo = { votePubkey: va.votePubkey, activatedStakeSOL: Number(va.activatedStake) / 1e9 };
-      }
-    }
-    */
 
     let managerWallet: string | undefined;
     let registrarWallet: string | undefined;
@@ -155,9 +150,11 @@ export async function enrichPNodeWithOnChainData(pubkey: string, connection: Con
     let milestoneItem: number | null = null;
     let isRegistered = false;
 
-    if (regRes.status === 'fulfilled' && regRes.value) {
+    // Process Registry Account if found
+    if (regAccountsRes.status === 'fulfilled' && regAccountsRes.value.length > 0) {
       isRegistered = true;
-      const data = regRes.value.data;
+      const account = regAccountsRes.value[0];
+      const data = account.account.data;
 
       // Determine Era from Registry Data
       // Source 1: Offset 32 (u16) - Likely the authoritative "Initial Version" / Era Index
@@ -193,11 +190,8 @@ export async function enrichPNodeWithOnChainData(pubkey: string, connection: Con
         }
       }
 
-      // Priority 2: Use Era ID from Manager PDA if it exists
-      if (manRes.status === 'fulfilled' && manRes.value && manRes.value.data.length >= 33) {
-        const mEraId = manRes.value.data[32];
-        if (mEraId > 0 && mEraId <= 30) eraId = mEraId;
-      }
+      // Removed separate "managerAddress" fetching as it was based on failed PDA logic
+      // and managerWallet is now reliably found at offset 42 of the registry account.
 
       // Map Era ID (Item Index) to Label and Boost based on Xandeum roadmap ranges
       // Priority 1: Node Version (if available) - as requested by user
@@ -219,10 +213,6 @@ export async function enrichPNodeWithOnChainData(pubkey: string, connection: Con
       const milestoneLabel = getMilestoneLabel(eraId);
       eraLabel += ` (${milestoneLabel})`;
       milestoneItem = eraId;
-    }
-
-    if (manRes.status === 'fulfilled' && manRes.value && !managerWallet) {
-      managerWallet = new PublicKey(manRes.value.data.slice(0, 32)).toBase58();
     }
 
     const ownerPubkey = managerWallet ? new PublicKey(managerWallet) : nodePubkey;
