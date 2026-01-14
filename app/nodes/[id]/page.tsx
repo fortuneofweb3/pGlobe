@@ -905,29 +905,61 @@ function NodeDetailContent() {
         });
     }, [allNodes, nodeId]);
 
+    // Auto-select the best IP if we have merged IPs and haven't selected one yet
+    useEffect(() => {
+        if (node?.isMerged && node.mergedIPs && node.mergedIPs.length > 0 && activeIPIndex === -1) {
+            // Find best IP: logic = Online > Syncing > Offline, then by Credits, then Storage
+            let bestIndex = 0;
+            const ips = node.mergedIPs;
+
+            // Simple scoring function
+            const getScore = (ip: MergedIPEntry) => {
+                let score = 0;
+                // Status weight (heaviest)
+                if (ip.status === 'online') score += 1000000000;
+                else if (ip.status === 'syncing') score += 500000000;
+
+                // Credits weight (very heavy)
+                score += (ip.credits || 0) * 1000;
+
+                // Storage weight (heavy)
+                score += (ip.storageCapacity || 0);
+
+                return score;
+            };
+
+            let maxScore = -1;
+
+            ips.forEach((ip, idx) => {
+                const score = getScore(ip);
+                if (score > maxScore) {
+                    maxScore = score;
+                    bestIndex = idx;
+                }
+            });
+
+            setActiveIPIndex(bestIndex);
+        }
+    }, [node, activeIPIndex]);
+
     // Current view node: either the primary node (for common info) or the specific IP entry (for stats)
     const viewNode = useMemo(() => {
         if (!node) return undefined;
 
-        // Aggregated view: use base node but ensure createdAt is the oldest among all IPs
-        if (activeIPIndex === -1) {
-            if (node.isMerged && node.mergedIPs && node.mergedIPs.length > 0) {
-                const initialCreatedAt = typeof node.createdAt === 'string' ? node.createdAt :
-                    (node.createdAt instanceof Date ? node.createdAt.toISOString() : undefined);
+        // If we still have -1 (aggregation) but have merged IPs, we should likely verify 
+        // that the effect above has run or will run. 
+        // But for render safety, if -1 is active, we can just return the aggregated/base node 
+        // as a fallback or temporarily until the effect updates state.
+        // However, the user wants "details remove that aggregated all ips stuff". 
+        // So visually we rely on the state update.
 
-                const oldestCreatedAt = node.mergedIPs.reduce<string | undefined>((min, n) => {
-                    const nCreatedAt = typeof n.createdAt === 'string' ? n.createdAt :
-                        (n.createdAt instanceof Date ? n.createdAt.toISOString() : undefined);
-                    if (!nCreatedAt) return min;
-                    if (!min) return nCreatedAt;
-                    return new Date(nCreatedAt) < new Date(min) ? nCreatedAt : min;
-                }, initialCreatedAt);
-                return { ...node, createdAt: oldestCreatedAt };
-            }
+        // Aggregated view (Fallback only now): use base node 
+        if (activeIPIndex === -1) {
             return node;
         }
 
         // Specific IP view: merge base with specific IP data
+        // Explicitly check boolean to avoid TypeScript map errors if 'mergedIPs' is undefined
         return node.isMerged && node.mergedIPs && node.mergedIPs[activeIPIndex]
             ? { ...node, ...node.mergedIPs[activeIPIndex] }
             : node;
@@ -1189,7 +1221,7 @@ function NodeDetailContent() {
         if (!node.isMerged || !node.mergedIPs || node.mergedIPs.length === 0) return null;
 
         const currentSelection = activeIPIndex === -1
-            ? { label: 'All IPs (Aggregated)', status: null }
+            ? { label: 'Select IP...', status: null } // Should auto-select, but fallback just in case
             : {
                 label: node.mergedIPs[activeIPIndex].address || 'Unknown IP',
                 status: node.mergedIPs[activeIPIndex].status
@@ -1249,21 +1281,7 @@ function NodeDetailContent() {
                             }}
                         >
                             <div className="max-h-64 overflow-y-auto py-1">
-                                {/* All IPs Option */}
-                                <div
-                                    className={`px-3 py-2.5 flex items-center gap-2 cursor-pointer transition-colors ${activeIPIndex === -1 ? 'bg-cyan-500/10 text-cyan-400' : 'hover:bg-muted/30 text-foreground/70 hover:text-foreground'
-                                        }`}
-                                    onClick={() => {
-                                        setActiveIPIndex(-1);
-                                        setIpDropdownOpen(false);
-                                    }}
-                                >
-                                    <Server className="w-4 h-4 shrink-0" />
-                                    <span className="text-sm font-mono flex-1">All IPs (Aggregated)</span>
-                                    {activeIPIndex === -1 && <Check className="w-3.5 h-3.5" />}
-                                </div>
-
-                                <div className="h-px bg-border/20 my-1 mx-2" />
+                                {/* REMOVED: All IPs Option - we now enforce single IP selection */}
 
                                 {/* Individual IPs */}
                                 {node.mergedIPs.map((ip, idx) => (
