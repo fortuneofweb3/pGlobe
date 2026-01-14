@@ -19,7 +19,7 @@ import ActivityLogList from '@/components/ActivityLogList';
 import { TableSkeleton, CardSkeleton, ChartSkeleton } from '@/components/Skeletons';
 import ResourceUtilization from '@/components/analytics/ResourceUtilization';
 import { scaleTime, scaleLinear } from '@visx/scale';
-import { LinePath } from '@visx/shape';
+import { LinePath, AreaClosed } from '@visx/shape';
 import { Group } from '@visx/group';
 import { Circle } from '@visx/shape';
 import { AxisBottom, AxisLeft } from '@visx/axis';
@@ -28,6 +28,7 @@ import { curveMonotoneX } from '@visx/curve';
 import { useTooltip, TooltipWithBounds, defaultStyles } from '@visx/tooltip';
 import { localPoint } from '@visx/event';
 import { timeFormat } from 'd3-time-format';
+import { LinearGradient } from '@visx/gradient';
 import ParentSize from '@visx/responsive/lib/components/ParentSize';
 import dynamic from 'next/dynamic';
 
@@ -511,8 +512,21 @@ function HistoricalLineChart({
                             const val = d[line.key];
                             return val !== undefined && val !== null && !isNaN(val);
                           });
+                          const gradientId = `gradient-${line.key}`;
                           return (
                             <g key={line.key}>
+                              <LinearGradient id={gradientId} from={line.color} fromOpacity={0.2} to={line.color} toOpacity={0} />
+                              {/* Area Closed */}
+                              {validHighlightedData.length > 0 && (
+                                <AreaClosed<any>
+                                  data={validHighlightedData}
+                                  x={(d) => xScale(d.timestamp)}
+                                  y={(d) => yScale(d[line.key] ?? 0)}
+                                  yScale={yScale}
+                                  fill={`url(#${gradientId})`}
+                                  curve={curveMonotoneX}
+                                />
+                              )}
                               <LinePath
                                 data={validHighlightedData}
                                 x={(d) => xScale(d.timestamp)}
@@ -549,6 +563,20 @@ function HistoricalLineChart({
                         });
                         return (
                           <g ref={pathGroupRef} key={`single-${dataKey || 'loading'}`} className="line-initial-hidden">
+                            <LinearGradient id={`gradient-${title.replace(/\s+/g, '-')}`} from={strokeColor} fromOpacity={0.4} to={strokeColor} toOpacity={0} />
+
+                            {/* Area Closed */}
+                            {validHighlightedData.length > 0 && (
+                              <AreaClosed<any>
+                                data={validHighlightedData}
+                                x={(d) => xScale(d.timestamp)}
+                                y={(d) => yScale(d.value ?? 0)}
+                                yScale={yScale}
+                                fill={`url(#gradient-${title.replace(/\s+/g, '-')})`}
+                                curve={curveMonotoneX}
+                              />
+                            )}
+
                             {validHighlightedData.length > 0 && (
                               <LinePath
                                 data={validHighlightedData}

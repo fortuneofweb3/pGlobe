@@ -97,7 +97,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
     const [sortBy, setSortBy] = useState<string>('credits');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [activeNodeIndex, setActiveNodeIndex] = useState(0);
-    const [selectedMetric, setSelectedMetric] = useState<'vesting' | 'activity' | 'resources' | 'credits' | 'live_feed'>('resources');
+    const [selectedMetric, setSelectedMetric] = useState<'credits' | 'resources' | 'packets'>('credits');
     const [showMetricDropdown, setShowMetricDropdown] = useState(false);
     const [historyData, setHistoryData] = useState<Record<string, HistoryPoint[]>>({});
     const [historyLoading, setHistoryLoading] = useState(false);
@@ -488,19 +488,17 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                         {/* Stats Row - 4 Columns */}
                         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 stagger-children">
                             <StatsCard
-                                title="Active Nodes"
-                                value={manager.onlineCount}
-                                subValue={`${uptimePercent}% Manager availability`}
+                                title="Active Nodes / Licenses"
+                                value={
+                                    <div className="flex items-baseline gap-2">
+                                        <span>{(manager.onlineCount || 0) + (manager.syncingCount || 0)}</span>
+                                        <span className="text-sm text-foreground/40 font-normal">/</span>
+                                        <span>{manager.purchasedNodes || 0}</span>
+                                    </div>
+                                }
+                                subValue={`${uptimePercent}% Availability`}
                                 icon={<Activity className="w-4 h-4" />}
                                 color="green"
-                            />
-
-                            <StatsCard
-                                title="Licenses"
-                                value={manager.purchasedNodes || 0}
-                                subValue="Mainnet Capacity"
-                                icon={<ShoppingCart className="w-4 h-4" />}
-                                color="purple"
                             />
 
                             <StatsCard
@@ -535,10 +533,9 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                 <div className="space-y-1">
                                     <div className="flex items-center justify-between">
                                         <h3 className="text-sm font-medium text-foreground">
-                                            {selectedMetric === 'vesting' && 'Vesting Schedule'}
-                                            {selectedMetric === 'activity' && 'Network Activity'}
+                                            {selectedMetric === 'credits' && 'Credits Earning Rate'}
                                             {selectedMetric === 'resources' && 'Resource Utilization'}
-                                            {selectedMetric === 'credits' && 'Credits History'}
+                                            {selectedMetric === 'packets' && 'Packet Rate'}
                                         </h3>
 
                                         <div className="flex items-center gap-2">
@@ -549,10 +546,9 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                     className="flex items-center gap-2 bg-transparent hover:bg-white/5 rounded-lg px-2 py-1 text-xs font-medium transition-all text-muted-foreground hover:text-foreground"
                                                 >
                                                     <span>
-                                                        {selectedMetric === 'vesting' && 'Vesting'}
-                                                        {selectedMetric === 'activity' && 'Activity'}
+                                                        {selectedMetric === 'credits' && 'Credits Rate'}
                                                         {selectedMetric === 'resources' && 'Resources'}
-                                                        {selectedMetric === 'credits' && 'Credits'}
+                                                        {selectedMetric === 'packets' && 'Packet Rate'}
                                                     </span>
                                                     <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showMetricDropdown ? 'rotate-180' : ''}`} />
                                                 </button>
@@ -560,10 +556,9 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                 {showMetricDropdown && (
                                                     <div className="absolute top-full right-0 mt-1 w-[140px] bg-[#0a0a0a] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50 flex flex-col py-1">
                                                         {[
-                                                            { id: 'vesting', label: 'Vesting' },
-                                                            { id: 'activity', label: 'Network Activity' },
+                                                            { id: 'credits', label: 'Credits Rate' },
                                                             { id: 'resources', label: 'Resources' },
-                                                            { id: 'credits', label: 'Credits' }
+                                                            { id: 'packets', label: 'Packet Rate' }
                                                         ].map((opt) => (
                                                             <button
                                                                 key={opt.id}
@@ -594,51 +589,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                 );
                                             }
 
-                                            // 2. Vesting Chart
-                                            if (selectedMetric === 'vesting') {
-                                                if (rewards?.history && rewards.history.length > 0) {
-                                                    const sortedHistory = [...rewards.history].sort((a: any, b: any) => new Date(a.unlockDate).getTime() - new Date(b.unlockDate).getTime());
-                                                    let cumulative = 0;
-                                                    const chartData = sortedHistory.map((h: any) => {
-                                                        cumulative += h.amount;
-                                                        return {
-                                                            timestamp: new Date(h.unlockDate).getTime(),
-                                                            value: cumulative,
-                                                            originalAmount: h.amount
-                                                        };
-                                                    });
-                                                    const maxVal = chartData[chartData.length - 1].value;
 
-                                                    return (
-                                                        <MetricChart
-                                                            title=""
-                                                            data={chartData}
-                                                            height={250}
-                                                            yDomain={[0, maxVal * 1.1]}
-                                                            strokeColor="#F0A741"
-                                                            yTickFormatter={(val) => formatXandValue(val)}
-                                                            minimal={true}
-                                                            tooltipFormatter={(d: any) => (
-                                                                <div className="flex flex-col gap-1">
-                                                                    <div className="text-xs text-muted-foreground">{new Date(d.timestamp).toLocaleDateString()}</div>
-                                                                    <div className="font-bold text-[#F0A741]">{formatXandValue(d.value)} XAND</div>
-                                                                    {d.originalAmount !== undefined && (
-                                                                        <div className="text-[10px] text-white/50">
-                                                                            +{formatXandValue(d.originalAmount)} unlocked
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                        />
-                                                    );
-                                                } else {
-                                                    return (
-                                                        <div className="h-full flex items-center justify-center text-foreground/20 italic self-center">
-                                                            No vesting history available
-                                                        </div>
-                                                    );
-                                                }
-                                            }
 
                                             // 3. Prepare Aggregated Data for Other Metrics
                                             if (!historyData || Object.keys(historyData).length === 0) {
@@ -710,30 +661,48 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                 : aggregatedData;
 
 
-                                            // 4. Activity Chart
-                                            if (selectedMetric === 'activity') {
-                                                const maxPackets = Math.max(...finalData.map(d => d.packets));
+                                            // 3. Credits Chart (Rate of Change)
+                                            if (selectedMetric === 'credits') {
+                                                // Calculate delta between points to show "Earnings"
+                                                const rateData = finalData.map((d, i) => {
+                                                    if (i === 0) return { ...d, value: 0 };
+                                                    const prev = finalData[i - 1];
+                                                    // Ensure positive delta (resets handle gracefully)
+                                                    const delta = d.credits >= prev.credits ? d.credits - prev.credits : 0;
+                                                    return { ...d, value: delta };
+                                                }).slice(1); // Remove first point which has 0 delta
+
+                                                const maxVal = Math.max(...rateData.map(d => d.value), 0);
+
+                                                if (rateData.length === 0) {
+                                                    return (
+                                                        <div className="h-full flex items-center justify-center text-foreground/20 italic self-center">
+                                                            Insufficient data for rate calculation
+                                                        </div>
+                                                    );
+                                                }
+
                                                 return (
                                                     <MetricChart
                                                         title=""
-                                                        data={finalData.map(d => ({ ...d, value: d.packets }))}
+                                                        data={rateData}
                                                         height={250}
-                                                        yDomain={[0, maxPackets * 1.1]}
-                                                        strokeColor="#3F8277"
-                                                        yLabel="Packets/s"
+                                                        yDomain={[0, maxVal * 1.1]}
+                                                        strokeColor="#F0A741"
+                                                        yTickFormatter={(val) => formatXandValue(val)}
                                                         minimal={true}
                                                         tooltipFormatter={(d: any) => (
                                                             <div className="flex flex-col gap-1">
-                                                                <div className="text-xs text-muted-foreground">{new Date(d.timestamp).toLocaleString()}</div>
-                                                                <div className="font-bold text-[#3F8277]">{formatXandValue(d.value)} pkts/s</div>
-                                                                <div className="text-[10px] text-white/50">Total Fleet Traffic</div>
+                                                                <div className="text-xs text-muted-foreground">{new Date(d.timestamp).toLocaleTimeString()}</div>
+                                                                <div className="font-bold text-[#F0A741]">{formatXandValue(d.value)} Credits</div>
+                                                                <div className="text-[10px] text-white/50">Earned in interval</div>
                                                             </div>
                                                         )}
                                                         headerContent={
                                                             <div className="flex items-center gap-2 text-xs">
-                                                                <div className="flex items-center gap-1.5 px-2 py-1 bg-[#3F8277]/10 rounded text-[#3F8277] border border-[#3F8277]/20">
-                                                                    <Activity className="w-3 h-3" />
-                                                                    Peak: {formatXandValue(maxPackets)}
+                                                                <div className="flex items-center gap-1.5 px-2 py-1 bg-[#F0A741]/10 rounded text-[#F0A741] border border-[#F0A741]/20">
+                                                                    <Zap className="w-3 h-3" />
+                                                                    Peak: {formatXandValue(maxVal)} / period
                                                                 </div>
                                                             </div>
                                                         }
@@ -782,8 +751,8 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                 );
                                             }
 
-                                            // 6. Credits Chart
-                                            if (selectedMetric === 'credits') {
+                                            // 6. Dead Credits Chart
+                                            if (false) {
                                                 const maxCredits = Math.max(...finalData.map(d => d.credits));
                                                 return (
                                                     <MetricChart
@@ -800,6 +769,37 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                                                 <div className="font-bold text-[#F0A741]">{formatXandValue(d.value)} Credits</div>
                                                             </div>
                                                         )}
+                                                    />
+                                                );
+                                            }
+
+                                            // 5. Packet Rate Chart
+                                            if (selectedMetric === 'packets') {
+                                                const maxPackets = Math.max(...finalData.map(d => d.packets), 0);
+                                                return (
+                                                    <MetricChart
+                                                        title=""
+                                                        data={finalData.map(d => ({ ...d, value: d.packets }))}
+                                                        height={250}
+                                                        yDomain={[0, maxPackets * 1.1]}
+                                                        strokeColor="#3F8277"
+                                                        yLabel="Packets/s"
+                                                        minimal={true}
+                                                        tooltipFormatter={(d: any) => (
+                                                            <div className="flex flex-col gap-1">
+                                                                <div className="text-xs text-muted-foreground">{new Date(d.timestamp).toLocaleString()}</div>
+                                                                <div className="font-bold text-[#3F8277]">{formatXandValue(d.value)} pkts/s</div>
+                                                                <div className="text-[10px] text-white/50">Total Fleet Traffic</div>
+                                                            </div>
+                                                        )}
+                                                        headerContent={
+                                                            <div className="flex items-center gap-2 text-xs">
+                                                                <div className="flex items-center gap-1.5 px-2 py-1 bg-[#3F8277]/10 rounded text-[#3F8277] border border-[#3F8277]/20">
+                                                                    <Activity className="w-3 h-3" />
+                                                                    Peak: {formatXandValue(maxPackets)}
+                                                                </div>
+                                                            </div>
+                                                        }
                                                     />
                                                 );
                                             }

@@ -14,24 +14,20 @@ export interface NetworkConfig {
   type: 'devnet' | 'mainnet';
   description?: string;
   enabled: boolean; // Whether this network is currently active
+  programId?: string; // Optional: Program ID for the network
+  comingSoon?: boolean; // Optional: Indicates if the network is coming soon
 }
 
 export const NETWORK_CONFIGS: NetworkConfig[] = [
   {
-    id: 'devnet1',
-    name: 'DevNet',
-    rpcUrl: 'https://rpc1.pchednode.com/rpc',
+    id: 'devnet',
+    name: 'Xandeum Devnet',
+    rpcUrl: 'https://api.devnet.xandeum.com:8899',
     type: 'devnet',
-    description: 'Primary devnet proxy RPC (trynet gossip)',
+    description: 'Xandeum Devnet RPC',
+    programId: '6Bzz3KPvzQruqBg2vtsvkuitd6Qb4iCcr5DViifCwLsL',
     enabled: true,
-  },
-  {
-    id: 'devnet2',
-    name: 'DevNet (Backup)',
-    rpcUrl: 'https://rpc2.pchednode.com/rpc',
-    type: 'devnet',
-    description: 'Backup devnet proxy RPC (same gossip network)',
-    enabled: true,
+    comingSoon: false,
   },
   {
     id: 'mainnet1',
@@ -39,7 +35,7 @@ export const NETWORK_CONFIGS: NetworkConfig[] = [
     rpcUrl: 'https://rpc3.pchednode.com/rpc',
     type: 'mainnet',
     description: 'Mainnet - Coming Soon',
-    enabled: false, // Not yet active
+    enabled: true, // Now active
   },
 ];
 
