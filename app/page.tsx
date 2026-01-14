@@ -703,18 +703,13 @@ function HomeContent() {
               nodes={allNodesForGlobe}
               navigateToNodeId={navigateToNodeId}
               onNodeClick={(node) => {
-                // Navigate to the node via URL parameter
-                const nodeIdentifier = node.pubkey || node.publicKey || node.id;
-                if (nodeIdentifier) {
-                  router.push(`/?node=${encodeURIComponent(nodeIdentifier)}`, { scroll: false });
-                }
+                // "Just navigate" - handled internally by the map's optimistic zoom
+                // We no longer update the URL query param here to avoid round-trip delays
               }}
               onPopupClick={(node) => {
                 // Navigate to node details page when popup is clicked
-                // If it's a child IP, we navigate to the parent pubkey page, 
-                // but the details page will likely default to "Merged" view unless we pass param
-                // For now just navigate to ID/PubKey
-                const nodeId = node.pubkey || node.publicKey || node.id || '';
+                // Use IP address (id) if available, as requested
+                const nodeId = node.id || node.address?.split(':')[0] || node.pubkey || node.publicKey || '';
                 if (nodeId) {
                   startProgress();
                   router.push(`/nodes/${encodeURIComponent(nodeId)}`);
