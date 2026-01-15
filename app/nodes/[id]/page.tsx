@@ -21,12 +21,5 @@ export default function NodeRedirect() {
         router.replace(`/${encodeURIComponent(targetId)}`);
     }, [nodeId, nodes, router]);
 
-    return (
-        <div className="min-h-screen bg-black flex items-center justify-center">
-            <div className="flex flex-col items-center gap-4">
-                <div className="w-8 h-8 border-4 border-[#F0A741] border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-foreground/60 text-sm font-mono tracking-wider">REDIRECTING TO NEW URL...</p>
-            </div>
-        </div>
-    );
+    return null;
 }

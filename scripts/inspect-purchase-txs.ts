@@ -1,54 +1,47 @@
+
 import { Connection, PublicKey } from '@solana/web3.js';
 
-const MAINNET_RPC = 'https://api.mainnet-beta.solana.com';
-const MAINNET_PROGRAM = new PublicKey('CZ9bXL6D4uiLXGsSk5s8KAgTFEVp3gdpxPxTCrgm3VoL');
+const HELIUS_API_KEY = '2aca1e9b-9f51-44a0-938b-89dc6c23e9b4';
+const HELIUS_RPC = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
 
-async function inspectPurchaseTxs() {
-    const conn = new Connection(MAINNET_RPC, 'confirmed');
+// Account with count 2
+const TARGET_ACCOUNT = 'sHokok1QWtQePa9vHeA5dXzB2PrFaPfxzth6s2hvXwa';
 
-    console.log('Fetching recent signatures for Purchase Program...');
-    // Get last 20 signatures
-    const signatures = await conn.getSignaturesForAddress(MAINNET_PROGRAM, { limit: 20 });
+async function main() {
+    console.log(`Connecting to ${HELIUS_RPC}...`);
+    const connection = new Connection(HELIUS_RPC, 'confirmed');
+    const pubkey = new PublicKey(TARGET_ACCOUNT);
 
-    console.log(`Found ${signatures.length} recent transactions.`);
+    console.log(`Fetching signatures for ${TARGET_ACCOUNT}...`);
+    const signatures = await connection.getSignaturesForAddress(pubkey, { limit: 10 });
+
+    console.log(`Found ${signatures.length} transactions.`);
 
     for (const sigInfo of signatures) {
-        console.log(`\n--- Inspecting TX: ${sigInfo.signature} ---`);
-        if (sigInfo.err) {
-            console.log(' (Failed TX, skipping)');
-            continue;
-        }
+        console.log(`\n--- Tx: ${sigInfo.signature} ---`);
+        console.log(`Time: ${sigInfo.blockTime ? new Date(sigInfo.blockTime * 1000).toISOString() : '?'}`);
 
-        const tx = await conn.getTransaction(sigInfo.signature, {
-            maxSupportedTransactionVersion: 0
+        const tx = await connection.getTransaction(sigInfo.signature, {
+            maxSupportedTransactionVersion: 0,
+            commitment: 'confirmed'
         });
 
         if (!tx) {
-            console.log('TX not found (cleaned up?)');
+            console.log('  Tx not found/null');
             continue;
         }
 
-        // Look at logs to guess instruction input
         const logs = tx.meta?.logMessages || [];
-        console.log('Logs:', logs.slice(0, 3)); // First few logs usually show instruction call
+        if (logs.length > 0) {
+            console.log('  Logs:');
+            logs.forEach(log => console.log(`    ${log}`));
+        } else {
+            console.log('  No logs.');
+        }
 
-        // Look for Node Pubkey in Account Keys
-        // If the user bought a license for a specific node, the Node Pubkey SHOULD be in the account list
-        // even if not a signer.
-        // Let's print all accounts involved.
-        const accountKeys = tx.transaction.message.staticAccountKeys.map(k => k.toBase58());
-        console.log('Accounts involved:', accountKeys.length);
-        // console.log(accountKeys);
-
-        // Can we identify a Node Pubkey? 
-        // Usually pNodes are new random keys, but tough to distinguish from other random keys without context.
-        // BUT if the instruction parser can show us... 
-        // Let's check the instruction data size.
-
-        // Note: Parsing raw instruction data is hard without IDL, but we can look for 32-byte patterns if we know what we are looking for.
+        // Check for recognized patterns?
+        // Program Data?
     }
-
-    process.exit(0);
 }
 
-inspectPurchaseTxs();
+main().catch(console.error);

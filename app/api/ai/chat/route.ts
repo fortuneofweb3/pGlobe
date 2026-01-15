@@ -929,7 +929,7 @@ WEBSITE PAGES & FEATURES:
 3. Analytics (/analytics): Deep dive into network metrics with charts (performance trends, resource utilization, latency distribution, geographic metrics)
 4. Scan (/scan): Find nodes nearest to your location or a specific IP address, measure latency, view distance-based rankings
 5. Regions (/regions/[country]): Country-specific analytics showing all nodes in a country with aggregate statistics
-6. Node Details (/nodes/[id]): Individual node page with detailed metrics, historical performance charts, location map
+6. Node Details (/[pubkey]): Individual node page with detailed metrics, historical performance charts, location map
 7. Help (/help): Documentation, FAQs, and guides
 
 KEY METRICS & DATA FIELDS:

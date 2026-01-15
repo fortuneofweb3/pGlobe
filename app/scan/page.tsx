@@ -470,10 +470,10 @@ export default function ScanPage() {
               onPopupClick={(node) => {
                 // Navigate to node details page when popup is clicked
                 // Prioritize IP address (address) over ID/Pubkey as requested
-                const nodeId = node.address?.split(':')[0] || node.id || node.pubkey || node.publicKey || '';
+                const nodeId = node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '';
                 if (nodeId) {
                   startProgress();
-                  router.push(`/nodes/${encodeURIComponent(nodeId)}`);
+                  router.push(`/${encodeURIComponent(nodeId)}`);
                 }
               }}
             />

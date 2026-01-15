@@ -165,7 +165,10 @@ export default function NetworkMap({ nodes }: NetworkMapProps) {
                       weight: 2,
                     }}
                     eventHandlers={{
-                      click: () => router.push(`/nodes/${node.id}`),
+                      click: () => {
+                        const nodeId = node.pubkey || node.publicKey || node.id;
+                        router.push(`/${encodeURIComponent(nodeId)}`);
+                      },
                     }}
                   >
                     <Popup>

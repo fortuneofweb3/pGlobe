@@ -2208,10 +2208,10 @@ function CountryDetailContent() {
                     <PNodeTable
                       nodes={filteredAndSortedNodes}
                       onNodeClick={(node) => {
-                        const nodeId = node.id || node.pubkey || node.publicKey || node.address?.split(':')[0] || '';
+                        const nodeId = node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '';
                         if (nodeId) {
                           startProgress();
-                          router.push(`/nodes/${encodeURIComponent(nodeId)}`);
+                          router.push(`/${encodeURIComponent(nodeId)}`);
                         }
                       }}
                       sortBy={sortBy}
