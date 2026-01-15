@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import MetricChart from '@/components/charts/MetricChart';
 import { formatRelativeTime } from '@/lib/utils/time';
+import CopyButton from '@/components/CopyButton';
 
 import dynamic from 'next/dynamic';
 
@@ -93,7 +94,6 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'nodes' | 'rewards' | 'activity'>('nodes');
     const [error, setError] = useState<string | null>(null);
-    const [copied, setCopied] = useState(false);
     const [sortBy, setSortBy] = useState<string>('credits');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [activeNodeIndex, setActiveNodeIndex] = useState(0);
@@ -273,11 +273,6 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
         fetchManagerDetails();
     }, [wallet, selectedNetwork]);
 
-    const copyWallet = () => {
-        navigator.clipboard.writeText(wallet);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
 
     // Derived values
     const uptimePercent = manager?.nodeCount && manager.nodeCount > 0 ? Math.round((manager.onlineCount / manager.nodeCount) * 100) : 0;
@@ -463,15 +458,11 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-4 flex-wrap">
-                                            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold font-mono text-foreground break-all tracking-tight leading-none">{wallet}</h1>
+                                            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold font-mono text-foreground break-all tracking-tight leading-none" title={wallet}>
+                                                {wallet.length > 16 ? `${wallet.slice(0, 8)}...${wallet.slice(-8)}` : wallet}
+                                            </h1>
                                             <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={copyWallet}
-                                                    className="p-2 hover:bg-white/5 rounded-full transition-all active:scale-90 group/copy"
-                                                    title="Copy Address"
-                                                >
-                                                    {copied ? <Check className="w-5 h-5 text-green-400" /> : <Copy className="w-5 h-5 text-foreground/30 group-hover/copy:text-foreground transition-colors" />}
-                                                </button>
+                                                <CopyButton value={wallet} className="scale-125" />
                                                 <a
                                                     href={`https://solscan.io/account/${wallet}`}
                                                     target="_blank"

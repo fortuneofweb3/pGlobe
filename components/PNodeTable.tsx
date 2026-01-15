@@ -17,8 +17,10 @@ import BalanceDisplay from './BalanceDisplay';
 import { formatBytes, formatStorageBytes } from '@/lib/utils/storage';
 import { formatRelativeTime } from '@/lib/utils/time';
 import { getFlagForCountry } from '@/lib/utils/country-flags';
-import { Check, X, ArrowUp, ArrowDown, Globe, Lock, Star, LayoutGrid, List, Network } from 'lucide-react';
+import { Check, X, ArrowUp, ArrowDown, Globe, Lock, Star, LayoutGrid, List, Network, Copy } from 'lucide-react';
 import InfoTooltip from './InfoTooltip';
+import CopyButton from './CopyButton';
+
 import { useWatchlist } from '@/lib/context/WatchlistContext';
 import { useNodes } from '@/lib/context/NodesContext';
 
@@ -115,7 +117,7 @@ function NodeCard({ node, index, onNodeClick, latency, watched, toggleWatchlist,
         } else {
           if (nodeId) {
             startProgress();
-            router.push(`/nodes/${encodeURIComponent(nodeId)}`);
+            router.push(`/${encodeURIComponent(nodeId)}`);
           }
         }
       }}
@@ -135,9 +137,14 @@ function NodeCard({ node, index, onNodeClick, latency, watched, toggleWatchlist,
           >
             <Star className={`w-4 h-4 ${watched ? 'fill-[#FFD700] text-[#FFD700]' : ''}`} />
           </button>
-          <span className="text-base font-mono font-bold text-[#F0A741]" title={node.pubkey || node.publicKey}>
-            {formatPublicKey(node.pubkey || node.publicKey) || '—'}
-          </span>
+          <div className="flex items-center gap-1.5 flex-nowrap min-w-0">
+            <span className="text-base font-mono font-bold text-[#F0A741] truncate" title={node.pubkey || node.publicKey}>
+              {formatPublicKey(node.pubkey || node.publicKey) || '—'}
+            </span>
+            {(node.pubkey || node.publicKey) && (
+              <CopyButton value={node.pubkey || node.publicKey || ''} className="scale-75 origin-left shrink-0" />
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {latency !== null && latency !== undefined && (
@@ -610,7 +617,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
     if (!key) return null;
     const keyStr = typeof key === 'string' ? key : JSON.stringify(key);
     if (keyStr.length <= 16) return keyStr;
-    return `${keyStr.slice(0, 8)}...${keyStr.slice(-8)}`;
+    return `${keyStr.slice(0, 6)}...${keyStr.slice(-6)}`;
   };
 
   const formatNodeId = (id: any, address?: string) => {
@@ -963,7 +970,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                             const nodeId = node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '';
                             if (nodeId) {
                               startProgress();
-                              router.push(`/nodes/${encodeURIComponent(nodeId)}`);
+                              router.push(`/${encodeURIComponent(nodeId)}`);
                             }
                           }
                         }}
@@ -990,23 +997,22 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         <td className="px-3 sm:px-5 py-5 whitespace-nowrap relative">
 
 
-                          <a
-                            href={`/?node=${encodeURIComponent(node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '')}`}
-                            onClick={(e) => {
-                              e.stopPropagation(); // Prevent row click
-                              const nodeIdentifier = node.pubkey || node.publicKey || node.id || node.address?.split(':')[0] || '';
-                              router.push(`/?node=${encodeURIComponent(nodeIdentifier)}`);
-                            }}
-                            className="text-sm font-mono text-[#F0A741] font-bold hover:brightness-110 transition-all cursor-pointer no-underline"
-                            title={node.pubkey || node.publicKey}
-                          >
-                            {formatPublicKey(node.pubkey || node.publicKey) || '—'}
-                          </a>
-                          {node.isMerged && node.mergedIPs && node.mergedIPs.length > 1 && (
-                            <span className="ml-2 text-[10px] px-1 py-0.5 bg-purple-500/20 text-purple-400 rounded border border-purple-500/30 font-semibold">
-                              {node.mergedIPs.length} IPs
+                          <div className="flex items-center gap-1.5 flex-nowrap">
+                            <span
+                              className="text-sm font-mono text-[#F0A741] font-bold"
+                              title={node.pubkey || node.publicKey}
+                            >
+                              {formatPublicKey(node.pubkey || node.publicKey) || '—'}
                             </span>
-                          )}
+                            {(node.pubkey || node.publicKey) && (
+                              <CopyButton value={node.pubkey || node.publicKey || ''} className="shrink-0" />
+                            )}
+                            {node.isMerged && node.mergedIPs && node.mergedIPs.length > 1 && (
+                              <span className="shrink-0 text-[10px] px-1 py-0.5 bg-purple-500/20 text-purple-400 rounded border border-purple-500/30 font-semibold">
+                                {node.mergedIPs.length} IPs
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-2 sm:px-3 py-5 whitespace-nowrap text-center">
                           {(() => {

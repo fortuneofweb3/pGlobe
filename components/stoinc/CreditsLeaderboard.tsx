@@ -23,10 +23,10 @@ export default function CreditsLeaderboard({ nodes, limit = 20 }: CreditsLeaderb
     }, [nodes, limit]);
 
     const handleNodeClick = (node: PNode) => {
-        const nodeId = node.id || node.pubkey || node.publicKey || '';
-        if (nodeId) {
+        const pubkey = node.pubkey || node.publicKey || node.id || '';
+        if (pubkey) {
             startProgress();
-            router.push(`/nodes/${encodeURIComponent(nodeId)}`);
+            router.push(`/${encodeURIComponent(pubkey)}`);
         }
     };
 

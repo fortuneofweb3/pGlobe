@@ -170,7 +170,7 @@ const LogItem = React.forwardRef<HTMLDivElement, { log: ActivityLog }>(({ log },
     }, [log.pubkey]);
 
     return (
-        <Link href={`/nodes/${log.pubkey}`} className="block group">
+        <Link href={`/${log.pubkey}`} className="block group">
             <motion.div
                 ref={ref}
                 layout="position"

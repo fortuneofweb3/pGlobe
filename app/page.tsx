@@ -709,10 +709,10 @@ function HomeContent() {
               onPopupClick={(node) => {
                 // Navigate to node details page when popup is clicked
                 // Use IP address (id) if available, as requested
-                const nodeId = node.id || node.address?.split(':')[0] || node.pubkey || node.publicKey || '';
-                if (nodeId) {
+                const pubkey = node.pubkey || node.publicKey || node.id || '';
+                if (pubkey) {
                   startProgress();
-                  router.push(`/nodes/${encodeURIComponent(nodeId)}`);
+                  router.push(`/${encodeURIComponent(pubkey)}`);
                 }
               }}
             />

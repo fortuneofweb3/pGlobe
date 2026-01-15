@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { PNode } from '@/lib/types/pnode';
+import { startProgress } from '@/lib/nprogress';
 import dynamic from 'next/dynamic';
 import { ZoomIn, ZoomOut, RotateCcw, Globe as GlobeIcon } from 'lucide-react';
 
@@ -166,7 +167,11 @@ export default function NetworkGlobe({ nodes }: NetworkGlobeProps) {
   // Handle point click
   const handlePointClick = (point: any) => {
     if (point.node) {
-      router.push(`/nodes/${point.node.id}`);
+      const pubkey = point.node.pubkey || point.node.publicKey || point.node.id || '';
+      if (pubkey) {
+        startProgress();
+        router.push(`/${encodeURIComponent(pubkey)}`);
+      }
     }
   };
 

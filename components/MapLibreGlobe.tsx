@@ -1068,7 +1068,7 @@ function MapLibreGlobe({ nodes, centerLocation, scanLocation, scanTopNodes, navi
     } else {
       // Only navigate to /nodes page if no callback provided (e.g., in Overview page)
       startProgress();
-      router.push(`/nodes/${nodeId}`);
+      router.push(`/${encodeURIComponent(nodeId)}`);
     }
   };
 

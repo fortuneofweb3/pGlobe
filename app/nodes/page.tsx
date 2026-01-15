@@ -13,11 +13,15 @@ import { mergeDuplicateIPNodes } from '@/lib/utils/merge-duplicate-ips';
 import { TableSkeleton, CardSkeleton, PNodeTableSkeleton } from '@/components/Skeletons';
 import AnimatedNumber from '@/components/AnimatedNumber';
 import StatsCard from '@/components/StatsCard';
+import { useWatchlist } from '@/lib/context/WatchlistContext';
+
 
 function NodesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { nodes, activeNodes, offlineNodes, offlineNodeCount, loading, error, lastUpdate, refreshNodes } = useNodes();
+  const { watchlist } = useWatchlist();
+
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -103,14 +107,25 @@ function NodesPageContent() {
       });
     }
 
-    // Sort by the selected column
+    // Inject watchlist prioritization
+    filtered.sort((a, b) => {
+      const aWatched = watchlist.includes(a.pubkey || a.publicKey || a.id);
+      const bWatched = watchlist.includes(b.pubkey || b.publicKey || b.id);
+      if (aWatched && !bWatched) return -1;
+      if (!aWatched && bWatched) return 1;
+      return 0;
+    });
+
+    // Sort by the selected column (stable sort after watchlist prioritization)
     if (sortBy) {
       filtered.sort((a, b) => {
+        // Only secondary sort if watchlist status is the same
+        const aWatched = watchlist.includes(a.pubkey || a.publicKey || a.id);
+        const bWatched = watchlist.includes(b.pubkey || b.publicKey || b.id);
+        if (aWatched !== bWatched) return 0; // Already handled by the first sort
+
         let aVal: any = a[sortBy as keyof PNode];
         let bVal: any = b[sortBy as keyof PNode];
-
-        // Special case for Latency (stored in separate state sometimes, but let's check field)
-        // If sortBy is latency, we need to handle it
 
         // Handle undefined/null values
         if (aVal === undefined || aVal === null) aVal = sortOrder === 'asc' ? Infinity : -Infinity;
@@ -118,23 +133,19 @@ function NodesPageContent() {
 
         // Handle string comparison
         if (typeof aVal === 'string' && typeof bVal === 'string') {
-          if (sortOrder === 'asc') {
-            return aVal.localeCompare(bVal);
-          } else {
-            return bVal.localeCompare(aVal);
-          }
+          return sortOrder === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
         }
 
         // Handle numeric comparison
-        if (sortOrder === 'asc') {
-          return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-        } else {
-          return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
-        }
+        return sortOrder === 'asc' ? (aVal > bVal ? 1 : aVal < bVal ? -1 : 0) : (aVal < bVal ? 1 : aVal > bVal ? -1 : 0);
       });
     } else {
-      // DEFAULT SORT: Multi-IP nodes first (by count descending), then by uptime
+      // DEFAULT SORT: Stable sort within watchlist status
       filtered.sort((a, b) => {
+        const aWatched = watchlist.includes(a.pubkey || a.publicKey || a.id);
+        const bWatched = watchlist.includes(b.pubkey || b.publicKey || b.id);
+        if (aWatched !== bWatched) return 0; // Already handled
+
         const aIPs = a.mergedIPs?.length || 1;
         const bIPs = b.mergedIPs?.length || 1;
         if (aIPs !== bIPs) return bIPs - aIPs;
@@ -143,7 +154,7 @@ function NodesPageContent() {
     }
 
     return filtered;
-  }, [nodes, searchQuery, statusFilter, versionFilter, joinedFilter, creditsFilter, packetsFilter, registeredFilter, sortBy, sortOrder]);
+  }, [nodes, searchQuery, statusFilter, versionFilter, joinedFilter, creditsFilter, packetsFilter, registeredFilter, sortBy, sortOrder, watchlist]);
 
   const versions = useMemo(() => {
     const versionSet = new Set<string>();
