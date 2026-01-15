@@ -472,7 +472,7 @@ function HomeContent() {
         )}
 
         {/* Left Sidebar */}
-        <aside className="hidden md:block md:relative w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-y-auto z-40 h-full">
+        <aside className={`fixed md:relative inset-y-0 left-0 w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-y-auto z-50 h-full transition-transform duration-300 transform md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${sidebarOpen ? 'block' : 'hidden md:block'}`}>
           {(isLoading && nodes.length === 0) ? (
             <div className="pt-1.5 px-3 pb-3 sm:pt-2 sm:px-4 sm:pb-4 space-y-3 sm:space-y-4">
               {/* Mobile close button - for structural consistency */}
