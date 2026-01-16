@@ -30,7 +30,7 @@ import InfoTooltip, { MetricRow } from '@/components/InfoTooltip';
 import { enrichNodesWithGeo } from '@/lib/utils/geo';
 import { formatStorageBytes } from '@/lib/utils/storage';
 import { formatPacketRate } from '@/lib/utils/packet-rates';
-import { Activity, Server, HardDrive, TrendingUp, RefreshCw, BarChart3, Network, Award, Clock, Zap, Info, Crown, Ghost, Eraser, Globe } from 'lucide-react';
+import { Activity, Server, HardDrive, TrendingUp, RefreshCw, BarChart3, Network, Award, Clock, Zap, Info, Crown, Ghost, Eraser, Globe, X } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 import { NetworkConfig } from '@/lib/server/network-config';
 import { useNodes } from '@/lib/context/NodesContext';
@@ -472,12 +472,18 @@ function HomeContent() {
         )}
 
         {/* Left Sidebar */}
-        <aside className={`fixed md:relative inset-y-0 left-0 w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-y-auto z-50 h-full transition-transform duration-300 transform md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${sidebarOpen ? 'block' : 'hidden md:block'}`}>
+        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 absolute md:relative w-80 flex-shrink-0 bg-card border-r border-[#F0A741]/20 overflow-y-auto z-[70] md:z-40 h-full transition-transform duration-300 ease-in-out inset-y-0 left-0`}>
           {(isLoading && nodes.length === 0) ? (
-            <div className="pt-1.5 px-3 pb-3 sm:pt-2 sm:px-4 sm:pb-4 space-y-3 sm:space-y-4">
+            <div className="p-3 sm:p-4 flex flex-col gap-3 sm:gap-4">
               {/* Mobile close button - for structural consistency */}
-              <div className="flex items-center justify-between mb-2 md:hidden">
-                <h2 className="text-sm font-semibold text-foreground/60 uppercase tracking-wide">Network Stats</h2>
+              <div className="md:hidden flex justify-end">
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="p-1 text-foreground/60 hover:text-foreground transition-all duration-300 hover:scale-110 active:scale-100 hover:rotate-90"
+                  aria-label="Close sidebar"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
               <div className="pb-4 border-b border-border/30">
@@ -486,25 +492,21 @@ function HomeContent() {
               <SidebarStatsSkeleton />
             </div>
           ) : (
-            <div className="pt-1.5 px-3 pb-3 sm:pt-2 sm:px-4 sm:pb-4 space-y-3 sm:space-y-4">
+            <div className="p-3 sm:p-4 flex flex-col gap-3 sm:gap-4">
               {/* Mobile close button */}
-              <div className="flex items-center justify-between mb-2 md:hidden">
-                <h2 className="text-sm font-semibold text-foreground/60 uppercase tracking-wide">Network Stats</h2>
+              <div className="md:hidden flex justify-end">
                 <button
                   onClick={() => setSidebarOpen(false)}
                   className="p-1 text-foreground/60 hover:text-foreground transition-all duration-300 hover:scale-110 active:scale-100 hover:rotate-90"
                   aria-label="Close sidebar"
                 >
-                  <svg className="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
               <MilestoneTracker nodes={nodes} variant="flat" className="pb-4 border-b border-border/30 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }} />
 
               <div className="pt-4 animate-fade-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
-                <h2 className="text-xs font-semibold text-foreground/60 mb-2 uppercase tracking-wide hidden md:block">Network Stats</h2>
                 <div className="space-y-1.5 sm:space-y-2">
                   <div className="flex items-center justify-between group">
                     <span className="text-xs sm:text-sm text-foreground/70 transition-colors duration-300 group-hover:text-foreground">Total pNodes</span>
