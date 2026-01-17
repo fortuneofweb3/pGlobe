@@ -18,6 +18,8 @@ import { PNode } from '@/lib/types/pnode';
 import ActivityLogList from '@/components/ActivityLogList';
 import { TableSkeleton, CardSkeleton, ChartSkeleton } from '@/components/Skeletons';
 import ResourceUtilization from '@/components/analytics/ResourceUtilization';
+import ExportButton from '@/components/ExportButton';
+import { PNODE_EXPORT_COLUMNS } from '@/lib/utils/export-columns';
 import { scaleTime, scaleLinear } from '@visx/scale';
 import { LinePath, AreaClosed } from '@visx/shape';
 import { Group } from '@visx/group';
@@ -1284,7 +1286,7 @@ function CountryDetailContent() {
               </Link>
 
               {/* Cover Section with Map Background */}
-              <div className="relative rounded-xl overflow-hidden border border-border/40 bg-card" style={{ minHeight: '280px', height: '280px' }}>
+              <div className="relative rounded-xl overflow-hidden border border-white/10 bg-card" style={{ minHeight: '280px', height: '280px' }}>
                 {/* Map Background Placeholder */}
                 <div className="absolute inset-0 h-full w-full bg-muted/10" />
 
@@ -1332,7 +1334,7 @@ function CountryDetailContent() {
               {/* Extra Stats Grid - 5 columns */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mt-8 mb-4 sm:mb-6">
                 {[...Array(5)].map((_, i) => (
-                  <div key={i} className="card-stat bg-[#0a0a0a] border-white/5 overflow-hidden">
+                  <div key={i} className="card-stat bg-[#0a0a0a] border-white/10 overflow-hidden">
                     <div className="flex flex-col relative">
                       <div className="flex items-center justify-between mb-2">
                         <div className="h-2 w-16 bg-muted/20 rounded" />
@@ -1396,7 +1398,7 @@ function CountryDetailContent() {
 
               {/* Table Section */}
               <div className="card mb-4" style={{ padding: 0 }}>
-                <div className="p-4 border-b border-border/40">
+                <div className="p-4 border-b border-white/10">
                   <div className="h-5 w-32 bg-muted/20 rounded" />
                 </div>
                 <TableSkeleton rows={5} />
@@ -1454,7 +1456,7 @@ function CountryDetailContent() {
                   <span>Back to Regions</span>
                 </Link>
 
-                <div className="relative rounded-xl overflow-hidden border border-border/40 shadow-2xl bg-card" style={{ minHeight: '280px', height: '280px' }}>
+                <div className="relative rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-card" style={{ minHeight: '280px', height: '280px' }}>
                   {/* Map Background */}
                   <div className="absolute inset-0 h-full w-full">
                     <style jsx global>{`
@@ -1520,25 +1522,35 @@ function CountryDetailContent() {
                   <div className="relative px-5 sm:px-7 lg:px-9 pt-8 pb-8 h-full flex flex-col justify-end">
                     <div className="animate-slide-in-left" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
                       {/* Badges */}
-                      <div className="flex items-center gap-3 flex-wrap mb-4">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/10 text-white border border-white/20 backdrop-blur-md">
-                          <Activity className="w-3.5 h-3.5 text-[#F0A741]" />
-                          {stats.totalNodes} pNodes
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#3F8277]/20 text-[#3F8277] border border-[#3F8277]/30 backdrop-blur-md">
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#3F8277]" />
-                          {stats.onlineNodes} Online
-                        </span>
-                        {stats.offlineNodes > 0 && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#ED1C24]/20 text-[#ED1C24] border border-[#ED1C24]/30 backdrop-blur-md">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#ED1C24]" />
-                            {stats.offlineNodes} Offline
+                      <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/10 text-white border border-white/20 backdrop-blur-md">
+                            <Activity className="w-3.5 h-3.5 text-[#F0A741]" />
+                            {stats.totalNodes} pNodes
                           </span>
-                        )}
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30 backdrop-blur-md">
-                          <Globe className="w-3.5 h-3.5" />
-                          {countryCode}
-                        </span>
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#3F8277]/20 text-[#3F8277] border border-[#3F8277]/30 backdrop-blur-md">
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#3F8277]" />
+                            {stats.onlineNodes} Online
+                          </span>
+                          {stats.offlineNodes > 0 && (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#ED1C24]/20 text-[#ED1C24] border border-[#ED1C24]/30 backdrop-blur-md">
+                              <div className="w-1.5 h-1.5 rounded-full bg-[#ED1C24]" />
+                              {stats.offlineNodes} Offline
+                            </span>
+                          )}
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30 backdrop-blur-md">
+                            <Globe className="w-3.5 h-3.5" />
+                            {countryCode}
+                          </span>
+                        </div>
+                        <div>
+                          <ExportButton
+                            data={nodesInCountry}
+                            columns={PNODE_EXPORT_COLUMNS}
+                            filename={`xandeum-nodes-${resolvedCountryCode || countryName}`}
+                            label="Nodes"
+                          />
+                        </div>
                       </div>
 
                       {/* Title */}
@@ -1581,7 +1593,7 @@ function CountryDetailContent() {
 
                 {/* Extra Stats Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mt-8 mb-4 sm:mb-6 animate-fade-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
-                  <div className="card-stat bg-[#0a0a0a] border-white/5 backdrop-blur-md overflow-hidden group hover:bg-[#111] hover:border-[#F0A741]/20 transition-all duration-300">
+                  <div className="card-stat bg-[#0a0a0a] border-white/10 backdrop-blur-md overflow-hidden group hover:bg-[#111] hover:border-[#F0A741]/20 transition-all duration-300">
                     <div className="flex flex-col relative">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[10px] uppercase tracking-widest text-foreground/40 font-bold group-hover:text-[#F0A741] transition-colors">Total Credits</span>
@@ -1597,7 +1609,7 @@ function CountryDetailContent() {
                     </div>
                   </div>
 
-                  <div className="card-stat bg-[#0a0a0a] border-white/5 backdrop-blur-sm overflow-hidden group hover:bg-[#111] hover:border-[#F0A741]/20 transition-all duration-300">
+                  <div className="card-stat bg-[#0a0a0a] border-white/10 backdrop-blur-sm overflow-hidden group hover:bg-[#111] hover:border-[#F0A741]/20 transition-all duration-300">
                     <div className="flex flex-col relative">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[10px] uppercase tracking-widest text-foreground/40 font-bold group-hover:text-[#F0A741] transition-colors">Avg CPU Load</span>
@@ -1614,7 +1626,7 @@ function CountryDetailContent() {
                     </div>
                   </div>
 
-                  <div className="card-stat bg-[#0a0a0a] border-white/5 backdrop-blur-sm overflow-hidden group hover:bg-[#111] hover:border-[#3F8277]/20 transition-all duration-300">
+                  <div className="card-stat bg-[#0a0a0a] border-white/10 backdrop-blur-sm overflow-hidden group hover:bg-[#111] hover:border-[#3F8277]/20 transition-all duration-300">
                     <div className="flex flex-col relative">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[10px] uppercase tracking-widest text-foreground/40 font-bold group-hover:text-[#3F8277] transition-colors">Avg RAM Usage</span>
@@ -1631,7 +1643,7 @@ function CountryDetailContent() {
                     </div>
                   </div>
 
-                  <div className="card-stat bg-white/[0.03] border-white/5 backdrop-blur-sm overflow-hidden group hover:bg-white/[0.05] hover:border-[#F0A741]/20 transition-all duration-300">
+                  <div className="card-stat bg-white/[0.03] border-white/10 backdrop-blur-sm overflow-hidden group hover:bg-white/[0.05] hover:border-[#F0A741]/20 transition-all duration-300">
                     <div className="flex flex-col relative">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[10px] uppercase tracking-widest text-foreground/40 font-bold group-hover:text-[#F0A741] transition-colors">Network Rate</span>
@@ -1646,7 +1658,7 @@ function CountryDetailContent() {
                     </div>
                   </div>
 
-                  <div className="card-stat bg-white/[0.03] border-white/5 backdrop-blur-sm overflow-hidden group hover:bg-white/[0.05] hover:border-[#3F8277]/20 transition-all duration-300">
+                  <div className="card-stat bg-white/[0.03] border-white/10 backdrop-blur-sm overflow-hidden group hover:bg-white/[0.05] hover:border-[#3F8277]/20 transition-all duration-300">
                     <div className="flex flex-col relative">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[10px] uppercase tracking-widest text-foreground/40 font-bold group-hover:text-[#3F8277] transition-colors">Active Streams</span>

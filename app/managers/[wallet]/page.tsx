@@ -43,6 +43,8 @@ const formatXandValue = (value: number): string => {
 interface ManagerDetails {
     wallet: string;
     nodeCount: number;
+    registeredNodes?: number;
+    totalPurchases?: number;
     purchasedNodes?: number;
     onlineCount: number;
     syncingCount: number;
@@ -345,7 +347,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
 
                             {/* Stats Row - 4 Columns */}
                             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                                <StatsCard title="Online pNodes" value={0} icon={<Activity className="w-4 h-4" />} color="green" loading={true} subValue=" " />
+                                <StatsCard title="Reg. / Purch." value="0 / 0" icon={<Activity className="w-4 h-4" />} color="green" loading={true} subValue=" " />
                                 <StatsCard title="DAO Stake" value={0} icon={<Award className="w-4 h-4" />} color="orange" loading={true} subValue=" " />
                                 <StatsCard title="Vesting Rewards" value={0} icon={<Zap className="w-4 h-4" />} color="blue" loading={true} subValue=" " />
                                 <StatsCard title="Total Storage" value={0} icon={<HardDrive className="w-4 h-4" />} color="purple" loading={true} subValue=" " />
@@ -487,12 +489,12 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                         {/* Stats Row - 4 Columns */}
                         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 stagger-children">
                             <StatsCard
-                                title="Active Nodes / Licenses"
+                                title="Reg. / Purch."
                                 value={
                                     <div className="flex items-baseline gap-2">
-                                        <span>{(manager.onlineCount || 0) + (manager.syncingCount || 0)}</span>
+                                        <span>{manager.registeredNodes || manager.onlineCount || 0}</span>
                                         <span className="text-sm text-foreground/40 font-normal">/</span>
-                                        <span>{manager.purchasedNodes || 0}</span>
+                                        <span>{manager.totalPurchases || manager.purchasedNodes || 0}</span>
                                     </div>
                                 }
                                 subValue={`${uptimePercent}% Availability`}

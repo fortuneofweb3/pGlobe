@@ -486,7 +486,7 @@ function HomeContent() {
                 </button>
               </div>
 
-              <div className="pb-4 border-b border-border/30">
+              <div className="pb-4 border-b border-white/10">
                 <EraCardSkeleton />
               </div>
               <SidebarStatsSkeleton />
@@ -504,7 +504,7 @@ function HomeContent() {
                 </button>
               </div>
 
-              <MilestoneTracker nodes={nodes} variant="flat" className="pb-4 border-b border-border/30 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }} />
+              <MilestoneTracker nodes={nodes} variant="flat" className="pb-4 border-b border-white/10 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }} />
 
               <div className="pt-4 animate-fade-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
                 <div className="space-y-1.5 sm:space-y-2">
@@ -659,7 +659,7 @@ function HomeContent() {
                             handleNodeSelect(node);
                             setSidebarOpen(false);
                           }}
-                          className="w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-muted/30 transition-all duration-300 hover:translate-x-1 hover:shadow-md border-b border-border/20 last:border-b-0"
+                          className="w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-muted/30 transition-all duration-300 hover:translate-x-1 hover:shadow-md border-b border-white/10 last:border-b-0"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">

@@ -1277,7 +1277,7 @@ function NodeDetailContent() {
             <div className="relative mb-6 w-fit">
                 <div
                     ref={dropdownTriggerRef}
-                    className="flex items-center justify-between w-auto min-w-[260px] px-3 py-2 bg-background/60 border border-border/40 rounded-lg cursor-pointer hover:bg-muted/40 transition-colors backdrop-blur-sm group"
+                    className="flex items-center justify-between w-auto min-w-[260px] px-3 py-2 bg-background/60 border border-white/10 rounded-lg cursor-pointer hover:bg-muted/40 transition-colors backdrop-blur-sm group"
                     onClick={(e) => {
                         e.stopPropagation();
                         // Calculate position on open
@@ -1317,7 +1317,7 @@ function NodeDetailContent() {
 
                         {/* Dropdown Content */}
                         <div
-                            className="absolute bg-black/95 border border-border/40 rounded-lg shadow-2xl backdrop-blur-md overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                            className="absolute bg-black/95 border border-white/10 rounded-lg shadow-2xl backdrop-blur-md overflow-hidden animate-in fade-in zoom-in-95 duration-200"
                             style={{
                                 top: dropdownCoords.top,
                                 left: dropdownCoords.left,
@@ -1380,7 +1380,7 @@ function NodeDetailContent() {
                             </Link>
 
                             {/* Cover Section with Map Background */}
-                            <div className="relative rounded-xl overflow-hidden border border-border/40 bg-card mb-8" style={{ minHeight: '234px', maxHeight: '260px' }}>
+                            <div className="relative rounded-xl overflow-hidden border border-white/10 bg-card mb-8" style={{ minHeight: '234px', maxHeight: '260px' }}>
                                 {/* Map Background Placeholder */}
                                 <div className="absolute inset-0 h-full w-full bg-muted/10" />
 
@@ -1389,13 +1389,13 @@ function NodeDetailContent() {
                                     <div className="mb-8">
                                         {/* Badges */}
                                         <div className="flex items-center gap-3 flex-wrap mb-4">
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted/20 border border-border/30">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted/20 border border-white/10">
                                                 <div className="h-3 w-12 bg-muted/30 rounded" />
                                             </span>
                                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 border border-green-500/30">
                                                 <div className="h-3 w-10 bg-green-400/30 rounded" />
                                             </span>
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-background/50 border border-border/30">
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-background/50 border border-white/10">
                                                 <div className="h-3 w-32 bg-muted/20 rounded" />
                                             </span>
                                         </div>
@@ -1419,7 +1419,7 @@ function NodeDetailContent() {
                                         </div>
 
                                         {/* Public Key Box */}
-                                        <div className="mt-4 inline-flex items-center gap-2 p-2 bg-background/40 border border-border/40 rounded-lg">
+                                        <div className="mt-4 inline-flex items-center gap-2 p-2 bg-background/40 border border-white/10 rounded-lg">
                                             <div className="h-4 w-40 sm:w-56 bg-muted/30 rounded" />
                                             <div className="p-1.5 border border-border/60 rounded">
                                                 <Copy className="w-3.5 h-3.5 text-foreground/40" />
@@ -1569,7 +1569,7 @@ function NodeDetailContent() {
                                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                                         <div className="flex-1 space-y-3">
                                             <div className="flex items-center gap-3 flex-wrap">
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted/20 text-foreground/40 border border-border/30 animate-pulse">
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted/20 text-foreground/40 border border-white/10 animate-pulse">
                                                     Status
                                                 </span>
                                                 <div>
@@ -1583,7 +1583,7 @@ function NodeDetailContent() {
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-start gap-2 pt-2 border-t border-border/40">
+                                            <div className="flex items-start gap-2 pt-2 border-t border-white/10">
                                                 <div className="flex-1 min-w-0">
                                                     <div className="text-xs text-foreground/60 uppercase tracking-wide mb-1.5">Public Key</div>
                                                     <p className="h-4 w-full bg-muted/30 rounded animate-pulse" />
@@ -1648,7 +1648,7 @@ function NodeDetailContent() {
                                     <span>Back to pNodes</span>
                                 </Link>
 
-                                <div className="relative rounded-xl overflow-hidden border border-border/40 shadow-2xl bg-card" style={{ minHeight: '234px', maxHeight: '260px' }}>
+                                <div className="relative rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-card" style={{ minHeight: '234px', maxHeight: '260px' }}>
                                     {/* Map Background */}
                                     <div className="absolute inset-0 h-full w-full" style={{ overflow: 'visible' }}>
                                         <style jsx global>{`
@@ -1726,7 +1726,7 @@ function NodeDetailContent() {
                                                         </span>
                                                     )}
                                                     {node.createdAt && (
-                                                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-background/50 text-foreground/70 border border-border/30 backdrop-blur-sm" title="First detected by database. Actual network join time may vary.">
+                                                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-background/50 text-foreground/70 border border-white/10 backdrop-blur-sm" title="First detected by database. Actual network join time may vary.">
                                                             Joined {new Date(node.createdAt).toLocaleString()}
                                                         </span>
                                                     )}
@@ -1744,7 +1744,6 @@ function NodeDetailContent() {
                                                                 <CopyButton value={pubkey} className="scale-125" />
                                                             )}
                                                         </div>
-
                                                     </div>
                                                 </div>
 
@@ -1796,7 +1795,7 @@ function NodeDetailContent() {
                                             </span>
                                         )}
                                         {node.createdAt && (
-                                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-muted/20 text-foreground/60 border border-border/30" title="First detected by database. Actual network join time may vary.">
+                                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-muted/20 text-foreground/60 border border-white/10" title="First detected by database. Actual network join time may vary.">
                                                 <Clock className="w-3 h-3 text-[#F0A741]" />
                                                 Joined {new Date(node.createdAt).toLocaleString()}
                                             </span>

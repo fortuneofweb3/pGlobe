@@ -29,7 +29,7 @@ export default function ActivityLogsPage() {
                                         Real-time monitoring of network events, status changes, and performance updates
                                     </p>
                                 </div>
-                                <div className="h-9 w-40 bg-muted/20 border border-border/40 rounded-xl animate-pulse xl:hidden" />
+                                <div className="h-9 w-40 bg-muted/20 border border-white/10 rounded-xl animate-pulse xl:hidden" />
                             </div>
                         </div>
                     </div>
@@ -82,7 +82,7 @@ export default function ActivityLogsPage() {
                             </div>
 
                             {/* Mobile Tab Switcher */}
-                            <div className="xl:hidden flex p-1 bg-muted/20 border border-border/40 rounded-xl max-w-fit self-center sm:self-auto">
+                            <div className="xl:hidden flex p-1 bg-muted/20 border border-white/10 rounded-xl max-w-fit self-center sm:self-auto">
                                 <button
                                     onClick={() => setActiveTab('feed')}
                                     className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${activeTab === 'feed'

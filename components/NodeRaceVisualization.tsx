@@ -130,14 +130,14 @@ function RacingBar({ node, index, maxScore }: { node: RacingNode; index: number;
                 <div
                     className={`flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-[10px] sm:text-xs border transition-colors duration-200 ${isPodium
                         ? 'bg-[#F0A741]/20 border-[#F0A741]/40 text-[#F0A741]'
-                        : 'bg-muted/40 border-border/40 text-foreground/60'
+                        : 'bg-muted/40 border-white/10 text-foreground/60'
                         }`}
                 >
                     #{node.rank}
                 </div>
 
                 {/* Racing Bar */}
-                <div className="flex-1 relative h-8 sm:h-12 rounded-lg bg-muted/20 border border-border/30 overflow-hidden">
+                <div className="flex-1 relative h-8 sm:h-12 rounded-lg bg-muted/20 border border-white/10 overflow-hidden">
                     {/* Animated bar width - GPU accelerated */}
                     <motion.div
                         className={`absolute inset-y-0 left-0 rounded-l-lg ${getStatusColor(node.status)} ${isPodium ? 'shadow-[0_0_20px_rgba(240,167,65,0.2)]' : ''}`}
@@ -424,7 +424,7 @@ export default function NodeRaceVisualization() {
                             </div>
                         </div>
                     </h2>
-                    <div className="flex items-center gap-1.5 sm:gap-2 bg-muted/20 px-1.5 sm:px-2 py-0.5 rounded-full border border-border/40">
+                    <div className="flex items-center gap-1.5 sm:gap-2 bg-muted/20 px-1.5 sm:px-2 py-0.5 rounded-full border border-white/10">
                         <div className={`w-1.5 h-1.5 rounded-full ${connected && !isPaused ? 'bg-green-500 animate-pulse' : isPaused ? 'bg-yellow-500' : 'bg-muted-foreground/30'}`} />
                         <span className="text-[9px] sm:text-[10px] font-bold text-foreground/40 uppercase tracking-tight">
                             {isPaused ? 'Paused' : connected ? 'Live' : 'Offline'}
@@ -432,7 +432,7 @@ export default function NodeRaceVisualization() {
                     </div>
                     <button
                         onClick={() => setIsPaused(!isPaused)}
-                        className={`p-1 sm:p-1.5 rounded-lg border transition-colors ${isPaused ? 'bg-[#F0A741]/20 border-[#F0A741]/50 text-[#F0A741]' : 'bg-muted/20 border-border/40 text-foreground/50 hover:text-foreground hover:bg-muted/30'}`}
+                        className={`p-1 sm:p-1.5 rounded-lg border transition-colors ${isPaused ? 'bg-[#F0A741]/20 border-[#F0A741]/50 text-[#F0A741]' : 'bg-muted/20 border-white/10 text-foreground/50 hover:text-foreground hover:bg-muted/30'}`}
                         title={isPaused ? 'Resume' : 'Pause'}
                     >
                         {isPaused ? <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> : <Pause className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}

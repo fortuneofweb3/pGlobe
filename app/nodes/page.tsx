@@ -14,6 +14,8 @@ import { TableSkeleton, CardSkeleton, PNodeTableSkeleton } from '@/components/Sk
 import AnimatedNumber from '@/components/AnimatedNumber';
 import StatsCard from '@/components/StatsCard';
 import { useWatchlist } from '@/lib/context/WatchlistContext';
+import ExportButton from '@/components/ExportButton';
+import { PNODE_EXPORT_COLUMNS } from '@/lib/utils/export-columns';
 
 
 function NodesPageContent() {
@@ -301,19 +303,31 @@ function NodesPageContent() {
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="mb-4 sm:mb-6">
-              <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
-                <Server className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
-                Network pNodes
-              </h1>
-              <p className="text-foreground/60 text-sm sm:text-base">
-                Complete overview of all pNodes in the network
-              </p>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
+                    <Server className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
+                    Network pNodes
+                  </h1>
+                  <p className="text-foreground/60 text-sm sm:text-base">
+                    Complete overview of all pNodes in the network
+                  </p>
+                </div>
+                <div>
+                  <ExportButton
+                    data={filteredAndSortedNodes}
+                    columns={PNODE_EXPORT_COLUMNS}
+                    filename="xandeum-nodes"
+                    label="Nodes"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Summary Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6 stagger-children">
               <StatsCard
-                title="Active pNodes"
+                title="Registered"
                 value={activeNodes.length}
                 subValue={`Total discovered: ${nodes.length}`}
                 icon={<Server className="w-4 h-4" />}
@@ -402,6 +416,8 @@ function NodesPageContent() {
                   </button>
                 )}
               </div>
+
+
 
               {/* Filter Panel */}
               {showFilters && (
@@ -558,7 +574,7 @@ function NodesPageContent() {
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
                       className={`flex items-center gap-1 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${currentPage === 1
-                        ? 'border-border/40 text-foreground/30 cursor-not-allowed'
+                        ? 'border-white/10 text-foreground/30 cursor-not-allowed'
                         : 'border-border/60 text-foreground/80 hover:border-[#F0A741]/50 hover:text-[#F0A741]'
                         }`}
                     >
@@ -608,7 +624,7 @@ function NodesPageContent() {
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
                       className={`flex items-center gap-1 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${currentPage === totalPages
-                        ? 'border-border/40 text-foreground/30 cursor-not-allowed'
+                        ? 'border-white/10 text-foreground/30 cursor-not-allowed'
                         : 'border-border/60 text-foreground/80 hover:border-[#F0A741]/50 hover:text-[#F0A741]'
                         }`}
                     >

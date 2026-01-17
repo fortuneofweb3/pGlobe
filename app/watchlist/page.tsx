@@ -178,7 +178,7 @@ function WatchlistPageContent() {
                                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                             disabled={currentPage === 1}
                                             className={`flex items-center gap-1 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${currentPage === 1
-                                                ? 'border-border/40 text-foreground/30 cursor-not-allowed'
+                                                ? 'border-white/10 text-foreground/30 cursor-not-allowed'
                                                 : 'border-border/60 text-foreground/80 hover:border-yellow-500/50 hover:text-yellow-500'
                                                 }`}
                                         >
@@ -189,7 +189,7 @@ function WatchlistPageContent() {
                                             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                             disabled={currentPage === totalPages}
                                             className={`flex items-center gap-1 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${currentPage === totalPages
-                                                ? 'border-border/40 text-foreground/30 cursor-not-allowed'
+                                                ? 'border-white/10 text-foreground/30 cursor-not-allowed'
                                                 : 'border-border/60 text-foreground/80 hover:border-yellow-500/50 hover:text-yellow-500'
                                                 }`}
                                         >

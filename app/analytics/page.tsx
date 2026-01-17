@@ -14,7 +14,9 @@ import Header from '@/components/Header';
 import WorldMapHeatmap from '@/components/WorldMapHeatmap';
 import { useNodes } from '@/lib/context/NodesContext';
 import { formatStorageBytes } from '@/lib/utils/storage';
-import { Activity, HardDrive, TrendingUp, Server, BarChart3, Download, FileJson, FileSpreadsheet, ArrowDown, MemoryStick, Cpu, Award, Network } from 'lucide-react';
+import { Activity, HardDrive, TrendingUp, Server, BarChart3, Download, ArrowDown, MemoryStick, Cpu, Award, Network } from 'lucide-react';
+// ExportButton removed
+// PNODE_EXPORT_COLUMNS, NETWORK_HISTORY_COLUMNS removed from imports
 import { useRouter } from 'next/navigation';
 import { startProgress } from '@/lib/nprogress';
 import AnimatedNumber from '@/components/AnimatedNumber';
@@ -122,44 +124,7 @@ export default function AnalyticsPage() {
     }
   }, [healthPeriod, selectedNetwork]);
 
-  // Export functions
-  const exportToCSV = () => {
-    const headers = ['ID', 'Status', 'Version', 'Address', 'Location', 'Uptime', 'Joined', 'Storage', 'CPU %', 'RAM %'];
-    const rows = nodes.map(node => [
-      node.id || node.pubkey || node.publicKey || '',
-      node.status || '',
-      node.version || '',
-      node.address || '',
-      node.locationData?.city && node.locationData?.country
-        ? `${node.locationData.city}, ${node.locationData.country}`
-        : '',
-      node.uptime ? Math.floor(node.uptime / 86400) + 'd' : '',
-      node.createdAt ? new Date(node.createdAt).toLocaleDateString() : '',
-      node.storageCapacity ? formatStorageBytes(node.storageCapacity) : '',
-      node.cpuPercent?.toFixed(1) || '',
-      node.ramUsed && node.ramTotal ? ((node.ramUsed / node.ramTotal) * 100).toFixed(1) : '',
-    ]);
 
-    const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `xandeum-pnodes-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const exportToJSON = () => {
-    const json = JSON.stringify(nodes, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `xandeum-pnodes-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   // Calculate summary stats
   const stats = useMemo(() => {
@@ -257,8 +222,8 @@ export default function AnalyticsPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="h-10 w-16 bg-muted/20 rounded-lg border border-border/40" />
-                    <div className="h-10 w-16 bg-muted/20 rounded-lg border border-border/40" />
+                    <div className="h-10 w-16 bg-muted/20 rounded-lg border border-white/10" />
+                    <div className="h-10 w-16 bg-muted/20 rounded-lg border border-white/10" />
                   </div>
                 </div>
               </div>
@@ -329,7 +294,7 @@ export default function AnalyticsPage() {
                       <TrendingUp className="w-4 h-4 text-foreground/20" />
                       <div className="h-5 w-40 bg-muted/30 rounded" />
                     </div>
-                    <div className="flex items-center gap-1 bg-muted/30 rounded-lg p-1 border border-border/40">
+                    <div className="flex items-center gap-1 bg-muted/30 rounded-lg p-1 border border-white/10">
                       {['1H', '6H', '24H', '7D', '30D'].map((p) => (
                         <div key={p} className="px-2.5 py-1 text-xs text-foreground/30">{p}</div>
                       ))}
@@ -358,11 +323,11 @@ export default function AnalyticsPage() {
                     <div className="h-5 w-36 bg-muted/30 rounded" />
                   </div>
                   <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                    <div className="bg-muted/5 rounded-lg p-4 border border-border/20">
+                    <div className="bg-muted/5 rounded-lg p-4 border border-white/10">
                       <div className="h-4 w-24 bg-muted/20 rounded mb-3" />
                       <ChartSkeleton height={150} />
                     </div>
-                    <div className="bg-muted/5 rounded-lg p-4 border border-border/20">
+                    <div className="bg-muted/5 rounded-lg p-4 border border-white/10">
                       <div className="h-4 w-28 bg-muted/20 rounded mb-3" />
                       <ChartSkeleton height={150} />
                     </div>
@@ -433,24 +398,7 @@ export default function AnalyticsPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={exportToCSV}
-                    disabled={nodes.length === 0}
-                    className="px-3 py-2 text-sm bg-muted/40 hover:bg-muted/60 text-foreground rounded-lg border border-border/60 transition-all duration-200 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    title="Export as CSV"
-                  >
-                    <FileSpreadsheet className="w-4 h-4" />
-                    <span>CSV</span>
-                  </button>
-                  <button
-                    onClick={exportToJSON}
-                    disabled={nodes.length === 0}
-                    className="px-3 py-2 text-sm bg-muted/40 hover:bg-muted/60 text-foreground rounded-lg border border-border/60 transition-all duration-200 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    title="Export as JSON"
-                  >
-                    <FileJson className="w-4 h-4" />
-                    <span>JSON</span>
-                  </button>
+                  {/* Export removed via user request */}
                 </div>
               </div>
             </div>
@@ -633,7 +581,7 @@ export default function AnalyticsPage() {
                     <TrendingUp className="w-4 h-4 text-foreground/40" />
                     <h2 className="text-base font-semibold text-foreground">Network Health Trend</h2>
                   </div>
-                  <div className="flex items-center gap-1 bg-muted/30 rounded-lg p-1 border border-border/40">
+                  <div className="flex items-center gap-1 bg-muted/30 rounded-lg p-1 border border-white/10">
                     {(['1h', '6h', '24h', '7d', '30d'] as const).map((period) => (
                       <button
                         key={period}

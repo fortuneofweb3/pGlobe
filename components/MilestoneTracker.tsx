@@ -152,7 +152,7 @@ export default function MilestoneTracker({ nodes, className = "", variant = 'def
 
             {/* Current Milestone */}
             {milestoneDetail && (
-                <div className="mb-4 p-3 rounded-lg border border-border/30 bg-background/30">
+                <div className="mb-4 p-3 rounded-lg border border-white/10 bg-background/30">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Target className="w-4 h-4 text-muted-foreground" />
@@ -171,7 +171,7 @@ export default function MilestoneTracker({ nodes, className = "", variant = 'def
                 </div>
 
                 {/* Progress Bar Container */}
-                <div className="h-1.5 w-full bg-background/50 rounded-full overflow-hidden border border-border/30">
+                <div className="h-1.5 w-full bg-background/50 rounded-full overflow-hidden border border-white/10">
                     <div
                         className="h-full transition-all duration-1000 ease-out relative"
                         style={{

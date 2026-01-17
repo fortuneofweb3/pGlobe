@@ -44,7 +44,7 @@ export default function NodeHistoryChart({
 
     if (chartData.length === 0) {
         return (
-            <div className="flex items-center justify-center h-full text-foreground/30 border border-border/20 rounded-xl bg-background/20" style={{ height }}>
+            <div className="flex items-center justify-center h-full text-foreground/30 border border-white/10 rounded-xl bg-background/20" style={{ height }}>
                 <p className="text-xs">No historical data available</p>
             </div>
         );

@@ -88,8 +88,8 @@ export default function StoincPage() {
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <div className="h-10 w-16 bg-muted/20 rounded-lg border border-border/40" />
-                                        <div className="h-10 w-16 bg-muted/20 rounded-lg border border-border/40" />
+                                        <div className="h-10 w-16 bg-muted/20 rounded-lg border border-white/10" />
+                                        <div className="h-10 w-16 bg-muted/20 rounded-lg border border-white/10" />
                                     </div>
                                 </div>
                             </div>
@@ -104,7 +104,7 @@ export default function StoincPage() {
 
                             {/* Calculator Toggle */}
                             <div className="mb-6">
-                                <div className="flex items-center gap-2 px-4 py-2 bg-muted/30 border border-border/40 rounded-xl w-fit">
+                                <div className="flex items-center gap-2 px-4 py-2 bg-muted/30 border border-white/10 rounded-xl w-fit">
                                     <Calculator className="w-4 h-4 text-[#F0A741]" />
                                     <span className="text-sm font-semibold text-[#F0A741]">Show STOINC Calculator</span>
                                 </div>
@@ -125,7 +125,7 @@ export default function StoincPage() {
                                 </div>
                                 <div className="lg:col-span-4 flex flex-col gap-6">
                                     <div className="card overflow-hidden">
-                                        <div className="p-4 border-b border-border/40 bg-muted/10">
+                                        <div className="p-4 border-b border-white/10 bg-muted/10">
                                             <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
                                                 <Trophy className="w-4 h-4 text-[#F0A741]" />
                                                 Credits Leaderboard
@@ -236,7 +236,7 @@ export default function StoincPage() {
                         <div className="mb-6">
                             <button
                                 onClick={() => setIsCalculatorOpen(!isCalculatorOpen)}
-                                className="flex items-center gap-2 px-4 py-2 bg-muted/30 hover:bg-muted/50 border border-border/40 rounded-xl transition-all text-sm font-semibold text-[#F0A741]"
+                                className="flex items-center gap-2 px-4 py-2 bg-muted/30 hover:bg-muted/50 border border-white/10 rounded-xl transition-all text-sm font-semibold text-[#F0A741]"
                             >
                                 <Calculator className="w-4 h-4" />
                                 {isCalculatorOpen ? 'Hide' : 'Show'} STOINC Calculator

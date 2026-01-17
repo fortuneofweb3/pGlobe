@@ -20,9 +20,26 @@ import { getFlagForCountry } from '@/lib/utils/country-flags';
 import { Check, X, ArrowUp, ArrowDown, Globe, Lock, Star, LayoutGrid, List, Network, Copy } from 'lucide-react';
 import InfoTooltip from './InfoTooltip';
 import CopyButton from './CopyButton';
+import ExportButton, { ColumnDef } from './ExportButton';
 
 import { useWatchlist } from '@/lib/context/WatchlistContext';
 import { useNodes } from '@/lib/context/NodesContext';
+
+const PNODE_EXPORT_COLUMNS: ColumnDef<PNode>[] = [
+  { header: 'ID', accessorKey: 'id' },
+  { header: 'Public Key', accessorKey: 'publicKey' },
+  { header: 'Address', accessorKey: 'address' },
+  { header: 'Status', accessorKey: 'status' },
+  { header: 'Uptime (s)', accessorKey: 'uptime' },
+  {
+    header: 'Storage (GB)',
+    accessorFn: (node) => node.storageCapacity ? (node.storageCapacity / (1024 * 1024 * 1024)).toFixed(2) : ''
+  },
+  { header: 'Location', accessorKey: 'location' },
+  { header: 'Latency (ms)', accessorKey: 'latency' },
+  { header: 'Version', accessorKey: 'version' },
+  { header: 'Credits', accessorKey: 'credits' },
+];
 
 // ============================================================================
 // NodeCard Component
@@ -183,7 +200,7 @@ function NodeCard({ node, index, onNodeClick, latency, watched, toggleWatchlist,
       {/* IP Addresses - Simple display with indicator */}
       <div className="space-y-1.5 mb-4 flex-1">
         {/* Primary IP */}
-        <div className="text-sm font-mono text-foreground/70 truncate bg-black/20 rounded px-2.5 py-1.5 flex items-center gap-2 border border-white/5">
+        <div className="text-sm font-mono text-foreground/70 truncate bg-black/20 rounded px-2.5 py-1.5 flex items-center gap-2 border border-white/10">
           <Network className="w-3.5 h-3.5 shrink-0 text-foreground/40" />
           <span className="select-text cursor-text flex-1">{uniqueIps[0]}</span>
           {uniqueIps.length > 1 && (
@@ -207,7 +224,7 @@ function NodeCard({ node, index, onNodeClick, latency, watched, toggleWatchlist,
           </div>
           <div className="text-[10px] text-foreground/50 uppercase tracking-wide">Uptime</div>
         </div>
-        <div className="text-center border-x border-border/30">
+        <div className="text-center border-x border-white/10">
           <div className="text-sm font-bold text-foreground whitespace-nowrap">
             {(() => {
               if (!node.storageCapacity) return '—';
@@ -233,7 +250,7 @@ function NodeCard({ node, index, onNodeClick, latency, watched, toggleWatchlist,
       </div>
 
       {/* Footer: Network + Registered */}
-      <div className="flex items-center justify-between pt-2 border-t border-border/30 mt-auto">
+      <div className="flex items-center justify-between pt-2 border-t border-white/10 mt-auto">
         <span className={`text-xs px-2 py-1 rounded-lg font-semibold ${displayNetwork === 'mainnet' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
           'bg-purple-500/20 text-purple-400 border border-purple-500/30'
           }`}>
@@ -741,59 +758,29 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
         ) : (
           /* Table View */
           <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0 bg-card" style={{ margin: 0, padding: 0, marginTop: '-1px' }}>
-            <table className="min-w-full border-collapse m-0 border-spacing-0" style={{ minWidth: '800px', borderCollapse: 'collapse', margin: 0, padding: 0 }}>
+            <table className="min-w-full border-collapse m-0 border-spacing-0" style={{ width: '100%', borderCollapse: 'collapse', margin: 0, padding: 0 }}>
               <thead className="sticky top-0 z-10 bg-muted border-b border-border/60" style={{ margin: 0, padding: 0 }}>
                 <tr>
-                  <th className="px-2 py-4"></th>
+                  <th className="px-1 py-4"></th>
                   <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                     Public Key
                   </th>
                   <th className="px-2 sm:px-3 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                    Registered
-                  </th>
-                  {selectedNetwork === 'all' && (
-                    <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                      Network
-                    </th>
-                  )}
-                  {onSort ? (
-                    <th
-                      className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none group"
-                      onClick={() => onSort('createdAt')}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span className="flex items-center gap-1">
-                          Joined
-                        </span>
-                        {sortBy === 'createdAt' ? (
-                          sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
-                        ) : (
-                          <ArrowDown className="w-3 h-3 text-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        )}
-                      </div>
-                    </th>
-                  ) : (
-                    <th
-                      className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider"
-                    >
-                      <span className="flex items-center gap-1 w-fit">
-                        Joined
-                      </span>
-                    </th>
-                  )}
+
+
+
                   <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                     Access
                   </th>
                   {onSort ? (
                     <>
                       <th
-                        className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                        className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                         onClick={() => onSort('uptime')}
                       >
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center justify-center gap-1.5">
                           <span>Uptime</span>
                           {sortBy === 'uptime' ? (
                             sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
@@ -803,10 +790,10 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         </div>
                       </th>
                       <th
-                        className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                        className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
                         onClick={() => onSort('storageCapacity')}
                       >
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center justify-center gap-1.5">
                           <span>Storage</span>
                           {sortBy === 'storageCapacity' ? (
                             sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
@@ -815,38 +802,18 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           )}
                         </div>
                       </th>
-                      <th
-                        className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
-                        onClick={() => onSort?.('ramTotal')}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span>RAM</span>
-                          {sortBy === 'ramTotal' ? (
-                            sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
-                          ) : (
-                            <ArrowDown className="w-3 h-3 text-foreground/30" />
-                          )}
-                        </div>
-                      </th>
+
+
+
+
+
+                      {/* XAND Stake column hidden */}
 
                       <th
-                        className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
-                        onClick={() => onSort('latency')}
+                        className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                        onClick={() => onSort?.('cpuPercent')}
                       >
-                        <div className="flex items-center justify-end gap-1.5">
-                          <span>Latency</span>
-                          {sortBy === 'latency' ? (
-                            sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
-                          ) : (
-                            <ArrowDown className="w-3 h-3 text-foreground/30" />
-                          )}
-                        </div>
-                      </th>
-                      <th
-                        className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
-                        onClick={() => onSort('cpuPercent')}
-                      >
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center justify-center gap-1.5">
                           <span>CPU</span>
                           {sortBy === 'cpuPercent' ? (
                             sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
@@ -856,12 +823,12 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         </div>
                       </th>
                       <th
-                        className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
-                        onClick={() => onSort('balance')}
+                        className="px-2 sm:px-3 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                        onClick={() => onSort?.('ramTotal')}
                       >
-                        <div className="flex items-center justify-end gap-1.5">
-                          <span>Balance</span>
-                          {sortBy === 'balance' ? (
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span>RAM</span>
+                          {sortBy === 'ramTotal' ? (
                             sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
                           ) : (
                             <ArrowDown className="w-3 h-3 text-foreground/30" />
@@ -869,12 +836,11 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         </div>
                       </th>
                       {/* XAND Stake column hidden */}
-                      {/* Boost column hidden */}
                       <th
-                        className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
-                        onClick={() => onSort('credits')}
+                        className="px-2 sm:px-4 py-3 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                        onClick={() => onSort?.('credits')}
                       >
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex items-center justify-center gap-1.5">
                           <span>Credits</span>
                           {sortBy === 'credits' ? (
                             sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
@@ -884,11 +850,11 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                         </div>
                       </th>
                       <th
-                        className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
-                        onClick={() => onSort('packetsReceived')}
+                        className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                        onClick={() => onSort?.('packetsReceived')}
                       >
-                        <div className="flex items-center gap-1.5">
-                          <span>Packets Rx</span>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span>Traffic</span>
                           {sortBy === 'packetsReceived' ? (
                             sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
                           ) : (
@@ -896,64 +862,45 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           )}
                         </div>
                       </th>
-                      <th
-                        className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:bg-muted/50 transition-colors select-none"
-                        onClick={() => onSort('packetsSent')}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span>Packets Tx</span>
-                          {sortBy === 'packetsSent' ? (
-                            sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-foreground" /> : <ArrowDown className="w-3 h-3 text-foreground" />
-                          ) : (
-                            <ArrowDown className="w-3 h-3 text-foreground/30" />
-                          )}
-                        </div>
-                      </th>
-                      <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      <th className="px-2 sm:px-4 py-3 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                         Version
                       </th>
+
                     </>
                   ) : (
                     <>
-                      <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider bg-card/20">
                         Uptime
                       </th>
-                      <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                         Storage
                       </th>
-                      <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider bg-card/20">
+                        CPU
+                      </th>
+                      <th className="px-2 sm:px-3 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                         RAM
                       </th>
 
-                      <th className="px-3 sm:px-5 py-4 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                        Latency
-                      </th>
-                      <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                        CPU
-                      </th>
-                      <th className="px-3 sm:px-5 py-4 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                        Balance
-                      </th>
-                      <th className="px-3 sm:px-5 py-4 text-right text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+
+
+                      <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider bg-card/20">
                         Credits
                       </th>
-                      <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                        Packets Rx
+                      <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                        Traffic
                       </th>
-                      <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
-                        Packets Tx
-                      </th>
-                      <th className="px-3 sm:px-5 py-4 text-left text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+                      <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider bg-card/20">
                         Version
                       </th>
                     </>
                   )}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/40">
+              <tbody className="">
                 {sortedNodes.length === 0 ? (
                   <tr>
-                    <td colSpan={18} className="px-4 py-12 text-center text-foreground/50">
+                    <td colSpan={11} className="px-4 py-12 text-center text-foreground/50">
                       No pNodes found
                     </td>
                   </tr>
@@ -975,14 +922,14 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           }
                         }}
                         className={`
-                        cursor-pointer border-b border-white/[0.03]
+                        cursor-pointer border-b border-white/10
                         bg-white/[0.01] hover:bg-white/[0.04] 
                         transition-colors duration-200
                         ${node.isMerged ? 'bg-purple-500/[0.03]' : ''} 
                         ${isTrynet ? 'bg-orange-500/[0.02]' : ''}
                       `}
                       >
-                        <td className="px-2 py-5 text-center" onClick={(e) => e.stopPropagation()}>
+                        <td className="px-1 py-5 text-center" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => toggleWatchlist(node.pubkey || node.publicKey || node.id)}
                             className={`p-1 rounded-full transition-all duration-200 ${isWatched(node.pubkey || node.publicKey || node.id)
@@ -1041,51 +988,9 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                             }
                           })()}
                         </td>
-                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-center">
-                          {(() => {
-                            const balance = balances[node.id] !== undefined ? balances[node.id] : node.balance;
-                            const isRegistered = balance !== undefined && balance !== null && balance > 0;
-                            return (
-                              <span className="inline-flex items-center justify-center">
-                                {isRegistered ? (
-                                  <Check className="w-4 h-4 text-foreground/60" strokeWidth={3} />
-                                ) : (
-                                  <X className="w-4 h-4 text-foreground/40" strokeWidth={3} />
-                                )}
-                              </span>
-                            );
-                          })()}
-                        </td>
-                        {selectedNetwork === 'all' && (
-                          <td className="px-2 sm:px-3 py-5 whitespace-nowrap text-center">
-                            <span
-                              className={`inline-flex items-center justify-center px-2.5 py-1 rounded text-[11px] font-semibold tracking-tight ${node.network === 'mainnet' || node.network === 'both'
-                                ? 'bg-[#F0A741]/20 text-[#F0A741] border border-[#F0A741]/30'
-                                : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                                }`}
-                              title={node.network === 'mainnet' || node.network === 'both'
-                                ? "Xandeum Mainnet"
-                                : "Xandeum Devnet"
-                              }
-                            >
-                              {node.network === 'mainnet' || node.network === 'both' ? 'Mainnet' : 'Devnet'}
-                            </span>
-                          </td>
-                        )}
-                        <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
-                          {node.createdAt ? (
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className="text-xs sm:text-sm text-foreground/80 border-b border-dotted border-foreground/30 cursor-help"
-                                title={`First detected: ${new Date(node.createdAt).toLocaleString()}\nFirst detected by database. Actual network join time may vary.`}
-                              >
-                                {formatRelativeTime(node.createdAt)}
-                              </span>
-                            </div>
-                          ) : (
-                            renderEmptyCell()
-                          )}
-                        </td>
+
+
+
                         <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-center">
                           {(() => {
                             const isPublic = node.isPublic === true;
@@ -1115,12 +1020,12 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                             return <span className="text-xs text-foreground/40">—</span>;
                           })()}
                         </td>
-                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap">
+                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap bg-card/20 text-center">
                           <span className="text-xs sm:text-sm text-foreground/80">
                             {formatUptime(node.uptime) || renderEmptyCell()}
                           </span>
                         </td>
-                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap">
+                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-center">
                           {(() => {
                             const capacity = node.storageCapacity;
                             const hasCapacity = capacity !== undefined && capacity !== null;
@@ -1135,7 +1040,14 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                             return renderEmptyCell();
                           })()}
                         </td>
-                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap">
+                        <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20 text-center">
+                          <span className="text-xs sm:text-sm text-foreground/80">
+                            {node.cpuPercent !== undefined && node.cpuPercent !== null
+                              ? `${node.cpuPercent.toFixed(1)}%`
+                              : renderEmptyCell()}
+                          </span>
+                        </td>
+                        <td className="px-2 sm:px-3 py-5 whitespace-nowrap text-center">
                           {(() => {
                             const ramUsed = node.ramUsed;
                             const ramTotal = node.ramTotal;
@@ -1154,71 +1066,12 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           })()}
                         </td>
 
-                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-right">
-                          {(() => {
-                            // Don't show latency for nodes not seen in gossip (offline)
-                            if (node.seenInGossip === false) {
-                              return renderEmptyCell();
-                            }
 
-                            // Use per-node latency measurement
-                            const nodeLatency = nodeLatencies[node.id];
 
-                            if (nodeLatency !== null && nodeLatency !== undefined) {
-                              const color = getLatencyColor(nodeLatency, null);
-                              return (
-                                <div className="flex flex-col items-end gap-0.5">
-                                  <span
-                                    className={`text-xs sm:text-sm font-mono font-medium ${color}`}
-                                    title={`Measured from your browser: ${nodeLatency.toFixed(0)}ms`}
-                                  >
-                                    {nodeLatency.toFixed(0)}ms
-                                  </span>
-                                </div>
-                              );
-                            }
 
-                            if (measuringLatency) {
-                              return <span className="text-muted-foreground/50 text-xs">Measuring...</span>;
-                            }
 
-                            return renderEmptyCell('pNode not reachable');
-                          })()}
-                        </td>
-                        <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20">
-                          <span className="text-xs sm:text-sm text-foreground/80">
-                            {node.cpuPercent !== undefined && node.cpuPercent !== null
-                              ? `${node.cpuPercent.toFixed(1)}%`
-                              : renderEmptyCell()}
-                          </span>
-                        </td>
-                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-right">
-                          {(() => {
-                            const balance = balances[node.id] !== undefined ? balances[node.id] : node.balance;
-                            const isFetching = fetchingBalances.has(node.id);
-
-                            if (isFetching) {
-                              return (
-                                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                                  <span className="inline-block w-2.5 h-2.5 border-2 border-foreground/20 border-t-foreground/60 rounded-full animate-spin" />
-                                </span>
-                              );
-                            }
-
-                            if (balance !== null && balance !== undefined) {
-                              return (
-                                <BalanceDisplay
-                                  balance={balance}
-                                  className="text-xs sm:text-sm font-mono text-foreground/80"
-                                />
-                              );
-                            }
-
-                            return renderEmptyCell();
-                          })()}
-                        </td>
                         {/* XAND Stake and Boost columns hidden - no placeholders needed */}
-                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-right">
+                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-center bg-card/20">
                           {node.credits !== undefined && node.credits !== null ? (
                             <span className="text-xs sm:text-sm font-mono text-foreground/80">
                               {node.credits.toLocaleString()}
@@ -1228,39 +1081,41 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                           )}
                         </td>
                         <td className="px-3 sm:px-5 py-5 whitespace-nowrap">
-                          {node.packetsReceived !== undefined && node.packetsReceived !== null ? (
-                            <span className="text-xs sm:text-sm font-mono text-foreground/80">
-                              {node.packetsReceived.toLocaleString()}
-                            </span>
-                          ) : (
-                            renderEmptyCell()
-                          )}
+                          <div className="flex flex-col gap-0.5 items-center">
+                            {node.packetsReceived !== undefined && node.packetsReceived !== null ? (
+                              <span className="text-xs sm:text-sm font-mono text-foreground/80 flex items-center gap-1">
+                                <ArrowDown className="w-3 h-3 text-green-400/70" />
+                                {node.packetsReceived.toLocaleString()}
+                              </span>
+                            ) : null}
+                            {node.packetsSent !== undefined && node.packetsSent !== null ? (
+                              <span className="text-xs sm:text-sm font-mono text-foreground/80 flex items-center gap-1">
+                                <ArrowUp className="w-3 h-3 text-blue-400/70" />
+                                {node.packetsSent.toLocaleString()}
+                              </span>
+                            ) : null}
+                            {(node.packetsReceived === undefined && node.packetsSent === undefined) && renderEmptyCell()}
+                          </div>
                         </td>
-                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap">
-                          {node.packetsSent !== undefined && node.packetsSent !== null ? (
-                            <span className="text-xs sm:text-sm font-mono text-foreground/80">
-                              {node.packetsSent.toLocaleString()}
-                            </span>
-                          ) : (
-                            renderEmptyCell()
-                          )}
+                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap bg-card/20 text-center">
+                          <div className="flex justify-center">
+                            {node.version ? (
+                              <VersionTooltip version={node.version} abbreviated={abbreviateVersion(node.version)} />
+                            ) : (
+                              renderEmptyCell()
+                            )}
+                          </div>
                         </td>
-                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap">
-                          {node.version ? (
-                            <VersionTooltip version={node.version} abbreviated={abbreviateVersion(node.version)} />
-                          ) : (
-                            renderEmptyCell()
-                          )}
-                        </td>
+
                       </tr>
                     );
                   })
                 )}
-              </tbody >
-            </table >
-          </div >
+              </tbody>
+            </table>
+          </div>
         )}
-      </div >
-    </div >
+      </div>
+    </div>
   );
 }

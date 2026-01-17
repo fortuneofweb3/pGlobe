@@ -139,7 +139,7 @@ export default function StoincCalculator({
     return (
         <div className="space-y-6">
             {/* Node Selector */}
-            <div className="flex flex-col sm:flex-row items-end gap-4 pb-4 border-b border-white/5">
+            <div className="flex flex-col sm:flex-row items-end gap-4 pb-4 border-b border-white/10">
                 <div className="flex-1 w-full space-y-2">
                     <label className="flex items-center gap-2 text-xs uppercase tracking-wider text-foreground/40 font-bold">
                         <Search className="w-3.5 h-3.5" />
@@ -305,7 +305,7 @@ export default function StoincCalculator({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
                     {/* Storage Credits */}
-                    <div className="bg-white/5 p-4 rounded-lg border border-white/5">
+                    <div className="bg-white/5 p-4 rounded-lg border border-white/10">
                         <div className="text-[10px] uppercase tracking-wider text-foreground/40 mb-1">Storage Credits</div>
                         <div className="text-xl font-bold font-mono text-foreground/80">
                             <AnimatedNumber value={calculation.storageCredits} decimals={1} />
@@ -313,7 +313,7 @@ export default function StoincCalculator({
                     </div>
 
                     {/* Multiplier */}
-                    <div className="bg-white/5 p-4 rounded-lg border border-white/5">
+                    <div className="bg-white/5 p-4 rounded-lg border border-white/10">
                         <div className="text-[10px] uppercase tracking-wider text-foreground/40 mb-1">Total GeoBoost</div>
                         <div className="text-xl font-bold font-mono text-[#F0A741]">
                             {calculation.totalMultiplier.toFixed(2)}x
@@ -321,7 +321,7 @@ export default function StoincCalculator({
                     </div>
 
                     {/* Boosted Credits */}
-                    <div className="bg-white/5 p-4 rounded-lg border border-white/5">
+                    <div className="bg-white/5 p-4 rounded-lg border border-white/10">
                         <div className="text-[10px] uppercase tracking-wider text-foreground/40 mb-1">Boosted Weight</div>
                         <div className="text-xl font-bold font-mono text-[#F0A741]">
                             <AnimatedNumber value={calculation.boostedCredits} decimals={1} />

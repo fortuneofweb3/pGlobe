@@ -697,7 +697,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
                     return (
                       <div
                         key={country.name}
-                        className="flex items-center justify-between px-1.5 lg:px-2 py-1 lg:py-1.5 rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors cursor-pointer border border-border/20"
+                        className="flex items-center justify-between px-1.5 lg:px-2 py-1 lg:py-1.5 rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors cursor-pointer border border-white/10"
                         onClick={() => handleCountryClick(country.name)}
                       >
                         <div className="flex items-center gap-1.5 lg:gap-2 min-w-0 flex-1">
@@ -714,7 +714,7 @@ const WorldMapHeatmap = ({ nodes }: WorldMapHeatmapProps) => {
           </div>
 
           {/* Instructions */}
-          <div className="pt-1 lg:pt-2 border-t border-border/40">
+          <div className="pt-1 lg:pt-2 border-t border-white/10">
             <p className="text-[10px] lg:text-xs text-muted-foreground leading-tight lg:leading-relaxed">
               Hover for details • Click to explore
             </p>

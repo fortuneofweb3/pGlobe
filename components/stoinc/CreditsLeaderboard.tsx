@@ -57,14 +57,14 @@ export default function CreditsLeaderboard({ nodes, limit = 20 }: CreditsLeaderb
     return (
         <div className="overflow-hidden">
             {/* Header */}
-            <div className="grid grid-cols-12 gap-2 px-3 py-2 text-[10px] uppercase tracking-wider text-foreground/40 font-bold border-b border-white/5">
+            <div className="grid grid-cols-12 gap-2 px-3 py-2 text-[10px] uppercase tracking-wider text-foreground/40 font-bold border-b border-white/10">
                 <div className="col-span-1">#</div>
                 <div className="col-span-7">pNode</div>
                 <div className="col-span-4 text-right">Credits</div>
             </div>
 
             {/* Rows */}
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-white/10">
                 {rankedNodes.map((node, index) => {
                     const rank = index + 1;
 

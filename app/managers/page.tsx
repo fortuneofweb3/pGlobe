@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import ManagerLeaderboard from '@/components/ManagerLeaderboard';
 import InfoTooltip from '@/components/InfoTooltip';
+import ExportButton from '@/components/ExportButton';
+import { MANAGER_EXPORT_COLUMNS } from '@/lib/utils/export-columns';
 
 // Format number with K, M abbreviation (2 decimal places)
 function formatAbbreviated(value: number): string {
@@ -33,23 +35,10 @@ function ManagerCard({ manager, allNodesCount, onClick, copyWallet, copiedWallet
     copyWallet: (w: string) => void,
     copiedWallet: string | null,
     formatUsd: (val: number) => string
-}) {
+}): JSX.Element {
     const getNodeCount = (m: Manager) => Math.max(m.registeredNodes || 0, m.purchasedNodes || 0, (m.knownNodes?.length || 0));
 
     const truncateWallet = (wallet: string) => `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
-
-    const getSourceBadge = (source: string) => {
-        switch (source) {
-            case 'both':
-                return <span className="text-[8px] px-1 py-0.5 bg-purple-500/20 text-purple-400 rounded">BOTH</span>;
-            case 'mainnet':
-                return <span className="text-[8px] px-1 py-0.5 bg-green-500/20 text-green-400 rounded">MAINNET</span>;
-            case 'devnet':
-                return <span className="text-[8px] px-1 py-0.5 bg-blue-500/20 text-blue-400 rounded">DEVNET</span>;
-            default:
-                return null;
-        }
-    };
 
     const nodeCount = getNodeCount(manager);
     const fleetPercentage = ((nodeCount / (allNodesCount || 1)) * 100);
@@ -98,9 +87,9 @@ function ManagerCard({ manager, allNodesCount, onClick, copyWallet, copiedWallet
                         >
                             <ExternalLink className="w-3 h-3 text-foreground/40" />
                         </a>
-                        {getSourceBadge(manager.source)}
+                        {/* Source Badge Removed */}
                     </div>
-                </div>
+                </div >
 
                 <div className="relative group/chart ml-auto shrink-0">
                     <svg width="48" height="48" viewBox="0 0 36 36" className="transform -rotate-90">
@@ -126,7 +115,7 @@ function ManagerCard({ manager, allNodesCount, onClick, copyWallet, copiedWallet
                         </span>
                     </div>
                 </div>
-            </div>
+            </div >
 
             <div className="grid grid-cols-2 gap-2 mb-3">
                 <div className="bg-blue-500/10 rounded-lg p-2 text-center">
@@ -134,14 +123,14 @@ function ManagerCard({ manager, allNodesCount, onClick, copyWallet, copiedWallet
                         <FileCheck className="w-3 h-3" />
                         <span className="text-lg font-bold">{manager.registeredNodes}</span>
                     </div>
-                    <div className="text-[10px] text-foreground/50">Active Nodes</div>
+                    <div className="text-[10px] text-foreground/50">Registered</div>
                 </div>
                 <div className="bg-green-500/10 rounded-lg p-2 text-center">
                     <div className="flex items-center justify-center gap-1 text-green-400">
                         <ShoppingCart className="w-3 h-3" />
                         <span className="text-lg font-bold">{manager.totalPurchases || manager.purchasedNodes}</span>
                     </div>
-                    <div className="text-[10px] text-foreground/50">Licenses</div>
+                    <div className="text-[10px] text-foreground/50">Purchased</div>
                 </div>
                 <div className="col-span-2 bg-[#F0A741]/10 rounded-lg p-2 text-center border border-[#F0A741]/20">
                     <div className="text-lg font-bold text-[#F0A741]">
@@ -156,7 +145,7 @@ function ManagerCard({ manager, allNodesCount, onClick, copyWallet, copiedWallet
                 <span>{manager.knownNodes?.length || 0} linked nodes</span>
                 <ChevronRight className="w-4 h-4 group-hover:text-[#F0A741] transition-colors" />
             </div>
-        </div>
+        </div >
     );
 }
 
@@ -294,13 +283,38 @@ function ManagersPageContent() {
             <main className="flex-1 overflow-y-auto">
                 <div className="w-full p-3 sm:p-6 min-h-full">
                     <div className="max-w-7xl mx-auto">
-                        {/* Page Title Row */}
-                        <div className="mb-8 animate-slide-in-bottom">
-                            <h1 className="text-2xl sm:text-3xl font-bold mb-1 flex items-center gap-3">
-                                <Users className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
-                                Manager Wallets
-                            </h1>
-                            <p className="text-foreground/60 text-sm">pNode operators who run registered nodes</p>
+                        {/* Page Title Row - High z-index to ensure dropdowns appear above content */}
+                        <div className="mb-8 animate-slide-in-bottom relative z-50">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                                <div>
+                                    <h1 className="text-2xl sm:text-3xl font-bold mb-1 flex items-center gap-3">
+                                        <Users className="w-6 h-6 sm:w-8 sm:h-8 text-[#F0A741]" />
+                                        Manager Wallets
+                                    </h1>
+                                    <p className="text-foreground/60 text-sm">pNode operators who run registered nodes</p>
+                                </div>
+                                <div>
+                                    <ExportButton
+                                        data={filteredManagers.map(m => {
+                                            // Calculate total storage for this manager's nodes
+                                            const mNodes = nodes.filter(n => n.managerWallet === m.wallet || n.registrarWallet === m.wallet);
+                                            const totalStorage = mNodes.reduce((sum, n) => sum + (n.storageCapacity || n.sc || 0), 0);
+                                            const totalUptimeSeconds = mNodes.reduce((sum, n) => sum + (n.uptime || n.us || 0), 0);
+
+                                            // Return enriched object
+                                            return {
+                                                ...m,
+                                                totalStorage, // Add for export
+                                                totalUptimeSeconds,
+                                                daoStake: m.daoStake || m.totalXandStake || 0 // Ensure fallback if daoStake is empty
+                                            };
+                                        })}
+                                        columns={MANAGER_EXPORT_COLUMNS}
+                                        filename="xandeum-managers"
+                                        label="Managers"
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         {/* Stats Row 1: Counts */}
@@ -313,7 +327,7 @@ function ManagersPageContent() {
                                 color="orange"
                             />
                             <StatsCard
-                                title="Active Nodes"
+                                title="Registered"
                                 value={stats.registeredNodes}
                                 subValue="Nodes with on-chain identity"
                                 icon={<FileCheck className="w-4 h-4" />}
@@ -400,6 +414,8 @@ function ManagersPageContent() {
                                         <List className="w-4 h-4" />
                                     </button>
                                 </div>
+
+
 
 
                                 <div className="relative flex-1 sm:w-64">

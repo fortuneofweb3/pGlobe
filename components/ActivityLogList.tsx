@@ -179,7 +179,7 @@ const LogItem = React.forwardRef<HTMLDivElement, { log: ActivityLog }>(({ log },
                 exit={{ opacity: 0, y: -4, transition: { duration: 0.15 } }}
                 transition={smoothSpring}
                 style={{ willChange: 'transform, opacity' }}
-                className="p-2.5 sm:p-4 bg-muted/5 hover:bg-white/[0.04] border border-border/20 hover:border-[#F0A741]/30 rounded-lg transition-colors duration-150"
+                className="p-2.5 sm:p-4 bg-muted/5 hover:bg-white/[0.04] border border-white/10 hover:border-[#F0A741]/30 rounded-lg transition-colors duration-150"
             >
                 <div className="flex items-start gap-2 sm:gap-4">
                     {/* Icon */}
@@ -428,7 +428,7 @@ export default function ActivityLogList({ pubkey, address, countryCode, limit = 
                         <span className="hidden xs:inline">Live Activity Feed</span>
                         <span className="xs:hidden">Feed</span>
                     </h2>
-                    <div className="flex items-center gap-1.5 sm:gap-2 bg-muted/20 px-1.5 sm:px-2 py-0.5 rounded-full border border-border/40">
+                    <div className="flex items-center gap-1.5 sm:gap-2 bg-muted/20 px-1.5 sm:px-2 py-0.5 rounded-full border border-white/10">
                         <div className={`w-1.5 h-1.5 rounded-full ${connected && !isPaused ? 'bg-green-500 animate-pulse' : isPaused ? 'bg-yellow-500' : 'bg-muted-foreground/30'}`} />
                         <span className="text-[9px] sm:text-[10px] font-bold text-foreground/40 uppercase tracking-tight">
                             {isPaused ? 'Paused' : connected ? 'Live' : 'Offline'}
@@ -436,7 +436,7 @@ export default function ActivityLogList({ pubkey, address, countryCode, limit = 
                     </div>
                     <button
                         onClick={() => setIsPaused(!isPaused)}
-                        className={`p-1 sm:p-1.5 rounded-lg border transition-colors ${isPaused ? 'bg-[#F0A741]/20 border-[#F0A741]/50 text-[#F0A741]' : 'bg-muted/20 border-border/40 text-foreground/50 hover:text-foreground hover:bg-muted/30'}`}
+                        className={`p-1 sm:p-1.5 rounded-lg border transition-colors ${isPaused ? 'bg-[#F0A741]/20 border-[#F0A741]/50 text-[#F0A741]' : 'bg-muted/20 border-white/10 text-foreground/50 hover:text-foreground hover:bg-muted/30'}`}
                         title={isPaused ? 'Resume' : 'Pause'}
                     >
                         {isPaused ? <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> : <Pause className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
@@ -448,7 +448,7 @@ export default function ActivityLogList({ pubkey, address, countryCode, limit = 
                         {/* Watchlist Toggle */}
                         <button
                             onClick={() => setLocalWatchlistOnly(!localWatchlistOnly)}
-                            className={`flex items-center gap-1.5 px-3 py-1 bg-muted/20 hover:bg-muted/30 border border-border/40 rounded-lg transition-all text-[10px] sm:text-xs font-semibold ${localWatchlistOnly ? 'text-yellow-500 border-yellow-500/30 bg-yellow-500/10' : 'text-foreground/70 hover:text-foreground'}`}
+                            className={`flex items-center gap-1.5 px-3 py-1 bg-muted/20 hover:bg-muted/30 border border-white/10 rounded-lg transition-all text-[10px] sm:text-xs font-semibold ${localWatchlistOnly ? 'text-yellow-500 border-yellow-500/30 bg-yellow-500/10' : 'text-foreground/70 hover:text-foreground'}`}
                         >
                             <Star className={`w-3 h-3 ${localWatchlistOnly ? 'fill-yellow-500' : ''}`} />
                             <span className="hidden lg:inline">Watchlist Only</span>
@@ -459,7 +459,7 @@ export default function ActivityLogList({ pubkey, address, countryCode, limit = 
                         <div className="relative">
                             <button
                                 onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                                className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 bg-muted/20 hover:bg-muted/30 border border-border/40 rounded-lg transition-colors text-[10px] sm:text-xs font-semibold text-foreground/70 hover:text-foreground"
+                                className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 bg-muted/20 hover:bg-muted/30 border border-white/10 rounded-lg transition-colors text-[10px] sm:text-xs font-semibold text-foreground/70 hover:text-foreground"
                             >
                                 <Filter className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                                 <span className="hidden xs:inline">{typeFilter ? ACTIVITY_TYPES.find(t => t.value === typeFilter)?.label : 'All Activities'}</span>
@@ -467,7 +467,7 @@ export default function ActivityLogList({ pubkey, address, countryCode, limit = 
                             </button>
 
                             {showFilterDropdown && (
-                                <div className="absolute top-full mt-1 right-0 z-50 bg-card border border-border/40 rounded-lg shadow-xl min-w-[140px] overflow-hidden">
+                                <div className="absolute top-full mt-1 right-0 z-50 bg-card border border-white/10 rounded-lg shadow-xl min-w-[140px] overflow-hidden">
                                     {ACTIVITY_TYPES.map((type) => (
                                         <button
                                             key={type.value}

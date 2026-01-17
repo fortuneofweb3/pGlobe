@@ -10,7 +10,7 @@ import {
     Copy, Check, ExternalLink, ChevronRight, Filter
 } from 'lucide-react';
 
-type SortField = 'credits' | 'nodes' | 'uptime' | 'vestingRewards' | 'storage';
+type SortField = 'credits' | 'nodes' | 'uptime' | 'vestingRewards' | 'storage' | 'daoStake';
 type SortDirection = 'asc' | 'desc';
 
 // Format number with K, M abbreviation (2 decimal places)
@@ -118,6 +118,10 @@ export default function ManagerLeaderboard({ managers, nodes, copiedWallet, onCo
                     aVal = a.vestingStake || 0;
                     bVal = b.vestingStake || 0;
                     break;
+                case 'daoStake':
+                    aVal = a.daoStake || 0;
+                    bVal = b.daoStake || 0;
+                    break;
                 case 'storage':
                     aVal = getManagerStorage(a.wallet);
                     bVal = getManagerStorage(b.wallet);
@@ -171,18 +175,7 @@ export default function ManagerLeaderboard({ managers, nodes, copiedWallet, onCo
         );
     };
 
-    const getSourceBadge = (source: string) => {
-        switch (source) {
-            case 'both':
-                return <span className="text-[9px] px-1.5 py-0.5 bg-purple-500/20 text-purple-400 rounded font-medium">BOTH</span>;
-            case 'mainnet':
-                return <span className="text-[9px] px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded font-medium">MAINNET</span>;
-            case 'devnet':
-                return <span className="text-[9px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded font-medium">DEVNET</span>;
-            default:
-                return null;
-        }
-    };
+    // getSourceBadge removed
 
     const getUptimeColor = (uptime: number) => {
         if (uptime >= 90) return 'text-green-400';
@@ -194,7 +187,7 @@ export default function ManagerLeaderboard({ managers, nodes, copiedWallet, onCo
     return (
         <div className="space-y-4">
             {/* Filters Row */}
-            <div className="flex flex-wrap items-center gap-3 p-3 bg-card rounded-lg border border-border/40">
+            <div className="flex flex-wrap items-center gap-3 p-3 bg-card rounded-lg border border-white/10">
                 <div className="flex items-center gap-2 text-foreground/60">
                     <Filter className="w-4 h-4" />
                     <span className="text-xs font-medium uppercase tracking-wider">Filters:</span>
@@ -240,7 +233,7 @@ export default function ManagerLeaderboard({ managers, nodes, copiedWallet, onCo
             <div className="overflow-x-auto">
                 <table className="w-full">
                     <thead>
-                        <tr className="border-b border-border/40">
+                        <tr className="border-b border-white/10">
                             <th className="text-left py-3 px-2 text-xs font-semibold text-foreground/60 uppercase tracking-wider w-16">
                                 Rank
                             </th>
@@ -284,6 +277,15 @@ export default function ManagerLeaderboard({ managers, nodes, copiedWallet, onCo
                                 </div>
                             </th>
                             <th
+                                className="text-right py-3 px-2 text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors hidden xl:table-cell"
+                                onClick={() => handleSort('daoStake')}
+                            >
+                                <div className="flex items-center justify-end gap-1">
+                                    DAO Stake
+                                    <SortIcon field="daoStake" />
+                                </div>
+                            </th>
+                            <th
                                 className="text-right py-3 px-2 text-xs font-semibold text-foreground/60 uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors hidden lg:table-cell"
                                 onClick={() => handleSort('storage')}
                             >
@@ -306,7 +308,7 @@ export default function ManagerLeaderboard({ managers, nodes, copiedWallet, onCo
                             return (
                                 <tr
                                     key={manager.wallet}
-                                    className="border-b border-border/20 hover:bg-muted/30 cursor-pointer transition-colors group"
+                                    className="border-b border-white/10 hover:bg-muted/30 cursor-pointer transition-colors group"
                                     onClick={() => {
                                         startProgress();
                                         router.push(`/managers/${manager.wallet}`);
@@ -320,7 +322,7 @@ export default function ManagerLeaderboard({ managers, nodes, copiedWallet, onCo
                                             <img
                                                 src={`https://api.dicebear.com/7.x/identicon/svg?seed=${manager.wallet}&backgroundColor=1a1a2e`}
                                                 alt="Avatar"
-                                                className="w-8 h-8 rounded-full bg-muted border border-border/40"
+                                                className="w-8 h-8 rounded-full bg-muted border border-white/10"
                                             />
                                             <div>
                                                 <div className="flex items-center gap-2">
@@ -328,7 +330,7 @@ export default function ManagerLeaderboard({ managers, nodes, copiedWallet, onCo
                                                     {manager.onlineCount === 0 && (
                                                         <span className="text-[9px] font-bold px-1 py-0.5 bg-red-500/20 text-red-500 rounded">DEAD</span>
                                                     )}
-                                                    {getSourceBadge(manager.source)}
+                                                    {/* Source Badge Removed */}
                                                 </div>
                                                 <div className="flex items-center gap-1 mt-0.5">
                                                     <button
@@ -378,6 +380,11 @@ export default function ManagerLeaderboard({ managers, nodes, copiedWallet, onCo
                                     <td className="py-3 px-2 text-right hidden md:table-cell">
                                         <span className="font-medium text-[#F0A741]">
                                             {formatAbbreviated(vestingRewards)}
+                                        </span>
+                                    </td>
+                                    <td className="py-3 px-2 text-right hidden xl:table-cell">
+                                        <span className="font-medium text-purple-400">
+                                            {formatAbbreviated(manager.daoStake || 0)}
                                         </span>
                                     </td>
                                     <td className="py-3 px-2 text-right hidden lg:table-cell">
