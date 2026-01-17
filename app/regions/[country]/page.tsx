@@ -1545,7 +1545,7 @@ function CountryDetailContent() {
                         </div>
                         <div>
                           <ExportButton
-                            data={nodesInCountry}
+                            data={countryNodes}
                             columns={PNODE_EXPORT_COLUMNS}
                             filename={`xandeum-nodes-${resolvedCountryCode || countryName}`}
                             label="Nodes"
