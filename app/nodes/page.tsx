@@ -148,6 +148,12 @@ function NodesPageContent() {
         const bWatched = watchlist.includes(b.pubkey || b.publicKey || b.id);
         if (aWatched !== bWatched) return 0; // Already handled
 
+        // PRIORITIZE ONLINE STATUS
+        const aOnline = a.status === 'online';
+        const bOnline = b.status === 'online';
+        if (aOnline && !bOnline) return -1;
+        if (!aOnline && bOnline) return 1;
+
         const aIPs = a.mergedIPs?.length || 1;
         const bIPs = b.mergedIPs?.length || 1;
         if (aIPs !== bIPs) return bIPs - aIPs;
