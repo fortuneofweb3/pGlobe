@@ -869,28 +869,25 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                     </>
                   ) : (
                     <>
-                      <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider bg-card/20">
+                      <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider bg-white/[0.015]">
                         Uptime
                       </th>
                       <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                         Storage
                       </th>
-                      <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider bg-card/20">
+                      <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider bg-white/[0.015]">
                         CPU
                       </th>
                       <th className="px-2 sm:px-3 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                         RAM
                       </th>
-
-
-
-                      <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider bg-card/20">
+                      <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider bg-white/[0.015]">
                         Credits
                       </th>
                       <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                         Traffic
                       </th>
-                      <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider bg-card/20">
+                      <th className="px-3 sm:px-5 py-4 text-center text-xs font-semibold text-foreground/60 uppercase tracking-wider bg-white/[0.015]">
                         Version
                       </th>
                     </>
@@ -1020,7 +1017,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                             return <span className="text-xs text-foreground/40">—</span>;
                           })()}
                         </td>
-                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap bg-card/20 text-center">
+                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap bg-white/[0.015] text-center">
                           <span className="text-xs sm:text-sm text-foreground/80">
                             {formatUptime(node.uptime) || renderEmptyCell()}
                           </span>
@@ -1040,7 +1037,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                             return renderEmptyCell();
                           })()}
                         </td>
-                        <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-card/20 text-center">
+                        <td className="px-3 sm:px-5 py-4 whitespace-nowrap bg-white/[0.015] text-center">
                           <span className="text-xs sm:text-sm text-foreground/80">
                             {node.cpuPercent !== undefined && node.cpuPercent !== null
                               ? `${node.cpuPercent.toFixed(1)}%`
@@ -1071,7 +1068,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
 
 
                         {/* XAND Stake and Boost columns hidden - no placeholders needed */}
-                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-center bg-card/20">
+                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap text-center bg-white/[0.015]">
                           {node.credits !== undefined && node.credits !== null ? (
                             <span className="text-xs sm:text-sm font-mono text-foreground/80">
                               {node.credits.toLocaleString()}
@@ -1097,7 +1094,7 @@ export default function PNodeTable({ nodes, onNodeClick, sortBy, sortOrder, onSo
                             {(node.packetsReceived === undefined && node.packetsSent === undefined) && renderEmptyCell()}
                           </div>
                         </td>
-                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap bg-card/20 text-center">
+                        <td className="px-3 sm:px-5 py-5 whitespace-nowrap bg-white/[0.015] text-center">
                           <div className="flex justify-center">
                             {node.version ? (
                               <VersionTooltip version={node.version} abbreviated={abbreviateVersion(node.version)} />

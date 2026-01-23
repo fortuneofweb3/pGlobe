@@ -18,6 +18,7 @@ import {
 import MetricChart from '@/components/charts/MetricChart';
 import { formatRelativeTime } from '@/lib/utils/time';
 import CopyButton from '@/components/CopyButton';
+import XandeumIcon from '@/components/XandeumIcon';
 
 import dynamic from 'next/dynamic';
 
@@ -71,6 +72,7 @@ interface ManagerResponse {
     nodes: PNode[];
     rewards?: { history: RewardHistoryItem[] };
     associatedWallets?: string[];
+    nfts?: any[];
     error?: string;
 }
 
@@ -93,8 +95,9 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
     const [manager, setManager] = useState<ManagerDetails | null>(null);
     const [nodes, setNodes] = useState<PNode[]>([]);
     const [rewards, setRewards] = useState<{ history: RewardHistoryItem[] } | null>(null);
+    const [nfts, setNfts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'nodes' | 'rewards' | 'activity'>('nodes');
+    const [activeTab, setActiveTab] = useState<'nodes' | 'rewards' | 'activity' | 'collectibles'>('nodes');
     const [error, setError] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<string>('credits');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -260,6 +263,9 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                 }
                 if (data.rewards) {
                     setRewards(data.rewards);
+                }
+                if (data.nfts) {
+                    setNfts(data.nfts);
                 }
             } else if (nodes.length === 0) {
                 setError(data.error || 'Failed to fetch manager details');
@@ -439,7 +445,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                             <span>Back to Managers</span>
                         </Link>
 
-                        {/* Cover Section */}
+                        {/* Cover Section - RESTORED */}
                         <div className="relative mb-8 animate-fade-in" style={{ animationDelay: '0.05s', opacity: 0, animationFillMode: 'forwards' }}>
                             <div className="relative rounded-xl overflow-hidden border border-border/40 shadow-2xl bg-card">
                                 <div
@@ -486,7 +492,7 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                             </div>
                         </div>
 
-                        {/* Stats Row - 4 Columns */}
+                        {/* Stats Row - 4 Columns - RESTORED */}
                         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 stagger-children">
                             <StatsCard
                                 title="Reg. / Purch."
@@ -504,7 +510,11 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
 
                             <StatsCard
                                 title="DAO Stake"
-                                value={<><span>{formatXandValue(manager.daoStake || 0)}</span><span className="text-xs ml-1 opacity-50 font-normal">XAND</span></>}
+                                value={<div className="flex items-center gap-2">
+                                    <XandeumIcon size={24} />
+                                    <span>{formatXandValue(manager.daoStake || 0)}</span>
+                                    <span className="text-xs opacity-50 font-normal">XAND</span>
+                                </div>}
                                 subValue={<><span>{formatUsd(manager.daoStake || 0)}</span> <span className="opacity-60 ml-1">in DAO Governance</span></>}
                                 icon={<Award className="w-4 h-4" />}
                                 color="orange"
@@ -512,7 +522,11 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
 
                             <StatsCard
                                 title="Vesting Rewards"
-                                value={<><span>{formatXandValue(manager.vestingStake || 0)}</span><span className="text-xs ml-1 opacity-50 font-normal">XAND</span></>}
+                                value={<div className="flex items-center gap-2">
+                                    <XandeumIcon size={24} />
+                                    <span>{formatXandValue(manager.vestingStake || 0)}</span>
+                                    <span className="text-xs opacity-50 font-normal">XAND</span>
+                                </div>}
                                 subValue={<><span>{formatUsd(manager.vestingStake || 0)}</span> <span className="opacity-60 ml-1">Cumulative rewards</span></>}
                                 icon={<Zap className="w-4 h-4" />}
                                 color="blue"
@@ -859,8 +873,16 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                 className={`flex items-center gap-1.5 sm:gap-2.5 px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all duration-300 shrink-0 ${activeTab === 'rewards' ? 'bg-[#F0A741] text-black shadow-[0_4px_12px_rgba(240,167,65,0.3)]' : 'text-foreground/50 hover:text-foreground'}`}
                             >
                                 <Zap className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${activeTab === 'rewards' ? 'opacity-100' : 'opacity-50'}`} />
-                                <span className="hidden xs:inline">Rewards & Vesting</span>
+                                <span className="hidden xs:inline">Rewards</span>
                                 <span className="xs:hidden">Rewards</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('collectibles')}
+                                className={`flex items-center gap-1.5 sm:gap-2.5 px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all duration-300 shrink-0 ${activeTab === 'collectibles' ? 'bg-[#F0A741] text-black shadow-[0_4px_12px_rgba(240,167,65,0.3)]' : 'text-foreground/50 hover:text-foreground'}`}
+                            >
+                                <ShoppingCart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${activeTab === 'collectibles' ? 'opacity-100' : 'opacity-50'}`} />
+                                <span className="hidden xs:inline">Collectibles</span>
+                                <span className="xs:hidden">NFTs</span>
                             </button>
                             <button
                                 onClick={() => setActiveTab('activity')}
@@ -1004,6 +1026,73 @@ function ManagerDetailsContent({ params }: { params: { wallet: string } }) {
                                             </div>
                                         </div>
                                     )}
+                                </div>
+                            ) : activeTab === 'collectibles' ? (
+                                <div className="space-y-6">
+                                    <div className="glass-card overflow-hidden border-[#F0A741]/10 bg-gradient-to-br from-card to-black p-6 sm:p-8">
+                                        <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2.5 rounded-lg bg-[#F0A741]/10 border border-[#F0A741]/20">
+                                                    <ShoppingCart className="w-5 h-5 text-[#F0A741]" />
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-black text-lg tracking-tight uppercase">Manager Collectibles</h3>
+                                                    <p className="text-xs text-foreground/40 font-mono">Digital Assets & NFT Inventory</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-2xl font-black text-white">{nfts.length}</span>
+                                                <span className="text-[10px] text-foreground/40 font-bold ml-2">ASSETS</span>
+                                            </div>
+                                        </div>
+
+                                        {nfts.length > 0 ? (
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
+                                                {nfts.map((nft) => (
+                                                    <a
+                                                        key={nft.id}
+                                                        href={`https://magiceden.io/item-details/${nft.id}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="group relative aspect-square bg-black/40 border border-white/10 hover:border-[#F0A741] transition-all duration-500 overflow-hidden rounded-xl shadow-lg cursor-pointer"
+                                                    >
+                                                        <img
+                                                            src={nft.image}
+                                                            alt={nft.name}
+                                                            className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-700"
+                                                            onError={(e) => (e.currentTarget.style.display = 'none')}
+                                                        />
+                                                        <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black via-black/80 to-transparent translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
+                                                            <p className="text-[10px] sm:text-xs text-white font-bold truncate mb-0.5">{nft.name}</p>
+                                                            <div className="flex items-center justify-between">
+                                                                <p className="text-[8px] text-white/40 truncate font-mono uppercase">{nft.collection || 'Independent Asset'}</p>
+                                                                <ExternalLink className="w-2.5 h-2.5 text-[#F0A741] opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="py-20 text-center border-dashed border-white/10 bg-white/[0.01] rounded-2xl">
+                                                <ShoppingCart className="w-16 h-16 mx-auto mb-6 opacity-10" />
+                                                <p className="text-foreground/40 text-lg">No digital assets detected in this wallet.</p>
+                                            </div>
+                                        )}
+
+                                        {/* Tag badges for Xandeum specific items */}
+                                        <div className="mt-8 pt-6 border-t border-white/5 flex flex-wrap gap-2">
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-black tracking-widest uppercase rounded-full">
+                                                <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
+                                                XAND HOLDER
+                                            </span>
+                                            {manager.daoStake > 0 && (
+                                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F0A741]/10 border border-[#F0A741]/20 text-[#F0A741] text-[10px] font-black tracking-widest uppercase rounded-full">
+                                                    <span className="w-1.5 h-1.5 bg-[#F0A741] rounded-full"></span>
+                                                    DAO STAKER
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             ) : activeTab === 'activity' ? (
                                 <div className="h-[600px] overflow-hidden">

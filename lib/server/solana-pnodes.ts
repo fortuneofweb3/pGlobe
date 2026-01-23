@@ -227,22 +227,71 @@ export async function enrichPNodeWithOnChainData(pubkey: string, connection: Con
     const daoStake = 0;
 
     let nftBoost = 1;
-    /*
+    let nftDetails: any[] = [];
+
     try {
-      const tas = await mainnetConn.getParsedTokenAccountsByOwner(ownerPubkey, { programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') });
-      for (const ta of tas.value) {
-        const match = XANDEUM_NFT_COLLECTIONS.find(c => c.collectionId === ta.account.data.parsed.info.mint);
-        if (match && ta.account.data.parsed.info.tokenAmount.uiAmount >= 1) nftBoost = Math.max(nftBoost, match.multiplier);
+      // Preferred Method: Helius DAS API to check Creators & Update Authorities
+      const response = await fetch(MAINNET_RPC, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 'p-node-enrich',
+          method: 'getAssetsByOwner',
+          params: {
+            ownerAddress: ownerPubkey.toBase58(),
+            page: 1,
+            limit: 100,
+            displayOptions: {
+              showCollectionMetadata: true,
+            },
+          },
+        }),
+      });
+
+      const data = await response.json();
+      if (data.result && data.result.items) {
+        for (const item of data.result.items) {
+          // Check if this item matches any Xandeum collection
+          const match = XANDEUM_NFT_COLLECTIONS.find(c => {
+            // Check Collection ID
+            const itemCollection = item.grouping?.find((g: any) => g.group_key === 'collection')?.group_value;
+            if (c.collectionId && c.collectionId === itemCollection) return true;
+
+            // Check Creator / Update Authority
+            if (c.creator) {
+              if (item.authorities?.some((a: any) => a.address === c.creator)) return true;
+              if (item.content?.metadata?.creators?.some((cr: any) => cr.address === c.creator && cr.verified)) return true;
+            }
+
+            // Fallback: Name check for placeholders
+            if (c.name === 'Titan' && item.content?.metadata?.name?.includes('Titan')) return true;
+            if (c.name === 'XENO' && item.content?.metadata?.name?.includes('XENO')) return true;
+
+            return false;
+          });
+
+          if (match) {
+            nftBoost = Math.max(nftBoost, match.multiplier);
+            nftDetails.push({
+              name: item.content?.metadata?.name || match.name,
+              multiplier: match.multiplier,
+              icon: match.icon,
+              collection: match.name
+            });
+          }
+        }
       }
-    } catch (e) { }
-    */
+    } catch (e) {
+      console.warn(`[solana-pnodes] Failed to fetch NFTs for ${ownerPubkey.toBase58()}:`, (e as Error).message);
+    }
 
     return {
       balance, isValidator, isRegistered, managerWallet, registrarWallet,
       daoStake,
 
       xandStake: daoStake, // Map xandStake ONLY to DAO stake
-      nftBoost, eraBoost, eraLabel, milestoneItem, validatorInfo
+      nftBoost, nftDetails, eraBoost, eraLabel, milestoneItem, validatorInfo
     };
   } catch (err) {
     if ((err as Error).message?.includes('429')) throw err;

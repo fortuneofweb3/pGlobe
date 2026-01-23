@@ -1,18 +1,20 @@
 'use client';
 
 import SolanaDevnetIcon from './SolanaDevnetIcon';
+import XandeumIcon from './XandeumIcon';
 
 interface BalanceDisplayProps {
   balance: number | null | undefined;
   className?: string;
   showIcon?: boolean;
+  currency?: 'SOL' | 'XAND';
 }
 
-export default function BalanceDisplay({ balance, className = '', showIcon = true }: BalanceDisplayProps) {
+export default function BalanceDisplay({ balance, className = '', showIcon = true, currency = 'SOL' }: BalanceDisplayProps) {
   if (balance === null || balance === undefined) {
     return <span className={className}>N/A</span>;
   }
-  
+
   // Format balance with appropriate decimal places
   let formattedValue: string;
   if (balance === 0) {
@@ -27,11 +29,17 @@ export default function BalanceDisplay({ balance, className = '', showIcon = tru
     // Normal balances: show up to 3 decimals
     formattedValue = balance.toFixed(3).replace(/\.?0+$/, '');
   }
-  
+
   return (
     <span className={`inline-flex items-center gap-1.5 ${className}`}>
       <span>{formattedValue}</span>
-      {showIcon && <SolanaDevnetIcon size={16} className="flex-shrink-0" />}
+      {showIcon && (
+        currency === 'XAND' ? (
+          <XandeumIcon size={16} className="text-[#F0A741] flex-shrink-0" />
+        ) : (
+          <SolanaDevnetIcon size={16} className="flex-shrink-0" />
+        )
+      )}
     </span>
   );
 }

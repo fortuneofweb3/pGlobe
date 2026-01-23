@@ -10,7 +10,7 @@ export interface NFTCollection {
     multiplier: number;
     icon: string;
     collectionId?: string; // Solana Collection Mint address
-    creatorId?: string;    // Alternative: Filter by Verified Creator
+    creator?: string;      // Verified Creator Address
 }
 
 export const XANDEUM_NFT_COLLECTIONS: NFTCollection[] = [
@@ -18,37 +18,35 @@ export const XANDEUM_NFT_COLLECTIONS: NFTCollection[] = [
         name: 'Titan',
         multiplier: 11, // 1,000% boost
         icon: '⚡',
-        collectionId: undefined // TBD - discover from wallet scan
+        collectionId: 'H8C2FfJ5vYyPJHn3B1Ea7u6bS8yE4fC2mS1bB3d5eG7', // Fallback
+        creator: 'EKBaGra9E7yCqBBaobHcF3UM7J9tKWet6XVJWihvaYrK' // Xandeum DeepSouth Creator
     },
     {
         name: 'Dragon',
         multiplier: 4, // 300% boost
         icon: '🐉',
-        collectionId: 'AevD1ypsjQxdn9CV34pKh8qbSChYuVaLDReeaCg18mv1' // DeepSouth Dragon
-    },
-    {
-        name: 'Coyote',
-        multiplier: 2.5, // 150% boost
-        icon: '🐺',
-        collectionId: undefined
+        collectionId: 'AevD1ypsjQxdn9CV34pKh8qbSChYuVaLDReeaCg18mv1', // DeepSouth Dragon
+        creator: 'EKBaGra9E7yCqBBaobHcF3UM7J9tKWet6XVJWihvaYrK'
     },
     {
         name: 'Rabbit',
         multiplier: 1.5, // 50% boost
         icon: '🐰',
-        collectionId: '2jwFQbyVxAbx9vZAH8AAPTNw9R955ELfEJUB9H6JNyke' // DeepSouth Rabbit
+        collectionId: '2jwFQbyVxAbx9vZAH8AAPTNw9R955ELfEJUB9H6JNyke', // DeepSouth Rabbit
+        creator: 'EKBaGra9E7yCqBBaobHcF3UM7J9tKWet6XVJWihvaYrK'
     },
     {
-        name: 'Cricket',
-        multiplier: 1.1, // 10% boost
-        icon: '🦗',
-        collectionId: undefined
+        name: 'Founders',
+        multiplier: 1.25, // Estimate for Founders
+        icon: 'wd',
+        collectionId: 'Founders_Club_Passport',
+        creator: 'DrDFSxtKfvTLEGULkSJLVq7b1HeySCGStkXLibThTxky' // Bitoku Founders Club
     },
     {
         name: 'XENO',
         multiplier: 1.1, // 10% boost
         icon: '👽',
-        collectionId: undefined
+        collectionId: 'XENO_Placeholder'
     },
 ];
 

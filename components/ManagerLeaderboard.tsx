@@ -9,6 +9,7 @@ import {
     ArrowUpDown, ArrowUp, ArrowDown,
     Copy, Check, ExternalLink, ChevronRight, Filter
 } from 'lucide-react';
+import XandeumIcon from './XandeumIcon';
 
 type SortField = 'credits' | 'nodes' | 'uptime' | 'vestingRewards' | 'storage' | 'daoStake';
 type SortDirection = 'asc' | 'desc';
@@ -360,7 +361,7 @@ export default function ManagerLeaderboard({ managers, nodes, copiedWallet, onCo
                                         </div>
                                     </td>
                                     <td className="py-3 px-2 text-right">
-                                        <span className="font-bold text-[#F0A741]">
+                                        <span className="font-bold text-white">
                                             {(manager.totalCredits || 0).toLocaleString()}
                                         </span>
                                     </td>
@@ -378,14 +379,16 @@ export default function ManagerLeaderboard({ managers, nodes, copiedWallet, onCo
                                         </span>
                                     </td>
                                     <td className="py-3 px-2 text-right hidden md:table-cell">
-                                        <span className="font-medium text-[#F0A741]">
+                                        <div className="flex items-center justify-end gap-1.5 font-medium text-[#F0A741]">
+                                            <XandeumIcon size={14} />
                                             {formatAbbreviated(vestingRewards)}
-                                        </span>
+                                        </div>
                                     </td>
                                     <td className="py-3 px-2 text-right hidden xl:table-cell">
-                                        <span className="font-medium text-purple-400">
+                                        <div className="flex items-center justify-end gap-1.5 font-medium text-purple-400">
+                                            <XandeumIcon size={14} />
                                             {formatAbbreviated(manager.daoStake || 0)}
-                                        </span>
+                                        </div>
                                     </td>
                                     <td className="py-3 px-2 text-right hidden lg:table-cell">
                                         <span className="font-medium text-blue-400">

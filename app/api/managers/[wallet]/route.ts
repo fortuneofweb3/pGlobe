@@ -6,6 +6,8 @@ import { getNodesByManager, getDb, getManagerStatsCollection } from '@/lib/serve
 import { enrichPNodeWithOnChainData } from '@/lib/server/solana-pnodes';
 import { syncRewardsForManager } from '@/lib/server/sync-rewards';
 
+import { XANDEUM_NFT_COLLECTIONS } from '@/lib/constants/nft';
+
 const managerDetailCache = new SimpleCache<any>(0.5); // 30 second cache for quick navigation
 
 const HELIUS_API_KEY = '2aca1e9b-9f51-44a0-938b-89dc6c23e9b4';
@@ -109,6 +111,89 @@ export async function GET(
             associatedWallets: Array.from(associatedWallets)
         };
 
+        // 3. Fetch NFTs (Assets) from Helius DAS API
+        let nfts = [];
+        try {
+            console.log(`[API] 🎨 Fetching NFTs for ${wallet}...`);
+            const heliResponse = await fetch(RPC_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: 'my-id',
+                    method: 'getAssetsByOwner',
+                    params: {
+                        ownerAddress: wallet,
+                        page: 1,
+                        limit: 50,
+                        displayOptions: {
+                            showCollectionMetadata: true,
+                        },
+                    },
+                }),
+            });
+            const heliData = await heliResponse.json();
+
+            if (heliData.result && heliData.result.items) {
+                // Official collection IDs from lib/constants/nft.ts
+                const officialCollections = [
+                    'AevD1ypsjQxdn9CV34pKh8qbSChYuVaLDReeaCg18mv1', // Dragon
+                    '2jwFQbyVxAbx9vZAH8AAPTNw9R955ELfEJUB9H6JNyke', // Rabbit
+                ];
+
+                // Filter for potentially relevant NFTs (Xandeum related or high value)
+                nfts = heliData.result.items.map((item: any) => ({
+                    id: item.id,
+                    name: item.content?.metadata?.name || 'Unknown NFT',
+                    image: item.content?.links?.image || item.content?.files?.[0]?.uri || '',
+                    description: item.content?.metadata?.description || '',
+                    collection: item.grouping?.find((g: any) => g.group_key === 'collection')?.group_value || '',
+                })).filter((nft: any) => {
+                    // MUST have an image
+                    if (!nft.image) return false;
+
+                    const nameLower = nft.name.toLowerCase();
+
+                    // 1. Check official collection IDs AND Creators
+                    const match = XANDEUM_NFT_COLLECTIONS.find(c => {
+                        // Check Collection ID
+                        if (c.collectionId && c.collectionId === nft.collection) return true;
+
+                        // Check Creator / Update Authority
+                        if (c.creator) {
+                            if (nft.authorities?.some((a: any) => a.address === c.creator)) return true;
+                            if (nft.creators?.some((cr: any) => cr.address === c.creator && cr.verified)) return true;
+                        }
+                        return false;
+                    });
+
+                    if (match) return true;
+
+                    // 2. Strict keyword matching for Xandeum ecosystem
+                    const isXandeumKeyword =
+                        nameLower.includes('xandeum') ||
+                        nameLower.includes('titan') ||
+                        nameLower.includes('xeno') ||
+                        nameLower.includes('bitoku') || // Founders
+                        nameLower.includes('pnode');
+
+                    // 3. Exclude obvious spam keywords that often bypass simple name checks
+                    const isSpam =
+                        nameLower.includes('reward') ||
+                        nameLower.includes('voucher') ||
+                        nameLower.includes('claim') ||
+                        nameLower.includes('gift') ||
+                        nameLower.includes('airdrop') ||
+                        nameLower.includes('exclusive') ||
+                        nameLower.includes('.err');
+
+                    return isXandeumKeyword && !isSpam;
+                });
+            }
+        } catch (nftError) {
+            console.error('[API] Failed to fetch NFTs:', nftError);
+        }
+
         const response = {
             success: true,
             manager: stats,
@@ -140,6 +225,7 @@ export async function GET(
             rewards: {
                 history: vestingHistory
             },
+            nfts: nfts, // Add NFTs to response
             associatedWallets: Array.from(associatedWallets)
         };
 
