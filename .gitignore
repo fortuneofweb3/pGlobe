@@ -50,7 +50,29 @@ prisma/dev.db-journal
 tmp/
 local-pnodes.json
 
+# Build artifacts and system files
+*.tar.xz
+debian-binary
+*.deb
+usr/
 
+# Data and logs
+*.log
+*.csv
 
+# Sensitive files
+wallet.json
+devnet-wallet.json
+keypairs/
+
+# Root-level auxiliary scripts
+find_mainnet_*.ts
+query_rpc.*
+realtime-server.ts
+render-api-server.ts
+tmp_prpc.js
+repos_to_clone.txt
+
+# Directories
 scripts/
 XandeumRepos/
