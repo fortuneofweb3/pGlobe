@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: pGlobe
+    runtime: node
+    region: oregon
+    plan: standard
+    buildCommand: npm install --include=dev
+    startCommand: npx tsx render-api-server.ts
+    envVars:
+      - key: NODE_VERSION
+        value: 22.16.0
